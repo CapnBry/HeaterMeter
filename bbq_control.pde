@@ -44,6 +44,8 @@ static char g_PROBENAMES[][13] = {"Food Probe1 ", "Food Probe2 ", "Ambient     "
 static boolean g_TemperatureReached = false;
 static unsigned int g_LidOpenResumeCountdown = 0;
 
+  static float integralSum = 0.0f;
+
 ShiftRegLCD lcd(PIN_LCD_DATA, PIN_LCD_CLK, TWO_WIRE, 2); 
 
 #define DEGREE "\xdf" // \xdf is the degree symbol on the Hitachi HD44780
@@ -58,6 +60,55 @@ const char DEFAULT_PROBE_NAMES[] PROGMEM = "Food Probe1 \0Food Probe2 \0Ambient 
 void resetTemps(unsigned int *p)
 {
   memset(p, 0, sizeof(g_TempAccum));  // all temp arrays are the same size
+}
+
+void printDouble( double val, byte precision)
+{
+  // prints val with number of decimal places determine by precision
+  // precision is a number from 0 to 6 indicating the desired decimial places
+  // example: lcdPrintDouble( 3.1415, 2); // prints 3.14 (two decimal places)
+
+  if(val < 0.0){
+    Serial.print('-');
+    val = -val;
+  }
+
+  Serial.print (int(val));  //prints the int part
+  if( precision > 0) {
+    Serial.print("."); // print the decimal point
+    unsigned long frac;
+    unsigned long mult = 1;
+    byte padding = precision -1;
+    while(precision--)
+  mult *=10;
+
+    if(val >= 0)
+ frac = (val - int(val)) * mult;
+    else
+ frac = (int(val)- val ) * mult;
+    unsigned long frac1 = frac;
+    while( frac1 /= 10 )
+ padding--;
+    while(  padding--)
+ Serial.print("0");
+    Serial.print(frac,DEC) ;
+  }
+}
+
+void outputSerial(void)
+{
+  Serial.print(g_TempAvgs[TEMP_PIT]);
+  Serial.print(",");
+  Serial.print(g_TempAvgs[TEMP_FOOD1]);
+  Serial.print(",");
+  Serial.print(g_TempAvgs[TEMP_FOOD2]);
+  Serial.print(",");
+  Serial.print(g_TempAvgs[TEMP_AMB]);
+  Serial.print(",");
+  Serial.print(fanSpeedPCT,DEC);
+  Serial.print(",");
+  printDouble(integralSum, 4);
+  Serial.println();
 }
 
 void updateDisplay(void)
@@ -91,8 +142,15 @@ void updateDisplay(void)
         break;
       } // intentional fallthrough
     case dmAMBIENT:
-      snprintf_P(buffer, sizeof(buffer), LCD_LINE2, g_PROBENAMES[2], g_TempAvgs[TEMP_AMB]);
+      //snprintf_P(buffer, sizeof(buffer), LCD_LINE2, g_PROBENAMES[2], g_TempAvgs[TEMP_AMB]);
+      unsigned char frac;
+      if (integralSum > 0)
+        frac = (integralSum - (int)integralSum) * 100;
+      else
+        frac = ((int)integralSum - integralSum) * 100;
+      snprintf(buffer, sizeof(buffer), "IS %7d.%-5d", (int)integralSum, frac);
       displayMode = dmFOOD1;
+      Serial.println("AMB");
       break;
   }
   lcd.print(buffer);
@@ -101,28 +159,23 @@ void updateDisplay(void)
 /* Calucluate the desired fan speed using the proportional–integral (PI) controller algorithm */
 #define PID_P 5.0f
 #define PID_I 0.02f
-#define PID_BIAS 3.0f
 // For integral, determine how often to update integral sum
 // Integral is used to null out offset, so can be independent of offset size
 #define PID_I_FREQ 5
 unsigned char calcFanSpeedPct(int setPoint, int currentTemp) 
 {
   // state we need to save
-  static float integralSum = 0.0f;
   static unsigned char integralCount = 0;
 
   float error;
-  float proportional, control;
+  float control;
   
   // If the pit probe is registering 0 degrees, don't jack the fan up to MAX
   if (currentTemp == 0)
     return 0;
 
   error = setPoint - currentTemp;
-  proportional = PID_P * error;
-
-  // control value is % (0 - 100)
-  control = PID_BIAS + proportional;
+  control = PID_P * error;
 
   // integral term. see if it's time to do an integral update (and
   // that integral term isn't 0)
@@ -193,6 +246,7 @@ void tempReadingsAvailable(void)
   analogWrite(PIN_BLOWER, (fanSpeedPCT * 255 / 100));
 
   updateDisplay();
+  outputSerial();
 }
 
 unsigned int convertAnalogTemp(const unsigned int Vout, const unsigned char steinhart_index) 
