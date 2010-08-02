@@ -165,7 +165,7 @@ void updateDisplay(void)
 unsigned char calcFanSpeedPct(int setPoint, int currentTemp) 
 {
   // state we need to save
-  static unsigned char integralCount = 0;
+  static unsigned char lastOutput = 0;
 
   float error;
   float control;
@@ -175,41 +175,11 @@ unsigned char calcFanSpeedPct(int setPoint, int currentTemp)
     return 0;
 
   error = setPoint - currentTemp;
-  control = PID_P * error;
 
-  // integral term. see if it's time to do an integral update (and
-  // that integral term isn't 0)
-  if (++integralCount >= PID_I_FREQ) 
-  {
-    float integral;
-    integralCount = 0;
-
-    // integral accumulation - include "anti windup" test.
-    // Don't change the integral being accumulated if the control value is
-    // already at 100% and the integral error is positive (which would increase
-    // the control value even more), and don't change the integral sum if
-    // the control value is already at 0% and the integral error is negative
-    // (which would decrease the control value even more)
-    // Since we've already added it in, remove it here if necessary
-    if (error >= 0) 
-    {
-      integral = PID_I * error;
-      if (control + integralSum < 100)
-      {
-        integralSum += integral;
-      }
-    } else {
-      // A possibility to try here....if error is negative, increase the rate
-      // that we slow the fan down by multiplying PID_I
-      // i.e. integral = PID_I*2 * error;
-      integral = PID_I * error;
-      if (control + integralSum > 0) 
-      {
-        integralSum += integral;
-      }
-    }
-  }  /* if integralCount > */
-  control += integralSum;
+  if (!((lastOutput >= 100) && (error > 0)) && !((lastOutput <= 0) && (error < 0)))
+    integralSum += error;
+    
+  control = PID_P * (error + (PID_I * integralSum));
 
   // limit control
   if (control > 100)
@@ -217,6 +187,7 @@ unsigned char calcFanSpeedPct(int setPoint, int currentTemp)
   else if (control < 0)
     control = 0;
 
+  lastOutput = control;
   return control;
 }
 
