@@ -1,15 +1,43 @@
 #include <avr/pgmspace.h>
 #include <avr/eeprom.h>
 #include <ShiftRegLCD.h>
+#include <WiServer.h>
+
+#include "menus.h"
+
+// Wireless configuration parameters ----------------------------------------
+unsigned char local_ip[] = {192,168,1,252};	// IP address of WiShield
+unsigned char gateway_ip[] = {192,168,1,1};	// router or gateway IP address
+unsigned char subnet_mask[] = {255,255,255,0};	// subnet mask for the local network
+const prog_char ssid[] PROGMEM = {"capnbry24"};		// max 32 bytes
+
+unsigned char security_type = 0;	// 0 - open; 1 - WEP; 2 - WPA; 3 - WPA2
+
+// WPA/WPA2 passphrase
+const prog_char security_passphrase[] PROGMEM = {"12345678"};	// max 64 characters
+
+// WEP 128-bit keys
+// sample HEX keys
+prog_uchar wep_keys[] PROGMEM = {};
+
+// setup the wireless mode
+// infrastructure - connect to AP
+// adhoc - connect to another WiFi device
+unsigned char wireless_mode = 1;
+
+unsigned char ssid_len;
+unsigned char security_passphrase_len;
+// End of wireless configuration parameters ----------------------------------------
 
 #define NUM_OF(x) (sizeof (x) / sizeof *(x))
 #define MIN(x,y) ( x > y ? y : x )
 
 // Analog Pins
-#define PIN_PIT   5
-#define PIN_FOOD1 4
-#define PIN_FOOD2 3
-#define PIN_AMB   2
+#define PIN_PIT     5
+#define PIN_FOOD1   4
+#define PIN_FOOD2   3
+#define PIN_AMB     2
+#define PIN_BUTTONS 0
 // Digital Output Pins
 #define PIN_BLOWER    3
 #define PIN_LCD_CLK   4
@@ -32,15 +60,13 @@ const static struct probe_mapping {
 #define TEMP_AMB    3
 #define TEMP_COUNT  NUM_OF(PROBES)
 
-enum eDisplayModes {dmFOOD1, dmFOOD2, dmAMBIENT, dmPID_DEBUG};
-
 // Runtime Data
 static unsigned int g_TempAccum[TEMP_COUNT];  // Both g_TempAccum and g_TempAvgs MUST be the same size, see resetTemps
 static int g_TempAvgs[TEMP_COUNT];
 static unsigned char fanSpeedPCT = 0;
-static eDisplayModes displayMode = dmFOOD1;
 static boolean g_TemperatureReached = false;
 static unsigned int g_LidOpenResumeCountdown = 0;
+static MenuSystem Menus;
 // cached config
 unsigned char lidOpenOffset;
 char probeTempOffsets[TEMP_COUNT];
@@ -69,8 +95,7 @@ const struct PROGMEM __eeprom_data {
   char probeTempOffsets[TEMP_COUNT];
   unsigned char lidOpenOffset;
   unsigned int lidOpenDuration;
-  float pidP;
-  float pidI;
+  float pidConstants[3]; // constants are stored Kp, Ki, Kd
 } DEFAULT_CONFIG PROGMEM = { 
   eeprom_magic,  // magic
   230,  // setpoint
@@ -78,8 +103,40 @@ const struct PROGMEM __eeprom_data {
   { 0, 0, 0 },  // probe offsets
   20,  // lid open offset
   240, // lid open duration
-  7.0f, // pidP
-  0.01f // pidI
+  { 7.0f, 0.01f, 1.0f }
+};
+
+#define ST_HOME_FOOD1 (ST_VMAX+1)
+#define ST_HOME_FOOD2 (ST_VMAX+2)
+#define ST_HOME_AMB   (ST_VMAX+3)
+#define ST_CONFIG     (ST_VMAX+4)
+
+const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
+  { ST_NONE, menuPrint, 0 },  // for testing if we end up here
+  
+  { ST_HOME_FOOD1, menuHome, 2 },
+  { ST_HOME_FOOD2, menuHome, 2 },
+  { ST_HOME_AMB, menuHome, 2 },
+  { ST_CONFIG, menuPrint, 10 },
+  { 0, 0 },
+};
+
+const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
+  { ST_HOME_FOOD1, BUTTON_RIGHT,   ST_CONFIG },
+  { ST_HOME_FOOD1, BUTTON_UP,      ST_HOME_AMB },
+  { ST_HOME_FOOD1, BUTTON_DOWN | BUTTON_TIMEOUT, ST_HOME_FOOD2 },
+
+  { ST_HOME_FOOD2, BUTTON_RIGHT,   ST_CONFIG },
+  { ST_HOME_FOOD2, BUTTON_UP,      ST_HOME_FOOD1 },
+  { ST_HOME_FOOD2, BUTTON_DOWN | BUTTON_TIMEOUT, ST_HOME_AMB },
+
+  { ST_HOME_AMB, BUTTON_RIGHT,     ST_CONFIG },
+  { ST_HOME_AMB, BUTTON_UP,        ST_HOME_FOOD2 },
+  { ST_HOME_AMB, BUTTON_DOWN | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+
+  { ST_CONFIG, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+
+  { 0, 0, 0 },
 };
 
 void resetTemps(void *p)
@@ -87,21 +144,18 @@ void resetTemps(void *p)
   memset(p, 0, sizeof(g_TempAccum));  // all temp arrays are the same size
 }
 
-void outputSerial(void)
+void outputRaw(Print &out)
 {
-#ifdef SERIAL_OUT
-  const prog_char COMMA PROGMEM = ',';
-  Serial.print(g_TempAvgs[TEMP_PIT]);
-  Serial.print_P(COMMA);
-  Serial.print(g_TempAvgs[TEMP_FOOD1]);
-  Serial.print_P(COMMA);
-  Serial.print(g_TempAvgs[TEMP_FOOD2]);
-  Serial.print_P(COMMA);
-  Serial.print(g_TempAvgs[TEMP_AMB]);
-  Serial.print_P(COMMA);
-  Serial.print(fanSpeedPCT,DEC);
-  Serial.println();
-#endif
+  out.print(g_TempAvgs[TEMP_PIT]);
+  out.print(',');
+  out.print(g_TempAvgs[TEMP_FOOD1]);
+  out.print(',');
+  out.print(g_TempAvgs[TEMP_FOOD2]);
+  out.print(',');
+  out.print(g_TempAvgs[TEMP_AMB]);
+  out.print(',');
+  out.print(fanSpeedPCT,DEC);
+  out.println();
 }
 
 void formatProbeLine(char *buffer, size_t buffsize, unsigned char probeIndex)
@@ -120,9 +174,10 @@ void formatProbeLine(char *buffer, size_t buffsize, unsigned char probeIndex)
 
 void updateDisplay(void)
 {
-  // Only rotate LINE2 of the display every 2 calls
-  static unsigned char nextDisplay;
-  #define ROTATE_DISPLAY(n) { if ((++nextDisplay % 3) == 0) displayMode = n; }
+  // Updates to the temperature can come at any time, only update 
+  // if we're in a state that displays them
+  if (Menus.State != ST_HOME_FOOD1 && Menus.State != ST_HOME_FOOD2 && Menus.State != ST_HOME_AMB)
+    return;
   char buffer[17];
 
   lcd.home();
@@ -135,29 +190,16 @@ void updateDisplay(void)
   lcd.print(buffer); 
 
   lcd.setCursor(0, 1);
-  switch (displayMode)
+  switch (Menus.State)
   {
-    case dmFOOD1:
-      if (g_TempAvgs[TEMP_FOOD1] != 0)
-      {
-        formatProbeLine(buffer, sizeof(buffer), TEMP_FOOD1);
-        ROTATE_DISPLAY(dmFOOD2);
-        break;
-      } // intentional fallthrough
-    case dmFOOD2:
-      if (g_TempAvgs[TEMP_FOOD2] != 0)
-      {
-        formatProbeLine(buffer, sizeof(buffer), TEMP_FOOD2);
-        ROTATE_DISPLAY(dmAMBIENT);
-        break;
-      } // intentional fallthrough
-    case dmAMBIENT:
-      formatProbeLine(buffer, sizeof(buffer), TEMP_AMB);
-      ROTATE_DISPLAY(dmPID_DEBUG);
+    case ST_HOME_FOOD1: 
+      formatProbeLine(buffer, sizeof(buffer), TEMP_FOOD1);
       break;
-    case dmPID_DEBUG:
-      snprintf(buffer, sizeof(buffer), "I %-7d       ", (long)(pidErrorSum * 100));
-      ROTATE_DISPLAY(dmFOOD1);
+    case ST_HOME_FOOD2:
+      formatProbeLine(buffer, sizeof(buffer), TEMP_FOOD2);
+      break;
+    case ST_HOME_AMB:
+      formatProbeLine(buffer, sizeof(buffer), TEMP_AMB);
       break;
   }
   lcd.print(buffer);
@@ -167,35 +209,42 @@ void updateDisplay(void)
 unsigned char calcFanSpeedPct(int setPoint, int currentTemp) 
 {
   static unsigned char lastOutput = 0;
-  float error;
-  int control;
+  static int lastTemp = 0;
   
   // If the pit probe is registering 0 degrees, don't jack the fan up to MAX
   if (currentTemp == 0)
     return 0;
 
+  float error;
+  int control;
+  float pidConstants[3];  
+  eeprom_read(pidConstants, pidConstants);
   error = setPoint - currentTemp;
 
   // anti-windup: Make sure we only adjust the I term while
   // inside the proportional control range
   if (!(lastOutput >= 100 && error > 0) && 
       !(lastOutput <= 0   && error < 0))
-    pidErrorSum += error;
+    pidErrorSum += (error * pidConstants[1]);
     
-  float Kp, Ki;
-  eeprom_read(Kp, pidP);
-  eeprom_read(Ki, pidI);
-  control = Kp * (error + (Ki * pidErrorSum));
-
-  // limit control
+  control = pidConstants[0] * (error + pidErrorSum - (pidConstants[2] * (currentTemp - lastTemp)));
+  
   if (control > 100)
     lastOutput = 100;
   else if (control < 0)
     lastOutput = 0;
   else
     lastOutput = control;
+  lastTemp = currentTemp;
 
   return lastOutput;
+}
+
+void resetLidOpenResumeCountdown(void)
+{
+  unsigned int resume;
+  eeprom_read(resume, lidOpenDuration);
+  g_LidOpenResumeCountdown = resume;
 }
 
 void tempReadingsAvailable(void)
@@ -219,16 +268,14 @@ void tempReadingsAvailable(void)
   // after reaching temp note that the code assumes g_LidOpenResumeCountdown <= 0
   else if (g_TemperatureReached && ((setPoint - pitTemp) > lidOpenOffset))
   {
-    unsigned int resume;
-    eeprom_read(resume, lidOpenDuration);
-    g_LidOpenResumeCountdown = resume;
+    resetLidOpenResumeCountdown();
     g_TemperatureReached = false;
   }
   
   analogWrite(PIN_BLOWER, (fanSpeedPCT * 255 / 100));
 
   updateDisplay();
-  outputSerial();
+//  outputRaw(Serial);
 }
 
 int convertAnalogTemp(unsigned int Vout, unsigned char steinhart_index) 
@@ -305,6 +352,61 @@ void eepromCache(void)
   eeprom_read(probeTempOffsets, probeTempOffsets);
 }
 
+state_t menuHome(button_t button)
+{
+  if (button == BUTTON_ENTER)
+  {
+    if (Menus.State == ST_HOME_FOOD1 && g_TempAvgs[TEMP_FOOD1] == 0)
+      return ST_HOME_FOOD2;
+    else if (Menus.State == ST_HOME_FOOD2 && g_TempAvgs[TEMP_FOOD2] == 0)
+      return ST_HOME_AMB;
+    updateDisplay();
+  }
+  else if (button == BUTTON_LEFT)
+  {
+    // Left from Home screen enables/disables the lid countdown
+    if (g_LidOpenResumeCountdown == 0)
+      resetLidOpenResumeCountdown();
+    else
+      g_LidOpenResumeCountdown == 0;
+    updateDisplay();
+  }
+  return ST_AUTO;
+}
+
+state_t menuPrint(button_t button)
+{
+  if (button == BUTTON_ENTER)
+  {
+    lcd.clear();
+    switch (Menus.State)
+    {
+      case ST_NONE: lcd.print("ERROR None State"); break;
+      case ST_CONFIG: lcd.print("  Config Menu   "); break;
+    }
+  }
+  return ST_AUTO;
+}
+
+boolean sendPage(char* URL)
+{
+  if (strncmp(URL, "/set?sp=", 8) == 0) 
+  {
+    int setPoint;
+    setPoint = atoi(URL + 8);
+    eeprom_write(setPoint, setPoint);
+    WiServer.print("OK");
+    return true;
+  }
+  if (strcmp(URL, "/data") == 0) 
+  {
+    outputRaw(WiServer);
+    return true;    
+  }
+  
+  return false;
+}
+
 void setup(void)
 {
   Serial.begin(9600);
@@ -318,13 +420,17 @@ void setup(void)
   resetTemps(g_TempAccum);
   resetTemps(g_TempAvgs);
 
-  updateDisplay();
+  WiServer.init(sendPage);
+  Menus.init(MENU_DEFINITIONS, MENU_TRANSITIONS);
+  Menus.setState(ST_HOME_FOOD1);
 }
 
 void loop(void)
 {
   unsigned long time = millis();
   readTemps();
+  Menus.doWork();
+  WiServer.server_task(); 
   
   time -= millis(); 
   if (time < (1000 >> TEMP_AVG_COUNT_LOG2))
