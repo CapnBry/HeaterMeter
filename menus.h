@@ -1,5 +1,5 @@
-#ifndef MENUS_H_
-#define MENUS_H_
+#ifndef __MENUS_H__
+#define __MENUS_H__
 
 #include <avr/pgmspace.h>
 
@@ -7,17 +7,11 @@
 // No button pressed
 #define BUTTON_NONE  0
 // Sent to a menu item before the state is entered
-#define BUTTON_ENTER 1
+#define BUTTON_ENTER (1<<7)
 // Sent to a menu item before the state is left
-#define BUTTON_LEAVE 2
+#define BUTTON_LEAVE (1<<6)
 // The timeout specified in the menu definition has expired
-// can be used in a transition even via bitwise OR
-#define BUTTON_TIMEOUT 0x80
-
-#define BUTTON_LEFT  3
-#define BUTTON_RIGHT 4
-#define BUTTON_UP    5
-#define BUTTON_DOWN  6
+#define BUTTON_TIMEOUT (1<<5)
 
 #define ST_NONE     0
 #define ST_AUTO     1
@@ -27,6 +21,7 @@ typedef unsigned char state_t;
 typedef unsigned char button_t;
 
 typedef state_t (*handler_t)(button_t button);
+typedef button_t (*buttonread_t)(void);
 
 typedef struct tagMenuDefinition
 {
@@ -45,10 +40,10 @@ typedef struct tagMenuTransition
 class MenuSystem
 {
 public:
-  MenuSystem(void);
+  MenuSystem(const menu_definition_t *defs, const menu_transition_t *trans,
+    const buttonread_t reader);
   state_t State;
 
-  void init(const menu_definition_t *defs, const menu_transition_t *trans);
   // Call in loop() to handle buttons
   void doWork(void);
   
@@ -60,6 +55,7 @@ private:
   const menu_definition_t *m_definitions;
   const menu_transition_t *m_transitions;
   const menu_definition_t *m_currMenu;
+  const buttonread_t m_readButton;
   button_t m_lastButton;
   unsigned long m_lastActivity;
 

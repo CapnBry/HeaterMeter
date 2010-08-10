@@ -1,50 +1,17 @@
 #include "WProgram.h"
 #include "menus.h"
 
-button_t readButton(void)
+MenuSystem::MenuSystem(const menu_definition_t *defs, const menu_transition_t *trans,
+  const buttonread_t reader)
+  : m_definitions(defs), m_transitions(trans), m_readButton(reader), State(ST_NONE), 
+    m_lastButton(BUTTON_NONE)
 {
-  unsigned char button = analogRead(0) >> 2;
-  if (button == 0)
-    return BUTTON_NONE;
-
-  Serial.print("BtnRaw ");
-  Serial.println(button, DEC); 
-
-  if (button > 0 && button < 41)
-    return BUTTON_LEFT;  
-  if (button > 41 && button < 82)
-    return BUTTON_RIGHT;  
-  if (button > 82 && button < 131)
-    return BUTTON_UP;  
-  if (button > 131 && button < 172)
-    return BUTTON_DOWN;  
-    
-  return BUTTON_NONE;
-}
-
-MenuSystem::MenuSystem(void)
-{
-  State = ST_NONE;
-  m_lastButton = BUTTON_NONE;
-}
-
-void MenuSystem::init(const menu_definition_t *defs, const menu_transition_t *trans)
-{
-  m_definitions = defs;
-  m_transitions = trans;
 }
 
 unsigned long MenuSystem::getTimeoutDuration(void) const
 {
   return (m_currMenu) ? (unsigned long)pgm_read_byte(&m_currMenu->timeout) * 1000 : 0;
 }
-
-/*
-unsigned char MenuSystem::getTimeoutState(void) const
-{
-  return (m_currMenu) ? (unsigned long)pgm_read_byte(&m_currMenu->timeoutstate) : 0;
-}
-*/
 
 handler_t MenuSystem::getHandler(void) const
 {
@@ -58,22 +25,26 @@ unsigned long MenuSystem::getElapsedDuration(void) const
 
 state_t MenuSystem::findTransition(button_t button) const
 {
-  unsigned char i;
-  for (i=0; pgm_read_byte(&m_transitions[i].state); i++)
+  const menu_transition_t *trans = m_transitions;
+  state_t lookup;
+  while (lookup = pgm_read_byte(&trans->state))
   {
-    if (pgm_read_byte(&m_transitions[i].state) == State) 
+    if (lookup == State)
     {
-      button_t transButton = pgm_read_byte(&m_transitions[i].button);
-      if (button == transButton || 
-        (button == BUTTON_TIMEOUT && (transButton & BUTTON_TIMEOUT)))
-        return pgm_read_byte(&m_transitions[i].newstate);
+      button_t transButton = pgm_read_byte(&trans->button);
+      if ((button & transButton) == button)
+        return pgm_read_byte(&trans->newstate);
     }
+    ++trans;
   }
   return State;
 }
 
 void MenuSystem::setState(state_t state)
 {
+  //Serial.print("Setting state: ");
+  //Serial.println(state, DEC);
+  
   while (state != ST_AUTO && state != State)
   {
     handler_t handler = getHandler();
@@ -88,7 +59,7 @@ void MenuSystem::setState(state_t state)
     {
       if (lookup == State)
         break;
-      m_currMenu++;
+      ++m_currMenu;
     }
     
     if (m_currMenu)
@@ -100,25 +71,32 @@ void MenuSystem::setState(state_t state)
       state = ST_NONE;
     }
   }  // while state changing
+
+  m_lastActivity = millis();
 }
 
 void MenuSystem::doWork(void)
 {
-  button_t button = readButton();
-  if (button != BUTTON_NONE)
+  button_t button = m_readButton();
+  if (button == BUTTON_NONE)
   {
-    Serial.print("Button ");
-    Serial.println(button, DEC);
-  } else {
-    long dur = getTimeoutDuration();
+    unsigned long dur = getTimeoutDuration();
     if (dur != 0 && getElapsedDuration() >= dur)
       button = BUTTON_TIMEOUT;
   }
+
   // Debounce: wait for last button to be released
   if (button == m_lastButton)
     return;
+  if (button != BUTTON_TIMEOUT)
+    m_lastButton = button;
+  if (button == BUTTON_NONE)
+    return;
+
+  Serial.print("New button: ");
+  Serial.println(button, DEC);
+
   m_lastActivity = millis();
-  m_lastButton = button;
   
   state_t newState = ST_AUTO;
   handler_t handler = getHandler();
@@ -129,4 +107,3 @@ void MenuSystem::doWork(void)
 
   setState(newState);
 }
-
