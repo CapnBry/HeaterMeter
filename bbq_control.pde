@@ -75,7 +75,7 @@ static unsigned int g_LidOpenResumeCountdown;
 static boolean g_NetworkInitialized;
 // scratch space for edits
 static int editInt;  
-static char editString[15];
+static char editString[17];
 
 // cached config
 static unsigned char lidOpenOffset;
@@ -123,7 +123,7 @@ const struct PROGMEM __eeprom_data {
   { 0, 0, 0 },  // probe offsets
   20,  // lid open offset
   240, // lid open duration
-  { 7.0f, 0.01f, 1.0f }
+  { 7.0f, 0.01f, 0.0f }
 };
 
 // Menu configuration parameters ------------------------
@@ -186,20 +186,23 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   { ST_SETPOINT, BUTTON_RIGHT, ST_PROBENAME1 },
   // UP and DOWN are caught in handler
 
-  { ST_PROBENAME1, BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  // UP, DOWN, LEFT, RIGHT are caught in handler
+  { ST_PROBENAME1, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_PROBENAME1, BUTTON_RIGHT, ST_PROBEOFF1 },
+  // UP, DOWN caught in handler
   { ST_PROBEOFF1, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_PROBEOFF1, BUTTON_RIGHT, ST_PROBENAME2 },
   // UP, DOWN caught in handler
   
   { ST_PROBENAME2, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  // UP, DOWN, LEFT, RIGHT are caught in handler
-  { ST_PROBEOFF2, BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_PROBENAME2, BUTTON_RIGHT, ST_PROBEOFF2 },
+  // UP, DOWN caught in handler
+  { ST_PROBEOFF2, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_PROBEOFF2, BUTTON_RIGHT, ST_PROBENAME3 },
   // UP, DOWN caught in handler
 
-  { ST_PROBENAME3, BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  // UP, DOWN, LEFT, RIGHT are caught in handler
+  { ST_PROBENAME3, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_PROBENAME3, BUTTON_RIGHT, ST_PROBEOFF3 },
+  // UP, DOWN caught in handler
   { ST_PROBEOFF3, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_PROBEOFF3, BUTTON_RIGHT, ST_PROBEOFF0 },
   // UP, DOWN caught in handler
@@ -228,6 +231,9 @@ void outputRaw(Print &out)
 {
   int setPoint;
   
+  eeprom_read(setPoint, setPoint);
+  out.print(setPoint);
+  out.print(',');
   out.print(g_TempAvgs[TEMP_PIT]);
   out.print(',');
   out.print(g_TempAvgs[TEMP_FOOD1]);
@@ -239,9 +245,6 @@ void outputRaw(Print &out)
   out.print(fanSpeedPCT,DEC);
   out.print(',');
   out.print(round(fanSpeedAVG),DEC);
-  eeprom_read(setPoint, setPoint);
-  out.print(',');
-  out.print(setPoint);
   
   out.println();
 }
@@ -249,7 +252,7 @@ void outputRaw(Print &out)
 void storeProbeName(unsigned char probeIndex)
 {
   void *ofs = &((__eeprom_data*)0)->probeNames[probeIndex];
-  eeprom_write_block(ofs, editString, sizeof((__eeprom_data*)0)->probeNames[0]);
+  eeprom_write_block(editString, ofs, sizeof((__eeprom_data*)0)->probeNames[0]);
 }
 
 void loadProbeName(unsigned char probeIndex)
@@ -450,7 +453,7 @@ state_t menuHome(button_t button)
     if (g_LidOpenResumeCountdown == 0)
       resetLidOpenResumeCountdown();
     else
-      g_LidOpenResumeCountdown == 0;
+      g_LidOpenResumeCountdown = 0;
     updateDisplay();
   }
   return ST_AUTO;
@@ -462,7 +465,7 @@ state_t menuConnecting(button_t button)
   lcd.clear();
   lcd.print("Connecting to   "); 
   lcd.setCursor(0, 1);
-//  strncpy_P(buffer, ssid, sizeof(buffer));
+  strncpy_P(buffer, ssid, sizeof(buffer));
   lcd.print(buffer);
   return ST_AUTO;
 }
@@ -487,36 +490,62 @@ void menuNumberEdit(button_t button, unsigned char increment,
   lcd.print(buffer);
 }
 
-boolean menuStringEdit(button_t button, const char *line1, unsigned char maxLength)
+/* 
+  menuStringEdit - When entering a string edit, the first line is static text, 
+  the second is editString.  Upon entry, the string is in read-only mode.  
+  If the user presses the UP or DOWN button, the editing is now active indicated
+  by a blinking character at the current edit position.  From here the user can 
+  use the UP and DOWN button to change the currently selected letter, Arcade Style.
+  LEFT and RIGHT are now repurposed to navigating the edit control.  If the user
+  scrolls off the left, this is considered a cancel.  Scrolling right to maxLength
+  indicates the caller should commit the data.
+  Return value: 
+    ST_AUTO - Not in edit mode, continue as normal *or* user cancelled the edit
+    ST_NONE - In edit mode, buttons are being eaten by edit navigation
+    (State) - If the edit is completed and the caller should commit the new value
+              the current Menu State is returned. The menu will return to read-only state
+*/            
+state_t menuStringEdit(button_t button, const char *line1, unsigned char maxLength)
 {
   static unsigned char editPos = 0;
-  
-  if (button == BUTTON_ENTER)
+
+  if (button == BUTTON_TIMEOUT)
+    return ST_AUTO;
+  if (button == BUTTON_LEAVE)
+    lcd.noBlink();
+  else if (button == BUTTON_ENTER)
   {
     lcd.clear();
     lcd.print(line1);
-  }
-  else if (button == BUTTON_LEAVE)
-  {
-    editPos = 0;
-    lcd.noBlink();
+    lcd.setCursor(0, 1);
+    lcd.print(editString);
   }
   // Pressing UP or DOWN enters edit mode
-  else if (editPos == 0 && (button == BUTTON_UP || button == BUTTON_DOWN))
+  else if (editPos == 0 && (button & (BUTTON_UP | BUTTON_DOWN)))
+  {
     editPos = 1;
+    lcd.blink();
+  }
   // LEFT = cancel edit
   else if (editPos != 0 && button == BUTTON_LEFT)
   {
     --editPos;
     if (editPos == 0)
-      return false;
+    {
+      lcd.noBlink();
+      return ST_AUTO;
+    }
   }
   // RIGHT = confirm edit
   else if (editPos != 0 && button == BUTTON_RIGHT)
   {
     ++editPos;
     if (editPos > maxLength)
-      return true;
+    {
+      editPos = 0;
+      lcd.noBlink();
+      return Menus.State;
+    }
   }
 
   if (editPos > 0)
@@ -531,21 +560,17 @@ boolean menuStringEdit(button_t button, const char *line1, unsigned char maxLeng
       --c;
     else if (button == BUTTON_UP)
       ++c;
-    if (c < ' ') c = '~';
-    if (c > '~') c = ' ';
+    if (c < ' ') c = '}';
+    if (c > '}') c = ' ';
     editString[editPos - 1] = c;  
+    lcd.setCursor(editPos-1, 1);
+    lcd.print(c);
+    lcd.setCursor(editPos-1, 1);
+
+    return ST_NONE;
   }  
   
-  lcd.setCursor(0, 1);
-  lcd.print(editString);
-
-  if (editPos)
-  {
-    lcd.setCursor(editPos-1, 1);
-    lcd.blink();
-  }
-  
-  return false;
+  return ST_AUTO;
 }
 
 state_t menuSetpoint(button_t button)
@@ -579,10 +604,11 @@ state_t menuProbename(button_t button)
 
   // note that we only load the buffer with text on the ENTER call,
   // after that it is OK to have garbage in it  
-  if (menuStringEdit(button, buffer, sizeof((__eeprom_data*)0)->probeNames[0] - 1))
+  state_t retVal = menuStringEdit(button, buffer, sizeof((__eeprom_data*)0)->probeNames[0] - 1);
+  if (retVal == Menus.State)
     storeProbeName(probeIndex);
     
-  return ST_AUTO;
+  return retVal;
 }
 
 state_t menuProbeOffset(button_t button)
@@ -644,7 +670,7 @@ state_t menuLidOpenDur(button_t button)
     if (editInt < 0)
       lidOpenDuration = 0;
     else
-      lidOpenOffset = editInt;    
+      lidOpenDuration = editInt;    
     eeprom_write(lidOpenDuration, lidOpenDuration);
   }
 
