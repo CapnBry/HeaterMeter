@@ -62,4 +62,4 @@ private:
   state_t findTransition(button_t button) const;
 };
 
-#endif
+#endif /* __MENUS_H__ */

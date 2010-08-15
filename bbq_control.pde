@@ -4,7 +4,6 @@
 #include <WiServer.h>
 
 #include "menus.h"
-//#include "grillpid.h"
 
 #ifdef APP_WISERVER
 // Wireless configuration parameters ----------------------------------------
@@ -65,11 +64,15 @@ const static struct probe_mapping {
 #define TEMP_AMB    3
 #define TEMP_COUNT  NUM_OF(PROBES)
 
+#define FAN_AVG_PERIOD (1.0f / 120.0f)
+#define PIT_AVG_PERIOD (1.0f / 30.0f)
+
 // Runtime Data
 static unsigned int g_TempAccum[TEMP_COUNT];
 static int g_TempAvgs[TEMP_COUNT];
 static unsigned char fanSpeedPCT;
 static float fanSpeedAVG;
+static float tempPitAvg;
 static boolean g_TemperatureReached;
 static unsigned int g_LidOpenResumeCountdown;
 static boolean g_NetworkInitialized;
@@ -123,7 +126,7 @@ const struct PROGMEM __eeprom_data {
   { 0, 0, 0 },  // probe offsets
   20,  // lid open offset
   240, // lid open duration
-  { 7.0f, 0.01f, 0.0f }
+  { 5.0f, 0.001f, 1.5f }
 };
 
 // Menu configuration parameters ------------------------
@@ -245,8 +248,23 @@ void outputRaw(Print &out)
   out.print(fanSpeedPCT,DEC);
   out.print(',');
   out.print(round(fanSpeedAVG),DEC);
-  
-  out.println();
+  out.print(',');
+  out.print(g_LidOpenResumeCountdown ? 100 : 0, DEC);
+}
+
+void outputPid(Print &out)
+{
+  out.print((unsigned int)(pidConstants[0] * 1000));
+  out.print(',');
+  out.print((unsigned int)(pidConstants[1] * 1000));
+  out.print(',');
+  out.print((unsigned int)(pidConstants[2] * 1000));
+  out.print(',');
+  out.print((unsigned int)(pidErrorSum * 1000));
+  out.print(',');
+  out.print((unsigned int)(tempPitAvg * 1000));
+  out.print(',');
+  out.print(',');
 }
 
 void storeProbeName(unsigned char probeIndex)
@@ -292,7 +310,6 @@ void updateDisplay(void)
 unsigned char calcFanSpeedPct(int setPoint, int currentTemp) 
 {
   static unsigned char lastOutput = 0;
-  static int lastTemp = 0;
   
   // If the pit probe is registering 0 degrees, don't jack the fan up to MAX
   if (currentTemp == 0)
@@ -308,7 +325,7 @@ unsigned char calcFanSpeedPct(int setPoint, int currentTemp)
       !(lastOutput <= 0   && error < 0))
     pidErrorSum += (error * pidConstants[1]);
     
-  control = pidConstants[0] * (error + pidErrorSum - (pidConstants[2] * (currentTemp - lastTemp)));
+  control = pidConstants[0] * (error + pidErrorSum - (pidConstants[2] * (currentTemp - tempPitAvg)));
   
   if (control > 100)
     lastOutput = 100;
@@ -316,7 +333,6 @@ unsigned char calcFanSpeedPct(int setPoint, int currentTemp)
     lastOutput = 0;
   else
     lastOutput = control;
-  lastTemp = currentTemp;
 
   return lastOutput;
 }
@@ -333,6 +349,12 @@ void tempReadingsAvailable(void)
   int pitTemp = g_TempAvgs[TEMP_PIT];
   int setPoint;
   eeprom_read(setPoint, setPoint);
+
+  if (tempPitAvg == 0.0f)
+    tempPitAvg = pitTemp;
+  else
+    tempPitAvg = ((1.0f - PIT_AVG_PERIOD) * tempPitAvg) + (PIT_AVG_PERIOD * pitTemp);
+
   fanSpeedPCT = calcFanSpeedPct(setPoint, pitTemp);
 
   if (pitTemp >= setPoint)
@@ -346,14 +368,15 @@ void tempReadingsAvailable(void)
     fanSpeedPCT = 0;
   }
   // If the pit temperature dropped has more than [lidOpenOffset] degrees 
-  // after reaching temp note that the code assumes g_LidOpenResumeCountdown <= 0
-  else if (g_TemperatureReached && ((setPoint - pitTemp) > lidOpenOffset))
+  // after reaching temp, and the fan has not been running more than 90% of 
+  // the average period. note that the code assumes g_LidOpenResumeCountdown <= 0
+  else if (g_TemperatureReached && ((setPoint - pitTemp) > lidOpenOffset) && fanSpeedAVG < 90.0f)
   {
     resetLidOpenResumeCountdown();
     g_TemperatureReached = false;
   }
   
-  fanSpeedAVG = (0.99f * fanSpeedAVG) + (0.01f * fanSpeedPCT);
+  fanSpeedAVG = ((1.0f - FAN_AVG_PERIOD) * fanSpeedAVG) + (FAN_AVG_PERIOD * fanSpeedPCT);
   analogWrite(PIN_BLOWER, (fanSpeedPCT * 255 / 100));
 
   updateDisplay();
@@ -678,6 +701,29 @@ state_t menuLidOpenDur(button_t button)
   return ST_AUTO;
 }
 
+boolean setPidParam(char which, float Value)
+{
+  if (which == 'p')
+  {
+    pidConstants[0] = Value;
+    pidErrorSum = 0.0f;
+    return true;
+  }
+  if (which == 'i')
+  {
+    pidConstants[1] = Value;
+    pidErrorSum = 0.0f;
+    return true;
+  }
+  if (which == 'd')
+  {
+    pidConstants[2] = Value;
+    pidErrorSum = 0.0f;
+    return true;
+  }
+  return false;
+}
+
 button_t readButton(void)
 {
   unsigned char button = analogRead(PIN_BUTTONS) >> 2;
@@ -706,8 +752,23 @@ boolean sendPage(char* URL)
     int setPoint;
     setPoint = atoi(URL + 8);
     eeprom_write(setPoint, setPoint);
-    WiServer.print("OK");
+    WiServer.print("OK\n");
     return true;
+  }
+  if (strncmp(URL, "/set?pid", 8) == 0 && strlen(URL) > 10) 
+  {
+    char which = URL[8];
+    float f = atof(URL + 10);
+    if (setPidParam(which, f))
+      WiServer.print("OK\n");
+    else
+      WiServer.print("FAILED\n");
+    return true;
+  }
+  if (strcmp(URL, "/pid") == 0) 
+  {
+    outputPid(WiServer);
+    return true;    
   }
   if (strcmp(URL, "/data") == 0) 
   {
