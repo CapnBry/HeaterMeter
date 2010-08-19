@@ -2,8 +2,12 @@
 #include <avr/eeprom.h>
 #include <ShiftRegLCD.h>
 #include <WiServer.h>
+#include <dataflash.h>
 
+#include "strings.h"
 #include "menus.h"
+#include "grillpid.h"
+#include "flashfiles.h"
 
 #ifdef APP_WISERVER
 // Wireless configuration parameters ----------------------------------------
@@ -14,7 +18,7 @@ const prog_char ssid[] PROGMEM = {"M75FE"};		// max 32 bytes
 
 unsigned char security_type = 1;	// 0 - open; 1 - WEP; 2 - WPA; 3 - WPA2
 // WPA/WPA2 passphrase
-const prog_char security_passphrase[] PROGMEM = {""};	// max 64 characters
+const prog_char security_passphrase[] PROGMEM = {"friskydingo"};	// max 64 characters
 // WEP 128-bit keys
 // sample HEX keys
 prog_uchar wep_keys[] PROGMEM = { 0xEC, 0xA8, 0x1A, 0xB4, 0x65, 0xf0, 0x0d, 0xbe, 0xef, 0xde, 0xad, 0x00, 0x00,	// Key 0
@@ -33,9 +37,6 @@ unsigned char security_passphrase_len;
 // End of wireless configuration parameters ----------------------------------------
 #endif /* APP_WISERVER */
 
-#define NUM_OF(x) (sizeof (x) / sizeof *(x))
-#define MIN(x,y) ( x > y ? y : x )
-
 // Analog Pins
 #define PIN_PIT     5
 #define PIN_FOOD1   4
@@ -43,78 +44,43 @@ unsigned char security_passphrase_len;
 #define PIN_AMB     2
 #define PIN_BUTTONS 0
 // Digital Output Pins
-#define PIN_BLOWER    3
-#define PIN_LCD_CLK   4
-#define PIN_LCD_DATA  8
-// The temperatures are averaged over 1, 2, 4 or 8 samples
-// Set this define to log2(samples) to adjust the number of samples
-#define TEMP_AVG_COUNT_LOG2 3
+#define PIN_BLOWER       3
+#define PIN_LCD_CLK      4
+#define PIN_DATAFLASH_SS 7
+#define PIN_LCD_DATA     8
+#define PIN_WIFI_SS     10
 
-const static struct probe_mapping {
-  unsigned char pin; 
-  unsigned char steinhart_index; 
-} PROBES[] = {
-  {PIN_PIT, 0}, {PIN_FOOD1, 0}, 
-  {PIN_FOOD2, 0}, {PIN_AMB, 1}
+const struct steinhart_param STEINHART[] = {
+  {2.3067434E-4, 2.3696596E-4f, 1.2636414E-7f},  // Maverick Probe
+  {8.98053228e-004f, 2.49263324e-004f, 2.04047542e-007f}, // Radio Shack 10k
 };
 
-#define TEMP_PIT    0
-#define TEMP_FOOD1  1
-#define TEMP_FOOD2  2
-#define TEMP_AMB    3
-#define TEMP_COUNT  NUM_OF(PROBES)
+static TempProbe probe0(PIN_PIT,   &STEINHART[0]);
+static TempProbe probe1(PIN_FOOD1, &STEINHART[0]);
+static TempProbe probe2(PIN_FOOD2, &STEINHART[0]);
+static TempProbe probe3(PIN_AMB,   &STEINHART[1]);
+static GrillPid pid(PIN_BLOWER);
 
-#define FAN_AVG_PERIOD (1.0f / 120.0f)
-#define PIT_AVG_PERIOD (1.0f / 30.0f)
-
-// Runtime Data
-static unsigned int g_TempAccum[TEMP_COUNT];
-static int g_TempAvgs[TEMP_COUNT];
-static unsigned char fanSpeedPCT;
-static float fanSpeedAVG;
-static float tempPitAvg;
-static boolean g_TemperatureReached;
-static unsigned int g_LidOpenResumeCountdown;
 static boolean g_NetworkInitialized;
 // scratch space for edits
 static int editInt;  
 static char editString[17];
 
-// cached config
-static unsigned char lidOpenOffset;
-static char probeTempOffsets[TEMP_COUNT];
-static float pidConstants[3]; 
-
-static float pidErrorSum;
-
 static ShiftRegLCD lcd(PIN_LCD_DATA, PIN_LCD_CLK, TWO_WIRE, 2); 
 
-#define DEGREE "\xdf" // \xdf is the degree symbol on the Hitachi HD44780
-const prog_char LCD_LINE1[] PROGMEM = "Pit:%3d"DEGREE"F [%3u%%]";
-const prog_char LCD_LINE1_DELAYING[] PROGMEM = "Pit:%3d"DEGREE"F Lid%3u";
-const prog_char LCD_LINE1_UNPLUGGED[] PROGMEM = "- No Pit Probe -";
-const prog_char LCD_LINE2[] PROGMEM = "%-12s%3d"DEGREE;
-
-const prog_char LCD_SETPOINT1[] PROGMEM = "Set temperature:";
-const prog_char LCD_SETPOINT2[] PROGMEM = "%3d"DEGREE"F";
-const prog_char LCD_PROBENAME1[] PROGMEM = "Set probe %1d name";
-const prog_char LCD_PROBEOFFSET2[] PROGMEM = "Offset %4d"DEGREE"F";
-const prog_char LCD_LIDOPENOFFS1[] PROGMEM = "Lid open offset";
-const prog_char LCD_LIDOPENOFFS2[] PROGMEM = "%3d"DEGREE"F";
-const prog_char LCD_LIDOPENDUR1[] PROGMEM = "Lid open timer";
-const prog_char LCD_LIDOPENDUR2[] PROGMEM = "%3d seconds";
-
+#define MIN(x,y) ( x > y ? y : x )
 #define eeprom_read_to(dst_p, eeprom_field, dst_size) eeprom_read_block(dst_p, (void *)offsetof(__eeprom_data, eeprom_field), MIN(dst_size, sizeof((__eeprom_data*)0)->eeprom_field))
 #define eeprom_read(dst, eeprom_field) eeprom_read_to(&dst, eeprom_field, sizeof(dst))
 #define eeprom_write_from(src_p, eeprom_field, src_size) eeprom_write_block(src_p, (void *)offsetof(__eeprom_data, eeprom_field), MIN(src_size, sizeof((__eeprom_data*)0)->eeprom_field))
 #define eeprom_write(src, eeprom_field) { typeof(src) x = src; eeprom_write_from(&x, eeprom_field, sizeof(x)); }
 
 #define EEPROM_MAGIC 0xf00d800
+#define PROBE_NAME_SIZE 13
 
 const struct PROGMEM __eeprom_data {
   long magic;
   int setPoint;
-  char probeNames[TEMP_COUNT][13];
+  char probeNames[TEMP_COUNT][PROBE_NAME_SIZE];
   char probeTempOffsets[TEMP_COUNT];
   unsigned char lidOpenOffset;
   unsigned int lidOpenDuration;
@@ -136,8 +102,6 @@ const struct PROGMEM __eeprom_data {
 #define BUTTON_DOWN  (1<<3)
 #define BUTTON_4     (1<<4)
 
-//button_t readButton(void); // forward
-
 #define ST_HOME_FOOD1 (ST_VMAX+1) // ST_HOME_X must stay sequential and in order
 #define ST_HOME_FOOD2 (ST_VMAX+2)
 #define ST_HOME_AMB   (ST_VMAX+3)
@@ -152,6 +116,7 @@ const struct PROGMEM __eeprom_data {
 #define ST_PROBEOFF3  (ST_VMAX+12)
 #define ST_LIDOPEN_OFF (ST_VMAX+13)
 #define ST_LIDOPEN_DUR (ST_VMAX+14)
+//#define ST_DATAFLASH   (ST_VMAX+15)
 // #define ST_SAVECHANGES (ST_VMAX+14)
 
 const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
@@ -169,6 +134,7 @@ const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_PROBEOFF3, menuProbeOffset, 10 },
   { ST_LIDOPEN_OFF, menuLidOpenOff, 10 },
   { ST_LIDOPEN_DUR, menuLidOpenDur, 10 },
+//  { ST_DATAFLASH, menuDataflash, 10 },
   { 0, 0 },
 };
 
@@ -222,6 +188,8 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   { ST_LIDOPEN_DUR, BUTTON_RIGHT, ST_SETPOINT },
   // UP, DOWN caught in handler
 
+  //{ ST_DATAFLASH, BUTTON_LEFT | BUTTON_RIGHT | BUTTON_UP | BUTTON_DOWN | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  
   { ST_CONNECTING, BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   
   { 0, 0, 0 },
@@ -230,53 +198,63 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
 MenuSystem Menus(MENU_DEFINITIONS, MENU_TRANSITIONS, &readButton);
 // End Menu configuration parameters ------------------------
 
-void outputRaw(Print &out)
+void outputRaw(void)
 {
-  int setPoint;
-  
-  eeprom_read(setPoint, setPoint);
-  out.print(setPoint);
-  out.print(',');
-  out.print(g_TempAvgs[TEMP_PIT]);
-  out.print(',');
-  out.print(g_TempAvgs[TEMP_FOOD1]);
-  out.print(',');
-  out.print(g_TempAvgs[TEMP_FOOD2]);
-  out.print(',');
-  out.print(g_TempAvgs[TEMP_AMB]);
-  out.print(',');
-  out.print(fanSpeedPCT,DEC);
-  out.print(',');
-  out.print(round(fanSpeedAVG),DEC);
-  out.print(',');
-  out.print(g_LidOpenResumeCountdown ? 100 : 0, DEC);
+  WiServer.print(pid.SetPoint);
+  WiServer.print_P(COMMA);
+
+  unsigned char i;
+  for (i=0; i<TEMP_COUNT; i++)
+  {
+    WiServer.print(pid.Probes[i]->Temperature);
+    WiServer.print_P(COMMA);
+  }
+
+  WiServer.print(pid.FanSpeed,DEC);
+  WiServer.print_P(COMMA);
+  WiServer.print(round(pid.FanSpeedAvg),DEC);
+  WiServer.print_P(COMMA);
+  WiServer.print(pid.LidOpenResumeCountdown ? 100 : 0, DEC);
 }
 
-void outputPid(Print &out)
+void outputJson(void)
 {
-  out.print((unsigned int)(pidConstants[0] * 1000));
-  out.print(',');
-  out.print((unsigned int)(pidConstants[1] * 1000));
-  out.print(',');
-  out.print((unsigned int)(pidConstants[2] * 1000));
-  out.print(',');
-  out.print((unsigned int)(pidErrorSum * 1000));
-  out.print(',');
-  out.print((unsigned int)(tempPitAvg * 1000));
-  out.print(',');
-  out.print(',');
+  WiServer.print_P(JSON1);
+
+  unsigned char i;
+  for (i=0; i<TEMP_COUNT; i++)
+  {
+    WiServer.print_P(JSON_T1);
+    loadProbeName(i);
+    WiServer.print(editString);
+    WiServer.print_P(JSON_T2);
+    WiServer.print(pid.Probes[i]->Temperature,DEC);
+    WiServer.print_P(JSON_T3);
+    WiServer.print((int)pid.Probes[i]->TemperatureAvg,DEC);
+    WiServer.print(JSON_T4);
+  }
+  
+  WiServer.print_P(JSON2);
+  WiServer.print(pid.SetPoint,DEC);
+  WiServer.print_P(JSON3);
+  WiServer.print(pid.LidOpenResumeCountdown,DEC);
+  WiServer.print_P(JSON4);
+  WiServer.print(pid.FanSpeed,DEC);
+  WiServer.print_P(JSON5);
+  WiServer.print((unsigned char)pid.FanSpeedAvg,DEC);
+  WiServer.print_P(JSON6);
 }
 
 void storeProbeName(unsigned char probeIndex)
 {
   void *ofs = &((__eeprom_data*)0)->probeNames[probeIndex];
-  eeprom_write_block(editString, ofs, sizeof((__eeprom_data*)0)->probeNames[0]);
+  eeprom_write_block(editString, ofs, PROBE_NAME_SIZE);
 }
 
 void loadProbeName(unsigned char probeIndex)
 {
   void *ofs = &((__eeprom_data*)0)->probeNames[probeIndex];
-  eeprom_read_block(editString, ofs, sizeof((__eeprom_data*)0)->probeNames[0]);
+  eeprom_read_block(editString, ofs, PROBE_NAME_SIZE);
 }
 
 void updateDisplay(void)
@@ -289,207 +267,59 @@ void updateDisplay(void)
 
   // Fixed pit area
   lcd.home();
-  if (g_TempAvgs[TEMP_PIT] == 0)
+  int pitTemp = pid.Probes[TEMP_PIT]->Temperature;
+  if (pitTemp == 0)
     memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
-  else if (g_LidOpenResumeCountdown > 0)
-    snprintf_P(buffer, sizeof(buffer), LCD_LINE1_DELAYING, g_TempAvgs[TEMP_PIT], g_LidOpenResumeCountdown);
+  else if (pid.LidOpenResumeCountdown > 0)
+    snprintf_P(buffer, sizeof(buffer), LCD_LINE1_DELAYING, pitTemp, pid.LidOpenResumeCountdown);
   else
-    snprintf_P(buffer, sizeof(buffer), LCD_LINE1, g_TempAvgs[TEMP_PIT], fanSpeedPCT);
+    snprintf_P(buffer, sizeof(buffer), LCD_LINE1, pitTemp, pid.FanSpeed);
   lcd.print(buffer); 
 
   // Rotating probe display
   unsigned char probeIndex = Menus.State - ST_HOME_FOOD1 + 1;
   loadProbeName(probeIndex);
-  snprintf_P(buffer, sizeof(buffer), LCD_LINE2, editString, g_TempAvgs[probeIndex]);
+  snprintf_P(buffer, sizeof(buffer), LCD_LINE2, editString, pid.Probes[probeIndex]->Temperature);
 
   lcd.setCursor(0, 1);
   lcd.print(buffer);
-}
-
-/* Calucluate the desired fan speed using the proportional–integral (PI) controller algorithm */
-unsigned char calcFanSpeedPct(int setPoint, int currentTemp) 
-{
-  static unsigned char lastOutput = 0;
-  
-  // If the pit probe is registering 0 degrees, don't jack the fan up to MAX
-  if (currentTemp == 0)
-    return 0;
-
-  float error;
-  int control;
-  error = setPoint - currentTemp;
-
-  // anti-windup: Make sure we only adjust the I term while
-  // inside the proportional control range
-  if (!(lastOutput >= 100 && error > 0) && 
-      !(lastOutput <= 0   && error < 0))
-    pidErrorSum += (error * pidConstants[1]);
-    
-  control = pidConstants[0] * (error + pidErrorSum - (pidConstants[2] * (currentTemp - tempPitAvg)));
-  
-  if (control > 100)
-    lastOutput = 100;
-  else if (control < 0)
-    lastOutput = 0;
-  else
-    lastOutput = control;
-
-  return lastOutput;
-}
-
-void resetLidOpenResumeCountdown(void)
-{
-  unsigned int resume;
-  eeprom_read(resume, lidOpenDuration);
-  g_LidOpenResumeCountdown = resume;
-}
-
-void tempReadingsAvailable(void)
-{
-  int pitTemp = g_TempAvgs[TEMP_PIT];
-  int setPoint;
-  eeprom_read(setPoint, setPoint);
-
-  if (tempPitAvg == 0.0f)
-    tempPitAvg = pitTemp;
-  else
-    tempPitAvg = ((1.0f - PIT_AVG_PERIOD) * tempPitAvg) + (PIT_AVG_PERIOD * pitTemp);
-
-  fanSpeedPCT = calcFanSpeedPct(setPoint, pitTemp);
-
-  if (pitTemp >= setPoint)
-  {
-    g_TemperatureReached = true;
-    g_LidOpenResumeCountdown = 0;
-  }
-  else if (g_LidOpenResumeCountdown > 0)
-  {
-    --g_LidOpenResumeCountdown;
-    fanSpeedPCT = 0;
-  }
-  // If the pit temperature dropped has more than [lidOpenOffset] degrees 
-  // after reaching temp, and the fan has not been running more than 90% of 
-  // the average period. note that the code assumes g_LidOpenResumeCountdown <= 0
-  else if (g_TemperatureReached && ((setPoint - pitTemp) > lidOpenOffset) && fanSpeedAVG < 90.0f)
-  {
-    resetLidOpenResumeCountdown();
-    g_TemperatureReached = false;
-  }
-  
-  fanSpeedAVG = ((1.0f - FAN_AVG_PERIOD) * fanSpeedAVG) + (FAN_AVG_PERIOD * fanSpeedPCT);
-  analogWrite(PIN_BLOWER, (fanSpeedPCT * 255 / 100));
-
-  updateDisplay();
-  //outputRaw(Serial);
-}
-
-int convertAnalogTemp(unsigned int Vout, unsigned char steinhart_index) 
-{
-  const struct steinhart_param
-  { 
-    float A, B, C; 
-  } STEINHART[] = {
-    {2.3067434E-4, 2.3696596E-4f, 1.2636414E-7f},  // Maverick Probe
-    {8.98053228e-004f, 2.49263324e-004f, 2.04047542e-007f}, // Radio Shack 10k
-  };
-  const float Rknown = 22000.0f;
-  const float Vin = 1023.0f;  
-
-  if ((Vout == 0) || (Vout >= (unsigned int)Vin))
-    return 0;
-    
-  const struct steinhart_param *param = &STEINHART[steinhart_index];
-  float R, T;
-  // If you put the fixed resistor on the Vcc side of the thermistor, use the following
-  R = log(Rknown / ((Vin / (float)Vout) - 1.0f));
-  // If you put the thermistor on the Vcc side of the fixed resistor use the following
-  // R = log(Rknown * Vin / (float)Vout - Rknown);
-  
-  // Compute degrees K  
-  T = (1.0f / ((param->C * R * R + param->B) * R + param->A));
-  
-  // return degrees F
-  int retVal = (int)((T - 273.15f) * (9.0f / 5.0f)) + 32; // 
-  // Sanity - anything less than 0F or greater than 999F is rejected
-  if (retVal < 0 || retVal > 999)
-    return 0;
-    
-  return retVal;
-}      
-
-void readTemps(void)
-{
-  for (unsigned char i=0; i<TEMP_COUNT; i++)
-  {
-    unsigned int analog_temp = analogRead(PROBES[i].pin);
-    // The bottom 3 bits store the loop counter, 3 bits for 8 readings per average
-    // and the top 13 bits store the accumulated value.  13 bits = 8192 which is
-    // perfect for our 8 readings of 0-1023
-    g_TempAccum[i] += (analog_temp << 3);
-  }
-
-  // Only the first one holds the loop counter
-  if ((g_TempAccum[0] & 7) == ((1 << TEMP_AVG_COUNT_LOG2) - 1))
-  {
-    for (unsigned char i=0; i<TEMP_COUNT; ++i)
-    {
-      // Shift out 3 bits to remove our loop counter, and TEMP_AVG_COUNT_LOG2 to compute the average
-      g_TempAvgs[i] = probeTempOffsets[i] + 
-        convertAnalogTemp(g_TempAccum[i] >> (3 + TEMP_AVG_COUNT_LOG2), PROBES[i].steinhart_index);
-    }
-    
-    tempReadingsAvailable();
-    // reset the accumulator
-    memset(g_TempAccum, 0, sizeof(g_TempAccum));
-  }
-  else
-    ++g_TempAccum[0];
-}
-
-void eepromInitialize(void)
-{
-  struct __eeprom_data defConfig;
-  memcpy_P(&defConfig, &DEFAULT_CONFIG, sizeof(defConfig));
-  eeprom_write_block(&defConfig, 0, sizeof(defConfig));  
-}
-
-void eepromCache(void)
-{
-  eeprom_read(lidOpenOffset, lidOpenOffset);
-  eeprom_read(probeTempOffsets, probeTempOffsets);
-  eeprom_read(pidConstants, pidConstants);
 }
 
 state_t menuHome(button_t button)
 {
   if (button == BUTTON_ENTER)
   {
-    if (Menus.State == ST_HOME_FOOD1 && g_TempAvgs[TEMP_FOOD1] == 0)
+    if (Menus.State == ST_HOME_FOOD1 && pid.Probes[TEMP_FOOD1]->Temperature == 0)
       return ST_HOME_FOOD2;
-    else if (Menus.State == ST_HOME_FOOD2 && g_TempAvgs[TEMP_FOOD2] == 0)
+    else if (Menus.State == ST_HOME_FOOD2 && pid.Probes[TEMP_FOOD2]->Temperature == 0)
       return ST_HOME_AMB;
     updateDisplay();
   }
   else if (button == BUTTON_LEFT)
   {
     // Left from Home screen enables/disables the lid countdown
-    if (g_LidOpenResumeCountdown == 0)
-      resetLidOpenResumeCountdown();
+    if (pid.LidOpenResumeCountdown == 0)
+      pid.resetLidOpenResumeCountdown();
     else
-      g_LidOpenResumeCountdown = 0;
+      pid.LidOpenResumeCountdown = 0;
     updateDisplay();
   }
   return ST_AUTO;
 }
 
-state_t menuConnecting(button_t button)
+void lcdprint_P(const prog_char *p)
 {
   char buffer[17];
-  lcd.clear();
-  lcd.print("Connecting to   "); 
-  lcd.setCursor(0, 1);
-  strncpy_P(buffer, ssid, sizeof(buffer));
+  strncpy_P(buffer, p, sizeof(buffer));
   lcd.print(buffer);
+}
+
+state_t menuConnecting(button_t button)
+{
+  lcd.clear();
+  lcdprint_P(LCD_CONNECTING); 
+  lcd.setCursor(0, 1);
+  lcdprint_P(ssid);
   return ST_AUTO;
 }
 
@@ -603,11 +433,12 @@ state_t menuSetpoint(button_t button)
   if (button == BUTTON_ENTER)
   {
     strncpy_P(buffer, LCD_SETPOINT1, sizeof(buffer));
-    eeprom_read(editInt, setPoint);
+    editInt = pid.SetPoint;
   }
   else if (button == BUTTON_LEAVE)
   {
     eeprom_write(editInt, setPoint);
+    pid.SetPoint = editInt;
   }
 
   menuNumberEdit(button, 5, buffer, LCD_SETPOINT2);
@@ -627,7 +458,7 @@ state_t menuProbename(button_t button)
 
   // note that we only load the buffer with text on the ENTER call,
   // after that it is OK to have garbage in it  
-  state_t retVal = menuStringEdit(button, buffer, sizeof((__eeprom_data*)0)->probeNames[0] - 1);
+  state_t retVal = menuStringEdit(button, buffer, PROBE_NAME_SIZE - 1);
   if (retVal == Menus.State)
     storeProbeName(probeIndex);
     
@@ -641,13 +472,13 @@ state_t menuProbeOffset(button_t button)
   if (button == BUTTON_ENTER)
   {
     loadProbeName(probeIndex);
-    editInt = probeTempOffsets[probeIndex];
+    editInt = pid.Probes[probeIndex]->Offset;
   }
   else if (button == BUTTON_LEAVE)
   {
     uint8_t *ofs = (uint8_t *)&((__eeprom_data*)0)->probeTempOffsets[probeIndex];
-    probeTempOffsets[probeIndex] = editInt;
-    eeprom_write_byte(ofs, probeTempOffsets[probeIndex]);
+    pid.Probes[probeIndex]->Offset = editInt;
+    eeprom_write_byte(ofs, pid.Probes[probeIndex]->Offset);
   }
 
   menuNumberEdit(button, 1, editString, LCD_PROBEOFFSET2);
@@ -661,16 +492,15 @@ state_t menuLidOpenOff(button_t button)
   if (button == BUTTON_ENTER)
   {
     strncpy_P(buffer, LCD_LIDOPENOFFS1, sizeof(buffer));
-    editInt = lidOpenOffset;
-    //eeprom_read(editInt, lidOpenOffset);
+    editInt = pid.LidOpenOffset;
   }
   else if (button == BUTTON_LEAVE)
   {
     if (editInt < 0)
-      lidOpenOffset = 0;
+      pid.LidOpenOffset = 0;
     else
-      lidOpenOffset = editInt;    
-    eeprom_write(lidOpenOffset, lidOpenOffset);
+      pid.LidOpenOffset = editInt;    
+    eeprom_write(pid.LidOpenOffset, lidOpenOffset);
   }
 
   menuNumberEdit(button, 5, buffer, LCD_LIDOPENOFFS2);
@@ -679,22 +509,20 @@ state_t menuLidOpenOff(button_t button)
 
 state_t menuLidOpenDur(button_t button)
 {
-  unsigned int lidOpenDuration;
   char buffer[17];
 
   if (button == BUTTON_ENTER)
   {
-    eeprom_read(lidOpenDuration, lidOpenDuration);
-    editInt = lidOpenDuration;    
     strncpy_P(buffer, LCD_LIDOPENDUR1, sizeof(buffer));
+    editInt = pid.LidOpenDuration;    
   }
   else if (button == BUTTON_LEAVE)
   {
     if (editInt < 0)
-      lidOpenDuration = 0;
+      pid.LidOpenDuration = 0;
     else
-      lidOpenDuration = editInt;    
-    eeprom_write(lidOpenDuration, lidOpenDuration);
+      pid.LidOpenDuration = editInt;    
+    eeprom_write(pid.LidOpenDuration, lidOpenDuration);
   }
 
   menuNumberEdit(button, 10, buffer, LCD_LIDOPENDUR2);
@@ -705,20 +533,17 @@ boolean setPidParam(char which, float Value)
 {
   if (which == 'p')
   {
-    pidConstants[0] = Value;
-    pidErrorSum = 0.0f;
+    pid.PidP = Value;
     return true;
   }
   if (which == 'i')
   {
-    pidConstants[1] = Value;
-    pidErrorSum = 0.0f;
+    pid.PidI = Value;
     return true;
   }
   if (which == 'd')
   {
-    pidConstants[2] = Value;
-    pidErrorSum = 0.0f;
+    pid.PidD = Value;
     return true;
   }
   return false;
@@ -745,50 +570,100 @@ button_t readButton(void)
   return BUTTON_NONE;
 }
 
+void sendFlashFile(const struct flash_file_t *file)
+{
+  unsigned int size = file->size;
+  
+  dflash.Cont_Flash_Read_Enable(file->page, 0);
+  while (size-- > 0)
+    WiServer.write(dflash.Cont_Flash_Read());
+  dflash.DF_CS_inactive();
+}
+
 boolean sendPage(char* URL)
 {
-  if (strncmp(URL, "/set?sp=", 8) == 0) 
+  ++URL;  // WARNING: URL no longer has leading '/'
+  if (strncmp_P(URL, URL_SETPOINT, 8) == 0) 
   {
     int setPoint;
     setPoint = atoi(URL + 8);
     eeprom_write(setPoint, setPoint);
-    WiServer.print("OK\n");
+    pid.SetPoint = setPoint;
+    WiServer.print_P(WEB_OK);
     return true;
   }
-  if (strncmp(URL, "/set?pid", 8) == 0 && strlen(URL) > 10) 
+  if (strncmp_P(URL, URL_SETPID, 8) == 0 && strlen(URL) > 10) 
   {
     char which = URL[8];
     float f = atof(URL + 10);
     if (setPidParam(which, f))
-      WiServer.print("OK\n");
+      WiServer.print_P(WEB_OK);
     else
-      WiServer.print("FAILED\n");
+      WiServer.print_P(WEB_FAILED);
     return true;
   }
-  if (strcmp(URL, "/pid") == 0) 
+  if (strcmp_P(URL, URL_CSV) == 0) 
   {
-    outputPid(WiServer);
+    outputRaw();
     return true;    
   }
-  if (strcmp(URL, "/data") == 0) 
+  if (strcmp_P(URL, URL_JSON) == 0) 
   {
-    outputRaw(WiServer);
+    outputJson();
     return true;    
   }
   
+  const struct flash_file_t *file = FLASHFILES;
+  while (file->fname)
+  {
+    if (strcmp_P(URL, file->fname) == 0)
+    {
+      sendFlashFile(file);
+      return true;
+    }
+    ++file;
+  }
+  
   return false;
+}
+
+void eepromLoadConfig(void)
+{
+  struct __eeprom_data config;
+  eeprom_read_block(&config, 0, sizeof(config));
+  if (config.magic != EEPROM_MAGIC)
+  {
+    memcpy_P(&config, &DEFAULT_CONFIG, sizeof(config));
+    eeprom_write_block(&config, 0, sizeof(config));  
+  }
+
+  unsigned char i;
+  for (i=0; i<TEMP_COUNT; i++)
+    pid.Probes[i]->Offset = config.probeTempOffsets[i];
+    
+  pid.SetPoint = config.setPoint;
+  pid.LidOpenOffset = config.lidOpenOffset;
+  pid.LidOpenDuration = config.lidOpenDuration;
+  pid.PidP = config.pidConstants[0];
+  pid.PidI = config.pidConstants[1];
+  pid.PidD = config.pidConstants[2];
 }
 
 void setup(void)
 {
   Serial.begin(57600);
 
-  long magic;
-  eeprom_read(magic, magic);
-  if(magic != EEPROM_MAGIC)
-    eepromInitialize();
-  eepromCache();
+  pid.Probes[TEMP_PIT] = &probe0;
+  pid.Probes[TEMP_FOOD1] = &probe1;
+  pid.Probes[TEMP_FOOD2] = &probe2;
+  pid.Probes[TEMP_AMB] = &probe3;
 
+  eepromLoadConfig();
+  
+  pinMode(PIN_WIFI_SS, OUTPUT);
+  digitalWrite(PIN_WIFI_SS, HIGH);
+  dflash.init(PIN_DATAFLASH_SS);
+  
   g_NetworkInitialized = readButton() == BUTTON_NONE;
   if (g_NetworkInitialized)  
   {
@@ -801,15 +676,10 @@ void setup(void)
 
 void loop(void)
 {
-  unsigned long time = millis();
-  readTemps();
   Menus.doWork();
-
+  if (pid.doWork())
+    updateDisplay();
   if (g_NetworkInitialized)
     WiServer.server_task(); 
-  
-  time -= millis(); 
-  if (time < (1000 >> TEMP_AVG_COUNT_LOG2))
-    delay((1000 >> TEMP_AVG_COUNT_LOG2) - time);
 }
 
