@@ -307,33 +307,31 @@ state_t menuHome(button_t button)
   return ST_AUTO;
 }
 
-void lcdprint_P(const prog_char *p)
+void lcdprint_P(const prog_char *p, const boolean doClear)
 {
   char buffer[17];
   strncpy_P(buffer, p, sizeof(buffer));
+
+  if (doClear)
+    lcd.clear();
   lcd.print(buffer);
 }
 
 state_t menuConnecting(button_t button)
 {
-  lcd.clear();
-  lcdprint_P(LCD_CONNECTING); 
+  lcdprint_P(LCD_CONNECTING, true); 
   lcd.setCursor(0, 1);
-  lcdprint_P(ssid);
+  lcdprint_P(ssid, false);
+
   return ST_AUTO;
 }
 
 void menuNumberEdit(button_t button, unsigned char increment, 
-  const char *line1, const prog_char *format)
+  const prog_char *format)
 {
   char buffer[17];
   
-  if (button == BUTTON_ENTER)
-  {
-    lcd.clear();
-    lcd.print(line1);
-  }
-  else if (button == BUTTON_UP)
+  if (button == BUTTON_UP)
     editInt += increment;
   else if (button == BUTTON_DOWN)
     editInt -= increment;
@@ -428,11 +426,9 @@ state_t menuStringEdit(button_t button, const char *line1, unsigned char maxLeng
 
 state_t menuSetpoint(button_t button)
 {
-  char buffer[17];
-  
   if (button == BUTTON_ENTER)
   {
-    strncpy_P(buffer, LCD_SETPOINT1, sizeof(buffer));
+    lcdprint_P(LCD_SETPOINT1, true);
     editInt = pid.SetPoint;
   }
   else if (button == BUTTON_LEAVE)
@@ -441,7 +437,7 @@ state_t menuSetpoint(button_t button)
     pid.SetPoint = editInt;
   }
 
-  menuNumberEdit(button, 5, buffer, LCD_SETPOINT2);
+  menuNumberEdit(button, 5, LCD_SETPOINT2);
   return ST_AUTO;
 }
 
@@ -472,6 +468,8 @@ state_t menuProbeOffset(button_t button)
   if (button == BUTTON_ENTER)
   {
     loadProbeName(probeIndex);
+    lcd.clear();
+    lcd.print(editString);
     editInt = pid.Probes[probeIndex]->Offset;
   }
   else if (button == BUTTON_LEAVE)
@@ -481,17 +479,15 @@ state_t menuProbeOffset(button_t button)
     eeprom_write_byte(ofs, pid.Probes[probeIndex]->Offset);
   }
 
-  menuNumberEdit(button, 1, editString, LCD_PROBEOFFSET2);
+  menuNumberEdit(button, 1, LCD_PROBEOFFSET2);
   return ST_AUTO;
 }
 
 state_t menuLidOpenOff(button_t button)
 {
-  char buffer[17];
-  
   if (button == BUTTON_ENTER)
   {
-    strncpy_P(buffer, LCD_LIDOPENOFFS1, sizeof(buffer));
+    lcdprint_P(LCD_LIDOPENOFFS1, true);
     editInt = pid.LidOpenOffset;
   }
   else if (button == BUTTON_LEAVE)
@@ -503,17 +499,15 @@ state_t menuLidOpenOff(button_t button)
     eeprom_write(pid.LidOpenOffset, lidOpenOffset);
   }
 
-  menuNumberEdit(button, 5, buffer, LCD_LIDOPENOFFS2);
+  menuNumberEdit(button, 5, LCD_LIDOPENOFFS2);
   return ST_AUTO;
 }
 
 state_t menuLidOpenDur(button_t button)
 {
-  char buffer[17];
-
   if (button == BUTTON_ENTER)
   {
-    strncpy_P(buffer, LCD_LIDOPENDUR1, sizeof(buffer));
+    lcdprint_P(LCD_LIDOPENDUR1, true);
     editInt = pid.LidOpenDuration;    
   }
   else if (button == BUTTON_LEAVE)
@@ -525,7 +519,7 @@ state_t menuLidOpenDur(button_t button)
     eeprom_write(pid.LidOpenDuration, lidOpenDuration);
   }
 
-  menuNumberEdit(button, 10, buffer, LCD_LIDOPENDUR2);
+  menuNumberEdit(button, 10, LCD_LIDOPENDUR2);
   return ST_AUTO;
 }
 
