@@ -257,6 +257,12 @@ void loadProbeName(unsigned char probeIndex)
   eeprom_read_block(editString, ofs, PROBE_NAME_SIZE);
 }
 
+void setSetPoint(int sp)
+{
+  eeprom_write(sp, setPoint);
+  pid.SetPoint = sp;
+}
+
 void updateDisplay(void)
 {
   // Updates to the temperature can come at any time, only update 
@@ -433,8 +439,7 @@ state_t menuSetpoint(button_t button)
   }
   else if (button == BUTTON_LEAVE)
   {
-    eeprom_write(editInt, setPoint);
-    pid.SetPoint = editInt;
+    setSetPoint(editInt);
   }
 
   menuNumberEdit(button, 5, LCD_SETPOINT2);
@@ -579,10 +584,7 @@ boolean sendPage(char* URL)
   ++URL;  // WARNING: URL no longer has leading '/'
   if (strncmp_P(URL, URL_SETPOINT, 8) == 0) 
   {
-    int setPoint;
-    setPoint = atoi(URL + 8);
-    eeprom_write(setPoint, setPoint);
-    pid.SetPoint = setPoint;
+    setSetPoint(atoi(URL + 8));
     WiServer.print_P(WEB_OK);
     return true;
   }
