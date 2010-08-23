@@ -24,10 +24,11 @@ const prog_char URL_SETPOINT[] PROGMEM = "set?sp=";
 const prog_char URL_SETPID[] PROGMEM = "set?pid";
 const prog_char URL_CSV[] PROGMEM = "csv";
 const prog_char URL_JSON[] PROGMEM = "json";
+const prog_char URL_LOG[] PROGMEM = "log";
 
 const prog_char JSON1[] PROGMEM = "{\"temps\":[";
 const prog_char JSON_T1[] PROGMEM = "{\"n\":\"";
-const prog_char JSON_T2[] PROGMEM = ",\"c\":";
+const prog_char JSON_T2[] PROGMEM = "\",\"c\":";
 const prog_char JSON_T3[] PROGMEM = ",\"a\":";
 const prog_char JSON_T4[] PROGMEM = "},";
 const prog_char JSON2[] PROGMEM = "{}],\"set\":";

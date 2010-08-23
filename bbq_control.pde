@@ -18,7 +18,7 @@ const prog_char ssid[] PROGMEM = {"M75FE"};		// max 32 bytes
 
 unsigned char security_type = 1;	// 0 - open; 1 - WEP; 2 - WPA; 3 - WPA2
 // WPA/WPA2 passphrase
-const prog_char security_passphrase[] PROGMEM = {"friskydingo"};	// max 64 characters
+const prog_char security_passphrase[] PROGMEM = {""};	// max 64 characters
 // WEP 128-bit keys
 // sample HEX keys
 prog_uchar wep_keys[] PROGMEM = { 0xEC, 0xA8, 0x1A, 0xB4, 0x65, 0xf0, 0x0d, 0xbe, 0xef, 0xde, 0xad, 0x00, 0x00,	// Key 0
@@ -87,12 +87,18 @@ const struct PROGMEM __eeprom_data {
   float pidConstants[3]; // constants are stored Kp, Ki, Kd
 } DEFAULT_CONFIG PROGMEM = { 
   EEPROM_MAGIC,  // magic
-  230,  // setpoint
+  225,  // setpoint
   { "Pit", "Food Probe1", "Food Probe2", "Ambient" },  // probe names
   { 0, 0, 0 },  // probe offsets
   20,  // lid open offset
   240, // lid open duration
-  { 5.0f, 0.001f, 1.5f }
+  { 5.0f, 0.001f, 1.4f }
+};
+
+struct temp_log_record {
+  unsigned int temps[TEMP_COUNT]; 
+  unsigned char fan;
+  unsigned char fan_avg;
 };
 
 // Menu configuration parameters ------------------------
@@ -231,7 +237,7 @@ void outputJson(void)
     WiServer.print(pid.Probes[i]->Temperature,DEC);
     WiServer.print_P(JSON_T3);
     WiServer.print((int)pid.Probes[i]->TemperatureAvg,DEC);
-    WiServer.print(JSON_T4);
+    WiServer.print_P(JSON_T4);
   }
   
   WiServer.print_P(JSON2);
@@ -569,11 +575,90 @@ button_t readButton(void)
   return BUTTON_NONE;
 }
 
-void sendFlashFile(const struct flash_file_t *file)
+/* A simple ring buffer in the dflash buffer page */
+#define RING_POINTER_INC(x) x = (x + 1) % ((DATAFLASH_PAGE_BYTES / sizeof(struct temp_log_record)) - 1)
+
+void flashRingBufferInit(void)
 {
-  unsigned int size = file->size;
+  dflash.Buffer_Write_Byte(1, 0, 0);
+  dflash.Buffer_Write_Byte(1, 1, 0);
+  dflash.DF_CS_inactive();
+}
+
+void flashRingBufferWrite(struct temp_log_record *p)
+{
+  unsigned char head = dflash.Buffer_Read_Byte(1, 0);
+  unsigned char tail = dflash.Buffer_Read_Byte(1, 1);
+
+  unsigned int addr = (tail + 1) * sizeof(*p);
+  dflash.Buffer_Write_Str(1, addr, sizeof(*p), (unsigned char *)p);
+  RING_POINTER_INC(tail);
+  dflash.Buffer_Write_Byte(1, 1, tail);
   
-  dflash.Cont_Flash_Read_Enable(file->page, 0);
+  if (tail == head)
+  {
+    RING_POINTER_INC(head);
+    dflash.Buffer_Write_Byte(1, 0, head);
+  }
+  
+  dflash.DF_CS_inactive();
+}
+
+void outputLog(void)
+{
+  unsigned char head = dflash.Buffer_Read_Byte(1, 0);
+  unsigned char tail = dflash.Buffer_Read_Byte(1, 1);
+  
+  while (head != tail)
+  {
+    struct temp_log_record p;
+    unsigned int addr = head * sizeof(p);
+    dflash.Buffer_Read_Str(1, addr, sizeof(p), (unsigned char *)&p);
+    RING_POINTER_INC(head);
+    
+    char offset;
+    int temp;
+    unsigned char i;
+    for (i=0; i<TEMP_COUNT; i++)
+    {
+      temp = p.temps[i] & 0x1ff;
+      WiServer.print(temp,DEC);  // temperature
+      WiServer.print_P(COMMA);
+      offset = p.temps[i] >> 9;
+      WiServer.print(temp + offset,DEC);  // average
+      WiServer.print_P(COMMA);
+    }
+    
+    WiServer.print(p.fan,DEC);
+    WiServer.print_P(COMMA);
+    WiServer.println(p.fan_avg,DEC);
+  }  
+  dflash.DF_CS_inactive();
+}
+
+void storeTemps(void)
+{
+  struct temp_log_record temp_log;
+  unsigned char i;
+  for (i=0; i<TEMP_COUNT; i++)
+  {
+    // Store the difference between the temp and the average in the high 7 bits
+    // This allows the temperature to be between 0-511 and the average to be 
+    // within 63 degrees of that
+    char avgOffset = (char)(pid.Probes[i]->Temperature - (int)pid.Probes[i]->TemperatureAvg);
+    temp_log.temps[i] = (avgOffset << 9) | pid.Probes[i]->Temperature;
+  }
+  temp_log.fan = pid.FanSpeed;
+  temp_log.fan_avg = (unsigned char)pid.FanSpeedAvg;
+  
+  flashRingBufferWrite(&temp_log);
+}
+
+void sendFlashFile(const struct flash_file *file)
+{
+  unsigned int size = pgm_read_word(&file->size);
+  
+  dflash.Cont_Flash_Read_Enable(pgm_read_word(&file->page), 0);
   while (size-- > 0)
     WiServer.write(dflash.Cont_Flash_Read());
   dflash.DF_CS_inactive();
@@ -582,37 +667,47 @@ void sendFlashFile(const struct flash_file_t *file)
 boolean sendPage(char* URL)
 {
   ++URL;  // WARNING: URL no longer has leading '/'
-  if (strncmp_P(URL, URL_SETPOINT, 8) == 0) 
+  if (strcmp_P(URL, URL_JSON) == 0) 
   {
-    setSetPoint(atoi(URL + 8));
-    WiServer.print_P(WEB_OK);
-    return true;
-  }
-  if (strncmp_P(URL, URL_SETPID, 8) == 0 && strlen(URL) > 10) 
-  {
-    char which = URL[8];
-    float f = atof(URL + 10);
-    if (setPidParam(which, f))
-      WiServer.print_P(WEB_OK);
-    else
-      WiServer.print_P(WEB_FAILED);
-    return true;
+    outputJson();
+    return true;    
   }
   if (strcmp_P(URL, URL_CSV) == 0) 
   {
     outputRaw();
     return true;    
   }
-  if (strcmp_P(URL, URL_JSON) == 0) 
+  if (strcmp_P(URL, URL_LOG) == 0) 
   {
-    outputJson();
+    outputLog();
+    return true;    
+  }
+  if (strncmp_P(URL, URL_SETPOINT, 7) == 0) 
+  {
+    setSetPoint(atoi(URL + 7));
+    WiServer.print_P(WEB_OK);
+    return true;
+  }
+  if (strncmp_P(URL, URL_SETPID, 7) == 0 && strlen(URL) > 9) 
+  {
+    char which = URL[7];
+    float f = atof(URL + 9);
+    if (setPidParam(which, f))
+      WiServer.print_P(WEB_OK);
+    else
+      WiServer.print_P(WEB_FAILED);
+    return true;
+  }
+  if (strcmp(URL, "p") == 0) 
+  {
+    WiServer.print((double)pid._pidErrorSum, 3);
     return true;    
   }
   
-  const struct flash_file_t *file = FLASHFILES;
-  while (file->fname)
+  const struct flash_file *file = FLASHFILES;
+  while (pgm_read_word(&file->fname))
   {
-    if (strcmp_P(URL, file->fname) == 0)
+    if (strcmp_P(URL, (const prog_char *)pgm_read_word(&file->fname)) == 0)
     {
       sendFlashFile(file);
       return true;
@@ -656,9 +751,12 @@ void setup(void)
 
   eepromLoadConfig();
   
+  // Set the WiFi Slave Select to HIGH (disable) to
+  // prevent it from interferring with the dflash init
   pinMode(PIN_WIFI_SS, OUTPUT);
   digitalWrite(PIN_WIFI_SS, HIGH);
   dflash.init(PIN_DATAFLASH_SS);
+  flashRingBufferInit();
   
   g_NetworkInitialized = readButton() == BUTTON_NONE;
   if (g_NetworkInitialized)  
@@ -674,7 +772,10 @@ void loop(void)
 {
   Menus.doWork();
   if (pid.doWork())
+  {
+    storeTemps();
     updateDisplay();
+  }
   if (g_NetworkInitialized)
     WiServer.server_task(); 
 }

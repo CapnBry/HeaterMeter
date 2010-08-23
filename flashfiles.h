@@ -4,15 +4,17 @@
 #define DATAFLASH_PAGE_BYTES 528
 
 const char FNAME000[] PROGMEM = "favicon.ico";
-const char FNAME001[] PROGMEM = "index.html";
+const char FNAME001[] PROGMEM = "fire.png";
+const char FNAME002[] PROGMEM = "";
 
-const struct flash_file_t {
+const struct flash_file {
   const char *fname;
   const unsigned int page;
   const unsigned int size;
-} FLASHFILES[] = {
-  { FNAME000,   0, 1150 },
-  { FNAME001,   3, 807 },
+} FLASHFILES[] PROGMEM = {
+  { FNAME000,   3, 1625 },
+  { FNAME001,   7, 11824 },
+  { FNAME002,  30, 4218 },
   { 0, 0, 0},
 };
 

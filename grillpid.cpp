@@ -9,11 +9,11 @@
 
 void calcMovingAverage(const float period, float *currAverage, float newValue)
 {
-  if (*currAverage == 0.0f)
+  if (*currAverage == -1.0f)
     *currAverage = newValue;
   else
-    *currAverage = (1.0f - (1.0f / (float)period)) * newValue +
-      (1.0f / (float)period) * *currAverage;
+    *currAverage = (1.0f - (1.0f / (float)period)) * *currAverage +
+      (1.0f / (float)period) * newValue;
 }
       
 void TempProbe::readTemp(void)
@@ -47,7 +47,7 @@ void TempProbe::calcTemp(void)
     T = (1.0f / ((_steinhart->C * R * R + _steinhart->B) * R + _steinhart->A));
   
     // return degrees F
-    Temperature = (int)((T - 273.15f) * (9.0f / 5.0f)) + 32; // 
+    Temperature = (int)((T - 273.15f) * (9.0f / 5.0f)) + 32;
     // Sanity - anything less than 0F or greater than 999F is rejected
     if (Temperature < 0 || Temperature > 999)
       Temperature = 0;
@@ -74,8 +74,11 @@ void GrillPid::calcFanSpeed(TempProbe *controlProbe)
 
   // anti-windup: Make sure we only adjust the I term while
   // inside the proportional control range
+  // Note that I still allow the errorSum to degrade within 1 degrees even if 
+  // the fan is off because it is much easier for the sum to increase than
+  // decrease due to the fan generally being at 0 once it passes the SetPoint
   if (!(FanSpeed >= 100 && error > 0) && 
-      !(FanSpeed <= 0   && error < 0))
+      !(FanSpeed <= 0   && error < -1.0f))
     _pidErrorSum += (error * PidI);
     
   float averageTemp = controlProbe->TemperatureAvg;
@@ -127,7 +130,7 @@ boolean GrillPid::doWork(void)
   // If the pit temperature dropped has more than [lidOpenOffset] degrees 
   // after reaching temp, and the fan has not been running more than 90% of 
   // the average period. note that the code assumes g_LidOpenResumeCountdown <= 0
-  else if (_pitTemperatureReached && ((SetPoint - pitTemp) > (int)LidOpenOffset) && FanSpeed < 90.0f)
+  else if (_pitTemperatureReached && ((SetPoint - pitTemp) > (int)LidOpenOffset) && FanSpeedAvg < 90.0f)
   {
     resetLidOpenResumeCountdown();
     _pitTemperatureReached = false;

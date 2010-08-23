@@ -94,8 +94,8 @@ void MenuSystem::doWork(void)
   if (button == BUTTON_NONE)
     return;
 
-  Serial.print("New button: ");
-  Serial.println(button, DEC);
+  //Serial.print("New button: ");
+  //Serial.println(button, DEC);
 
   m_lastActivity = millis();
   

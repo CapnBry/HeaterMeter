@@ -13,7 +13,7 @@ struct steinhart_param
 };
 
 #define TEMPPROBE_AVG_PERIOD 30 // seconds
-#define FANSPEED_AVG_PERIOD 120 // seconds
+#define FANSPEED_AVG_PERIOD 180 // seconds
 
 class TempProbe
 {
@@ -25,7 +25,7 @@ private:
 public:
   TempProbe(const unsigned char pin, const struct steinhart_param *steinhart) : 
     _pin(pin), _steinhart(steinhart), Temperature(0), Offset(0),
-    TemperatureAvg(0.0f) {};
+    TemperatureAvg(-1.0f) {};
   
   // Last averaged temperature reading
   int Temperature;
@@ -46,13 +46,14 @@ private:
   unsigned long _lastTempRead;
   unsigned char _accumulatedCount;
   boolean _pitTemperatureReached;
-  float _pidErrorSum;
   
   void calcFanSpeed(TempProbe *controlProbe);
 public:
+  float _pidErrorSum;
   GrillPid(const unsigned char blowerPin) : 
     _blowerPin(blowerPin), _lastTempRead(0), _accumulatedCount(0), 
-    _pitTemperatureReached(false), FanSpeed(0), FanSpeedAvg(0.0f)
+    _pitTemperatureReached(false), FanSpeed(0), FanSpeedAvg(-1.0f),
+    _pidErrorSum(0.0f)
     {};
   
   TempProbe *Probes[TEMP_COUNT];
