@@ -212,7 +212,7 @@ void outputRaw(void)
   unsigned char i;
   for (i=0; i<TEMP_COUNT; i++)
   {
-    WiServer.print(pid.Probes[i]->Temperature);
+    WiServer.print((double)pid.Probes[i]->Temperature, 1);
     WiServer.print_P(COMMA);
   }
 
@@ -234,7 +234,7 @@ void outputJson(void)
     loadProbeName(i);
     WiServer.print(editString);
     WiServer.print_P(JSON_T2);
-    WiServer.print(pid.Probes[i]->Temperature,DEC);
+    WiServer.print((int)pid.Probes[i]->Temperature,DEC);
     WiServer.print_P(JSON_T3);
     WiServer.print((int)pid.Probes[i]->TemperatureAvg,DEC);
     WiServer.print_P(JSON_T4);
@@ -645,8 +645,8 @@ void storeTemps(void)
     // Store the difference between the temp and the average in the high 7 bits
     // This allows the temperature to be between 0-511 and the average to be 
     // within 63 degrees of that
-    char avgOffset = (char)(pid.Probes[i]->Temperature - (int)pid.Probes[i]->TemperatureAvg);
-    temp_log.temps[i] = (avgOffset << 9) | pid.Probes[i]->Temperature;
+    char avgOffset = (char)(pid.Probes[i]->Temperature - pid.Probes[i]->TemperatureAvg);
+    temp_log.temps[i] = (avgOffset << 9) | (int)pid.Probes[i]->Temperature;
   }
   temp_log.fan = pid.FanSpeed;
   temp_log.fan_avg = (unsigned char)pid.FanSpeedAvg;

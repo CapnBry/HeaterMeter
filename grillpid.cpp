@@ -32,7 +32,7 @@ void TempProbe::calcTemp(void)
   
   if ((Vout == 0) || (Vout >= (unsigned int)Vin))
   {
-    Temperature = 0;
+    Temperature = 0.0f;
     return;
   }
   else 
@@ -47,12 +47,12 @@ void TempProbe::calcTemp(void)
     T = (1.0f / ((_steinhart->C * R * R + _steinhart->B) * R + _steinhart->A));
   
     // return degrees F
-    Temperature = (int)((T - 273.15f) * (9.0f / 5.0f)) + 32;
+    Temperature = ((T - 273.15f) * (9.0f / 5.0f)) + 32.0f;
     // Sanity - anything less than 0F or greater than 999F is rejected
-    if (Temperature < 0 || Temperature > 999)
-      Temperature = 0;
+    if (Temperature < 0.0f || Temperature > 999.0f)
+      Temperature = 0.0f;
     
-    if (Temperature != 0)
+    if (Temperature != 0.0f)
     {
       Temperature += Offset;
       calcMovingAverage(TEMPPROBE_AVG_PERIOD, &TemperatureAvg, Temperature);
@@ -63,9 +63,9 @@ void TempProbe::calcTemp(void)
 /* Calucluate the desired fan speed using the proportional–integral-derivative (PID) controller algorithm */
 void GrillPid::calcFanSpeed(TempProbe *controlProbe)
 {
-  int currentTemp = controlProbe->Temperature;
+  float currentTemp = controlProbe->Temperature;
   // If the pit probe is registering 0 degrees, don't jack the fan up to MAX
-  if (currentTemp == 0)
+  if (currentTemp == 0.0f)
     return;
 
   float error;

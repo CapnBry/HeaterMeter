@@ -28,7 +28,7 @@ public:
     TemperatureAvg(-1.0f) {};
   
   // Last averaged temperature reading
-  int Temperature;
+  float Temperature;
   // Temperature moving average 
   float TemperatureAvg;
   // Offset (in degrees) applied when calculating temperature
