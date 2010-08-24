@@ -51,8 +51,8 @@ unsigned char security_passphrase_len;
 #define PIN_WIFI_SS     10
 
 const struct steinhart_param STEINHART[] = {
-  {2.3067434E-4, 2.3696596E-4f, 1.2636414E-7f},  // Maverick Probe
-  {8.98053228e-004f, 2.49263324e-004f, 2.04047542e-007f}, // Radio Shack 10k
+  {2.3067434e-4f, 2.3696596e-4f, 1.2636414e-7f},  // Maverick Probe
+  {8.98053228e-4f, 2.49263324e-4f, 2.04047542e-7f}, // Radio Shack 10k
 };
 
 static TempProbe probe0(PIN_PIT,   &STEINHART[0]);
@@ -84,7 +84,7 @@ const struct PROGMEM __eeprom_data {
   char probeTempOffsets[TEMP_COUNT];
   unsigned char lidOpenOffset;
   unsigned int lidOpenDuration;
-  float pidConstants[3]; // constants are stored Kp, Ki, Kd
+  float pidConstants[4]; // constants are stored Kb, Kp, Ki, Kd
 } DEFAULT_CONFIG PROGMEM = { 
   EEPROM_MAGIC,  // magic
   225,  // setpoint
@@ -92,7 +92,7 @@ const struct PROGMEM __eeprom_data {
   { 0, 0, 0 },  // probe offsets
   20,  // lid open offset
   240, // lid open duration
-  { 5.0f, 0.001f, 1.4f }
+  { 11.0f, 15.5f, 0.002f, 1.4f }
 };
 
 struct temp_log_record {
@@ -234,9 +234,9 @@ void outputJson(void)
     loadProbeName(i);
     WiServer.print(editString);
     WiServer.print_P(JSON_T2);
-    WiServer.print((int)pid.Probes[i]->Temperature,DEC);
+    WiServer.print(pid.Probes[i]->Temperature, 1);
     WiServer.print_P(JSON_T3);
-    WiServer.print((int)pid.Probes[i]->TemperatureAvg,DEC);
+    WiServer.print(pid.Probes[i]->TemperatureAvg, 2);
     WiServer.print_P(JSON_T4);
   }
   
@@ -251,10 +251,14 @@ void outputJson(void)
   WiServer.print_P(JSON6);
 }
 
-void storeProbeName(unsigned char probeIndex)
+boolean storeProbeName(unsigned char probeIndex, const char *name)
 {
+  if (probeIndex >= TEMP_COUNT)
+    return false;
+    
   void *ofs = &((__eeprom_data*)0)->probeNames[probeIndex];
-  eeprom_write_block(editString, ofs, PROBE_NAME_SIZE);
+  eeprom_write_block(name, ofs, PROBE_NAME_SIZE);
+  return true;
 }
 
 void loadProbeName(unsigned char probeIndex)
@@ -263,10 +267,22 @@ void loadProbeName(unsigned char probeIndex)
   eeprom_read_block(editString, ofs, PROBE_NAME_SIZE);
 }
 
-void setSetPoint(int sp)
+void storeSetPoint(int sp)
 {
   eeprom_write(sp, setPoint);
   pid.SetPoint = sp;
+}
+
+boolean storeProbeOffset(unsigned char probeIndex, char offset)
+{
+  if (probeIndex >= TEMP_COUNT)
+    return false;
+    
+  uint8_t *ofs = (uint8_t *)&((__eeprom_data*)0)->probeTempOffsets[probeIndex];
+  pid.Probes[probeIndex]->Offset = offset;
+  eeprom_write_byte(ofs, offset);
+  
+  return true;
 }
 
 void updateDisplay(void)
@@ -291,7 +307,7 @@ void updateDisplay(void)
   // Rotating probe display
   unsigned char probeIndex = Menus.State - ST_HOME_FOOD1 + 1;
   loadProbeName(probeIndex);
-  snprintf_P(buffer, sizeof(buffer), LCD_LINE2, editString, pid.Probes[probeIndex]->Temperature);
+  snprintf_P(buffer, sizeof(buffer), LCD_LINE2, editString, (int)pid.Probes[probeIndex]->Temperature);
 
   lcd.setCursor(0, 1);
   lcd.print(buffer);
@@ -445,7 +461,7 @@ state_t menuSetpoint(button_t button)
   }
   else if (button == BUTTON_LEAVE)
   {
-    setSetPoint(editInt);
+    storeSetPoint(editInt);
   }
 
   menuNumberEdit(button, 5, LCD_SETPOINT2);
@@ -467,7 +483,7 @@ state_t menuProbename(button_t button)
   // after that it is OK to have garbage in it  
   state_t retVal = menuStringEdit(button, buffer, PROBE_NAME_SIZE - 1);
   if (retVal == Menus.State)
-    storeProbeName(probeIndex);
+    storeProbeName(probeIndex, editString);
     
   return retVal;
 }
@@ -484,11 +500,7 @@ state_t menuProbeOffset(button_t button)
     editInt = pid.Probes[probeIndex]->Offset;
   }
   else if (button == BUTTON_LEAVE)
-  {
-    uint8_t *ofs = (uint8_t *)&((__eeprom_data*)0)->probeTempOffsets[probeIndex];
-    pid.Probes[probeIndex]->Offset = editInt;
-    eeprom_write_byte(ofs, pid.Probes[probeIndex]->Offset);
-  }
+    storeProbeOffset(probeIndex, editInt);
 
   menuNumberEdit(button, 1, LCD_PROBEOFFSET2);
   return ST_AUTO;
@@ -534,24 +546,19 @@ state_t menuLidOpenDur(button_t button)
   return ST_AUTO;
 }
 
-boolean setPidParam(char which, float Value)
+boolean storePidParam(char which, float Value)
 {
-  if (which == 'p')
-  {
-    pid.PidP = Value;
-    return true;
-  }
-  if (which == 'i')
-  {
-    pid.PidI = Value;
-    return true;
-  }
-  if (which == 'd')
-  {
-    pid.PidD = Value;
-    return true;
-  }
-  return false;
+  const prog_char *pos = strchr_P(PID_ORDER, which);
+  if (pos == NULL)
+    return false;
+    
+  const unsigned char k = pos - PID_ORDER;
+  pid.Pid[k] = Value;
+  
+  uint8_t *ofs = (uint8_t *)&((__eeprom_data*)0)->pidConstants[k];
+  eeprom_write_block(&pid.Pid[k], ofs, sizeof(Value));
+
+  return true;
 }
 
 button_t readButton(void)
@@ -575,7 +582,8 @@ button_t readButton(void)
   return BUTTON_NONE;
 }
 
-/* A simple ring buffer in the dflash buffer page */
+/* A simple ring buffer in the dflash buffer page, the first "record" is used 
+   to store the head and tail indexes ((index+1) * size = addr) */
 #define RING_POINTER_INC(x) x = (x + 1) % ((DATAFLASH_PAGE_BYTES / sizeof(struct temp_log_record)) - 1)
 
 void flashRingBufferInit(void)
@@ -612,7 +620,7 @@ void outputLog(void)
   while (head != tail)
   {
     struct temp_log_record p;
-    unsigned int addr = head * sizeof(p);
+    unsigned int addr = (head + 1) * sizeof(p);
     dflash.Buffer_Read_Str(1, addr, sizeof(p), (unsigned char *)&p);
     RING_POINTER_INC(head);
     
@@ -667,6 +675,8 @@ void sendFlashFile(const struct flash_file *file)
 boolean sendPage(char* URL)
 {
   ++URL;  // WARNING: URL no longer has leading '/'
+  unsigned char urlLen = strlen(URL);
+  
   if (strcmp_P(URL, URL_JSON) == 0) 
   {
     outputJson();
@@ -684,15 +694,30 @@ boolean sendPage(char* URL)
   }
   if (strncmp_P(URL, URL_SETPOINT, 7) == 0) 
   {
-    setSetPoint(atoi(URL + 7));
+    storeSetPoint(atoi(URL + 7));
     WiServer.print_P(WEB_OK);
     return true;
   }
-  if (strncmp_P(URL, URL_SETPID, 7) == 0 && strlen(URL) > 9) 
+  if (strncmp_P(URL, URL_SETPID, 7) == 0 && urlLen > 9) 
   {
-    char which = URL[7];
     float f = atof(URL + 9);
-    if (setPidParam(which, f))
+    if (storePidParam(URL[7], f))
+      WiServer.print_P(WEB_OK);
+    else
+      WiServer.print_P(WEB_FAILED);
+    return true;
+  }
+  if (strncmp_P(URL, URL_SETPNAME, 6) == 0 && urlLen > 8) 
+  {
+    if (storeProbeName(URL[6] - '0', URL + 8))
+      WiServer.print_P(WEB_OK);
+    else
+      WiServer.print_P(WEB_FAILED);
+    return true;
+  }
+  if (strncmp_P(URL, URL_SETPOFF, 6) == 0 && urlLen > 8) 
+  {
+    if (storeProbeOffset(URL[6] - '0', atoi(URL + 8)))
       WiServer.print_P(WEB_OK);
     else
       WiServer.print_P(WEB_FAILED);
@@ -722,7 +747,7 @@ void eepromLoadConfig(void)
 {
   struct __eeprom_data config;
   eeprom_read_block(&config, 0, sizeof(config));
-  if (config.magic != EEPROM_MAGIC)
+  if (true || config.magic != EEPROM_MAGIC)
   {
     memcpy_P(&config, &DEFAULT_CONFIG, sizeof(config));
     eeprom_write_block(&config, 0, sizeof(config));  
@@ -735,9 +760,7 @@ void eepromLoadConfig(void)
   pid.SetPoint = config.setPoint;
   pid.LidOpenOffset = config.lidOpenOffset;
   pid.LidOpenDuration = config.lidOpenDuration;
-  pid.PidP = config.pidConstants[0];
-  pid.PidI = config.pidConstants[1];
-  pid.PidD = config.pidConstants[2];
+  memcpy(pid.Pid, config.pidConstants, sizeof(config.pidConstants));
 }
 
 void setup(void)

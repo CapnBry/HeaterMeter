@@ -7,22 +7,24 @@
 // Set this define to log2(samples) to adjust the number of samples
 #define TEMP_AVG_COUNT_LOG2 3
 
-void calcMovingAverage(const float period, float *currAverage, float newValue)
+void calcExpMovingAverage(const float smooth, float *currAverage, float newValue)
 {
-  if (*currAverage == -1.0f)
+  if (*currAverage = -1.0f)
     *currAverage = newValue;
   else
-    *currAverage = (1.0f - (1.0f / (float)period)) * *currAverage +
-      (1.0f / (float)period) * newValue;
+  {
+    newValue -= *currAverage;
+    *currAverage = smooth * newValue + *currAverage;
+  }
 }
       
-void TempProbe::readTemp(void)
+inline void TempProbe::readTemp(void)
 {
   unsigned int analog_temp = analogRead(_pin);
   _accumulator += analog_temp;
 }
 
-void TempProbe::calcTemp(void)
+inline void TempProbe::calcTemp(void)
 {
   const float Rknown = 22000.0f;
   const float Vin = 1023.0f;  
@@ -44,7 +46,7 @@ void TempProbe::calcTemp(void)
     // R = log(Rknown * Vin / (float)Vout - Rknown);
   
     // Compute degrees K  
-    T = (1.0f / ((_steinhart->C * R * R + _steinhart->B) * R + _steinhart->A));
+    T = 1.0f / ((_steinhart->C * R * R + _steinhart->B) * R + _steinhart->A);
   
     // return degrees F
     Temperature = ((T - 273.15f) * (9.0f / 5.0f)) + 32.0f;
@@ -55,13 +57,13 @@ void TempProbe::calcTemp(void)
     if (Temperature != 0.0f)
     {
       Temperature += Offset;
-      calcMovingAverage(TEMPPROBE_AVG_PERIOD, &TemperatureAvg, Temperature);
+      calcExpMovingAverage(TEMPPROBE_AVG_SMOOTH, &TemperatureAvg, Temperature);
     }
   } 
 }
 
 /* Calucluate the desired fan speed using the proportional–integral-derivative (PID) controller algorithm */
-void GrillPid::calcFanSpeed(TempProbe *controlProbe)
+inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
 {
   float currentTemp = controlProbe->Temperature;
   // If the pit probe is registering 0 degrees, don't jack the fan up to MAX
@@ -69,27 +71,29 @@ void GrillPid::calcFanSpeed(TempProbe *controlProbe)
     return;
 
   float error;
-  int control;
+  float control;
   error = SetPoint - currentTemp;
 
   // anti-windup: Make sure we only adjust the I term while
   // inside the proportional control range
-  // Note that I still allow the errorSum to degrade within 1 degrees even if 
+  // Note that I still allow the errorSum to degrade within N degrees even if 
   // the fan is off because it is much easier for the sum to increase than
   // decrease due to the fan generally being at 0 once it passes the SetPoint
-  if (!(FanSpeed >= 100 && error > 0) && 
-      !(FanSpeed <= 0   && error < -1.0f))
-    _pidErrorSum += (error * PidI);
+  if (!(_fanSpeedPwm >= 255 && error > 0) && 
+      !(_fanSpeedPwm <= 0   && error < -5.0f))
+    _pidErrorSum += (error * Pid[PIDI]);
     
   float averageTemp = controlProbe->TemperatureAvg;
-  control = PidP * (error + _pidErrorSum - (PidD * (currentTemp - averageTemp)));
+  control = Pid[PIDB] + Pid[PIDP] * (error + _pidErrorSum - (Pid[PIDD] * (currentTemp - averageTemp)));
   
-  if (control > 100)
-    FanSpeed = 100;
-  else if (control < 0)
-    FanSpeed = 0;
+  if (control >= 255.0f)
+    _fanSpeedPwm = 255;
+  else if (control <= 0.0f)
+    _fanSpeedPwm = 0;
   else
-    FanSpeed = control;
+    _fanSpeedPwm = control;
+
+  FanSpeed = _fanSpeedPwm * 100 / 255;
 }
 
 void GrillPid::resetLidOpenResumeCountdown(void)
@@ -108,13 +112,14 @@ boolean GrillPid::doWork(void)
   for (i=0; i<TEMP_COUNT; i++)
     Probes[i]->readTemp();
     
-  ++_accumulatedCount;
-  if (_accumulatedCount < (1 << TEMP_AVG_COUNT_LOG2))
+  if (++_accumulatedCount < (1 << TEMP_AVG_COUNT_LOG2))
     return false;
     
   for (i=0; i<TEMP_COUNT; i++)
     Probes[i]->calcTemp();
 
+  // Always feed the PID loop even if the lid detect is active.  It may
+  // mess with the error sum but we end up tracking better when control resumes
   calcFanSpeed(Probes[TEMP_PIT]);
   int pitTemp = Probes[TEMP_PIT]->Temperature;
   if (pitTemp >= SetPoint)
@@ -126,6 +131,7 @@ boolean GrillPid::doWork(void)
   {
     --LidOpenResumeCountdown;
     FanSpeed = 0;
+    _fanSpeedPwm = 0;
   }
   // If the pit temperature dropped has more than [lidOpenOffset] degrees 
   // after reaching temp, and the fan has not been running more than 90% of 
@@ -135,8 +141,8 @@ boolean GrillPid::doWork(void)
     resetLidOpenResumeCountdown();
     _pitTemperatureReached = false;
   }
-  calcMovingAverage(FANSPEED_AVG_PERIOD, &FanSpeedAvg, FanSpeed);
-  analogWrite(_blowerPin, (FanSpeed * 255 / 100));
+  calcExpMovingAverage(FANSPEED_AVG_SMOOTH, &FanSpeedAvg, FanSpeed);
+  analogWrite(_blowerPin, _fanSpeedPwm);
   
   _accumulatedCount = 0;
   return true;

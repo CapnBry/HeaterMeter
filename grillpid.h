@@ -12,8 +12,14 @@ struct steinhart_param
     float A, B, C; 
 };
 
-#define TEMPPROBE_AVG_PERIOD 30 // seconds
-#define FANSPEED_AVG_PERIOD 180 // seconds
+#define TEMPPROBE_AVG_SMOOTH (1.0f/20.0f)
+#define FANSPEED_AVG_SMOOTH (1.0f/120.0f)
+
+// Indexes into the pid array
+#define PIDB 0
+#define PIDP 1
+#define PIDI 2
+#define PIDD 3
 
 class TempProbe
 {
@@ -46,14 +52,16 @@ private:
   unsigned long _lastTempRead;
   unsigned char _accumulatedCount;
   boolean _pitTemperatureReached;
+  // Fan speed 0-255
+  unsigned char _fanSpeedPwm;
   
   void calcFanSpeed(TempProbe *controlProbe);
 public:
   float _pidErrorSum;
   GrillPid(const unsigned char blowerPin) : 
     _blowerPin(blowerPin), _lastTempRead(0), _accumulatedCount(0), 
-    _pitTemperatureReached(false), FanSpeed(0), FanSpeedAvg(-1.0f),
-    _pidErrorSum(0.0f)
+    _pitTemperatureReached(false), FanSpeed(0), _fanSpeedPwm(0),
+    FanSpeedAvg(-1.0f), _pidErrorSum(0.0f)
     {};
   
   TempProbe *Probes[TEMP_COUNT];
@@ -65,9 +73,7 @@ public:
   // The ammount of time to turn off the blower when the lid is open 
   unsigned int LidOpenDuration;
   // The PID constants
-  float PidP;
-  float PidI;
-  float PidD;
+  float Pid[4];
   
   /* Runtime Data */
   // Current fan speed in percent

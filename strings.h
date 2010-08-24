@@ -22,6 +22,8 @@ const prog_char WEB_FAILED[] PROGMEM = "FAILED\n";
 
 const prog_char URL_SETPOINT[] PROGMEM = "set?sp=";
 const prog_char URL_SETPID[] PROGMEM = "set?pid";
+const prog_char URL_SETPNAME[] PROGMEM = "set?pn";
+const prog_char URL_SETPOFF[] PROGMEM = "set?po";
 const prog_char URL_CSV[] PROGMEM = "csv";
 const prog_char URL_JSON[] PROGMEM = "json";
 const prog_char URL_LOG[] PROGMEM = "log";
@@ -38,5 +40,6 @@ const prog_char JSON5[] PROGMEM = ",\"a\":";
 const prog_char JSON6[] PROGMEM = "}}";
 
 const prog_char COMMA[] PROGMEM = ",";
+const prog_char PID_ORDER[] = "bpid";
 
 #endif /* __STRINGS_H__ */
