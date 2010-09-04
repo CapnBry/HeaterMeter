@@ -12,9 +12,6 @@ struct steinhart_param
     float A, B, C; 
 };
 
-#define TEMPPROBE_AVG_SMOOTH (1.0f/20.0f)
-#define FANSPEED_AVG_SMOOTH (1.0f/120.0f)
-
 // Indexes into the pid array
 #define PIDB 0
 #define PIDP 1
@@ -27,8 +24,8 @@ private:
   const struct steinhart_param *_steinhart;
   const unsigned char _pin; 
   
-  unsigned int _accumulator;
 public:
+  unsigned int _accumulator;
   TempProbe(const unsigned char pin, const struct steinhart_param *steinhart) : 
     _pin(pin), _steinhart(steinhart), Temperature(0), Offset(0),
     TemperatureAvg(-1.0f) {};

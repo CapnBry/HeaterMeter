@@ -92,7 +92,7 @@ const struct PROGMEM __eeprom_data {
   { 0, 0, 0 },  // probe offsets
   20,  // lid open offset
   240, // lid open duration
-  { 11.0f, 15.5f, 0.002f, 1.4f }
+  { 11.0f, 15.5f, 0.002f, 10.0f }
 };
 
 struct temp_log_record {
@@ -204,7 +204,7 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
 MenuSystem Menus(MENU_DEFINITIONS, MENU_TRANSITIONS, &readButton);
 // End Menu configuration parameters ------------------------
 
-void outputRaw(void)
+void outputCsv(void)
 {
   WiServer.print(pid.SetPoint);
   WiServer.print_P(COMMA);
@@ -582,14 +582,22 @@ button_t readButton(void)
   return BUTTON_NONE;
 }
 
-/* A simple ring buffer in the dflash buffer page, the first "record" is used 
-   to store the head and tail indexes ((index+1) * size = addr) */
 #define RING_POINTER_INC(x) x = (x + 1) % ((DATAFLASH_PAGE_BYTES / sizeof(struct temp_log_record)) - 1)
 
 void flashRingBufferInit(void)
 {
-  dflash.Buffer_Write_Byte(1, 0, 0);
-  dflash.Buffer_Write_Byte(1, 1, 0);
+  /* A simple ring buffer in the dflash buffer page, the first "record" is reserved 
+     to store the head and tail indexes ((index+1) * size = addr)
+     as well as a "write lock".  Because the web server may take several seconds
+     to serve the entire log, we stop logging during that time to keep the data
+     consistent across the entire page dispatch 
+     */
+  unsigned char dummy[sizeof(struct temp_log_record)];
+  memset(dummy, 0, sizeof(dummy));
+  
+  // The first record is actually (uint8_t head, uint8_t tail, uint32_t writestart) but 
+  // this is just to initialize it all to 0
+  dflash.Buffer_Write_Str(1, 0, sizeof(dummy), dummy);
   dflash.DF_CS_inactive();
 }
 
@@ -684,7 +692,7 @@ boolean sendPage(char* URL)
   }
   if (strcmp_P(URL, URL_CSV) == 0) 
   {
-    outputRaw();
+    outputCsv();
     return true;    
   }
   if (strcmp_P(URL, URL_LOG) == 0) 

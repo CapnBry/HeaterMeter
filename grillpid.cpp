@@ -1,20 +1,23 @@
 #include <math.h>
-//#include "WProgram.h"
-#include "WConstants.h"
+#include "WProgram.h"
+//#include "WConstants.h"
 #include "grillpid.h"
 
 // The temperatures are averaged over 1, 2, 4 or 8 samples
 // Set this define to log2(samples) to adjust the number of samples
 #define TEMP_AVG_COUNT_LOG2 3
 
+#define TEMPPROBE_AVG_SMOOTH (1.0f/20.0f)
+#define FANSPEED_AVG_SMOOTH (1.0f/120.0f)
+
 void calcExpMovingAverage(const float smooth, float *currAverage, float newValue)
 {
-  if (*currAverage = -1.0f)
+  if (*currAverage == -1.0f)
     *currAverage = newValue;
   else
   {
-    newValue -= *currAverage;
-    *currAverage = smooth * newValue + *currAverage;
+    newValue = newValue - *currAverage;
+    *currAverage = *currAverage + (smooth * newValue);
   }
 }
       
