@@ -1,0 +1,120 @@
+<!doctype html public "-//W3C//DTD HTML 4.0//EN">
+<html>
+<head>
+<link rel="icon" type="image/png" href="favicon.ico">
+<title>HeaterMeter BBQ Control</title>
+<script type="text/javascript">
+var xmlhttp;
+var tmrTimeout = 0;
+
+function loadurl(dest, callback) 
+{ 
+	try { 
+		xmlhttp = window.XMLHttpRequest ? new XMLHttpRequest(): new ActiveXObject("Microsoft.XMLHTTP"); 
+	} catch (e) { 
+		return;
+	} 
+ 
+	xmlhttp.onreadystatechange = callback; 
+	xmlhttp.open("GET", dest); 
+	xmlhttp.send(null); 
+} 
+
+function connectFailed()
+{
+	xmlhttp.abort();
+	tmrTimeout = 0;
+	getData();
+}
+ 
+function triggered() 
+{ 
+	//console.log("readyState=" + xmlhttp.readyState + " status=" + xmlhttp.status);
+	if ((xmlhttp.readyState == 4) && (xmlhttp.status == 200))
+	{
+		if (tmrTimeout != 0)
+		{
+			clearTimeout(tmrTimeout);
+			tmrTimeout = 0;
+		}
+		var jsonTemps = JSON.parse(xmlhttp.responseText, null);
+		document.getElementById("set").innerHTML = "Set " + jsonTemps.set + "&deg;"; 
+		document.getElementById("fan").innerHTML = jsonTemps.fan.c + "/" + jsonTemps.fan.a;
+		
+		document.getElementById("temp0").innerHTML = "&nbsp;" + jsonTemps.temps[0].c + "&deg;"; 
+		document.getElementById("temp1").innerHTML = "&nbsp;" + jsonTemps.temps[1].c + "&deg;"; 
+		document.getElementById("temp2").innerHTML = "&nbsp;" + jsonTemps.temps[2].c + "&deg;"; 
+		document.getElementById("temp3").innerHTML = "&nbsp;" + jsonTemps.temps[3].c + "&deg;"; 
+	
+		document.getElementById("name1").innerHTML = jsonTemps.temps[1].n; 
+		document.getElementById("name2").innerHTML = jsonTemps.temps[2].n; 
+		document.getElementById("name3").innerHTML = jsonTemps.temps[3].n; 
+			
+		setTimeout("getData()", 10000);
+	} 
+} 
+function getData()
+{
+	tmrTimeout = setTimeout(connectFailed, 5000);
+	loadurl("json", triggered);
+}
+
+function setSetPoint()
+{
+  loadurl("set?sp=" + frmSetSetPoint.elements["sp"].value, null);
+}
+</script>
+<style type="text/css">
+body { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; color: #ffffff; background: #000000; text-align: center; margin: 0; padding: 0; }
+table { width: 100%; background: #84a6b2; background: rgba(99, 162, 230, 0.5); border: 1px solid #243e5b; } 
+td.probe { width: 33%; }
+div.pname { color: #263241; font-size: 18pt; line-height: 12pt;}
+div.ptemp { font-size: 32pt; line-height: 26pt; }
+div.edit-dialog { background: #333333; border: 4px solid #444444; padding: 4px; color: #bbbbbb; }
+input.edit-box { border: 1px solid #bbbbbb; border-left: 3px solid #65b43d; background: #000000; color: #bbbbbb; }
+span.edit-header { color: #5f87ae; font-size: 1.5em; font-weight: bold; }
+</style>
+</head>
+<body onload="getData()">
+<div style="background: url('fire.png'); background-repeat:repeat-x; padding: 10px;">
+	<div style="background: #264464; background: rgba(76,135,199,0.5); border: 1px solid #47607b;">
+		<div style="color: #bbc4cf; font-size: 30pt;">Current Pit</div>
+		<div style="font-size: 128pt; line-height: 100pt;" id="temp0">---</div>
+		<div style="font-size: 24pt; text-align: right;" id="set">Set ---</div>
+		<div style="color: #000000; background: #35537d; border-top: 1px solid #243e5b; text-align: left; padding: 2px">
+		  Blower<!-- <img src="meter-outline.png"/> -->
+		  <span id="fan">-</span>
+		</div>
+		<table><tr>
+		  <td class="probe" style="border-right: 1px solid #243e5b;">
+		    <div class="pname" id="name1">-</div><div class="ptemp" id="temp1">-</div>
+		  </td>
+		  <td class="probe">
+  		    <div class="pname" id="name2">-</div><div class="ptemp" id="temp2">-</div>
+		  </td>
+  		  <td class="probe" style="border-left: 1px solid #243e5b;">
+		    <div class="pname" id="name3">-</div><div class="ptemp" id="temp3">-</div>
+   		  </td>
+		</tr></table>
+	</div>
+</div>
+
+<div class="edit-dialog" id="edit-setpoint" style="width: 160px;">
+	<span class="edit-header">Edit SetPoint</span>
+	<form action="javascript:setSetPoint();" name="frmSetSetPoint">
+		<input class="edit-box" type="text" name="sp" size="3"/>
+		<input type="submit" value="Set"/>
+	</form>
+</div>
+
+<div class="edit-dialog" id="edit-probename" style="width: 240px;">
+	<span class="edit-header">Edit Probe 1 Name</span>
+	<form action="javascript:setSetPoint();" name="frmSetProbeName">
+	    <input type="hidden" name="probenum" value="1">
+		<input class="edit-box" type="text" name="probename" size="13"/>
+		<input type="submit" value="Set"/>
+	</form>
+</div>
+
+</body>
+</html>
