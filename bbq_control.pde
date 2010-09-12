@@ -92,7 +92,7 @@ const struct PROGMEM __eeprom_data {
   { 0, 0, 0 },  // probe offsets
   20,  // lid open offset
   240, // lid open duration
-  { 11.0f, 15.5f, 0.002f, 10.0f }
+  { 11.0f, 15.5f, 0.002f, 2.0f } 
 };
 
 struct temp_log_record {
@@ -755,7 +755,7 @@ void eepromLoadConfig(void)
 {
   struct __eeprom_data config;
   eeprom_read_block(&config, 0, sizeof(config));
-  if (true || config.magic != EEPROM_MAGIC)
+  if (config.magic != EEPROM_MAGIC)
   {
     memcpy_P(&config, &DEFAULT_CONFIG, sizeof(config));
     eeprom_write_block(&config, 0, sizeof(config));  

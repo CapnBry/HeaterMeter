@@ -7,7 +7,7 @@
 // Set this define to log2(samples) to adjust the number of samples
 #define TEMP_AVG_COUNT_LOG2 3
 
-#define TEMPPROBE_AVG_SMOOTH (1.0f/20.0f)
+#define TEMPPROBE_AVG_SMOOTH (1.0f/30.0f)
 #define FANSPEED_AVG_SMOOTH (1.0f/120.0f)
 
 void calcExpMovingAverage(const float smooth, float *currAverage, float newValue)
@@ -85,7 +85,8 @@ inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
   if (!(_fanSpeedPwm >= 255 && error > 0) && 
       !(_fanSpeedPwm <= 0   && error < -5.0f))
     _pidErrorSum += (error * Pid[PIDI]);
-    
+
+  // the B and P terms are in 0-255 scale, but the I and D terms are dependent on degrees    
   float averageTemp = controlProbe->TemperatureAvg;
   control = Pid[PIDB] + Pid[PIDP] * (error + _pidErrorSum - (Pid[PIDD] * (currentTemp - averageTemp)));
   
@@ -127,7 +128,14 @@ boolean GrillPid::doWork(void)
   int pitTemp = Probes[TEMP_PIT]->Temperature;
   if (pitTemp >= SetPoint)
   {
-    _pitTemperatureReached = true;
+    // When we first achieve temperature, reset any P sum we accumulated during startup
+    // If we actually neded that sum to achieve temperature we'll rebuild it, and it
+    // prevents bouncing around above the temperature when you first start up
+    if (!_pitTemperatureReached)
+    {
+      _pitTemperatureReached = true;
+      _pidErrorSum = 0.0f;
+    }
     LidOpenResumeCountdown = 0;
   }
   else if (LidOpenResumeCountdown != 0)
