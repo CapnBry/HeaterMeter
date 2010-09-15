@@ -3,8 +3,8 @@
 
 MenuSystem::MenuSystem(const menu_definition_t *defs, const menu_transition_t *trans,
   const buttonread_t reader)
-  : m_definitions(defs), m_transitions(trans), m_readButton(reader), State(ST_NONE), 
-    m_lastButton(BUTTON_NONE)
+  : m_definitions(defs), m_transitions(trans), m_readButton(reader)
+  // State(ST_NONE), m_lastButton(BUTTON_NONE)
 {
 }
 

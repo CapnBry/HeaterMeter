@@ -27,8 +27,9 @@ private:
 public:
   unsigned int _accumulator;
   TempProbe(const unsigned char pin, const struct steinhart_param *steinhart) : 
-    _pin(pin), _steinhart(steinhart), Temperature(0), Offset(0),
-    TemperatureAvg(-1.0f) {};
+    _pin(pin), _steinhart(steinhart), TemperatureAvg(-1.0f)
+    // Temperature(0), Offset(0)
+    {};
   
   // Last averaged temperature reading
   float Temperature;
@@ -51,14 +52,17 @@ private:
   boolean _pitTemperatureReached;
   // Fan speed 0-255
   unsigned char _fanSpeedPwm;
+  // Counter used for "long PWM" mode
+  unsigned char _longPwmOnCnt;
   
   void calcFanSpeed(TempProbe *controlProbe);
 public:
   float _pidErrorSum;
   GrillPid(const unsigned char blowerPin) : 
-    _blowerPin(blowerPin), _lastTempRead(0), _accumulatedCount(0), 
-    _pitTemperatureReached(false), FanSpeed(0), _fanSpeedPwm(0),
-    FanSpeedAvg(-1.0f), _pidErrorSum(0.0f)
+    _blowerPin(blowerPin), FanSpeedAvg(-1.0f)
+    //_lastTempRead(0), _accumulatedCount(0), 
+    //_pitTemperatureReached(false), FanSpeed(0), _fanSpeedPwm(0),
+    //_pidErrorSum(0.0f), _longPwmOnCnt(0)
     {};
   
   TempProbe *Probes[TEMP_COUNT];
