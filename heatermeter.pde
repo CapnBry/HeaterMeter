@@ -220,7 +220,7 @@ void outputCsv(void)
   WiServer.print_P(COMMA);
   WiServer.print(round(pid.FanSpeedAvg),DEC);
   WiServer.print_P(COMMA);
-  WiServer.print(pid.LidOpenResumeCountdown ? 100 : 0, DEC);
+  WiServer.print(pid.LidOpenResumeCountdown, DEC);
 }
 
 void outputJson(void)
