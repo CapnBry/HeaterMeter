@@ -40,6 +40,6 @@ const prog_char JSON5[] PROGMEM = ",\"a\":";
 const prog_char JSON6[] PROGMEM = "}}";
 
 const prog_char COMMA[] PROGMEM = ",";
-const prog_char PID_ORDER[] = "bpid";
+const prog_char PID_ORDER[] PROGMEM = "bpid";
 
 #endif /* __STRINGS_H__ */
