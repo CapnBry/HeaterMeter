@@ -53,16 +53,17 @@ private:
   // Fan speed 0-255
   unsigned char _fanSpeedPwm;
   // Counter used for "long PWM" mode
-  unsigned char _longPwmOnCnt;
+  unsigned char _longPwmTmr;
   
   void calcFanSpeed(TempProbe *controlProbe);
+  void commitFanSpeed(void);
 public:
   float _pidErrorSum;
   GrillPid(const unsigned char blowerPin) : 
     _blowerPin(blowerPin), FanSpeedAvg(-1.0f)
     //_lastTempRead(0), _accumulatedCount(0), 
     //_pitTemperatureReached(false), FanSpeed(0), _fanSpeedPwm(0),
-    //_pidErrorSum(0.0f), _longPwmOnCnt(0)
+    //_pidErrorSum(0.0f), _longPwmTmr(0)
     {};
   
   TempProbe *Probes[TEMP_COUNT];

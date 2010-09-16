@@ -105,6 +105,33 @@ void GrillPid::resetLidOpenResumeCountdown(void)
   LidOpenResumeCountdown = LidOpenDuration;
 }
 
+void GrillPid::commitFanSpeed(void)
+{
+  calcExpMovingAverage(FANSPEED_AVG_SMOOTH, &FanSpeedAvg, FanSpeed);
+
+  /* 10% or greater fan speed, we do a normal PWM write.
+     For below 10% we use a "long pulse PWM", where the pulse is 
+     10 seconds in length.  For each percent we are emulating, run
+     the fan for one interval.
+  */
+  if (FanSpeed >= 10)
+  {
+    analogWrite(_blowerPin, _fanSpeedPwm);
+    _longPwmTmr = 0;
+  }
+  else
+  {
+    // Simple PWM, ON for first [FanSpeed] seconds then OFF 
+    // for the remainder of the period
+    unsigned char pwmVal;
+    pwmVal = (FanSpeed > _longPwmTmr) ? 255/10 : 0; // 10% or 0%
+    
+    analogWrite(_blowerPin, pwmVal);
+    if (++_longPwmTmr > 9)
+      _longPwmTmr = 0;
+  }  /* long PWM */
+}
+
 boolean GrillPid::doWork(void)
 {
   unsigned long m = millis();
@@ -152,8 +179,7 @@ boolean GrillPid::doWork(void)
     resetLidOpenResumeCountdown();
     _pitTemperatureReached = false;
   }
-  calcExpMovingAverage(FANSPEED_AVG_SMOOTH, &FanSpeedAvg, FanSpeed);
-  analogWrite(_blowerPin, _fanSpeedPwm);
+  commitFanSpeed();
   
   _accumulatedCount = 0;
   return true;
