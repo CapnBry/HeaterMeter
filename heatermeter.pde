@@ -670,14 +670,38 @@ void storeTemps(void)
   flashRingBufferWrite(&temp_log);
 }
 
-void sendFlashFile(const struct flash_file *file)
+#define HTTP_HEADER_LENGTH 19 // "HTTP/1.0 200 OK\r\n\r\n"
+void sendFlashFile(const struct flash_file_t *file)
 {
+  // Note we mess with the underlying UIP stack to prevent reading the entire
+  // file each time from flash just to discard all but 300 bytes of it
+  // Speeds up an 11kB send by approximately 3x (up to 1.5KB/sec)
+  uip_tcp_appstate_t *app = &(uip_conn->appstate);
+  unsigned int sentBytes = app->ackedCount;
+
+  // The first time through, the buffer contains the header but nothing is acked yet
+  // so don't mess with any of the state, just send the first segment  
+  if (app->ackedCount > 0)
+  {
+   app->cursor = (char *)sentBytes;
+   sentBytes -= HTTP_HEADER_LENGTH;
+  }
+
+  unsigned int page = pgm_read_word(&file->page) + (sentBytes / DATAFLASH_PAGE_BYTES);
+  unsigned int off = sentBytes % DATAFLASH_PAGE_BYTES;
   unsigned int size = pgm_read_word(&file->size);
-  
-  dflash.Cont_Flash_Read_Enable(pgm_read_word(&file->page), 0);
-  while (size-- > 0)
+  unsigned int sendSize = size - sentBytes;
+
+  if (sendSize > UIP_TCP_MSS)
+    sendSize = UIP_TCP_MSS;
+   
+  dflash.Cont_Flash_Read_Enable(page, off);
+  while (sendSize-- > 0)
     WiServer.write(dflash.Cont_Flash_Read());
   dflash.DF_CS_inactive();
+  
+  // Pretend that we've sent the whole file
+  app->cursor = (char *)(HTTP_HEADER_LENGTH + size);
 }
 
 boolean sendPage(char* URL)
@@ -737,7 +761,7 @@ boolean sendPage(char* URL)
     return true;    
   }
   
-  const struct flash_file *file = FLASHFILES;
+  const struct flash_file_t *file = FLASHFILES;
   while (pgm_read_word(&file->fname))
   {
     if (strcmp_P(URL, (const prog_char *)pgm_read_word(&file->fname)) == 0)
