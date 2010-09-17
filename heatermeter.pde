@@ -90,9 +90,9 @@ const struct PROGMEM __eeprom_data {
   225,  // setpoint
   { "Pit", "Food Probe1", "Food Probe2", "Ambient" },  // probe names
   { 0, 0, 0 },  // probe offsets
-  20,  // lid open offset
+  15,  // lid open offset
   240, // lid open duration
-  { 11.0f, 15.5f, 0.002f, 2.0f } 
+  { 11.0f, 14.0f, 0.002f, 10.0f }  // was 3.5
 };
 
 struct temp_log_record {

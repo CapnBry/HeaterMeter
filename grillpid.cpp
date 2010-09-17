@@ -83,7 +83,7 @@ inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
   // the fan is off because it is much easier for the sum to increase than
   // decrease due to the fan generally being at 0 once it passes the SetPoint
   if (!(_fanSpeedPwm >= 255 && error > 0) && 
-      !(_fanSpeedPwm <= 0   && error < -5.0f))
+      !(_fanSpeedPwm <= 0   && error < -1.0f))
     _pidErrorSum += (error * Pid[PIDI]);
 
   // the B and P terms are in 0-255 scale, but the I and D terms are dependent on degrees    
