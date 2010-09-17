@@ -1,8 +1,8 @@
 #include <avr/pgmspace.h>
 #include <avr/eeprom.h>
 #include <ShiftRegLCD.h>
-#include <WiServer.h>
 #include <dataflash.h>
+#include <WiServer.h>
 
 #include "strings.h"
 #include "menus.h"
@@ -19,13 +19,8 @@ const prog_char ssid[] PROGMEM = {"M75FE"};		// max 32 bytes
 unsigned char security_type = 1;	// 0 - open; 1 - WEP; 2 - WPA; 3 - WPA2
 // WPA/WPA2 passphrase
 const prog_char security_passphrase[] PROGMEM = {""};	// max 64 characters
-// WEP 128-bit keys
-// sample HEX keys
-prog_uchar wep_keys[] PROGMEM = { 0xEC, 0xA8, 0x1A, 0xB4, 0x65, 0xf0, 0x0d, 0xbe, 0xef, 0xde, 0xad, 0x00, 0x00,	// Key 0
-				  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	// Key 1
-				  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	// Key 2
-				  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	// Key 3
-				};
+// WEP 128-bit key, only key 1 because that's all we use
+prog_uchar wep_keys[] PROGMEM = { 0xEC, 0xA8, 0x1A, 0xB4, 0x65, 0xf0, 0x0d, 0xbe, 0xef, 0xde, 0xad, 0x00, 0x00};
 
 // setup the wireless mode
 // infrastructure - connect to AP
@@ -797,7 +792,7 @@ void eepromLoadConfig(void)
 
 void setup(void)
 {
-  Serial.begin(57600);
+  Serial.begin(115200);
 
   pid.Probes[TEMP_PIT] = &probe0;
   pid.Probes[TEMP_FOOD1] = &probe1;
@@ -828,7 +823,7 @@ void loop(void)
   Menus.doWork();
   if (pid.doWork())
   {
-    storeTemps();
+    //storeTemps();
     updateDisplay();
   }
   if (g_NetworkInitialized)
