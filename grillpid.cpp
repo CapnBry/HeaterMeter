@@ -153,7 +153,12 @@ boolean GrillPid::doWork(void)
   // mess with the error sum but we end up tracking better when control resumes
   calcFanSpeed(Probes[TEMP_PIT]);
   int pitTemp = Probes[TEMP_PIT]->Temperature;
-  if (pitTemp >= SetPoint)
+  if (pitTemp == 0)
+  {
+    FanSpeed = 0;
+    _fanSpeedPwm = 0;
+  }
+  else if (pitTemp >= SetPoint)
   {
     // When we first achieve temperature, reset any P sum we accumulated during startup
     // If we actually neded that sum to achieve temperature we'll rebuild it, and it
