@@ -1,6 +1,5 @@
 #include <math.h>
-#include "WProgram.h"
-//#include "WConstants.h"
+#include <wiring.h>
 #include "grillpid.h"
 
 // The temperatures are averaged over 1, 2, 4 or 8 samples

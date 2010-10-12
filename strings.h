@@ -1,6 +1,8 @@
 #ifndef __STRINGS_H__
 #define __STRINGS_H__
 
+#include <avr\pgmspace.h>
+
 #define DEGREE "\xdf" // \xdf is the degree symbol on the Hitachi HD44780
 const prog_char LCD_LINE1[] PROGMEM = "Pit:%3d"DEGREE"F [%3u%%]";
 const prog_char LCD_LINE1_DELAYING[] PROGMEM = "Pit:%3d"DEGREE"F Lid%3u";

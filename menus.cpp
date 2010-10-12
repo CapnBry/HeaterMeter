@@ -1,4 +1,5 @@
-#include "WProgram.h"
+#include <wiring.h>
+#include <avr/pgmspace.h>
 #include "menus.h"
 
 MenuSystem::MenuSystem(const menu_definition_t *defs, const menu_transition_t *trans,

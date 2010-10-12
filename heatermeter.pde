@@ -30,6 +30,7 @@ unsigned char wireless_mode = WIRELESS_MODE_INFRA;
 unsigned char ssid_len;
 unsigned char security_passphrase_len;
 // End of wireless configuration parameters ----------------------------------------
+static boolean g_NetworkInitialized;
 #endif /* APP_WISERVER */
 
 // Analog Pins
@@ -56,7 +57,6 @@ static TempProbe probe2(PIN_FOOD2, &STEINHART[0]);
 static TempProbe probe3(PIN_AMB,   &STEINHART[1]);
 static GrillPid pid(PIN_BLOWER);
 
-static boolean g_NetworkInitialized;
 // scratch space for edits
 static int editInt;  
 static char editString[17];
@@ -87,13 +87,7 @@ const struct PROGMEM __eeprom_data {
   { 0, 0, 0 },  // probe offsets
   15,  // lid open offset
   240, // lid open duration
-  { 11.0f, 14.0f, 0.002f, 10.0f }  // was 3.5
-};
-
-struct temp_log_record {
-  unsigned int temps[TEMP_COUNT]; 
-  unsigned char fan;
-  unsigned char fan_avg;
+  { 11.0f, 14.0f, 0.002f, 7.0f }
 };
 
 // Menu configuration parameters ------------------------
@@ -198,53 +192,6 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
 
 MenuSystem Menus(MENU_DEFINITIONS, MENU_TRANSITIONS, &readButton);
 // End Menu configuration parameters ------------------------
-
-void outputCsv(void)
-{
-  WiServer.print(pid.SetPoint);
-  WiServer.print_P(COMMA);
-
-  unsigned char i;
-  for (i=0; i<TEMP_COUNT; i++)
-  {
-    WiServer.print((double)pid.Probes[i]->Temperature, 1);
-    WiServer.print_P(COMMA);
-  }
-
-  WiServer.print(pid.FanSpeed,DEC);
-  WiServer.print_P(COMMA);
-  WiServer.print(round(pid.FanSpeedAvg),DEC);
-  WiServer.print_P(COMMA);
-  WiServer.print(pid.LidOpenResumeCountdown, DEC);
-}
-
-void outputJson(void)
-{
-  WiServer.print_P(JSON1);
-
-  unsigned char i;
-  for (i=0; i<TEMP_COUNT; i++)
-  {
-    WiServer.print_P(JSON_T1);
-    loadProbeName(i);
-    WiServer.print(editString);
-    WiServer.print_P(JSON_T2);
-    WiServer.print(pid.Probes[i]->Temperature, 1);
-    WiServer.print_P(JSON_T3);
-    WiServer.print(pid.Probes[i]->TemperatureAvg, 2);
-    WiServer.print_P(JSON_T4);
-  }
-  
-  WiServer.print_P(JSON2);
-  WiServer.print(pid.SetPoint,DEC);
-  WiServer.print_P(JSON3);
-  WiServer.print(pid.LidOpenResumeCountdown,DEC);
-  WiServer.print_P(JSON4);
-  WiServer.print(pid.FanSpeed,DEC);
-  WiServer.print_P(JSON5);
-  WiServer.print((unsigned char)pid.FanSpeedAvg,DEC);
-  WiServer.print_P(JSON6);
-}
 
 boolean storeProbeName(unsigned char probeIndex, const char *name)
 {
@@ -577,6 +524,15 @@ button_t readButton(void)
   return BUTTON_NONE;
 }
 
+
+#ifdef APP_WISERVER
+
+struct temp_log_record {
+  unsigned int temps[TEMP_COUNT]; 
+  unsigned char fan;
+  unsigned char fan_avg;
+};
+
 #define RING_POINTER_INC(x) x = (x + 1) % ((DATAFLASH_PAGE_BYTES / sizeof(struct temp_log_record)) - 1)
 
 void flashRingBufferInit(void)
@@ -612,38 +568,6 @@ void flashRingBufferWrite(struct temp_log_record *p)
     dflash.Buffer_Write_Byte(1, 0, head);
   }
   
-  dflash.DF_CS_inactive();
-}
-
-void outputLog(void)
-{
-  unsigned char head = dflash.Buffer_Read_Byte(1, 0);
-  unsigned char tail = dflash.Buffer_Read_Byte(1, 1);
-  
-  while (head != tail)
-  {
-    struct temp_log_record p;
-    unsigned int addr = (head + 1) * sizeof(p);
-    dflash.Buffer_Read_Str(1, addr, sizeof(p), (unsigned char *)&p);
-    RING_POINTER_INC(head);
-    
-    char offset;
-    int temp;
-    unsigned char i;
-    for (i=0; i<TEMP_COUNT; i++)
-    {
-      temp = p.temps[i] & 0x1ff;
-      WiServer.print(temp,DEC);  // temperature
-      WiServer.print_P(COMMA);
-      offset = p.temps[i] >> 9;
-      WiServer.print(temp + offset,DEC);  // average
-      WiServer.print_P(COMMA);
-    }
-    
-    WiServer.print(p.fan,DEC);
-    WiServer.print_P(COMMA);
-    WiServer.println(p.fan_avg,DEC);
-  }  
   dflash.DF_CS_inactive();
 }
 
@@ -697,6 +621,85 @@ void sendFlashFile(const struct flash_file_t *file)
   
   // Pretend that we've sent the whole file
   app->cursor = (char *)(HTTP_HEADER_LENGTH + size);
+}
+
+void outputLog(void)
+{
+  unsigned char head = dflash.Buffer_Read_Byte(1, 0);
+  unsigned char tail = dflash.Buffer_Read_Byte(1, 1);
+  
+  while (head != tail)
+  {
+    struct temp_log_record p;
+    unsigned int addr = (head + 1) * sizeof(p);
+    dflash.Buffer_Read_Str(1, addr, sizeof(p), (unsigned char *)&p);
+    RING_POINTER_INC(head);
+    
+    char offset;
+    int temp;
+    unsigned char i;
+    for (i=0; i<TEMP_COUNT; i++)
+    {
+      temp = p.temps[i] & 0x1ff;
+      WiServer.print(temp,DEC);  // temperature
+      WiServer.print_P(COMMA);
+      offset = p.temps[i] >> 9;
+      WiServer.print(temp + offset,DEC);  // average
+      WiServer.print_P(COMMA);
+    }
+    
+    WiServer.print(p.fan,DEC);
+    WiServer.print_P(COMMA);
+    WiServer.println(p.fan_avg,DEC);
+  }  
+  dflash.DF_CS_inactive();
+}
+
+void outputCsv(void)
+{
+  WiServer.print(pid.SetPoint);
+  WiServer.print_P(COMMA);
+
+  unsigned char i;
+  for (i=0; i<TEMP_COUNT; i++)
+  {
+    WiServer.print((double)pid.Probes[i]->Temperature, 1);
+    WiServer.print_P(COMMA);
+  }
+
+  WiServer.print(pid.FanSpeed,DEC);
+  WiServer.print_P(COMMA);
+  WiServer.print(round(pid.FanSpeedAvg),DEC);
+  WiServer.print_P(COMMA);
+  WiServer.print(pid.LidOpenResumeCountdown, DEC);
+}
+
+void outputJson(void)
+{
+  WiServer.print_P(JSON1);
+
+  unsigned char i;
+  for (i=0; i<TEMP_COUNT; i++)
+  {
+    WiServer.print_P(JSON_T1);
+    loadProbeName(i);
+    WiServer.print(editString);
+    WiServer.print_P(JSON_T2);
+    WiServer.print(pid.Probes[i]->Temperature, 1);
+    WiServer.print_P(JSON_T3);
+    WiServer.print(pid.Probes[i]->TemperatureAvg, 2);
+    WiServer.print_P(JSON_T4);
+  }
+  
+  WiServer.print_P(JSON2);
+  WiServer.print(pid.SetPoint,DEC);
+  WiServer.print_P(JSON3);
+  WiServer.print(pid.LidOpenResumeCountdown,DEC);
+  WiServer.print_P(JSON4);
+  WiServer.print(pid.FanSpeed,DEC);
+  WiServer.print_P(JSON5);
+  WiServer.print((unsigned char)pid.FanSpeedAvg,DEC);
+  WiServer.print_P(JSON6);
 }
 
 boolean sendPage(char* URL)
@@ -769,6 +772,7 @@ boolean sendPage(char* URL)
   
   return false;
 }
+#endif /* APP_WISERVER */
 
 void eepromLoadConfig(void)
 {
@@ -801,6 +805,7 @@ void setup(void)
 
   eepromLoadConfig();
   
+#ifdef APP_WISERVER
   // Set the WiFi Slave Select to HIGH (disable) to
   // prevent it from interferring with the dflash init
   pinMode(PIN_WIFI_SS, OUTPUT);
@@ -815,6 +820,7 @@ void setup(void)
     WiServer.init(sendPage);
   }
   else
+#endif  /* APP_WISERVER */
     Menus.setState(ST_HOME_AMB);
 }
 
@@ -823,10 +829,14 @@ void loop(void)
   Menus.doWork();
   if (pid.doWork())
   {
-    //storeTemps();
     updateDisplay();
+#ifdef APP_WISERVER
+    //storeTemps();
   }
   if (g_NetworkInitialized)
     WiServer.server_task(); 
+#else
+  }
+#endif /* APP_WISERVER */
 }
 

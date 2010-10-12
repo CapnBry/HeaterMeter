@@ -1,8 +1,6 @@
 #ifndef __MENUS_H__
 #define __MENUS_H__
 
-#include <avr/pgmspace.h>
-
 // The first BUTTON_s are pseudo-buttons to indicate state changes
 // No button pressed
 #define BUTTON_NONE  0
