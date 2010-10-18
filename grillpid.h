@@ -49,12 +49,12 @@ class GrillPid
 {
 private:
   const unsigned char _blowerPin;
+  unsigned char _fanSpeed;
   unsigned long _lastTempRead;
   unsigned char _accumulatedCount;
   boolean _pitTemperatureReached;
   int _setPoint;
-  // Fan speed 0-255
-  unsigned char _fanSpeedPwm;
+  boolean _manualFanMode;
   // Counter used for "long PWM" mode
   unsigned char _longPwmTmr;
   
@@ -66,7 +66,7 @@ public:
     _blowerPin(blowerPin), FanSpeedAvg(-1.0f)
     //_lastTempRead(0), _accumulatedCount(0), 
     //_pitTemperatureReached(false), FanSpeed(0), _fanSpeedPwm(0),
-    //_pidErrorSum(0.0f), _longPwmTmr(0)
+    //_pidErrorSum(0.0f), _longPwmTmr(0), _manualFanMode(false)
     {};
   
   TempProbe *Probes[TEMP_COUNT];
@@ -82,8 +82,10 @@ public:
   float Pid[4];
   
   /* Runtime Data */
-  // Current fan speed in percent
-  unsigned char FanSpeed;
+  // Current fan speed in percent, setting this will put the fan into manual mode
+  unsigned char getFanSpeed() const { return _fanSpeed; };
+  void setFanSpeed(int value);
+  boolean getManualFanMode(void) const { return _manualFanMode; };
   // Fan speed moving average
   float FanSpeedAvg;
   // Seconds remaining in the lid open countdown

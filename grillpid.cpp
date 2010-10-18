@@ -81,22 +81,20 @@ inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
   // Note that I still allow the errorSum to degrade within N degrees even if 
   // the fan is off because it is much easier for the sum to increase than
   // decrease due to the fan generally being at 0 once it passes the SetPoint
-  if (!(_fanSpeedPwm >= 255 && error > 0) && 
-      !(_fanSpeedPwm <= 0   && error < -1.0f))
+  if (!(_fanSpeed >= 100 && error > 0) && 
+      !(_fanSpeed <= 0   && error < -1.0f))
     _pidErrorSum += (error * Pid[PIDI]);
 
-  // the B and P terms are in 0-255 scale, but the I and D terms are dependent on degrees    
+  // the B and P terms are in 0-100 scale, but the I and D terms are dependent on degrees    
   float averageTemp = controlProbe->TemperatureAvg;
   control = Pid[PIDB] + Pid[PIDP] * (error + _pidErrorSum - (Pid[PIDD] * (currentTemp - averageTemp)));
   
-  if (control >= 255.0f)
-    _fanSpeedPwm = 255;
+  if (control >= 100.0f)
+    _fanSpeed = 100;
   else if (control <= 0.0f)
-    _fanSpeedPwm = 0;
+    _fanSpeed = 0;
   else
-    _fanSpeedPwm = control;
-
-  FanSpeed = _fanSpeedPwm * 100 / 255;
+    _fanSpeed = control;
 }
 
 void GrillPid::resetLidOpenResumeCountdown(void)
@@ -106,16 +104,16 @@ void GrillPid::resetLidOpenResumeCountdown(void)
 
 void GrillPid::commitFanSpeed(void)
 {
-  calcExpMovingAverage(FANSPEED_AVG_SMOOTH, &FanSpeedAvg, FanSpeed);
+  calcExpMovingAverage(FANSPEED_AVG_SMOOTH, &FanSpeedAvg, _fanSpeed);
 
   /* 10% or greater fan speed, we do a normal PWM write.
      For below 10% we use a "long pulse PWM", where the pulse is 
      10 seconds in length.  For each percent we are emulating, run
      the fan for one interval.
   */
-  if (FanSpeed >= 10)
+  if (_fanSpeed >= 10)
   {
-    analogWrite(_blowerPin, _fanSpeedPwm);
+    analogWrite(_blowerPin, _fanSpeed * 255 / 100);
     _longPwmTmr = 0;
   }
   else
@@ -123,7 +121,7 @@ void GrillPid::commitFanSpeed(void)
     // Simple PWM, ON for first [FanSpeed] seconds then OFF 
     // for the remainder of the period
     unsigned char pwmVal;
-    pwmVal = (FanSpeed > _longPwmTmr) ? 255/10 : 0; // 10% or 0%
+    pwmVal = (_fanSpeed > _longPwmTmr) ? 255/10 : 0; // 10% or 0%
     
     analogWrite(_blowerPin, pwmVal);
     if (++_longPwmTmr > 9)
@@ -135,7 +133,19 @@ void GrillPid::setSetPoint(int value)
 {
   _setPoint = value;
   _pitTemperatureReached = false;
+  _manualFanMode = false;
   _pidErrorSum = 0;
+}
+
+void GrillPid::setFanSpeed(int value)
+{
+  _manualFanMode = true;
+  if (value < 0)
+    _fanSpeed = 0;
+  else if (value > 100)
+    _fanSpeed = 100;
+  else
+    _fanSpeed = value;
 }
 
 boolean GrillPid::doWork(void)
@@ -155,41 +165,42 @@ boolean GrillPid::doWork(void)
   for (i=0; i<TEMP_COUNT; i++)
     Probes[i]->calcTemp();
 
-  // Always feed the PID loop even if the lid detect is active.  It may
-  // mess with the error sum but we end up tracking better when control resumes
-  calcFanSpeed(Probes[TEMP_PIT]);
-  int pitTemp = Probes[TEMP_PIT]->Temperature;
-  if (pitTemp == 0)
+  if (!_manualFanMode)
   {
-    FanSpeed = 0;
-    _fanSpeedPwm = 0;
-  }
-  else if (pitTemp >= _setPoint)
-  {
-    // When we first achieve temperature, reset any P sum we accumulated during startup
-    // If we actually neded that sum to achieve temperature we'll rebuild it, and it
-    // prevents bouncing around above the temperature when you first start up
-    if (!_pitTemperatureReached)
+    // Always feed the PID loop even if the lid detect is active.  It may
+    // mess with the error sum but we end up tracking better when control resumes
+    calcFanSpeed(Probes[TEMP_PIT]);
+    int pitTemp = Probes[TEMP_PIT]->Temperature;
+    if (pitTemp == 0)
     {
-      _pitTemperatureReached = true;
-      _pidErrorSum = 0.0f;
+      _fanSpeed = 0;
     }
-    LidOpenResumeCountdown = 0;
-  }
-  else if (LidOpenResumeCountdown != 0)
-  {
-    --LidOpenResumeCountdown;
-    FanSpeed = 0;
-    _fanSpeedPwm = 0;
-  }
-  // If the pit temperature dropped has more than [lidOpenOffset] degrees 
-  // after reaching temp, and the fan has not been running more than 90% of 
-  // the average period. note that the code assumes g_LidOpenResumeCountdown <= 0
-  else if (_pitTemperatureReached && ((_setPoint - pitTemp) > (int)LidOpenOffset) && FanSpeedAvg < 90.0f)
-  {
-    resetLidOpenResumeCountdown();
-    _pitTemperatureReached = false;
-  }
+    else if (pitTemp >= _setPoint)
+    {
+      // When we first achieve temperature, reset any P sum we accumulated during startup
+      // If we actually neded that sum to achieve temperature we'll rebuild it, and it
+      // prevents bouncing around above the temperature when you first start up
+      if (!_pitTemperatureReached)
+      {
+        _pitTemperatureReached = true;
+        _pidErrorSum = 0.0f;
+      }
+      LidOpenResumeCountdown = 0;
+    }
+    else if (LidOpenResumeCountdown != 0)
+    {
+      --LidOpenResumeCountdown;
+      _fanSpeed = 0;
+    }
+    // If the pit temperature dropped has more than [lidOpenOffset] degrees 
+    // after reaching temp, and the fan has not been running more than 90% of 
+    // the average period. note that the code assumes g_LidOpenResumeCountdown <= 0
+    else if (_pitTemperatureReached && ((_setPoint - pitTemp) > (int)LidOpenOffset) && FanSpeedAvg < 90.0f)
+    {
+      resetLidOpenResumeCountdown();
+      _pitTemperatureReached = false;
+    }
+  }   /* if !manualFanMode */
   commitFanSpeed();
   
   _accumulatedCount = 0;

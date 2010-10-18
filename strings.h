@@ -3,8 +3,11 @@
 
 #include <avr\pgmspace.h>
 
+//const unsigned char LCD_ARROWUP[] PROGMEM = { 0x4,0xe,0x1f,0x00,0x00,0x4,0xe,0x1f };
+//const unsigned char LCD_ARROWDN[] PROGMEM = { 0x1f,0xe,0x4,0x00,0x00,0x1f,0xe,0x4 };
+
 #define DEGREE "\xdf" // \xdf is the degree symbol on the Hitachi HD44780
-const prog_char LCD_LINE1[] PROGMEM = "Pit:%3d"DEGREE"F [%3u%%]";
+const prog_char LCD_LINE1[] PROGMEM = "Pit:%3d"DEGREE"F %c%3u%%%c";
 const prog_char LCD_LINE1_DELAYING[] PROGMEM = "Pit:%3d"DEGREE"F Lid%3u";
 const prog_char LCD_LINE1_UNPLUGGED[] PROGMEM = "- No Pit Probe -";
 const prog_char LCD_LINE2[] PROGMEM = "%-12s%3d"DEGREE;
@@ -18,6 +21,10 @@ const prog_char LCD_LIDOPENOFFS1[] PROGMEM = "Lid open offset";
 const prog_char LCD_LIDOPENOFFS2[] PROGMEM = "%3d"DEGREE"F";
 const prog_char LCD_LIDOPENDUR1[] PROGMEM = "Lid open timer";
 const prog_char LCD_LIDOPENDUR2[] PROGMEM = "%3d seconds";
+const prog_char LCD_MANUALMODE[] PROGMEM = "Manual fan mode";
+const prog_char LCD_RESETCONFIG[] PROGMEM = "Reset config?";
+const prog_char LCD_YES[] PROGMEM = "Yes";
+const prog_char LCD_NO[] PROGMEM = "No ";
 
 const prog_char WEB_OK[] PROGMEM = "OK\n";
 const prog_char WEB_FAILED[] PROGMEM = "FAILED\n";

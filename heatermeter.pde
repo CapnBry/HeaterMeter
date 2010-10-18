@@ -80,6 +80,7 @@ const struct PROGMEM __eeprom_data {
   unsigned char lidOpenOffset;
   unsigned int lidOpenDuration;
   float pidConstants[4]; // constants are stored Kb, Kp, Ki, Kd
+  boolean manualMode;
 } DEFAULT_CONFIG PROGMEM = { 
   EEPROM_MAGIC,  // magic
   225,  // setpoint
@@ -87,7 +88,8 @@ const struct PROGMEM __eeprom_data {
   { 0, 0, 0 },  // probe offsets
   15,  // lid open offset
   240, // lid open duration
-  { 11.0f, 14.0f, 0.002f, 5.0f }
+  { 5.0f, 5.0f, 0.002f, 5.0f },
+  false // manual mode
 };
 
 // Menu configuration parameters ------------------------
@@ -111,8 +113,8 @@ const struct PROGMEM __eeprom_data {
 #define ST_PROBEOFF3  (ST_VMAX+12)
 #define ST_LIDOPEN_OFF (ST_VMAX+13)
 #define ST_LIDOPEN_DUR (ST_VMAX+14)
-//#define ST_DATAFLASH   (ST_VMAX+15)
-// #define ST_SAVECHANGES (ST_VMAX+14)
+#define ST_MANUALMODE  (ST_VMAX+15)
+#define ST_RESETCONFIG (ST_VMAX+16)
 
 const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_HOME_FOOD1, menuHome, 5 },
@@ -120,6 +122,7 @@ const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_HOME_AMB, menuHome, 5 },
   { ST_CONNECTING, menuConnecting, 2 },
   { ST_SETPOINT, menuSetpoint, 10 },
+  { ST_MANUALMODE, menuManualMode, 10 },
   { ST_PROBENAME1, menuProbename, 10 },
   { ST_PROBENAME2, menuProbename, 10 },
   { ST_PROBENAME3, menuProbename, 10 },
@@ -129,7 +132,7 @@ const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_PROBEOFF3, menuProbeOffset, 10 },
   { ST_LIDOPEN_OFF, menuLidOpenOff, 10 },
   { ST_LIDOPEN_DUR, menuLidOpenDur, 10 },
-//  { ST_DATAFLASH, menuDataflash, 10 },
+  { ST_RESETCONFIG, menuResetConfig, 10 },
   { 0, 0 },
 };
 
@@ -147,7 +150,11 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   { ST_HOME_AMB, BUTTON_UP,        ST_HOME_FOOD2 },
 
   { ST_SETPOINT, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  { ST_SETPOINT, BUTTON_RIGHT, ST_PROBENAME1 },
+  { ST_SETPOINT, BUTTON_RIGHT, ST_MANUALMODE },
+  // UP and DOWN are caught in handler
+
+  { ST_MANUALMODE, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_MANUALMODE, BUTTON_RIGHT, ST_PROBENAME1 },
   // UP and DOWN are caught in handler
 
   { ST_PROBENAME1, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
@@ -180,11 +187,13 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   // UP, DOWN caught in handler
 
   { ST_LIDOPEN_DUR, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  { ST_LIDOPEN_DUR, BUTTON_RIGHT, ST_SETPOINT },
+  { ST_LIDOPEN_DUR, BUTTON_RIGHT, ST_RESETCONFIG },
+  // UP, DOWN caught in handler
+  
+  { ST_RESETCONFIG, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_RESETCONFIG, BUTTON_RIGHT, ST_SETPOINT },
   // UP, DOWN caught in handler
 
-  //{ ST_DATAFLASH, BUTTON_LEFT | BUTTON_RIGHT | BUTTON_UP | BUTTON_DOWN | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  
   { ST_CONNECTING, BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   
   { 0, 0, 0 },
@@ -211,8 +220,19 @@ void loadProbeName(unsigned char probeIndex)
 
 void storeSetPoint(int sp)
 {
-  eeprom_write(sp, setPoint);
-  pid.setSetPoint(sp);
+  // If the setpoint is >0 that's an actual setpoint.  
+  // 0 or less is a manual fan speed
+  if (sp > 0)
+  {
+    eeprom_write(sp, setPoint);
+    eeprom_write(false, manualMode);
+    pid.setSetPoint(sp);
+  }
+  else
+  {
+    eeprom_write(true, manualMode);
+    pid.setFanSpeed(-sp);
+  }
 }
 
 boolean storeProbeOffset(unsigned char probeIndex, char offset)
@@ -238,12 +258,25 @@ void updateDisplay(void)
   // Fixed pit area
   lcd.home();
   int pitTemp = pid.Probes[TEMP_PIT]->Temperature;
-  if (pitTemp == 0)
+  if (!pid.getManualFanMode() && pitTemp == 0)
     memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
   else if (pid.LidOpenResumeCountdown > 0)
     snprintf_P(buffer, sizeof(buffer), LCD_LINE1_DELAYING, pitTemp, pid.LidOpenResumeCountdown);
   else
-    snprintf_P(buffer, sizeof(buffer), LCD_LINE1, pitTemp, pid.FanSpeed);
+  {
+    char c1,c2;
+    if (pid.getManualFanMode())
+    {
+      c1 = '^';  // LCD_ARROWUP
+      c2 = '^';  // LCD_ARROWDN
+    }
+    else
+    {
+      c1 = '[';
+      c2 = ']';
+    }
+    snprintf_P(buffer, sizeof(buffer), LCD_LINE1, pitTemp, c1, pid.getFanSpeed(), c2);
+  }
   lcd.print(buffer); 
 
   // Rotating probe display
@@ -264,6 +297,23 @@ state_t menuHome(button_t button)
     else if (Menus.State == ST_HOME_FOOD2 && pid.Probes[TEMP_FOOD2]->Temperature == 0)
       return ST_HOME_AMB;
     updateDisplay();
+  }
+  // In manual fan mode Up is +5% Down is -5% and Left is -1%
+  else if (pid.getManualFanMode())
+  {
+    char offset;
+    if (button == BUTTON_UP)
+      offset = 5;
+    else if (button == BUTTON_DOWN)
+      offset = -5;
+    else if (button == BUTTON_LEFT)
+      offset = -1;
+    else
+      return ST_AUTO;
+  
+    pid.setFanSpeed(pid.getFanSpeed() + offset);
+    updateDisplay();
+    return ST_NONE;
   }
   else if (button == BUTTON_LEFT)
   {
@@ -294,6 +344,15 @@ state_t menuConnecting(button_t button)
   lcdprint_P(ssid, false);
 
   return ST_AUTO;
+}
+
+void menuBooleanEdit(button_t button)
+{
+  if (button == BUTTON_UP || button == BUTTON_DOWN)
+    editInt = !editInt;
+
+  lcd.setCursor(0, 1);
+  lcdprint_P((editInt != 0) ? LCD_YES : LCD_NO, false);
 }
 
 void menuNumberEdit(button_t button, unsigned char increment, 
@@ -403,7 +462,8 @@ state_t menuSetpoint(button_t button)
   }
   else if (button == BUTTON_LEAVE)
   {
-    storeSetPoint(editInt);
+    if (editInt != pid.getSetPoint())
+      storeSetPoint(editInt);
   }
 
   menuNumberEdit(button, 5, LCD_SETPOINT2);
@@ -488,6 +548,39 @@ state_t menuLidOpenDur(button_t button)
   return ST_AUTO;
 }
 
+state_t menuManualMode(button_t button)
+{
+  if (button == BUTTON_ENTER)
+  {
+    lcdprint_P(LCD_MANUALMODE, true);
+    editInt = pid.getManualFanMode() ? !0 : 0;    
+  }
+  else if (button == BUTTON_LEAVE)
+  {
+    boolean manual = (editInt != 0); 
+    if (manual != pid.getManualFanMode())
+      storeSetPoint(manual ? 0 : pid.getSetPoint());
+  }
+  menuBooleanEdit(button);
+  return ST_AUTO;
+}
+
+state_t menuResetConfig(button_t button)
+{
+  if (button == BUTTON_ENTER)
+  {
+    lcdprint_P(LCD_RESETCONFIG, true);
+    editInt = 0;
+  }
+  else if (button == BUTTON_LEAVE)
+  {
+    if (editInt != 0)
+      eepromLoadConfig(true);
+  }
+  menuBooleanEdit(button);
+  return ST_AUTO;
+}
+
 boolean storePidParam(char which, float Value)
 {
   const prog_char *pos = strchr_P(PID_ORDER, which);
@@ -523,7 +616,6 @@ button_t readButton(void)
     
   return BUTTON_NONE;
 }
-
 
 #ifdef APP_WISERVER
 
@@ -583,7 +675,7 @@ void storeTemps(void)
     char avgOffset = (char)(pid.Probes[i]->Temperature - pid.Probes[i]->TemperatureAvg);
     temp_log.temps[i] = (avgOffset << 9) | (int)pid.Probes[i]->Temperature;
   }
-  temp_log.fan = pid.FanSpeed;
+  temp_log.fan = pid.getFanSpeed();
   temp_log.fan_avg = (unsigned char)pid.FanSpeedAvg;
   
   flashRingBufferWrite(&temp_log);
@@ -667,7 +759,7 @@ void outputCsv(void)
     WiServer.print_P(COMMA);
   }
 
-  WiServer.print(pid.FanSpeed,DEC);
+  WiServer.print(pid.getFanSpeed(),DEC);
   WiServer.print_P(COMMA);
   WiServer.print(round(pid.FanSpeedAvg),DEC);
   WiServer.print_P(COMMA);
@@ -696,7 +788,7 @@ void outputJson(void)
   WiServer.print_P(JSON3);
   WiServer.print(pid.LidOpenResumeCountdown,DEC);
   WiServer.print_P(JSON4);
-  WiServer.print(pid.FanSpeed,DEC);
+  WiServer.print(pid.getFanSpeed(),DEC);
   WiServer.print_P(JSON5);
   WiServer.print((unsigned char)pid.FanSpeedAvg,DEC);
   WiServer.print_P(JSON6);
@@ -774,11 +866,11 @@ boolean sendPage(char* URL)
 }
 #endif /* APP_WISERVER */
 
-void eepromLoadConfig(void)
+void eepromLoadConfig(boolean forceDefault)
 {
   struct __eeprom_data config;
   eeprom_read_block(&config, 0, sizeof(config));
-  if (config.magic != EEPROM_MAGIC)
+  if (forceDefault || config.magic != EEPROM_MAGIC)
   {
     memcpy_P(&config, &DEFAULT_CONFIG, sizeof(config));
     eeprom_write_block(&config, 0, sizeof(config));  
@@ -792,18 +884,20 @@ void eepromLoadConfig(void)
   pid.LidOpenOffset = config.lidOpenOffset;
   pid.LidOpenDuration = config.lidOpenDuration;
   memcpy(pid.Pid, config.pidConstants, sizeof(config.pidConstants));
+  if (config.manualMode)
+    pid.setFanSpeed(0);
 }
 
 void setup(void)
 {
   Serial.begin(115200);
-
+  
   pid.Probes[TEMP_PIT] = &probe0;
   pid.Probes[TEMP_FOOD1] = &probe1;
   pid.Probes[TEMP_FOOD2] = &probe2;
   pid.Probes[TEMP_AMB] = &probe3;
 
-  eepromLoadConfig();
+  eepromLoadConfig(false);
   
 #ifdef APP_WISERVER
   // Set the WiFi Slave Select to HIGH (disable) to
