@@ -212,7 +212,7 @@ void loadProbeName(unsigned char probeIndex)
 void storeSetPoint(int sp)
 {
   eeprom_write(sp, setPoint);
-  pid.SetPoint = sp;
+  pid.setSetPoint(sp);
 }
 
 boolean storeProbeOffset(unsigned char probeIndex, char offset)
@@ -399,7 +399,7 @@ state_t menuSetpoint(button_t button)
   if (button == BUTTON_ENTER)
   {
     lcdprint_P(LCD_SETPOINT1, true);
-    editInt = pid.SetPoint;
+    editInt = pid.getSetPoint();
   }
   else if (button == BUTTON_LEAVE)
   {
@@ -657,7 +657,7 @@ void outputLog(void)
 
 void outputCsv(void)
 {
-  WiServer.print(pid.SetPoint);
+  WiServer.print(pid.getSetPoint());
   WiServer.print_P(COMMA);
 
   unsigned char i;
@@ -692,7 +692,7 @@ void outputJson(void)
   }
   
   WiServer.print_P(JSON2);
-  WiServer.print(pid.SetPoint,DEC);
+  WiServer.print(pid.getSetPoint(),DEC);
   WiServer.print_P(JSON3);
   WiServer.print(pid.LidOpenResumeCountdown,DEC);
   WiServer.print_P(JSON4);
@@ -788,7 +788,7 @@ void eepromLoadConfig(void)
   for (i=0; i<TEMP_COUNT; i++)
     pid.Probes[i]->Offset = config.probeTempOffsets[i];
     
-  pid.SetPoint = config.setPoint;
+  pid.setSetPoint(config.setPoint);
   pid.LidOpenOffset = config.lidOpenOffset;
   pid.LidOpenDuration = config.lidOpenDuration;
   memcpy(pid.Pid, config.pidConstants, sizeof(config.pidConstants));

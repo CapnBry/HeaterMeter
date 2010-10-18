@@ -52,6 +52,7 @@ private:
   unsigned long _lastTempRead;
   unsigned char _accumulatedCount;
   boolean _pitTemperatureReached;
+  int _setPoint;
   // Fan speed 0-255
   unsigned char _fanSpeedPwm;
   // Counter used for "long PWM" mode
@@ -71,7 +72,8 @@ public:
   TempProbe *Probes[TEMP_COUNT];
   
   /* Configuration */
-  int SetPoint;
+  int getSetPoint(void) const { return _setPoint; };
+  void setSetPoint(int value); 
   // The number of degrees the temperature drops before automatic lidopen mode
   unsigned char LidOpenOffset;
   // The ammount of time to turn off the blower when the lid is open 

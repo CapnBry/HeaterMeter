@@ -74,7 +74,7 @@ inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
 
   float error;
   float control;
-  error = SetPoint - currentTemp;
+  error = _setPoint - currentTemp;
 
   // anti-windup: Make sure we only adjust the I term while
   // inside the proportional control range
@@ -131,6 +131,13 @@ void GrillPid::commitFanSpeed(void)
   }  /* long PWM */
 }
 
+void GrillPid::setSetPoint(int value)
+{
+  _setPoint = value;
+  _pitTemperatureReached = false;
+  _pidErrorSum = 0;
+}
+
 boolean GrillPid::doWork(void)
 {
   unsigned long m = millis();
@@ -157,7 +164,7 @@ boolean GrillPid::doWork(void)
     FanSpeed = 0;
     _fanSpeedPwm = 0;
   }
-  else if (pitTemp >= SetPoint)
+  else if (pitTemp >= _setPoint)
   {
     // When we first achieve temperature, reset any P sum we accumulated during startup
     // If we actually neded that sum to achieve temperature we'll rebuild it, and it
@@ -178,7 +185,7 @@ boolean GrillPid::doWork(void)
   // If the pit temperature dropped has more than [lidOpenOffset] degrees 
   // after reaching temp, and the fan has not been running more than 90% of 
   // the average period. note that the code assumes g_LidOpenResumeCountdown <= 0
-  else if (_pitTemperatureReached && ((SetPoint - pitTemp) > (int)LidOpenOffset) && FanSpeedAvg < 90.0f)
+  else if (_pitTemperatureReached && ((_setPoint - pitTemp) > (int)LidOpenOffset) && FanSpeedAvg < 90.0f)
   {
     resetLidOpenResumeCountdown();
     _pitTemperatureReached = false;
