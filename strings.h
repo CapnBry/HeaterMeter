@@ -26,7 +26,7 @@ const prog_char LCD_RESETCONFIG[] PROGMEM = "Reset config?";
 const prog_char LCD_YES[] PROGMEM = "Yes";
 const prog_char LCD_NO[] PROGMEM = "No ";
 
-#ifdef APP_WISERVER
+#ifdef HEATERMETER_NETWORKING
 const prog_char WEB_OK[] PROGMEM = "OK\n";
 const prog_char WEB_FAILED[] PROGMEM = "FAILED\n";
 
@@ -48,7 +48,7 @@ const prog_char JSON3[] PROGMEM = ",\"lid\":";
 const prog_char JSON4[] PROGMEM = ",\"fan\":{\"c\":";
 const prog_char JSON5[] PROGMEM = ",\"a\":";
 const prog_char JSON6[] PROGMEM = "}}";
-#endif /* APP_WISERVER */
+#endif /* HEATERMETER_NETWORKING */
 
 const prog_char COMMA[] PROGMEM = ",";
 const prog_char PID_ORDER[] PROGMEM = "bpid";

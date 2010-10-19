@@ -1,37 +1,13 @@
-#include <avr/pgmspace.h>
+#define HEATERMETER_NETWORKING  // comment this out to remove networking
+
+#include <WProgram.h>
 #include <avr/eeprom.h>
 #include <ShiftRegLCD.h>
-#include <dataflash.h>
-#include <WiServer.h>
 
 #include "strings.h"
 #include "menus.h"
 #include "grillpid.h"
 #include "flashfiles.h"
-
-#ifdef APP_WISERVER
-// Wireless configuration parameters ----------------------------------------
-unsigned char local_ip[] = {192,168,1,252};	// IP address of WiShield
-unsigned char gateway_ip[] = {192,168,1,1};	// router or gateway IP address
-unsigned char subnet_mask[] = {255,255,255,0};	// subnet mask for the local network
-const prog_char ssid[] PROGMEM = {"M75FE"};		// max 32 bytes
-
-unsigned char security_type = 1;	// 0 - open; 1 - WEP; 2 - WPA; 3 - WPA2
-// WPA/WPA2 passphrase
-const prog_char security_passphrase[] PROGMEM = {""};	// max 64 characters
-// WEP 128-bit key, only key 1 because that's all we use
-prog_uchar wep_keys[] PROGMEM = { 0xEC, 0xA8, 0x1A, 0xB4, 0x65, 0xf0, 0x0d, 0xbe, 0xef, 0xde, 0xad, 0x00, 0x00};
-
-// setup the wireless mode
-// infrastructure - connect to AP
-// adhoc - connect to another WiFi device
-unsigned char wireless_mode = WIRELESS_MODE_INFRA;
-
-unsigned char ssid_len;
-unsigned char security_passphrase_len;
-// End of wireless configuration parameters ----------------------------------------
-static boolean g_NetworkInitialized;
-#endif /* APP_WISERVER */
 
 // Analog Pins
 #define PIN_PIT     5
@@ -56,6 +32,32 @@ static TempProbe probe1(PIN_FOOD1, &STEINHART[0]);
 static TempProbe probe2(PIN_FOOD2, &STEINHART[0]);
 static TempProbe probe3(PIN_AMB,   &STEINHART[1]);
 static GrillPid pid(PIN_BLOWER);
+
+#ifdef HEATERMETER_NETWORKING
+#include <WiServer.h>  
+#include <dataflash.h>
+// Wireless configuration parameters ----------------------------------------
+unsigned char local_ip[] = {192,168,1,252};	// IP address of WiShield
+unsigned char gateway_ip[] = {192,168,1,1};	// router or gateway IP address
+unsigned char subnet_mask[] = {255,255,255,0};	// subnet mask for the local network
+const prog_char ssid[] PROGMEM = {"M75FE"};		// max 32 bytes
+
+unsigned char security_type = 1;	// 0 - open; 1 - WEP; 2 - WPA; 3 - WPA2
+// WPA/WPA2 passphrase
+const prog_char security_passphrase[] PROGMEM = {""};	// max 64 characters
+// WEP 128-bit key, only key 1 because that's all we use
+prog_uchar wep_keys[] PROGMEM = { 0xEC, 0xA8, 0x1A, 0xB4, 0x65, 0xf0, 0x0d, 0xbe, 0xef, 0xde, 0xad, 0x00, 0x00};
+
+// setup the wireless mode
+// infrastructure - connect to AP
+// adhoc - connect to another WiFi device
+unsigned char wireless_mode = WIRELESS_MODE_INFRA;
+
+unsigned char ssid_len;
+unsigned char security_passphrase_len;
+// End of wireless configuration parameters ----------------------------------------
+static boolean g_NetworkInitialized;
+#endif /* HEATERMETER_NETWORKING */
 
 // scratch space for edits
 static int editInt;  
@@ -339,9 +341,11 @@ void lcdprint_P(const prog_char *p, const boolean doClear)
 
 state_t menuConnecting(button_t button)
 {
+#ifdef HEATERMETER_NETWORKING
   lcdprint_P(LCD_CONNECTING, true); 
   lcd.setCursor(0, 1);
   lcdprint_P(ssid, false);
+#endif /* HEATERMETER_NETWORKING */
 
   return ST_AUTO;
 }
@@ -617,7 +621,7 @@ button_t readButton(void)
   return BUTTON_NONE;
 }
 
-#ifdef APP_WISERVER
+#ifdef HEATERMETER_NETWORKING
 
 struct temp_log_record {
   unsigned int temps[TEMP_COUNT]; 
@@ -864,7 +868,7 @@ boolean sendPage(char* URL)
   
   return false;
 }
-#endif /* APP_WISERVER */
+#endif /* HEATERMETER_NETWORKING */
 
 void eepromLoadConfig(boolean forceDefault)
 {
@@ -899,7 +903,7 @@ void setup(void)
 
   eepromLoadConfig(false);
   
-#ifdef APP_WISERVER
+#ifdef HEATERMETER_NETWORKING
   // Set the WiFi Slave Select to HIGH (disable) to
   // prevent it from interferring with the dflash init
   pinMode(PIN_WIFI_SS, OUTPUT);
@@ -914,7 +918,7 @@ void setup(void)
     WiServer.init(sendPage);
   }
   else
-#endif  /* APP_WISERVER */
+#endif  /* HEATERMETER_NETWORKING */
     Menus.setState(ST_HOME_AMB);
 }
 
@@ -924,13 +928,13 @@ void loop(void)
   if (pid.doWork())
   {
     updateDisplay();
-#ifdef APP_WISERVER
+#ifdef HEATERMETER_NETWORKING
     //storeTemps();
   }
   if (g_NetworkInitialized)
     WiServer.server_task(); 
 #else
   }
-#endif /* APP_WISERVER */
+#endif /* HEATERMETER_NETWORKING */
 }
 
