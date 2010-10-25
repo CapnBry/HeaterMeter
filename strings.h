@@ -23,6 +23,8 @@ const prog_char LCD_LIDOPENDUR1[] PROGMEM = "Lid open timer";
 const prog_char LCD_LIDOPENDUR2[] PROGMEM = "%3d seconds";
 const prog_char LCD_MANUALMODE[] PROGMEM = "Manual fan mode";
 const prog_char LCD_RESETCONFIG[] PROGMEM = "Reset config?";
+const prog_char LCD_MAXFANSPEED[] PROGMEM = "Maximum auto fan";
+const prog_char LCD_MAXFANSPEED2[] PROGMEM = "speed %d%%";
 const prog_char LCD_YES[] PROGMEM = "Yes";
 const prog_char LCD_NO[] PROGMEM = "No ";
 

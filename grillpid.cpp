@@ -6,6 +6,9 @@
 // Set this define to log2(samples) to adjust the number of samples
 #define TEMP_AVG_COUNT_LOG2 3
 
+// The minimum fan speed (%) that activates the "long pulse" mode
+#define MINIMUM_FAN_SPEED 10
+
 #define TEMPPROBE_AVG_SMOOTH (1.0f/30.0f)
 #define FANSPEED_AVG_SMOOTH (1.0f/120.0f)
 
@@ -78,10 +81,10 @@ inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
 
   // anti-windup: Make sure we only adjust the I term while
   // inside the proportional control range
-  // Note that I still allow the errorSum to degrade within N degrees even if 
+  // Note that I still allow the errorSum to degrade within 1 degree even if 
   // the fan is off because it is much easier for the sum to increase than
   // decrease due to the fan generally being at 0 once it passes the SetPoint
-  if (!(_fanSpeed >= 100 && error > 0) && 
+  if (!(_fanSpeed >= MaxFanSpeed && error > 0) && 
       !(_fanSpeed <= 0   && error < -1.0f))
     _pidErrorSum += (error * Pid[PIDI]);
 
@@ -89,44 +92,54 @@ inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
   float averageTemp = controlProbe->TemperatureAvg;
   control = Pid[PIDB] + Pid[PIDP] * (error + _pidErrorSum - (Pid[PIDD] * (currentTemp - averageTemp)));
   
-  if (control >= 100.0f)
-    _fanSpeed = 100;
+  if (control >= MaxFanSpeed)
+    _fanSpeed = MaxFanSpeed;
   else if (control <= 0.0f)
     _fanSpeed = 0;
   else
     _fanSpeed = control;
 }
 
-void GrillPid::resetLidOpenResumeCountdown(void)
-{
-  LidOpenResumeCountdown = LidOpenDuration;
-}
-
 void GrillPid::commitFanSpeed(void)
 {
   calcExpMovingAverage(FANSPEED_AVG_SMOOTH, &FanSpeedAvg, _fanSpeed);
 
-  /* 10% or greater fan speed, we do a normal PWM write.
-     For below 10% we use a "long pulse PWM", where the pulse is 
-     10 seconds in length.  For each percent we are emulating, run
-     the fan for one interval.
-  */
-  if (_fanSpeed >= 10)
+  /* For anything above MINIMUM_FAN_SPEED, do a nomal PWM write.
+     For below MINIMUM_FAN_SPEED we use a "long pulse PWM", where 
+     the pulse is 10 seconds in length.  For each percent we are 
+     emulating, run the fan for one interval. */
+  if (_fanSpeed >= MINIMUM_FAN_SPEED)
   {
     analogWrite(_blowerPin, _fanSpeed * 255 / 100);
     _longPwmTmr = 0;
   }
   else
   {
-    // Simple PWM, ON for first [FanSpeed] seconds then OFF 
+    // Simple PWM, ON for first [FanSpeed] intervals then OFF 
     // for the remainder of the period
     unsigned char pwmVal;
-    pwmVal = (_fanSpeed > _longPwmTmr) ? 255/10 : 0; // 10% or 0%
+    pwmVal = (_fanSpeed > _longPwmTmr) ? 255/MINIMUM_FAN_SPEED : 0;
     
     analogWrite(_blowerPin, pwmVal);
+    // Long PWM period is 10 intervals
     if (++_longPwmTmr > 9)
       _longPwmTmr = 0;
   }  /* long PWM */
+}
+
+boolean GrillPid::isAnyFoodProbeActive(void)
+{
+  unsigned char i;
+  for (i=TEMP_FOOD1; i<TEMP_COUNT; i++)
+    if (Probes[i]->Temperature != 0.0f)
+      return true;
+      
+  return false;
+}
+  
+void GrillPid::resetLidOpenResumeCountdown(void)
+{
+  LidOpenResumeCountdown = LidOpenDuration;
 }
 
 void GrillPid::setSetPoint(int value)
@@ -167,8 +180,8 @@ boolean GrillPid::doWork(void)
 
   if (!_manualFanMode)
   {
-    // Always feed the PID loop even if the lid detect is active.  It may
-    // mess with the error sum but we end up tracking better when control resumes
+    // Always feed the PID loop even if the lid detect is active.  
+    // We end up tracking better when control resumes
     calcFanSpeed(Probes[TEMP_PIT]);
     int pitTemp = Probes[TEMP_PIT]->Temperature;
     if (pitTemp == 0)

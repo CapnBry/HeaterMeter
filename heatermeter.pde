@@ -83,6 +83,7 @@ const struct PROGMEM __eeprom_data {
   unsigned int lidOpenDuration;
   float pidConstants[4]; // constants are stored Kb, Kp, Ki, Kd
   boolean manualMode;
+  unsigned char maxFanSpeed;  // in percent
 } DEFAULT_CONFIG PROGMEM = { 
   EEPROM_MAGIC,  // magic
   225,  // setpoint
@@ -91,7 +92,8 @@ const struct PROGMEM __eeprom_data {
   15,  // lid open offset
   240, // lid open duration
   { 5.0f, 5.0f, 0.002f, 5.0f },
-  false // manual mode
+  false, // manual mode
+  100
 };
 
 // Menu configuration parameters ------------------------
@@ -104,24 +106,27 @@ const struct PROGMEM __eeprom_data {
 #define ST_HOME_FOOD1 (ST_VMAX+1) // ST_HOME_X must stay sequential and in order
 #define ST_HOME_FOOD2 (ST_VMAX+2)
 #define ST_HOME_AMB   (ST_VMAX+3)
-#define ST_CONNECTING (ST_VMAX+4)
-#define ST_SETPOINT   (ST_VMAX+5)
-#define ST_PROBENAME1 (ST_VMAX+6)  // ST_PROBENAMEX must stay sequential and in order
-#define ST_PROBENAME2 (ST_VMAX+7)
-#define ST_PROBENAME3 (ST_VMAX+8)
-#define ST_PROBEOFF0  (ST_VMAX+9)  // ST_PROBEOFFX must stay sequential and in order
-#define ST_PROBEOFF1  (ST_VMAX+10)
-#define ST_PROBEOFF2  (ST_VMAX+11)
-#define ST_PROBEOFF3  (ST_VMAX+12)
-#define ST_LIDOPEN_OFF (ST_VMAX+13)
-#define ST_LIDOPEN_DUR (ST_VMAX+14)
-#define ST_MANUALMODE  (ST_VMAX+15)
-#define ST_RESETCONFIG (ST_VMAX+16)
+#define ST_HOME_NOPROBES (ST_VMAX+4)
+#define ST_CONNECTING (ST_VMAX+5)
+#define ST_SETPOINT   (ST_VMAX+6)
+#define ST_PROBENAME1 (ST_VMAX+7)  // ST_PROBENAMEX must stay sequential and in order
+#define ST_PROBENAME2 (ST_VMAX+8)
+#define ST_PROBENAME3 (ST_VMAX+9)
+#define ST_PROBEOFF0  (ST_VMAX+10) // ST_PROBEOFFX must stay sequential and in order
+#define ST_PROBEOFF1  (ST_VMAX+11)
+#define ST_PROBEOFF2  (ST_VMAX+12)
+#define ST_PROBEOFF3  (ST_VMAX+13)
+#define ST_LIDOPEN_OFF (ST_VMAX+14)
+#define ST_LIDOPEN_DUR (ST_VMAX+15)
+#define ST_MANUALMODE  (ST_VMAX+16)
+#define ST_RESETCONFIG (ST_VMAX+17)
+#define ST_MAXFANSPEED (ST_VMAX+18)
 
 const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_HOME_FOOD1, menuHome, 5 },
   { ST_HOME_FOOD2, menuHome, 5 },
   { ST_HOME_AMB, menuHome, 5 },
+  { ST_HOME_NOPROBES, menuHome, 1 },
   { ST_CONNECTING, menuConnecting, 2 },
   { ST_SETPOINT, menuSetpoint, 10 },
   { ST_MANUALMODE, menuManualMode, 10 },
@@ -135,6 +140,7 @@ const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_LIDOPEN_OFF, menuLidOpenOff, 10 },
   { ST_LIDOPEN_DUR, menuLidOpenDur, 10 },
   { ST_RESETCONFIG, menuResetConfig, 10 },
+  { ST_MAXFANSPEED, menuMaxFanSpeed, 10 },
   { 0, 0 },
 };
 
@@ -151,12 +157,20 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   { ST_HOME_AMB, BUTTON_RIGHT,     ST_SETPOINT },
   { ST_HOME_AMB, BUTTON_UP,        ST_HOME_FOOD2 },
 
+  { ST_HOME_NOPROBES, BUTTON_DOWN | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_HOME_NOPROBES, BUTTON_RIGHT,ST_SETPOINT },
+  { ST_HOME_NOPROBES, BUTTON_UP,   ST_HOME_AMB },
+
   { ST_SETPOINT, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_SETPOINT, BUTTON_RIGHT, ST_MANUALMODE },
   // UP and DOWN are caught in handler
 
   { ST_MANUALMODE, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  { ST_MANUALMODE, BUTTON_RIGHT, ST_PROBENAME1 },
+  { ST_MANUALMODE, BUTTON_RIGHT, ST_MAXFANSPEED },
+  // UP and DOWN are caught in handler
+  
+  { ST_MAXFANSPEED, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_MAXFANSPEED, BUTTON_RIGHT, ST_PROBENAME1 },
   // UP and DOWN are caught in handler
 
   { ST_PROBENAME1, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
@@ -249,6 +263,12 @@ boolean storeProbeOffset(unsigned char probeIndex, char offset)
   return true;
 }
 
+void storeMaxFanSpeed(unsigned char maxFanSpeed)
+{
+  pid.MaxFanSpeed = maxFanSpeed;
+  eeprom_write(maxFanSpeed, maxFanSpeed);
+}
+
 void updateDisplay(void)
 {
   // Updates to the temperature can come at any time, only update 
@@ -283,8 +303,18 @@ void updateDisplay(void)
 
   // Rotating probe display
   unsigned char probeIndex = Menus.State - ST_HOME_FOOD1 + 1;
-  loadProbeName(probeIndex);
-  snprintf_P(buffer, sizeof(buffer), LCD_LINE2, editString, (int)pid.Probes[probeIndex]->Temperature);
+  if (probeIndex < TEMP_COUNT)
+  {
+    loadProbeName(probeIndex);
+    snprintf_P(buffer, sizeof(buffer), LCD_LINE2, editString, (int)pid.Probes[probeIndex]->Temperature);
+  }
+  else
+  {
+    // If probeIndex is outside the range (in the case of ST_HOME_NOPROBES)
+    // just fill the bottom line with spaces
+    memset(buffer, ' ', sizeof(buffer));
+    buffer[sizeof(buffer-1)] = 0;
+  }
 
   lcd.setCursor(0, 1);
   lcd.print(buffer);
@@ -294,10 +324,15 @@ state_t menuHome(button_t button)
 {
   if (button == BUTTON_ENTER)
   {
-    if (Menus.State == ST_HOME_FOOD1 && pid.Probes[TEMP_FOOD1]->Temperature == 0)
+    if (!pid.isAnyFoodProbeActive())
+      return ST_HOME_NOPROBES;
+    else if (Menus.State == ST_HOME_FOOD1 && pid.Probes[TEMP_FOOD1]->Temperature == 0)
       return ST_HOME_FOOD2;
     else if (Menus.State == ST_HOME_FOOD2 && pid.Probes[TEMP_FOOD2]->Temperature == 0)
       return ST_HOME_AMB;
+    else if (Menus.State == ST_HOME_AMB && pid.Probes[TEMP_AMB]->Temperature == 0)
+      return ST_HOME_FOOD1;
+        
     updateDisplay();
   }
   // In manual fan mode Up is +5% Down is -5% and Left is -1%
@@ -582,6 +617,23 @@ state_t menuResetConfig(button_t button)
       eepromLoadConfig(true);
   }
   menuBooleanEdit(button);
+  return ST_AUTO;
+}
+
+state_t menuMaxFanSpeed(button_t button)
+{
+  if (button == BUTTON_ENTER)
+  {
+    lcdprint_P(LCD_MAXFANSPEED, true);
+    editInt = pid.MaxFanSpeed;
+  }
+  else if (button == BUTTON_LEAVE)
+  {
+    if (editInt != pid.MaxFanSpeed)
+      storeMaxFanSpeed(editInt);
+  }
+  
+  menuNumberEdit(button, 5, LCD_MAXFANSPEED2);
   return ST_AUTO;
 }
 
@@ -887,6 +939,7 @@ void eepromLoadConfig(boolean forceDefault)
   pid.setSetPoint(config.setPoint);
   pid.LidOpenOffset = config.lidOpenOffset;
   pid.LidOpenDuration = config.lidOpenDuration;
+  pid.MaxFanSpeed = config.maxFanSpeed;
   memcpy(pid.Pid, config.pidConstants, sizeof(config.pidConstants));
   if (config.manualMode)
     pid.setFanSpeed(0);

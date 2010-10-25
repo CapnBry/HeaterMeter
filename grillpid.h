@@ -55,6 +55,7 @@ private:
   boolean _pitTemperatureReached;
   int _setPoint;
   boolean _manualFanMode;
+  unsigned char _maxFanSpeed;
   // Counter used for "long PWM" mode
   unsigned char _longPwmTmr;
   
@@ -66,7 +67,8 @@ public:
     _blowerPin(blowerPin), FanSpeedAvg(-1.0f)
     //_lastTempRead(0), _accumulatedCount(0), 
     //_pitTemperatureReached(false), FanSpeed(0), _fanSpeedPwm(0),
-    //_pidErrorSum(0.0f), _longPwmTmr(0), _manualFanMode(false)
+    //_pidErrorSum(0.0f), _longPwmTmr(0), _manualFanMode(false),
+    // MaxFanSpeed(0)
     {};
   
   TempProbe *Probes[TEMP_COUNT];
@@ -80,6 +82,8 @@ public:
   unsigned int LidOpenDuration;
   // The PID constants
   float Pid[4];
+  // The maximum fan speed that will be used in automatic mode
+  unsigned char MaxFanSpeed;
   
   /* Runtime Data */
   // Current fan speed in percent, setting this will put the fan into manual mode
@@ -90,6 +94,8 @@ public:
   float FanSpeedAvg;
   // Seconds remaining in the lid open countdown
   unsigned int LidOpenResumeCountdown;
+  // true if any probe has a non-zero temperature
+  boolean isAnyFoodProbeActive(void);
   
   // Call this in loop()
   boolean doWork(void);
