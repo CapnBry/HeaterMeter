@@ -55,7 +55,6 @@ private:
   boolean _pitTemperatureReached;
   int _setPoint;
   boolean _manualFanMode;
-  unsigned char _maxFanSpeed;
   // Counter used for "long PWM" mode
   unsigned char _longPwmTmr;
   
