@@ -86,11 +86,8 @@ inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
 
   // anti-windup: Make sure we only adjust the I term while
   // inside the proportional control range
-  // Note that I still allow the errorSum to degrade within 1 degree even if 
-  // the fan is off because it is much easier for the sum to increase than
-  // decrease due to the fan generally being at 0 once it passes the SetPoint
-  if (!(_fanSpeed >= MaxFanSpeed && error > 0) && 
-      !(_fanSpeed <= 0   && error < -1.0f))
+  if ((error > 0 && _fanSpeed < MaxFanSpeed) ||
+      (error < 0 && _fanSpeed > 0))
     _pidErrorSum += (error * Pid[PIDI]);
 
   // the B and P terms are in 0-100 scale, but the I and D terms are dependent on degrees    
