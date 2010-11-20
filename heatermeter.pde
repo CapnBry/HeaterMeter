@@ -91,9 +91,9 @@ const struct PROGMEM __eeprom_data {
   { 0, 0, 0 },  // probe offsets
   15,  // lid open offset
   240, // lid open duration
-  { 5.0f, 5.0f, 0.002f, 5.0f },
+  { 5.0f, 4.0f, 0.002f, 4.0f },
   false, // manual mode
-  100
+  100  // max fan speed
 };
 
 // Menu configuration parameters ------------------------
