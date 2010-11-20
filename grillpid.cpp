@@ -70,9 +70,14 @@ inline void TempProbe::calcTemp(void)
 /* Calucluate the desired fan speed using the proportional–integral-derivative (PID) controller algorithm */
 inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
 {
+  _fanSpeed = 0;
+   
   float currentTemp = controlProbe->Temperature;
   // If the pit probe is registering 0 degrees, don't jack the fan up to MAX
   if (currentTemp == 0.0f)
+    return;
+  // If we're in lid open mode, fan should be off
+  if (LidOpenResumeCountdown != 0)
     return;
 
   float error;
@@ -94,9 +99,7 @@ inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
   
   if (control >= MaxFanSpeed)
     _fanSpeed = MaxFanSpeed;
-  else if (control <= 0.0f)
-    _fanSpeed = 0;
-  else
+  else if (control > 0.0f)
     _fanSpeed = control;
 }
 
@@ -140,6 +143,7 @@ boolean GrillPid::isAnyFoodProbeActive(void)
 void GrillPid::resetLidOpenResumeCountdown(void)
 {
   LidOpenResumeCountdown = LidOpenDuration;
+  _pitTemperatureReached = false;
 }
 
 void GrillPid::setSetPoint(int value)
@@ -180,15 +184,13 @@ boolean GrillPid::doWork(void)
 
   if (!_manualFanMode)
   {
-    // Always feed the PID loop even if the lid detect is active.  
-    // We end up tracking better when control resumes
-    calcFanSpeed(Probes[TEMP_PIT]);
-    int pitTemp = Probes[TEMP_PIT]->Temperature;
-    if (pitTemp == 0)
-    {
-      _fanSpeed = 0;
-    }
-    else if (pitTemp >= _setPoint)
+    // Always calculate the fan speed
+    // calFanSpeed() will bail if it isn't supposed to be in control
+    TempProbe *probePit = Probes[TEMP_PIT];
+    calcFanSpeed(probePit);
+    
+    int pitTemp = probePit->Temperature;
+    if (pitTemp >= _setPoint)
     {
       // When we first achieve temperature, reset any P sum we accumulated during startup
       // If we actually neded that sum to achieve temperature we'll rebuild it, and it
@@ -203,7 +205,6 @@ boolean GrillPid::doWork(void)
     else if (LidOpenResumeCountdown != 0)
     {
       --LidOpenResumeCountdown;
-      _fanSpeed = 0;
     }
     // If the pit temperature dropped has more than [lidOpenOffset] degrees 
     // after reaching temp, and the fan has not been running more than 90% of 
@@ -211,7 +212,6 @@ boolean GrillPid::doWork(void)
     else if (_pitTemperatureReached && ((_setPoint - pitTemp) > (int)LidOpenOffset) && FanSpeedAvg < 90.0f)
     {
       resetLidOpenResumeCountdown();
-      _pitTemperatureReached = false;
     }
   }   /* if !manualFanMode */
   commitFanSpeed();
