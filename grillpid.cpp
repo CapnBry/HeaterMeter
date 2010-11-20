@@ -81,7 +81,6 @@ inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
     return;
 
   float error;
-  float control;
   error = _setPoint - currentTemp;
 
   // anti-windup: Make sure we only adjust the I term while
@@ -92,11 +91,12 @@ inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
 
   // the B and P terms are in 0-100 scale, but the I and D terms are dependent on degrees    
   float averageTemp = controlProbe->TemperatureAvg;
-  control = Pid[PIDB] + Pid[PIDP] * (error + _pidErrorSum - (Pid[PIDD] * (currentTemp - averageTemp)));
+  int control 
+    = Pid[PIDB] + Pid[PIDP] * (error + _pidErrorSum - (Pid[PIDD] * (currentTemp - averageTemp)));
   
   if (control >= MaxFanSpeed)
     _fanSpeed = MaxFanSpeed;
-  else if (control > 0.0f)
+  else if (control > 0)
     _fanSpeed = control;
 }
 
