@@ -70,6 +70,7 @@ inline void TempProbe::calcTemp(void)
 /* Calucluate the desired fan speed using the proportional–integral-derivative (PID) controller algorithm */
 inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
 {
+  unsigned char lastFanSpeed = _fanSpeed;
   _fanSpeed = 0;
    
   float currentTemp = controlProbe->Temperature;
@@ -85,8 +86,8 @@ inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
 
   // anti-windup: Make sure we only adjust the I term while
   // inside the proportional control range
-  if ((error > 0 && _fanSpeed < MaxFanSpeed) ||
-      (error < 0 && _fanSpeed > 0))
+  if ((error > 0 && lastFanSpeed < MaxFanSpeed) ||
+      (error < 0 && lastFanSpeed > 0))
     _pidErrorSum += (error * Pid[PIDI]);
 
   // the B and P terms are in 0-100 scale, but the I and D terms are dependent on degrees    
