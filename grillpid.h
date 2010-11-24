@@ -25,9 +25,9 @@ class TempProbe
 private:
   const struct steinhart_param *_steinhart;
   const unsigned char _pin; 
+  unsigned int _accumulator;
   
 public:
-  unsigned int _accumulator;
   TempProbe(const unsigned char pin, const struct steinhart_param *steinhart) : 
     _pin(pin), _steinhart(steinhart), TemperatureAvg(-1.0f)
     // Temperature(0), Offset(0)
