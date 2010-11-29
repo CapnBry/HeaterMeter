@@ -27,6 +27,7 @@ const prog_char LCD_MAXFANSPEED[] PROGMEM = "Maximum auto fan";
 const prog_char LCD_MAXFANSPEED2[] PROGMEM = "speed %d%%";
 const prog_char LCD_YES[] PROGMEM = "Yes";
 const prog_char LCD_NO[] PROGMEM = "No ";
+const prog_char LCD_CONFIGURE[] PROGMEM = "v probe config v";
 
 #ifdef HEATERMETER_NETWORKING
 const prog_char WEB_OK[] PROGMEM = "OK\n";

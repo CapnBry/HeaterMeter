@@ -22,7 +22,38 @@ void calcExpMovingAverage(const float smooth, float *currAverage, float newValue
     *currAverage = *currAverage + (smooth * newValue);
   }
 }
-      
+
+void ProbeAlarm::updateStatus(int value)
+{
+  if (Status & HIGH_ENABLED != 0)
+    if (value >= _high) 
+      Status |= HIGH_RINGING;
+    else
+      Status &= ~(HIGH_RINGING | HIGH_SILENCED);
+
+  if (Status & LOW_ENABLED != 0)
+    if (value <= _low) 
+      Status |= LOW_RINGING;
+    else
+      Status &= ~(LOW_RINGING | LOW_SILENCED);
+}
+
+void ProbeAlarm::setHigh(int value)
+{
+  _high = value;
+  Status &= ~(HIGH_ENABLED | HIGH_RINGING | HIGH_SILENCED);
+  if (value)
+    Status |= HIGH_ENABLED;
+}
+
+void ProbeAlarm::setLow(int value)
+{
+  _low = value;
+  Status &= ~(LOW_ENABLED | LOW_RINGING | LOW_SILENCED);
+  if (value)
+    Status |= LOW_ENABLED;
+}
+
 inline void TempProbe::readTemp(void)
 {
   unsigned int analog_temp = analogRead(_pin);
@@ -63,6 +94,7 @@ inline void TempProbe::calcTemp(void)
     {
       Temperature += Offset;
       calcExpMovingAverage(TEMPPROBE_AVG_SMOOTH, &TemperatureAvg, Temperature);
+      Alarms.updateStatus(Temperature);
     }
   } 
 }

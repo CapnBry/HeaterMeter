@@ -121,6 +121,26 @@ const struct PROGMEM __eeprom_data {
 #define ST_MANUALMODE  (ST_VMAX+16)
 #define ST_RESETCONFIG (ST_VMAX+17)
 #define ST_MAXFANSPEED (ST_VMAX+18)
+#define ST_PROBESUB0   (ST_VMAX+19)  // ST_PROBESUBX must stay sequential and in order
+#define ST_PROBESUB1   (ST_VMAX+20)
+#define ST_PROBESUB2   (ST_VMAX+21)
+#define ST_PROBESUB3   (ST_VMAX+22)
+#define ST_PALARM0_H_ON  (ST_VMAX+23)
+#define ST_PALARM1_H_ON  (ST_VMAX+24)
+#define ST_PALARM2_H_ON  (ST_VMAX+25)
+#define ST_PALARM3_H_ON  (ST_VMAX+26)
+#define ST_PALARM0_H_VAL (ST_VMAX+27)
+#define ST_PALARM1_H_VAL (ST_VMAX+28)
+#define ST_PALARM2_H_VAL (ST_VMAX+29)
+#define ST_PALARM3_H_VAL (ST_VMAX+30)
+#define ST_PALARM0_L_ON  (ST_VMAX+31)
+#define ST_PALARM1_L_ON  (ST_VMAX+32)
+#define ST_PALARM2_L_ON  (ST_VMAX+33)
+#define ST_PALARM3_L_ON  (ST_VMAX+34)
+#define ST_PALARM0_L_VAL (ST_VMAX+35)
+#define ST_PALARM1_L_VAL (ST_VMAX+36)
+#define ST_PALARM2_L_VAL (ST_VMAX+37)
+#define ST_PALARM3_L_VAL (ST_VMAX+38)
 
 const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_HOME_FOOD1, menuHome, 5 },
@@ -130,6 +150,10 @@ const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_CONNECTING, menuConnecting, 2 },
   { ST_SETPOINT, menuSetpoint, 10 },
   { ST_MANUALMODE, menuManualMode, 10 },
+  { ST_PROBESUB0, menuProbeSubmenu, 10 },
+  { ST_PROBESUB1, menuProbeSubmenu, 10 },
+  { ST_PROBESUB2, menuProbeSubmenu, 10 },
+  { ST_PROBESUB3, menuProbeSubmenu, 10 },
   { ST_PROBENAME1, menuProbename, 10 },
   { ST_PROBENAME2, menuProbename, 10 },
   { ST_PROBENAME3, menuProbename, 10 },
@@ -170,10 +194,14 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   // UP and DOWN are caught in handler
   
   { ST_MAXFANSPEED, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  { ST_MAXFANSPEED, BUTTON_RIGHT, ST_PROBENAME1 },
+  { ST_MAXFANSPEED, BUTTON_RIGHT, ST_PROBESUB1 },
   // UP and DOWN are caught in handler
 
-  { ST_PROBENAME1, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_PROBESUB1, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_PROBESUB1, BUTTON_RIGHT, ST_PROBESUB2 },
+  { ST_PROBESUB1, BUTTON_DOWN | BUTTON_UP, ST_PROBENAME1 },
+  
+  { ST_PROBENAME1, BUTTON_LEFT | BUTTON_TIMEOUT, ST_PROBESUB1 },
   { ST_PROBENAME1, BUTTON_RIGHT, ST_PROBEOFF1 },
   // UP, DOWN caught in handler
   { ST_PROBEOFF1, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
@@ -544,6 +572,21 @@ state_t menuProbeOffset(button_t button)
     storeProbeOffset(probeIndex, editInt);
 
   menuNumberEdit(button, 1, LCD_PROBEOFFSET2);
+  return ST_AUTO;
+}
+
+state_t menuProbeSubmenu(button_t button)
+{
+  unsigned char probeIndex = Menus.State - ST_PROBESUB0;
+  if (button == BUTTON_ENTER)
+  {
+    loadProbeName(probeIndex);
+    lcd.clear();
+    lcd.print(editString);
+    lcd.setCursor(0, 1);  
+    lcdprint_P(LCD_CONFIGURE, false);
+  }
+  
   return ST_AUTO;
 }
 
@@ -953,6 +996,12 @@ void setup(void)
   pid.Probes[TEMP_FOOD1] = &probe1;
   pid.Probes[TEMP_FOOD2] = &probe2;
   pid.Probes[TEMP_AMB] = &probe3;
+  
+  pid.Probes[TEMP_PIT]->Alarms.setHigh(200);
+  pid.Probes[TEMP_PIT]->Alarms.setLow(1);
+
+  Serial.print(pid.Probes[TEMP_PIT]->Alarms.getHigh());
+  Serial.print(pid.Probes[TEMP_PIT]->Alarms.getLow());
 
   eepromLoadConfig(false);
   

@@ -14,11 +14,43 @@ struct steinhart_param
     float A, B, C; 
 };
 
-// Indexes into the pid array
-#define PIDB 0
-#define PIDP 1
-#define PIDI 2
-#define PIDD 3
+class ProbeAlarm
+{
+private:
+  int _high;
+  int _low;
+public:
+  ProbeAlarm(void) 
+    // : _high(0), _low(0), Status(0)
+    {};
+
+  // High and Low thresholds
+  // Combination of constants below  
+  unsigned char Status;   
+  // Check value against High/Low
+  void updateStatus(int value);
+  void setHigh(int value);
+  void setLow(int value);
+  int getHigh(void) const { return _high; };
+  int getLow(void) const { return _low; };
+  
+/*
+  ProbeAlarm ALARM constants used in ProbeAlarm::Status
+  ENABLED: Whether the check is enabled.  A disabled alarm
+           will not ring
+  RINGING: The alarm is "going off", in that the check has 
+           reached or passed the high/low bound
+  SILENCED: The alarm has failed the check and is ringing,
+           but the user has requested the alarm stop notifying
+  */          
+  static const unsigned char NONE         = 0x00;
+  static const unsigned char HIGH_ENABLED = 0x01;
+  static const unsigned char LOW_ENABLED  = 0x02;
+  static const unsigned char HIGH_RINGING = 0x04;
+  static const unsigned char LOW_RINGING  = 0x08;
+  static const unsigned char HIGH_SILENCED = 0x10;
+  static const unsigned char LOW_SILENCED  = 0x20;
+};
 
 class TempProbe
 {
@@ -43,7 +75,15 @@ public:
   void readTemp(void);
   // Convert ADC to Temperature
   void calcTemp(void);
+  
+  ProbeAlarm Alarms;
 };
+
+// Indexes into the pid array
+#define PIDB 0
+#define PIDP 1
+#define PIDI 2
+#define PIDD 3
 
 class GrillPid
 {
