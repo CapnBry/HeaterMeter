@@ -3,8 +3,7 @@
 #include "grillpid.h"
 
 // The temperatures are averaged over 1, 2, 4 or 8 samples
-// Set this define to log2(samples) to adjust the number of samples
-#define TEMP_AVG_COUNT_LOG2 3
+#define TEMP_AVG_COUNT 8
 
 // The minimum fan speed (%) that activates the "long pulse" mode
 #define MINIMUM_FAN_SPEED 10
@@ -65,7 +64,7 @@ inline void TempProbe::calcTemp(void)
   const float Rknown = 22000.0f;
   const float Vin = 1023.0f;  
 
-  unsigned int Vout = _accumulator >> TEMP_AVG_COUNT_LOG2;
+  unsigned int Vout = _accumulator / TEMP_AVG_COUNT;
   _accumulator = 0; 
   
   if ((Vout == 0) || (Vout >= (unsigned int)Vin))
@@ -198,7 +197,7 @@ void GrillPid::setFanSpeed(int value)
 boolean GrillPid::doWork(void)
 {
   unsigned long m = millis();
-  if ((m - _lastTempRead) < (1000 >> TEMP_AVG_COUNT_LOG2))
+  if ((m - _lastTempRead) < (1000 / TEMP_AVG_COUNT))
     return false;
   _lastTempRead = m;
 
@@ -206,7 +205,7 @@ boolean GrillPid::doWork(void)
   for (i=0; i<TEMP_COUNT; i++)
     Probes[i]->readTemp();
     
-  if (++_accumulatedCount < (1 << TEMP_AVG_COUNT_LOG2))
+  if (++_accumulatedCount < TEMP_AVG_COUNT)
     return false;
     
   for (i=0; i<TEMP_COUNT; i++)
