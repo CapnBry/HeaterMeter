@@ -1,6 +1,8 @@
 #ifndef __FLASHFILES_H__
 #define __FLASHFILES_H__
 
+#include <avr\pgmspace.h>
+
 #define DATAFLASH_PAGE_BYTES 528
 
 const char FNAME000[] PROGMEM = "favicon.ico";
