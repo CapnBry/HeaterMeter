@@ -464,6 +464,8 @@ void eepromLoadConfig(boolean forceDefault)
 
 void hmcoreSetup(void)
 {
+  //analogReference(EXTERNAL);
+  
   pid.Probes[TEMP_PIT] = &probe0;
   pid.Probes[TEMP_FOOD1] = &probe1;
   pid.Probes[TEMP_FOOD2] = &probe2;
@@ -472,8 +474,8 @@ void hmcoreSetup(void)
   pid.Probes[TEMP_PIT]->Alarms.setHigh(200);
   pid.Probes[TEMP_PIT]->Alarms.setLow(1);
 
-  Serial.print(pid.Probes[TEMP_PIT]->Alarms.getHigh());
-  Serial.print(pid.Probes[TEMP_PIT]->Alarms.getLow());
+  //Serial.print(pid.Probes[TEMP_PIT]->Alarms.getHigh());
+  //Serial.print(pid.Probes[TEMP_PIT]->Alarms.getLow());
 
   eepromLoadConfig(false);
 
