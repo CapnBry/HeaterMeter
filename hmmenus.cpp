@@ -14,9 +14,9 @@ const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_PROBESUB1, menuProbeSubmenu, 10 },
   { ST_PROBESUB2, menuProbeSubmenu, 10 },
   { ST_PROBESUB3, menuProbeSubmenu, 10 },
-  { ST_PROBENAME1, menuProbename, 10 },
-  { ST_PROBENAME2, menuProbename, 10 },
-  { ST_PROBENAME3, menuProbename, 10 },
+//  { ST_PROBENAME1, menuProbename, 10 },
+//  { ST_PROBENAME2, menuProbename, 10 },
+//  { ST_PROBENAME3, menuProbename, 10 },
   { ST_PROBEOFF0, menuProbeOffset, 10 },
   { ST_PROBEOFF1, menuProbeOffset, 10 },
   { ST_PROBEOFF2, menuProbeOffset, 10 },
@@ -25,6 +25,8 @@ const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_LIDOPEN_DUR, menuLidOpenDur, 10 },
   { ST_RESETCONFIG, menuResetConfig, 10 },
   { ST_MAXFANSPEED, menuMaxFanSpeed, 10 },
+  { ST_PALARM1_H_ON, menuProbeAlarmOn, 10 },
+  { ST_PALARM1_H_VAL, menuProbeAlarmVal, 10 },
   { 0, 0 },
 };
 
@@ -57,26 +59,31 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   { ST_MAXFANSPEED, BUTTON_RIGHT, ST_PROBESUB1 },
   // UP and DOWN are caught in handler
 
+  /* Probe 1 Submenu */
   { ST_PROBESUB1, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_PROBESUB1, BUTTON_RIGHT, ST_PROBESUB2 },
-  { ST_PROBESUB1, BUTTON_DOWN | BUTTON_UP, ST_PROBENAME1 },
+  { ST_PROBESUB1, BUTTON_DOWN | BUTTON_UP, ST_PROBEOFF1 },
+//  { ST_PROBENAME1, BUTTON_LEFT | BUTTON_TIMEOUT, ST_PROBESUB1 },
+//  { ST_PROBENAME1, BUTTON_RIGHT, ST_PROBEOFF1 },
+  { ST_PROBEOFF1, BUTTON_LEFT, ST_PROBESUB1 },
+  { ST_PROBEOFF1, BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_PROBEOFF1, BUTTON_RIGHT, ST_PALARM1_H_ON },
+  { ST_PALARM1_H_ON, BUTTON_LEFT, ST_PROBESUB1 },
+  { ST_PALARM1_H_ON, BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_PALARM1_H_ON, BUTTON_RIGHT, ST_PALARM1_H_VAL },
+  { ST_PALARM1_H_VAL, BUTTON_LEFT, ST_PROBESUB1 },
+  { ST_PALARM1_H_VAL, BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_PALARM1_H_VAL, BUTTON_RIGHT, ST_PROBEOFF1 },
   
-  { ST_PROBENAME1, BUTTON_LEFT | BUTTON_TIMEOUT, ST_PROBESUB1 },
-  { ST_PROBENAME1, BUTTON_RIGHT, ST_PROBEOFF1 },
-  // UP, DOWN caught in handler
-  { ST_PROBEOFF1, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  { ST_PROBEOFF1, BUTTON_RIGHT, ST_PROBENAME2 },
-  // UP, DOWN caught in handler
-  
-  { ST_PROBENAME2, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  { ST_PROBENAME2, BUTTON_RIGHT, ST_PROBEOFF2 },
+//  { ST_PROBENAME2, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+//  { ST_PROBENAME2, BUTTON_RIGHT, ST_PROBEOFF2 },
   // UP, DOWN caught in handler
   { ST_PROBEOFF2, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  { ST_PROBEOFF2, BUTTON_RIGHT, ST_PROBENAME3 },
+  { ST_PROBEOFF2, BUTTON_RIGHT, ST_PROBEOFF3 },
   // UP, DOWN caught in handler
 
-  { ST_PROBENAME3, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  { ST_PROBENAME3, BUTTON_RIGHT, ST_PROBEOFF3 },
+//  { ST_PROBENAME3, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+//  { ST_PROBENAME3, BUTTON_RIGHT, ST_PROBEOFF3 },
   // UP, DOWN caught in handler
   { ST_PROBEOFF3, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_PROBEOFF3, BUTTON_RIGHT, ST_PROBEOFF0 },
@@ -131,6 +138,13 @@ button_t readButton(void)
     return BUTTON_RIGHT;  
     
   return BUTTON_NONE;
+}
+
+void menuProbenameLine(unsigned char probeIndex)
+{
+    loadProbeName(probeIndex);
+    lcd.clear();
+    lcd.print(editString);
 }
 
 state_t menuHome(button_t button)
@@ -188,12 +202,14 @@ state_t menuConnecting(button_t button)
   return ST_AUTO;
 }
 
-void menuBooleanEdit(button_t button)
+void menuBooleanEdit(button_t button, const prog_char *preamble)
 {
   if (button == BUTTON_UP || button == BUTTON_DOWN)
     editInt = !editInt;
 
   lcd.setCursor(0, 1);
+  if (preamble != NULL)
+    lcdprint_P(preamble, false);
   lcdprint_P((editInt != 0) ? LCD_YES : LCD_NO, false);
 }
 
@@ -227,6 +243,7 @@ void menuNumberEdit(button_t button, unsigned char increment,
     (State) - If the edit is completed and the caller should commit the new value
               the current Menu State is returned. The menu will return to read-only state
 */            
+/*
 state_t menuStringEdit(button_t button, const char *line1, unsigned char maxLength)
 {
   static unsigned char editPos = 0;
@@ -294,6 +311,7 @@ state_t menuStringEdit(button_t button, const char *line1, unsigned char maxLeng
   
   return ST_AUTO;
 }
+*/
 
 state_t menuSetpoint(button_t button)
 {
@@ -312,6 +330,7 @@ state_t menuSetpoint(button_t button)
   return ST_AUTO;
 }
 
+/*
 state_t menuProbename(button_t button)
 {
   char buffer[17];
@@ -331,6 +350,7 @@ state_t menuProbename(button_t button)
     
   return retVal;
 }
+*/
 
 state_t menuProbeOffset(button_t button)
 {
@@ -338,9 +358,7 @@ state_t menuProbeOffset(button_t button)
   
   if (button == BUTTON_ENTER)
   {
-    loadProbeName(probeIndex);
-    lcd.clear();
-    lcd.print(editString);
+    menuProbenameLine(probeIndex);
     editInt = pid.Probes[probeIndex]->Offset;
   }
   else if (button == BUTTON_LEAVE)
@@ -355,9 +373,7 @@ state_t menuProbeSubmenu(button_t button)
   unsigned char probeIndex = Menus.State - ST_PROBESUB0;
   if (button == BUTTON_ENTER)
   {
-    loadProbeName(probeIndex);
-    lcd.clear();
-    lcd.print(editString);
+    menuProbenameLine(probeIndex);
     lcd.setCursor(0, 1);  
     lcdprint_P(LCD_CONFIGURE, false);
   }
@@ -410,7 +426,7 @@ state_t menuManualMode(button_t button)
     if (manual != pid.getManualFanMode())
       storeSetPoint(manual ? 0 : pid.getSetPoint());
   }
-  menuBooleanEdit(button);
+  menuBooleanEdit(button, NULL);
   return ST_AUTO;
 }
 
@@ -426,7 +442,7 @@ state_t menuResetConfig(button_t button)
     if (editInt != 0)
       eepromLoadConfig(true);
   }
-  menuBooleanEdit(button);
+  menuBooleanEdit(button, NULL);
   return ST_AUTO;
 }
 
@@ -444,6 +460,48 @@ state_t menuMaxFanSpeed(button_t button)
   }
   
   menuNumberEdit(button, 5, LCD_MAXFANSPEED2);
+  return ST_AUTO;
+}
+
+state_t menuProbeAlarmOn(button_t button)
+{
+  // This function works for both low and high so determine which we're being called for
+  unsigned char highOrLow;
+  if (Menus.State >= ST_PALARM0_H_ON && Menus.State <= ST_PALARM3_H_ON)
+    highOrLow = ST_PALARM0_H_ON;
+  else
+    highOrLow = ST_PALARM0_L_ON;
+    
+  unsigned char probeIndex = Menus.State - highOrLow;
+  if (button == BUTTON_ENTER)
+  {
+    menuProbenameLine(probeIndex);
+    editInt = (highOrLow == ST_PALARM0_H_ON) ? pid.Probes[probeIndex]->Alarms.Status;
+    editInt &= ProbeAlarm::ANY_ENABLED;
+  }
+
+  menuBooleanEdit(button, (highOrLow == ST_PALARM0_H_ON) ? LCD_PALARM_H_ON : LCD_PALARM_L_ON);
+  return ST_AUTO;
+}
+
+state_t menuProbeAlarmVal(button_t button)
+{
+  // This function works for both low and high so determine which we're being called for
+  unsigned char highOrLow;
+  if (Menus.State >= ST_PALARM0_H_VAL && Menus.State <= ST_PALARM3_H_VAL)
+    highOrLow = ST_PALARM0_H_VAL;
+  else
+    highOrLow = ST_PALARM0_L_VAL;
+    
+  unsigned char probeIndex = Menus.State - highOrLow;
+  if (button == BUTTON_ENTER)
+  {
+    menuProbenameLine(probeIndex);
+    ProbeAlarm &alarm  =
+    editInt = (highOrLow == ST_PALARM0_H_VAL) ? pid.Probes[probeIndex]->Alarms.getHigh();
+  }
+  
+  menuNumberEdit(button, 5, (highOrLow == ST_PALARM0_H_VAL) ? LCD_PALARM_H_VAL : LCD_PALARM_H_VAL);
   return ST_AUTO;
 }
 

@@ -28,6 +28,10 @@ const prog_char LCD_MAXFANSPEED2[] PROGMEM = "speed %d%%";
 const prog_char LCD_YES[] PROGMEM = "Yes";
 const prog_char LCD_NO[] PROGMEM = "No ";
 const prog_char LCD_CONFIGURE[] PROGMEM = "v probe config v";
+const prog_char LCD_PALARM_H_ON[] PROGMEM = "High alarm? ";
+const prog_char LCD_PALARM_L_ON[] PROGMEM = "Low alarm? ";
+const prog_char LCD_PALARM_H_VAL[] PROGMEM = "High Alrm %4d"DEGREE"F";
+const prog_char LCD_PALARM_L_VAL[] PROGMEM = "High Alrm %4d"DEGREE"F";
 
 #ifdef HEATERMETER_NETWORKING
 const prog_char WEB_OK[] PROGMEM = "OK\n";
@@ -39,7 +43,9 @@ const prog_char URL_SETPNAME[] PROGMEM = "set?pn";
 const prog_char URL_SETPOFF[] PROGMEM = "set?po";
 const prog_char URL_CSV[] PROGMEM = "csv";
 const prog_char URL_JSON[] PROGMEM = "json";
+#ifdef DFLASH_LOGGING
 const prog_char URL_LOG[] PROGMEM = "log";
+#endif  /* DFLASH_LOGGING */
 
 const prog_char JSON1[] PROGMEM = "{\"temps\":[";
 const prog_char JSON_T1[] PROGMEM = "{\"n\":\"";

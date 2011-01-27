@@ -66,6 +66,8 @@ state_t menuLidOpenDur(button_t button);
 state_t menuManualMode(button_t button);
 state_t menuResetConfig(button_t button);
 state_t menuMaxFanSpeed(button_t button);
+state_t menuProbeAlarmOn(button_t button);
+state_t menuProbeAlarmVal(button_t button);
 
 extern MenuSystem Menus;
 extern int editInt;  

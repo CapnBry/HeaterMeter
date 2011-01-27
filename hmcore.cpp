@@ -2,12 +2,14 @@
 #include <avr/eeprom.h>
 
 #include "hmcore.h"
-#include "strings.h"
 
 #ifdef HEATERMETER_NETWORKING
 #include <WiServer.h>  
 #include <dataflash.h>
+//#define DFLASH_LOGGING
 #endif
+
+#include "strings.h"
 
 static TempProbe probe0(PIN_PIT,   &STEINHART[0]);
 static TempProbe probe1(PIN_FOOD1, &STEINHART[0]);
@@ -21,13 +23,11 @@ ShiftRegLCD lcd(PIN_LCD_DATA, PIN_LCD_CLK, TWO_WIRE, 2);
 static boolean g_NetworkInitialized;
 #endif /* HEATERMETER_NETWORKING */
 
-#define MIN(x,y) ( x > y ? y : x )
-#define eeprom_read_to(dst_p, eeprom_field, dst_size) eeprom_read_block(dst_p, (void *)offsetof(__eeprom_data, eeprom_field), MIN(dst_size, sizeof((__eeprom_data*)0)->eeprom_field))
-#define eeprom_read(dst, eeprom_field) eeprom_read_to(&dst, eeprom_field, sizeof(dst))
-#define eeprom_write_from(src_p, eeprom_field, src_size) eeprom_write_block(src_p, (void *)offsetof(__eeprom_data, eeprom_field), MIN(src_size, sizeof((__eeprom_data*)0)->eeprom_field))
-#define eeprom_write(src, eeprom_field) { typeof(src) x = src; eeprom_write_from(&x, eeprom_field, sizeof(x)); }
+#define config_store_byte(eeprom_field, src) { eeprom_write_byte((uint8_t *)offsetof(__eeprom_data, eeprom_field), src); }
+#define config_store_word(eeprom_field, src) { eeprom_write_word((uint16_t *)offsetof(__eeprom_data, eeprom_field), src); }
 
 #define EEPROM_MAGIC 0xf00d800
+#define PROBE_NAME_SIZE 13
 
 const struct PROGMEM __eeprom_data {
   long magic;
@@ -39,6 +39,12 @@ const struct PROGMEM __eeprom_data {
   float pidConstants[4]; // constants are stored Kb, Kp, Ki, Kd
   boolean manualMode;
   unsigned char maxFanSpeed;  // in percent
+  struct {
+    boolean henabled;
+    boolean lenabled;
+    int high;
+    int low;
+  } alarms[TEMP_COUNT];
 } DEFAULT_CONFIG PROGMEM = { 
   EEPROM_MAGIC,  // magic
   225,  // setpoint
@@ -48,7 +54,9 @@ const struct PROGMEM __eeprom_data {
   240, // lid open duration
   { 5.0f, 4.0f, 0.002f, 4.0f },
   false, // manual mode
-  100  // max fan speed
+  100,  // max fan speed
+  { { false, false, 200, 100 }, { false, false, 200, 100 }, 
+    { false, false, 200, 100 }, { false, false, 200, 100 } }
 };
 
 boolean storeProbeName(unsigned char probeIndex, const char *name)
@@ -56,32 +64,38 @@ boolean storeProbeName(unsigned char probeIndex, const char *name)
   if (probeIndex >= TEMP_COUNT)
     return false;
     
-  void *ofs = &((__eeprom_data*)0)->probeNames[probeIndex];
-  eeprom_write_block(name, ofs, PROBE_NAME_SIZE);
+  size_t ofs = offsetof(__eeprom_data, probeNames);
+  ofs += probeIndex * (PROBE_NAME_SIZE * sizeof(char));
+  eeprom_write_block(name, (void *)ofs, PROBE_NAME_SIZE);
   return true;
 }
 
 void loadProbeName(unsigned char probeIndex)
 {
-  void *ofs = &((__eeprom_data*)0)->probeNames[probeIndex];
-  eeprom_read_block(editString, ofs, PROBE_NAME_SIZE);
+  size_t ofs = offsetof(__eeprom_data, probeNames);
+  ofs += probeIndex * (PROBE_NAME_SIZE * sizeof(char));
+  eeprom_read_block(editString, (void *)ofs, PROBE_NAME_SIZE);
 }
 
 void storeSetPoint(int sp)
 {
   // If the setpoint is >0 that's an actual setpoint.  
   // 0 or less is a manual fan speed
+  boolean isManualMode;
   if (sp > 0)
   {
-    eeprom_write(sp, setPoint);
-    eeprom_write(false, manualMode);
+    config_store_word(setPoint, sp);
     pid.setSetPoint(sp);
+    
+    isManualMode = false;
   }
   else
   {
-    eeprom_write(true, manualMode);
     pid.setFanSpeed(-sp);
+    isManualMode = true;
   }
+
+  config_store_byte(manualMode, isManualMode);
 }
 
 boolean storeProbeOffset(unsigned char probeIndex, char offset)
@@ -89,8 +103,8 @@ boolean storeProbeOffset(unsigned char probeIndex, char offset)
   if (probeIndex >= TEMP_COUNT)
     return false;
     
-  uint8_t *ofs = (uint8_t *)&((__eeprom_data*)0)->probeTempOffsets[probeIndex];
   pid.Probes[probeIndex]->Offset = offset;
+  uint8_t *ofs = (uint8_t *)&((__eeprom_data*)0)->probeTempOffsets[probeIndex];
   eeprom_write_byte(ofs, offset);
   
   return true;
@@ -99,7 +113,7 @@ boolean storeProbeOffset(unsigned char probeIndex, char offset)
 void storeMaxFanSpeed(unsigned char maxFanSpeed)
 {
   pid.MaxFanSpeed = maxFanSpeed;
-  eeprom_write(maxFanSpeed, maxFanSpeed);
+  config_store_byte(maxFanSpeed, maxFanSpeed);
 }
 
 void updateDisplay(void)
@@ -172,7 +186,7 @@ boolean storePidParam(char which, float value)
   const unsigned char k = pos - PID_ORDER;
   pid.Pid[k] = value;
   
-  uint8_t *ofs = (uint8_t *)&((__eeprom_data*)0)->pidConstants[k];
+  void *ofs = (void *)&((__eeprom_data*)0)->pidConstants[k];
   eeprom_write_block(&pid.Pid[k], ofs, sizeof(value));
 
   return true;
@@ -181,17 +195,18 @@ boolean storePidParam(char which, float value)
 void storeLidOpenOffset(unsigned char value)
 {
   pid.LidOpenOffset = value;    
-  eeprom_write(pid.LidOpenOffset, lidOpenOffset);
+  config_store_byte(lidOpenOffset, value);
 }
 
 void storeLidOpenDuration(unsigned int value)
 {
   pid.LidOpenDuration = value;    
-  eeprom_write(pid.LidOpenDuration, lidOpenDuration);
+  config_store_word(lidOpenDuration, value);
 }
 
 #ifdef HEATERMETER_NETWORKING
 
+#ifdef DFLASH_LOGGING
 struct temp_log_record {
   unsigned int temps[TEMP_COUNT]; 
   unsigned char fan;
@@ -254,6 +269,39 @@ void storeTemps(void)
   flashRingBufferWrite(&temp_log);
 }
 
+void outputLog(void)
+{
+  unsigned char head = dflash.Buffer_Read_Byte(1, 0);
+  unsigned char tail = dflash.Buffer_Read_Byte(1, 1);
+  
+  while (head != tail)
+  {
+    struct temp_log_record p;
+    unsigned int addr = (head + 1) * sizeof(p);
+    dflash.Buffer_Read_Str(1, addr, sizeof(p), (unsigned char *)&p);
+    RING_POINTER_INC(head);
+    
+    char offset;
+    int temp;
+    unsigned char i;
+    for (i=0; i<TEMP_COUNT; i++)
+    {
+      temp = p.temps[i] & 0x1ff;
+      WiServer.print(temp,DEC);  // temperature
+      WiServer.print_P(COMMA);
+      offset = p.temps[i] >> 9;
+      WiServer.print(temp + offset,DEC);  // average
+      WiServer.print_P(COMMA);
+    }
+    
+    WiServer.print(p.fan,DEC);
+    WiServer.print_P(COMMA);
+    WiServer.println(p.fan_avg,DEC);
+  }  
+  dflash.DF_CS_inactive();
+}
+#endif  /* DFLASH_LOGGING */
+
 #define HTTP_HEADER_LENGTH 19 // "HTTP/1.0 200 OK\r\n\r\n"
 void sendFlashFile(const struct flash_file_t *file)
 {
@@ -286,38 +334,6 @@ void sendFlashFile(const struct flash_file_t *file)
   
   // Pretend that we've sent the whole file
   app->cursor = (char *)(HTTP_HEADER_LENGTH + size);
-}
-
-void outputLog(void)
-{
-  unsigned char head = dflash.Buffer_Read_Byte(1, 0);
-  unsigned char tail = dflash.Buffer_Read_Byte(1, 1);
-  
-  while (head != tail)
-  {
-    struct temp_log_record p;
-    unsigned int addr = (head + 1) * sizeof(p);
-    dflash.Buffer_Read_Str(1, addr, sizeof(p), (unsigned char *)&p);
-    RING_POINTER_INC(head);
-    
-    char offset;
-    int temp;
-    unsigned char i;
-    for (i=0; i<TEMP_COUNT; i++)
-    {
-      temp = p.temps[i] & 0x1ff;
-      WiServer.print(temp,DEC);  // temperature
-      WiServer.print_P(COMMA);
-      offset = p.temps[i] >> 9;
-      WiServer.print(temp + offset,DEC);  // average
-      WiServer.print_P(COMMA);
-    }
-    
-    WiServer.print(p.fan,DEC);
-    WiServer.print_P(COMMA);
-    WiServer.println(p.fan_avg,DEC);
-  }  
-  dflash.DF_CS_inactive();
 }
 
 void outputCsv(void)
@@ -382,11 +398,13 @@ boolean sendPage(char* URL)
     outputCsv();
     return true;    
   }
+#ifdef DFLASH_LOGGING  
   if (strcmp_P(URL, URL_LOG) == 0) 
   {
     outputLog();
     return true;    
   }
+#endif  /* DFLASH_LOGGING */
   if (strncmp_P(URL, URL_SETPOINT, 7) == 0) 
   {
     storeSetPoint(atoi(URL + 7));
@@ -439,6 +457,19 @@ boolean sendPage(char* URL)
 }
 #endif /* HEATERMETER_NETWORKING */
 
+void checkAlarms(void)
+{
+  unsigned char i;
+  for (i=0; i<TEMP_COUNT; i++)
+    if (pid.Probes[i]->Alarms.getActionNeeded())
+    {
+      tone(PIN_ALARM, 440);  // 440Hz = A4
+      return;
+    }
+    
+  noTone(PIN_ALARM);
+}
+
 void eepromLoadConfig(boolean forceDefault)
 {
   struct __eeprom_data config;
@@ -451,7 +482,14 @@ void eepromLoadConfig(boolean forceDefault)
 
   unsigned char i;
   for (i=0; i<TEMP_COUNT; i++)
+  {
     pid.Probes[i]->Offset = config.probeTempOffsets[i];
+    pid.Probes[i]->Alarms.setHigh(config.alarms[i].high);
+    pid.Probes[i]->Alarms.setLow(config.alarms[i].low);
+    pid.Probes[i]->Alarms.Status =
+      config.alarms[i].henabled & ProbeAlarm::HIGH_ENABLED |
+      config.alarms[i].lenabled & ProbeAlarm::LOW_ENABLED;
+  }
     
   pid.setSetPoint(config.setPoint);
   pid.LidOpenOffset = config.lidOpenOffset;
@@ -464,15 +502,17 @@ void eepromLoadConfig(boolean forceDefault)
 
 void hmcoreSetup(void)
 {
-  //analogReference(EXTERNAL);
+#ifdef USE_EXTERNAL_VREF  
+  analogReference(EXTERNAL);
+#endif
   
   pid.Probes[TEMP_PIT] = &probe0;
   pid.Probes[TEMP_FOOD1] = &probe1;
   pid.Probes[TEMP_FOOD2] = &probe2;
   pid.Probes[TEMP_AMB] = &probe3;
   
-  pid.Probes[TEMP_PIT]->Alarms.setHigh(200);
-  pid.Probes[TEMP_PIT]->Alarms.setLow(1);
+  //pid.Probes[TEMP_PIT]->Alarms.setHigh(200);
+  //pid.Probes[TEMP_PIT]->Alarms.setLow(1);
 
   //Serial.print(pid.Probes[TEMP_PIT]->Alarms.getHigh());
   //Serial.print(pid.Probes[TEMP_PIT]->Alarms.getLow());
@@ -485,7 +525,9 @@ void hmcoreSetup(void)
   pinMode(PIN_WIFI_SS, OUTPUT);
   digitalWrite(PIN_WIFI_SS, HIGH);
   dflash.init(PIN_DATAFLASH_SS);
+#ifdef DFLASH_LOGGING
   flashRingBufferInit();
+#endif  /* DFLASH_LOGGING */
   
   g_NetworkInitialized = readButton() == BUTTON_NONE;
   if (g_NetworkInitialized)  
@@ -503,9 +545,13 @@ void hmcoreLoop(void)
   Menus.doWork();
   if (pid.doWork())
   {
+    checkAlarms();
     updateDisplay();
+    
 #ifdef HEATERMETER_NETWORKING
-    //storeTemps();
+#ifdef DFLASH_LOGGING
+    storeTemps();
+#endif  /* DFLASH_LOGGING */
   }
   if (g_NetworkInitialized)
     WiServer.server_task(); 

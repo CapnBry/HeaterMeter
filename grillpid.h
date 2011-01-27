@@ -34,6 +34,8 @@ public:
   void setLow(int value);
   int getHigh(void) const { return _high; };
   int getLow(void) const { return _low; };
+  // Any Enabled and ringing but not silenced
+  boolean getActionNeeded(void) const;
   
 /*
   ProbeAlarm ALARM constants used in ProbeAlarm::Status
@@ -47,10 +49,14 @@ public:
   static const unsigned char NONE         = 0x00;
   static const unsigned char HIGH_ENABLED = 0x01;
   static const unsigned char LOW_ENABLED  = 0x02;
+  static const unsigned char ANY_ENABLED  = (HIGH_ENABLED | LOW_ENABLED);
   static const unsigned char HIGH_RINGING = 0x04;
   static const unsigned char LOW_RINGING  = 0x08;
+  static const unsigned char ANY_RINGING  = (HIGH_RINGING | LOW_RINGING);
   static const unsigned char HIGH_SILENCED = 0x10;
   static const unsigned char LOW_SILENCED  = 0x20;
+  static const unsigned char HIGH_MASK    = (HIGH_ENABLED | HIGH_RINGING | HIGH_SILENCED);
+  static const unsigned char LOW_MASK     = (LOW_ENABLED | LOW_RINGING | LOW_SILENCED);
 };
 
 class TempProbe
