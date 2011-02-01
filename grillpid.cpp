@@ -60,10 +60,15 @@ boolean ProbeAlarm::getActionNeeded(void) const
     ((Status & LOW_MASK) == (LOW_ENABLED | LOW_RINGING));
 }
 
-inline void TempProbe::readTemp(void)
+inline void TempProbe::readTemp(unsigned char num)
 {
   unsigned int analog_temp = analogRead(_pin);
-  _accumulator += analog_temp;
+  // If we get *any* analogReads that are 0, the measurement for the
+  // entire period is invalidated, so set the _accumulator to 0
+  if (num == 0 || analog_temp == 0)
+    _accumulator = analog_temp;
+  else
+    _accumulator += analog_temp;
 }
 
 inline void TempProbe::calcTemp(void)
@@ -72,7 +77,6 @@ inline void TempProbe::calcTemp(void)
   const float Vin = 1023.0f;  
 
   unsigned int Vout = _accumulator / TEMP_AVG_COUNT;
-  _accumulator = 0; 
   
   if ((Vout == 0) || (Vout >= (unsigned int)Vin))
   {
@@ -210,7 +214,7 @@ boolean GrillPid::doWork(void)
 
   unsigned char i;
   for (i=0; i<TEMP_COUNT; i++)
-    Probes[i]->readTemp();
+    Probes[i]->readTemp(_accumulatedCount);
     
   if (++_accumulatedCount < TEMP_AVG_COUNT)
     return false;

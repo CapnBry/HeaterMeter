@@ -81,7 +81,8 @@ public:
   // Offset (in degrees) applied when calculating temperature
   char Offset;
   // Do the duty of reading ADC
-  void readTemp(void);
+  // num is the number of times the ADC has been read already this cycle
+  void readTemp(unsigned char num);
   // Convert ADC to Temperature
   void calcTemp(void);
   
