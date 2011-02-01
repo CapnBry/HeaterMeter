@@ -154,7 +154,7 @@ state_t menuHome(button_t button)
 {
   if (button == BUTTON_ENTER)
   {
-    if (!pid.isAnyFoodProbeActive())
+    if (Menus.State != ST_HOME_NOPROBES && !pid.isAnyFoodProbeActive())
       return ST_HOME_NOPROBES;
     else if (Menus.State == ST_HOME_FOOD1 && pid.Probes[TEMP_FOOD1]->Temperature == 0)
       return ST_HOME_FOOD2;
