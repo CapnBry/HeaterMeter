@@ -120,7 +120,7 @@ void updateDisplay(void)
 {
   // Updates to the temperature can come at any time, only update 
   // if we're in a state that displays them
-  if (Menus.State < ST_HOME_FOOD1 || Menus.State > ST_HOME_AMB)
+  if (Menus.State < ST_HOME_FOOD1 || Menus.State > ST_HOME_NOPROBES)
     return;
   char buffer[17];
 
@@ -160,7 +160,7 @@ void updateDisplay(void)
     // If probeIndex is outside the range (in the case of ST_HOME_NOPROBES)
     // just fill the bottom line with spaces
     memset(buffer, ' ', sizeof(buffer));
-    buffer[sizeof(buffer-1)] = 0;
+    buffer[sizeof(buffer) - 1] = '\0';
   }
 
   lcd.setCursor(0, 1);
