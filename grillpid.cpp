@@ -41,21 +41,20 @@ void ProbeAlarm::setHigh(int value)
 {
   _high = value;
   Status &= ~HIGH_MASK;
-  if (value)
-    Status |= HIGH_ENABLED;
+//  if (value)
+//    Status |= HIGH_ENABLED;
 }
 
 void ProbeAlarm::setLow(int value)
 {
   _low = value;
   Status &= ~LOW_MASK;
-  if (value)
-    Status |= LOW_ENABLED;
+//  if (value)
+//    Status |= LOW_ENABLED;
 }
 
 boolean ProbeAlarm::getActionNeeded(void) const
 {
-  // returns 
   return
     ((Status & HIGH_MASK) == (HIGH_ENABLED | HIGH_RINGING)) ||
     ((Status & LOW_MASK) == (LOW_ENABLED | LOW_RINGING));

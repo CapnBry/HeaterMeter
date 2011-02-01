@@ -55,8 +55,10 @@ public:
   static const unsigned char ANY_RINGING  = (HIGH_RINGING | LOW_RINGING);
   static const unsigned char HIGH_SILENCED = 0x10;
   static const unsigned char LOW_SILENCED  = 0x20;
-  static const unsigned char HIGH_MASK    = (HIGH_ENABLED | HIGH_RINGING | HIGH_SILENCED);
-  static const unsigned char LOW_MASK     = (LOW_ENABLED | LOW_RINGING | LOW_SILENCED);
+  static const unsigned char HIGH_NOTIFIED = 0x40;
+  static const unsigned char LOW_NOTIFIED  = 0x80;
+  static const unsigned char HIGH_MASK    = (HIGH_ENABLED | HIGH_RINGING | HIGH_SILENCED | HIGH_NOTIFIED);
+  static const unsigned char LOW_MASK     = (LOW_ENABLED | LOW_RINGING | LOW_SILENCED | LOW_NOTIFIED);
 };
 
 class TempProbe

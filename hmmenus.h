@@ -55,8 +55,10 @@ state_t menuStringEdit(button_t button, const char *line1, unsigned char maxLeng
 
 button_t readButton(void);
 
-state_t menuHome(button_t button);
+#ifdef HEATERMETER_NETWORKING
 state_t menuConnecting(button_t button);
+#endif  /* HEATERMETER_NETWORKING */
+state_t menuHome(button_t button);
 state_t menuSetpoint(button_t button);
 state_t menuProbename(button_t button);
 state_t menuProbeOffset(button_t button);

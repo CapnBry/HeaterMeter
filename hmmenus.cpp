@@ -3,11 +3,13 @@
 #include "strings.h"
 
 const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
+#ifdef HEATERMETER_NETWORKING
+  { ST_CONNECTING, menuConnecting, 2 },
+#endif  /* HEATERMETER_NETWORKING */
   { ST_HOME_FOOD1, menuHome, 5 },
   { ST_HOME_FOOD2, menuHome, 5 },
   { ST_HOME_AMB, menuHome, 5 },
   { ST_HOME_NOPROBES, menuHome, 1 },
-  { ST_CONNECTING, menuConnecting, 2 },
   { ST_SETPOINT, menuSetpoint, 10 },
   { ST_MANUALMODE, menuManualMode, 10 },
   { ST_PROBESUB0, menuProbeSubmenu, 10 },
@@ -31,6 +33,9 @@ const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
 };
 
 const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
+#ifdef HEATERMETER_NETWORKING
+  { ST_CONNECTING, BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+#endif  /* HEATERMETER_NETWORKING */
   { ST_HOME_FOOD1, BUTTON_DOWN | BUTTON_TIMEOUT, ST_HOME_FOOD2 },
   { ST_HOME_FOOD1, BUTTON_RIGHT,   ST_SETPOINT },
   { ST_HOME_FOOD1, BUTTON_UP,      ST_HOME_AMB },
@@ -105,8 +110,6 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   { ST_RESETCONFIG, BUTTON_RIGHT, ST_SETPOINT },
   // UP, DOWN caught in handler
 
-  { ST_CONNECTING, BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  
   { 0, 0, 0 },
 };
 
@@ -191,16 +194,16 @@ state_t menuHome(button_t button)
   return ST_AUTO;
 }
 
+#ifdef HEATERMETER_NETWORKING
 state_t menuConnecting(button_t button)
 {
-#ifdef HEATERMETER_NETWORKING
   lcdprint_P(LCD_CONNECTING, true); 
   lcd.setCursor(0, 1);
   lcdprint_P(ssid, false);
-#endif /* HEATERMETER_NETWORKING */
 
   return ST_AUTO;
 }
+#endif /* HEATERMETER_NETWORKING */
 
 void menuBooleanEdit(button_t button, const prog_char *preamble)
 {
@@ -322,6 +325,8 @@ state_t menuSetpoint(button_t button)
   }
   else if (button == BUTTON_LEAVE)
   {
+    // Check to see if it is different because the setPoint 
+    // field stores either the setPoint or manual mode
     if (editInt != pid.getSetPoint())
       storeSetPoint(editInt);
   }
@@ -418,10 +423,12 @@ state_t menuManualMode(button_t button)
   if (button == BUTTON_ENTER)
   {
     lcdprint_P(LCD_MANUALMODE, true);
-    editInt = pid.getManualFanMode() ? !0 : 0;    
+    editInt = pid.getManualFanMode();    
   }
   else if (button == BUTTON_LEAVE)
   {
+    // Check to see if it is different because the setPoint 
+    // field stores either the setPoint or manual mode
     boolean manual = (editInt != 0); 
     if (manual != pid.getManualFanMode())
       storeSetPoint(manual ? 0 : pid.getSetPoint());
@@ -476,8 +483,13 @@ state_t menuProbeAlarmOn(button_t button)
   if (button == BUTTON_ENTER)
   {
     menuProbenameLine(probeIndex);
-    editInt = (highOrLow == ST_PALARM0_H_ON) ? pid.Probes[probeIndex]->Alarms.Status;
-    editInt &= ProbeAlarm::ANY_ENABLED;
+    unsigned char whichMask = (highOrLow == ST_PALARM0_H_ON) ? ProbeAlarm::HIGH_ENABLED : ProbeAlarm::LOW_ENABLED;
+    editInt = pid.Probes[probeIndex]->Alarms.Status & whichMask;
+  }
+  else if (button == BUTTON_LEAVE)
+  {
+//    boolean val = (editInt != 0);
+//    if 
   }
 
   menuBooleanEdit(button, (highOrLow == ST_PALARM0_H_ON) ? LCD_PALARM_H_ON : LCD_PALARM_L_ON);
@@ -497,8 +509,8 @@ state_t menuProbeAlarmVal(button_t button)
   if (button == BUTTON_ENTER)
   {
     menuProbenameLine(probeIndex);
-    ProbeAlarm &alarm  =
-    editInt = (highOrLow == ST_PALARM0_H_VAL) ? pid.Probes[probeIndex]->Alarms.getHigh();
+    ProbeAlarm &alarm  = pid.Probes[probeIndex]->Alarms;
+    editInt = (highOrLow == ST_PALARM0_H_VAL) ? alarm.getHigh() : alarm.getLow();
   }
   
   menuNumberEdit(button, 5, (highOrLow == ST_PALARM0_H_VAL) ? LCD_PALARM_H_VAL : LCD_PALARM_H_VAL);

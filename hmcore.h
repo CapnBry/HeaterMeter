@@ -43,10 +43,12 @@ void updateDisplay(void);
 void lcdprint_P(const prog_char *p, const boolean doClear);
 
 void eepromLoadConfig(boolean forceDefault);
+void storeSetPoint(int sp);
 boolean storeProbeName(unsigned char probeIndex, const char *name);
 void loadProbeName(unsigned char probeIndex);
-void storeSetPoint(int sp);
 boolean storeProbeOffset(unsigned char probeIndex, char offset);
+void storeProbeAlarmOn(unsigned char probeIndex, boolean isHigh, boolean value);
+void storeProbeAlarmVal(unsigned char probeIndex, boolean isHigh, int value);
 boolean storePidParam(char which, float value);
 void storeMaxFanSpeed(unsigned char maxFanSpeed);
 void storeLidOpenOffset(unsigned char value);

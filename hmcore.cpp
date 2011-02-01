@@ -26,7 +26,7 @@ static boolean g_NetworkInitialized;
 #define config_store_byte(eeprom_field, src) { eeprom_write_byte((uint8_t *)offsetof(__eeprom_data, eeprom_field), src); }
 #define config_store_word(eeprom_field, src) { eeprom_write_word((uint16_t *)offsetof(__eeprom_data, eeprom_field), src); }
 
-#define EEPROM_MAGIC 0xf00d800
+#define EEPROM_MAGIC 0xf00d8000
 #define PROBE_NAME_SIZE 13
 
 const struct PROGMEM __eeprom_data {
@@ -52,7 +52,7 @@ const struct PROGMEM __eeprom_data {
   { 0, 0, 0 },  // probe offsets
   15,  // lid open offset
   240, // lid open duration
-  { 5.0f, 4.0f, 0.002f, 4.0f },
+  { 5.0f, 4.0f, 0.002f, 2.5f },
   false, // manual mode
   100,  // max fan speed
   { { false, false, 200, 100 }, { false, false, 200, 100 }, 
@@ -149,7 +149,7 @@ void updateDisplay(void)
   lcd.print(buffer); 
 
   // Rotating probe display
-  unsigned char probeIndex = Menus.State - ST_HOME_FOOD1 + 1;
+  unsigned char probeIndex = Menus.State - ST_HOME_FOOD1 + TEMP_FOOD1;
   if (probeIndex < TEMP_COUNT)
   {
     loadProbeName(probeIndex);
@@ -502,6 +502,9 @@ void eepromLoadConfig(boolean forceDefault)
 
 void hmcoreSetup(void)
 {
+#ifdef HEATERMETER_SERIAL
+  Serial.begin(19200);
+#endif
 #ifdef USE_EXTERNAL_VREF  
   analogReference(EXTERNAL);
 #endif
@@ -510,12 +513,6 @@ void hmcoreSetup(void)
   pid.Probes[TEMP_FOOD1] = &probe1;
   pid.Probes[TEMP_FOOD2] = &probe2;
   pid.Probes[TEMP_AMB] = &probe3;
-  
-  //pid.Probes[TEMP_PIT]->Alarms.setHigh(200);
-  //pid.Probes[TEMP_PIT]->Alarms.setLow(1);
-
-  //Serial.print(pid.Probes[TEMP_PIT]->Alarms.getHigh());
-  //Serial.print(pid.Probes[TEMP_PIT]->Alarms.getLow());
 
   eepromLoadConfig(false);
 

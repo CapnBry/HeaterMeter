@@ -37,7 +37,6 @@ unsigned char security_passphrase_len;
 
 void setup(void)
 {
-  Serial.begin(57600);
   hmcoreSetup();
 }
 
