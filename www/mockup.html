@@ -3,121 +3,133 @@
 <head>
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <title>HeaterMeter BBQ Control</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.5.0/jquery.min.js" type="text/javascript" charset="utf-8"></script>
+<script src="http://capnbry.net/cdn/jeditable/jquery.jeditable.mini.js" type="text/javascript" charset="utf-8"></script>
 <script type="text/javascript">
-var xmlhttp;
-var tmrTimeout = 0;
+ $(document).ready(function()
+ {
+	//do an initial query
+	JSONQuery();
+	
+	//Begin a background timer that will 
+	//execute the query every 10 seconds
+	window.setInterval(JSONQuery, 10000);
+	
+	$(".pname").editable(function(value, settings) { 
+		 return(nameChanged(this.id, value));
+	 });
+	 
+	$("#set").editable(function(value, settings) { 
+		 return(tempChanged(value));
+	 }, {style: "display: inline"});
+});
 
-function loadurl(dest, callback) 
-{ 
-	try { 
-		xmlhttp = window.XMLHttpRequest ? new XMLHttpRequest(): new ActiveXObject("Microsoft.XMLHTTP"); 
-	} catch (e) { 
-		return;
-	} 
- 
-	xmlhttp.onreadystatechange = callback; 
-	xmlhttp.open("GET", dest); 
-	xmlhttp.send(null); 
-} 
-
-function connectFailed()
+function nameChanged(from, value)
 {
-	xmlhttp.abort();
-	tmrTimeout = 0;
-	getData();
+	$.get("set", { from: value} );
+	return value;
 }
- 
-function setTemp(idx, o)
-{
-    var val = o.temps[idx].c;
-	var elem = document.getElementById("temp" + idx);
-	var slopeIndic = "";
 
-	if (val == 0)
-	  elem.innerHTML = "off";
+function tempChanged(value)
+{
+	if(((value - 0) == value && value.length > 0) && value > 0 && value < 999)
+	{
+		$.get("set", { "sp": value} );
+		return value;
+	}
+	else return "err";
+}
+
+function JSONQuery()
+{
+	if($(document).has('form').length == 0)
+	{
+		jQuery.ajax(
+		{
+			type: "GET",
+			url: "json",
+			dataType: "json",
+			timeout: 5000,
+			success: function(data) { connectionSuccess(data); },
+			error: function () { connectionFailure(); }
+		});
+	}
+}
+
+function connectionSuccess(o)
+{
+	$("#set").text(o.set);
+
+	for(var i = 0; i < 4; i++)
+	{
+	    var slopeIndic = "";
+		
+		$("#pn" + i).text(o.temps[i].n);
+		var val = o.temps[i].c;
+		if(val == 0)
+			$("#temp" + i).text("off");
+		else
+		{
+			$("#temp" + i).html(val.toFixed(1) + "&deg;");
+		
+			val -= o.temps[i].a;
+			if(val > 1)
+				slopeIndic = "5px solid #f00";
+			else if(val < -1)
+				slopeIndic = "5px solid #00f";
+		}
+		$("#temp" + i).css("border-right", slopeIndic);
+		
+		$(".fana").css("width", o.fan.a + "%");
+		$("#fanc").css("width", o.fan.c + "%");
+	}
+	
+	updateTime(true);
+}
+
+//either the request timed out or something else happened
+function connectionFailure()
+{
+	updateTime(false);
+}
+
+//update the "last updated" time
+function updateTime(success)
+{
+	var color = "#bbb";
+	var amPM;
+	var hours;
+	var minutes;
+	var seconds;
+	
+	if(!success)
+		color = "#red";
+	
+	var date = new Date();
+	
+	if(date.getHours() > 12)
+	{
+		hours = date.getHours() - 12;
+		amPM = "PM";
+	}
 	else
 	{
-	  elem.innerHTML = "&nbsp;" + val.toFixed(1) + "&deg;"
-	  val -= o.temps[idx].a;
-	  if (val > 1)
-	    slopeIndic = "5px solid #f00";
-	  else if (val < -1)
-	    slopeIndic = "5px solid #00f";
+		hours = date.getHours();
+		amPM = "AM";
 	}
-	elem.style.borderRight = slopeIndic;
-}
-function setPName(idx, o)
-{
-	document.getElementById("name" + idx).innerHTML = o.temps[idx].n; 
-}
-
-function triggered() 
-{ 
-	//console.log("readyState=" + xmlhttp.readyState + " status=" + xmlhttp.status);
-	if ((xmlhttp.readyState == 4) && (xmlhttp.status == 200))
-	{
-		if (tmrTimeout != 0)
-		{
-			clearTimeout(tmrTimeout);
-			tmrTimeout = 0;
-		}
-		var oTemps = JSON.parse(xmlhttp.responseText, null);
-		document.getElementById("set").innerHTML = "Set " + oTemps.set + "&deg;"; 
-		document.getElementById("fanc").style.width = oTemps.fan.c + "%";
-		document.getElementById("fana1").style.width = oTemps.fan.a + "%";
-		document.getElementById("fana2").style.width = oTemps.fan.a + "%";
-		
-		for (i=0; i<4; i++)
-			setTemp(i, oTemps);
-		for (i=1; i<4; i++)
-			setPName(i, oTemps);
+	if(date.getMinutes() < 10)
+		minutes = "0" + date.getMinutes();
+	else minutes = date.getMinutes();
+	if(date.getSeconds() < 10)
+		seconds = "0" + date.getSeconds();
+	else seconds = date.getSeconds();
 	
-		setTimeout("getData()", 10000);
-	} 
-} 
-function getData()
-{
-	tmrTimeout = setTimeout(connectFailed, 5000);
-	loadurl("json", triggered);
+	$("#updatedtime").text(hours + ":" + minutes + ":" + seconds + " " + amPM);
+	$("#updatedtime").css('color', color);
 }
 
-function setSetPoint()
-{
-  hideModals();
-  loadurl("set?sp=" + frmEditSetPoint.elements["sp"].value, null);
-}
-
-function editProbe(idx)
-{
-	frmEditProbe.elements["pnum"].value = idx;
-	frmEditProbe.elements["pname"].value = document.getElementById("name" + idx).innerHTML;
-	document.getElementById("edit-probe-header").innerHTML = "Edit Probe " + idx;
-	var over = document.getElementById("modal-overlay");
-	var elem = document.getElementById("edit-probename");
-	//over.innerHTML = elem.innerHTML;
-	over.style.display = "";
-	elem.style.left = ((window.innerWidth - parseInt(elem.style.width)) / 2) + "px";
-	elem.style.display = "";
-
-	frmEditProbe.elements["pname"].focus();
-	frmEditProbe.elements["pname"].select();
-}
-
-function hideModals()
-{
-	document.getElementById("modal-overlay").style.display = "none";
-	document.getElementById("edit-probename").style.display = "none";
-	document.getElementById("edit-setpoint").style.display = "none";
-}
-
-function setProbe()
-{
-	hideModals();
-}
-function editSetPoint()
-{
-}
 </script>
+
 <style type="text/css">
 body { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; color: #fff; background: #000; text-align: center; margin: 0; padding: 0; }
 div.content { background: #264464; background: rgba(76,135,199,0.5); border: 1px solid #47607b; }
@@ -125,60 +137,41 @@ table.probelist { width: 100%; background: #84a6b2; background: rgba(99, 162, 23
 td.probe { width: 33%; }
 div.pname { color: #263241; font-size: 18pt; line-height: 12pt;}
 div.ptemp { font-size: 32pt; line-height: 26pt; text-shadow: #111 1px 1px; }
-#modal-overlay { z-index: 100; background: #000; opacity: 0.7; position:fixed; top:0px; left:0px; width: 100%; height: 100%; }
-div.edit-dialog { z-index: 101; background: #333; border: 4px solid #444; padding: 4px; color: #bbb; text-align: left; position: fixed; top: 10px; }
-input.edit-box { border: 1px solid #bbb; border-left: 3px solid #65b43d; background: #000; color: #bbb; }
-span.edit-header { color: #5f87ae; font-size: 18pt; }
 </style>
 </head>
-<body onload="getData()">
+
+<body>
 <div style="background: url('fire.png'); background-repeat:repeat-x; padding: 10px;">
 	<div class="content">
 		<div style="color: #bbb; font-size: 30pt;">Current Pit</div>
+		<div id="updatedtime" style="position: absolute; top: 10px; right: 15px; color: #bbb; font-size: 12pt;">00:00:00 AM</div>
 		<div style="font-size: 128pt; line-height: 100pt; text-shadow: #000 2px 2px;" id="temp0">---</div>
-		<div style="font-size: 24pt; text-align: right;" id="set" onclick="editSetPoint()">Set ---</div>
-		
+		<div style="font-size: 24pt; text-align: right;">
+			<div style="display: inline">Set </div>
+			<div style="display: inline" id="set">---</div><div style="display: inline">°</div>
+		</div> 
+
 		<div style="background: #35537d; border: 1px solid #777; width:100%; height: 20px; magin: 1px; position: relative">
-		  <div id="fana1" style="background: #08a; width: 0%; height: 4px; border-top-right-radius: 2px;"></div>
+		  <div class="fana" style="background: #08a; width: 0%; height: 4px; border-top-right-radius: 2px;"></div>
 		  <div id="fanc" style="background: #0ad; width: 0%; height: 12px; border-top-right-radius: 3px; border-bottom-right-radius: 3px;"></div>
-		  <div id="fana2" style="background: #08a; width: 0%; height: 4px; border-bottom-right-radius: 2px;"></div>
+		  <div class="fana" style="background: #08a; width: 0%; height: 4px; border-bottom-right-radius: 2px;"></div>
 		  <div style="position: absolute; top: -1px; left: 2px; color: #222;">Blower Speed</div>
 		</div>
-		
+
 		<table class="probelist"><tr>
-		  <td class="probe" onclick="editProbe(1)" style="border-right: 1px solid #243e5b;">
-		    <div class="pname" id="name1">-</div><div class="ptemp" id="temp1">-</div>
+		  <td class="probe" style="border-right: 1px solid #243e5b;">
+		    <div class="pname" style="display: inline" id="pn1">-</div><div class="ptemp" id="temp1">-</div>
 		  </td>
-		  <td class="probe" onclick="editProbe(2)">
-  		    <div class="pname" id="name2">-</div><div class="ptemp" id="temp2">-</div>
+		  <td class="probe">
+  		    <div class="pname" style="display: inline" id="pn2">-</div><div class="ptemp" id="temp2">-</div>
 		  </td>
-  		  <td class="probe" onclick="editProbe(3)" style="border-left: 1px solid #243e5b;">
-		    <div class="pname" id="name3">-</div><div class="ptemp" id="temp3">-</div>
+  		  <td class="probe" style="border-left: 1px solid #243e5b;">
+		    <div class="pname" style="display: inline" id="pn3">-</div><div class="ptemp" id="temp3">-</div>
    		  </td>
 		</tr></table>
 	</div>
 </div>
 
-<div class="edit-dialog" id="edit-setpoint" style="width: 160px; display: none;">
-	<span class="edit-header">Edit SetPoint</span>
-	<form action="javascript:setSetPoint();" name="frmEditSetPoint">
-		<input class="edit-box" type="text" name="sp" size="3"/>
-		<input type="submit" value="Set"/>
-	</form>
-</div>
-
-<div class="edit-dialog" id="edit-probename" style="width: 240px; display: none;">
-	<span class="edit-header" id="edit-probe-header"></span>
-	<form action="javascript:setProbe();" name="frmEditProbe">
-	    <input type="hidden" name="pnum" value="1">
-		<table width="100%">
-		<tr><td>Name</td><td><input class="edit-box" type="text" name="pname" size="13"/></td></tr>
-		<tr><td>Offset</td><td><input class="edit-box" type="text" name="poff" size="4"/></td></tr>
-		<tr><td>&nbsp;</td><td align="right"><input type="submit" value="Set"/></td></tr>
-		</table>
-	</form>
-</div>
-
-<div id="modal-overlay" style="display: none;"></div>
 </body>
+
 </html>
