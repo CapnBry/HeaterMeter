@@ -2,7 +2,7 @@
 #define __HMCORE_H__
 
 #define HEATERMETER_NETWORKING  // enable wifi interface
-#define HEATERMETER_SERIAL      // enable serial notifications
+//#define HEATERMETER_SERIAL      // enable serial notifications
 
 #include "grillpid.h"
 #include "hmmenus.h"
@@ -35,7 +35,6 @@ const struct steinhart_param STEINHART[] = {
 };
 
 //#define USE_EXTERNAL_VREF  // uncomment if using external 5V as input to analog inputs
-const char CSV_DELIMITER = ',';
 
 void hmcoreSetup(void);
 void hmcoreLoop(void);

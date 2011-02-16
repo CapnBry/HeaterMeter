@@ -33,17 +33,14 @@ const prog_char LCD_PALARM_L_ON[] PROGMEM = "Low alarm? ";
 const prog_char LCD_PALARM_H_VAL[] PROGMEM = "High Alrm %4d"DEGREE"F";
 const prog_char LCD_PALARM_L_VAL[] PROGMEM = "High Alrm %4d"DEGREE"F";
 
-#if defined(HEATERMETER_NETWORKING) || defined(HEATERMETER_SERIAL)
-const prog_char URL_SETPOINT[] PROGMEM = "set?sp=";
-const prog_char URL_SETPID[] PROGMEM = "set?pid";
-const prog_char URL_SETPNAME[] PROGMEM = "set?pn";
-const prog_char URL_SETPOFF[] PROGMEM = "set?po";
-#endif /* HEATERMETER_NETWORKING || HEATERMETER_SERIAL */
-
 #ifdef HEATERMETER_NETWORKING
 const prog_char WEB_OK[] PROGMEM = "OK\n";
 const prog_char WEB_FAILED[] PROGMEM = "FAILED\n";
 
+const prog_char URL_SETPOINT[] PROGMEM = "set?sp=";
+const prog_char URL_SETPID[] PROGMEM = "set?pid";
+const prog_char URL_SETPNAME[] PROGMEM = "set?pn";
+const prog_char URL_SETPOFF[] PROGMEM = "set?po";
 const prog_char URL_CSV[] PROGMEM = "csv";
 const prog_char URL_JSON[] PROGMEM = "json";
 #ifdef DFLASH_LOGGING
@@ -62,6 +59,7 @@ const prog_char JSON5[] PROGMEM = ",\"a\":";
 const prog_char JSON6[] PROGMEM = "}}";
 #endif /* HEATERMETER_NETWORKING */
 
+const prog_char COMMA[] PROGMEM = ",";
 const prog_char PID_ORDER[] PROGMEM = "bpid";
 
 #endif /* __STRINGS_H__ */

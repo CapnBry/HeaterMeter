@@ -22,9 +22,6 @@ ShiftRegLCD lcd(PIN_LCD_DATA, PIN_LCD_CLK, TWO_WIRE, 2);
 #ifdef HEATERMETER_NETWORKING
 static boolean g_NetworkInitialized;
 #endif /* HEATERMETER_NETWORKING */
-#ifdef HEATERMETER_SERIAL
-static char g_SerialBuff[40];  // should be 49 to support /set?pn0=(urlencoded 13 chars)
-#endif /* HEATERMETER_SERIAL */
 
 #define config_store_byte(eeprom_field, src) { eeprom_write_byte((uint8_t *)offsetof(__eeprom_data, eeprom_field), src); }
 #define config_store_word(eeprom_field, src) { eeprom_write_word((uint16_t *)offsetof(__eeprom_data, eeprom_field), src); }
@@ -121,7 +118,6 @@ void storeMaxFanSpeed(unsigned char maxFanSpeed)
 
 void updateDisplay(void)
 {
-  // Serial.print(millis(), DEC); Serial.print(" updateDisplay "); Serial.println(Menus.State, DEC);
   // Updates to the temperature can come at any time, only update 
   // if we're in a state that displays them
   if (Menus.State < ST_HOME_FOOD1 || Menus.State > ST_HOME_NOPROBES)
@@ -208,58 +204,6 @@ void storeLidOpenDuration(unsigned int value)
   config_store_word(lidOpenDuration, value);
 }
 
-void outputCsv(Print &out)
-{
-  out.print(pid.getSetPoint());
-  out.print(CSV_DELIMITER);
-
-  unsigned char i;
-  for (i=0; i<TEMP_COUNT; i++)
-  {
-    out.print((double)pid.Probes[i]->Temperature, 1);
-    out.print(CSV_DELIMITER);
-    out.print((double)pid.Probes[i]->TemperatureAvg, 1);
-    out.print(CSV_DELIMITER);
-  }
-
-  out.print(pid.getFanSpeed(), DEC);
-  out.print(CSV_DELIMITER);
-  out.print(round(pid.FanSpeedAvg), DEC);
-  out.print(CSV_DELIMITER);
-  out.print(pid.LidOpenResumeCountdown, DEC);
-  //out.println();
-  out.print("\r\n");  // printing \r\n saves 38 bytes of codespace over println
-}
-
-/* handleCommandUrl returns true if it consumed the URL */
-boolean handleCommandUrl(char *URL)
-{
-  unsigned char urlLen = strlen(URL);
-  if (strncmp_P(URL, URL_SETPOINT, 7) == 0) 
-  {
-    storeSetPoint(atoi(URL + 7));
-    return true;
-  }
-  if (strncmp_P(URL, URL_SETPID, 7) == 0 && urlLen > 9) 
-  {
-    float f = atof(URL + 9);
-    storePidParam(URL[7], f);
-    return true;
-  }
-  if (strncmp_P(URL, URL_SETPNAME, 6) == 0 && urlLen > 8) 
-  {
-    storeProbeName(URL[6] - '0', URL + 8);
-    return true;
-  }
-  if (strncmp_P(URL, URL_SETPOFF, 6) == 0 && urlLen > 8) 
-  {
-    storeProbeOffset(URL[6] - '0', atoi(URL + 8));
-    return true;
-  }
-  
-  return false;
-}
-
 #ifdef HEATERMETER_NETWORKING
 
 #ifdef DFLASH_LOGGING
@@ -344,14 +288,14 @@ void outputLog(void)
     {
       temp = p.temps[i] & 0x1ff;
       WiServer.print(temp,DEC);  // temperature
-      WiServer.print(CSV_DELIMITER);
+      WiServer.print_P(COMMA);
       offset = p.temps[i] >> 9;
       WiServer.print(temp + offset,DEC);  // average
-      WiServer.print(CSV_DELIMITER);
+      WiServer.print_P(COMMA);
     }
     
     WiServer.print(p.fan,DEC);
-    WiServer.print(CSV_DELIMITER);
+    WiServer.print_P(COMMA);
     WiServer.println(p.fan_avg,DEC);
   }  
   dflash.DF_CS_inactive();
@@ -392,6 +336,25 @@ void sendFlashFile(const struct flash_file_t *file)
   app->cursor = (char *)(HTTP_HEADER_LENGTH + size);
 }
 
+void outputCsv(void)
+{
+  WiServer.print(pid.getSetPoint());
+  WiServer.print_P(COMMA);
+
+  unsigned char i;
+  for (i=0; i<TEMP_COUNT; i++)
+  {
+    WiServer.print((double)pid.Probes[i]->Temperature, 1);
+    WiServer.print_P(COMMA);
+  }
+
+  WiServer.print(pid.getFanSpeed(),DEC);
+  WiServer.print_P(COMMA);
+  WiServer.print(round(pid.FanSpeedAvg),DEC);
+  WiServer.print_P(COMMA);
+  WiServer.print(pid.LidOpenResumeCountdown, DEC);
+}
+
 void outputJson(void)
 {
   WiServer.print_P(JSON1);
@@ -424,12 +387,7 @@ boolean sendPage(char* URL)
 {
   ++URL;  // WARNING: URL no longer has leading '/'
   unsigned char urlLen = strlen(URL);
-
-  if (handleCommandUrl(URL))
-  {
-    WiServer.print_P(WEB_OK);
-    return true;
-  }
+  
   if (strcmp_P(URL, URL_JSON) == 0) 
   {
     outputJson();
@@ -437,7 +395,7 @@ boolean sendPage(char* URL)
   }
   if (strcmp_P(URL, URL_CSV) == 0) 
   {
-    outputCsv(WiServer);
+    outputCsv();
     return true;    
   }
 #ifdef DFLASH_LOGGING  
@@ -447,6 +405,42 @@ boolean sendPage(char* URL)
     return true;    
   }
 #endif  /* DFLASH_LOGGING */
+  if (strncmp_P(URL, URL_SETPOINT, 7) == 0) 
+  {
+    storeSetPoint(atoi(URL + 7));
+    WiServer.print_P(WEB_OK);
+    return true;
+  }
+  if (strncmp_P(URL, URL_SETPID, 7) == 0 && urlLen > 9) 
+  {
+    float f = atof(URL + 9);
+    if (storePidParam(URL[7], f))
+      WiServer.print_P(WEB_OK);
+    else
+      WiServer.print_P(WEB_FAILED);
+    return true;
+  }
+  if (strncmp_P(URL, URL_SETPNAME, 6) == 0 && urlLen > 8) 
+  {
+    if (storeProbeName(URL[6] - '0', URL + 8))
+      WiServer.print_P(WEB_OK);
+    else
+      WiServer.print_P(WEB_FAILED);
+    return true;
+  }
+  if (strncmp_P(URL, URL_SETPOFF, 6) == 0 && urlLen > 8) 
+  {
+    if (storeProbeOffset(URL[6] - '0', atoi(URL + 8)))
+      WiServer.print_P(WEB_OK);
+    else
+      WiServer.print_P(WEB_FAILED);
+    return true;
+  }
+  if (strcmp(URL, "p") == 0) 
+  {
+    WiServer.print((double)pid._pidErrorSum, 3);
+    return true;    
+  }
   
   const struct flash_file_t *file = FLASHFILES;
   while (pgm_read_word(&file->fname))
@@ -506,37 +500,14 @@ void eepromLoadConfig(boolean forceDefault)
     pid.setFanSpeed(0);
 }
 
-void checkSerial(void)
-{
-  unsigned char len = strlen(g_SerialBuff);
-  while (Serial.available())
-  {
-    char c = Serial.read();
-    // support CR, LF, or CRLF line endings
-    if (c == '\n' || c == '\r')  
-    {
-      if (len != 0 && g_SerialBuff[0] == '/')
-        handleCommandUrl(&g_SerialBuff[1]);
-      len = 0;
-    }
-    else {
-      g_SerialBuff[len++] = c;
-      // if the buffer fills without getting a newline, just reset
-      if (len >= sizeof(g_SerialBuff))
-        len = 0;
-    }
-    g_SerialBuff[len] = '\0';
-  }  /* while Serial */
-}
-
 void hmcoreSetup(void)
 {
 #ifdef HEATERMETER_SERIAL
   Serial.begin(19200);
-#endif  /* HEATERMETER_SERIAL */
+#endif
 #ifdef USE_EXTERNAL_VREF  
   analogReference(EXTERNAL);
-#endif  /* USE_EXTERNAL_VREF */
+#endif
   
   pid.Probes[TEMP_PIT] = &probe0;
   pid.Probes[TEMP_FOOD1] = &probe1;
@@ -573,7 +544,6 @@ void hmcoreLoop(void)
   {
     checkAlarms();
     updateDisplay();
-    outputCsv(Serial);
     
 #ifdef HEATERMETER_NETWORKING
 #ifdef DFLASH_LOGGING
@@ -585,5 +555,4 @@ void hmcoreLoop(void)
 #else
   }
 #endif /* HEATERMETER_NETWORKING */
-  checkSerial();
 }
