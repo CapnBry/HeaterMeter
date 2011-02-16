@@ -50,7 +50,7 @@ function JSONQuery()
 			url: "json",
 			dataType: "json",
 			timeout: 5000,
-			success: function(data) { connectionSuccess(data); },
+			success: function(o) { connectionSuccess(o); },
 			error: function () { connectionFailure(); }
 		});
 	}
