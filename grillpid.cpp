@@ -1,5 +1,4 @@
 #include <math.h>
-#include <wiring.h>
 #include "grillpid.h"
 
 // The temperatures are averaged over 1, 2, 4 or 8 samples
@@ -63,11 +62,13 @@ boolean ProbeAlarm::getActionNeeded(void) const
 inline void TempProbe::readTemp(unsigned char num)
 {
   unsigned int analog_temp = analogRead(_pin);
-  // If we get *any* analogReads that are 0, the measurement for the
-  // entire period is invalidated, so set the _accumulator to 0
-  if (num == 0 || analog_temp == 0)
+  // If we get *any* analogReads that are 0 or 1023, the measurement for 
+  // the entire period is invalidated, so set the _accumulator to 0
+  if (analog_temp <= 0 || analog_temp >= 1023)
+    _accumulator = 0;
+  else if (num == 0)
     _accumulator = analog_temp;
-  else
+  else if (_accumulator != 0)
     _accumulator += analog_temp;
 }
 
@@ -215,7 +216,7 @@ boolean GrillPid::doWork(void)
   unsigned char i;
   for (i=0; i<TEMP_COUNT; i++)
     Probes[i]->readTemp(_accumulatedCount);
-    
+
   if (++_accumulatedCount < TEMP_AVG_COUNT)
     return false;
     
