@@ -2,7 +2,7 @@
 #define __HMCORE_H__
 
 #define HEATERMETER_NETWORKING  // enable wifi interface
-#define HEATERMETER_SERIAL      // enable serial notifications
+#define HEATERMETER_SERIAL      // enable serial interface
 
 #include "grillpid.h"
 #include "hmmenus.h"
@@ -30,8 +30,8 @@
 
 const struct steinhart_param STEINHART[] = {
   {2.3067434e-4f, 2.3696596e-4f, 1.2636414e-7f},  // Maverick Probe
-  // {8.98053228e-4f, 2.49263324e-4f, 2.04047542e-7f}, // Radio Shack 10k
-  {1.1415e-3f, 2.31905e-4f, 9.76423e-8f} // Vishay 10k NTCLE100E3103JB0
+  {8.98053228e-4f, 2.49263324e-4f, 2.04047542e-7f}, // Radio Shack 10k
+  //{1.1415e-3f, 2.31905e-4f, 9.76423e-8f} // Vishay 10k NTCLE100E3103JB0
 };
 
 //#define USE_EXTERNAL_VREF  // uncomment if using external 5V as input to analog inputs

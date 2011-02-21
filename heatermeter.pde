@@ -2,6 +2,8 @@
 #include <ShiftRegLCD.h>
 #include "hmcore.h"
 
+// See hmcore.h for most options and tweaks
+
 #ifdef HEATERMETER_NETWORKING
 #include <WiServer.h>  
 #include <dataflash.h>
