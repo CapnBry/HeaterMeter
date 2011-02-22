@@ -144,7 +144,7 @@ public:
   // Seconds remaining in the lid open countdown
   unsigned int LidOpenResumeCountdown;
   // true if any probe has a non-zero temperature
-  boolean isAnyFoodProbeActive(void);
+  boolean isAnyFoodProbeActive(void) const;
   
   // Call this in loop()
   boolean doWork(void);

@@ -9,22 +9,22 @@ MenuSystem::MenuSystem(const menu_definition_t *defs, const menu_transition_t *t
 {
 }
 
-unsigned long MenuSystem::getTimeoutDuration(void) const
+inline unsigned long MenuSystem::getTimeoutDuration(void) const
 {
   return (m_currMenu) ? (unsigned long)pgm_read_byte(&m_currMenu->timeout) * 1000 : 0;
 }
 
-handler_t MenuSystem::getHandler(void) const
+inline handler_t MenuSystem::getHandler(void) const
 {
   return (m_currMenu) ? (handler_t)pgm_read_word(&m_currMenu->handler) : 0;
 }
 
-unsigned long MenuSystem::getElapsedDuration(void) const
+inline unsigned long MenuSystem::getElapsedDuration(void) const
 {
   return millis() - m_lastActivity;
 }
 
-state_t MenuSystem::findTransition(button_t button) const
+inline state_t MenuSystem::findTransition(button_t button) const
 {
   const menu_transition_t *trans = m_transitions;
   state_t lookup;

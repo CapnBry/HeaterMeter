@@ -21,7 +21,7 @@ void calcExpMovingAverage(const float smooth, float *currAverage, float newValue
   }
 }
 
-void ProbeAlarm::updateStatus(int value)
+inline void ProbeAlarm::updateStatus(int value)
 {
   if (Status & HIGH_ENABLED != 0)
     if (value >= _high) 
@@ -144,7 +144,7 @@ inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
     _fanSpeed = control;
 }
 
-void GrillPid::commitFanSpeed(void)
+inline void GrillPid::commitFanSpeed(void)
 {
   calcExpMovingAverage(FANSPEED_AVG_SMOOTH, &FanSpeedAvg, _fanSpeed);
 
@@ -171,7 +171,7 @@ void GrillPid::commitFanSpeed(void)
   }  /* long PWM */
 }
 
-boolean GrillPid::isAnyFoodProbeActive(void)
+boolean GrillPid::isAnyFoodProbeActive(void) const
 {
   unsigned char i;
   for (i=TEMP_FOOD1; i<TEMP_COUNT; i++)

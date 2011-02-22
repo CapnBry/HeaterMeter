@@ -364,7 +364,7 @@ void outputLog(void)
 
 #ifdef DFLASH_SERVING 
 #define HTTP_HEADER_LENGTH 19 // "HTTP/1.0 200 OK\r\n\r\n"
-void sendFlashFile(const struct flash_file_t *file)
+inline void sendFlashFile(const struct flash_file_t *file)
 {
   // Note we mess with the underlying UIP stack to prevent reading the entire
   // file each time from flash just to discard all but 300 bytes of it
@@ -471,7 +471,7 @@ boolean sendPage(char* URL)
 }
 #endif /* HEATERMETER_NETWORKING */
 
-void checkAlarms(void)
+inline void checkAlarms(void)
 {
   unsigned char i;
   for (i=0; i<TEMP_COUNT; i++)
@@ -514,7 +514,7 @@ void eepromLoadConfig(boolean forceDefault)
     pid.setFanSpeed(0);
 }
 
-void checkSerial(void)
+inline void checkSerial(void)
 {
   unsigned char len = strlen(g_SerialBuff);
   while (Serial.available())
