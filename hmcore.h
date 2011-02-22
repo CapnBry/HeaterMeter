@@ -3,10 +3,15 @@
 
 #define HEATERMETER_NETWORKING  // enable wifi interface
 #define HEATERMETER_SERIAL      // enable serial interface
+#define USE_EXTERNAL_VREF       // Using external 5V as reference to analog inputs
+
+#ifdef HEATERMETER_NETWORKING
+//#define DFLASH_LOGGING          // Store a small CSV log in dflash
+#define DFLASH_SERVING          // Serve web pages out of dflash
+#endif
 
 #include "grillpid.h"
 #include "hmmenus.h"
-#include "flashfiles.h"
 
 // Analog Pins
 #define PIN_PIT     5
@@ -34,7 +39,6 @@ const struct steinhart_param STEINHART[] = {
   //{1.1415e-3f, 2.31905e-4f, 9.76423e-8f} // Vishay 10k NTCLE100E3103JB0
 };
 
-//#define USE_EXTERNAL_VREF  // uncomment if using external 5V as input to analog inputs
 const char CSV_DELIMITER = ',';
 
 void hmcoreSetup(void);

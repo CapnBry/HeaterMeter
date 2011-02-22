@@ -5,8 +5,13 @@
 
 #ifdef HEATERMETER_NETWORKING
 #include <WiServer.h>  
+#endif
+
+#if defined(DFLASH_LOGGING) || defined(DFLASH_SERVING)
 #include <dataflash.h>
-//#define DFLASH_LOGGING
+  #ifdef DFLASH_SERVING
+  #include "flashfiles.h"
+  #endif
 #endif
 
 #include "strings.h"
@@ -357,6 +362,7 @@ void outputLog(void)
 }
 #endif  /* DFLASH_LOGGING */
 
+#ifdef DFLASH_SERVING 
 #define HTTP_HEADER_LENGTH 19 // "HTTP/1.0 200 OK\r\n\r\n"
 void sendFlashFile(const struct flash_file_t *file)
 {
@@ -390,6 +396,7 @@ void sendFlashFile(const struct flash_file_t *file)
   // Pretend that we've sent the whole file
   app->cursor = (char *)(HTTP_HEADER_LENGTH + size);
 }
+#endif  /* DFLASH_SERVING */
 
 void outputJson(void)
 {
@@ -447,6 +454,7 @@ boolean sendPage(char* URL)
   }
 #endif  /* DFLASH_LOGGING */
   
+#ifdef DFLASH_SERVING
   const struct flash_file_t *file = FLASHFILES;
   while (pgm_read_word(&file->fname))
   {
@@ -457,6 +465,7 @@ boolean sendPage(char* URL)
     }
     ++file;
   }
+#endif  /* DFLASH_SERVING */
   
   return false;
 }
@@ -528,6 +537,20 @@ void checkSerial(void)
   }  /* while Serial */
 }
 
+inline void dflashInit(void)
+{
+#if defined(DFLASH_LOGGING) || defined(DFLASH_SERVING)
+  // Set the WiFi Slave Select to HIGH (disable) to
+  // prevent it from interferring with the dflash init
+  pinMode(PIN_WIFI_SS, OUTPUT);
+  digitalWrite(PIN_WIFI_SS, HIGH);
+  dflash.init(PIN_DATAFLASH_SS);
+#ifdef DFLASH_LOGGING
+  flashRingBufferInit();
+#endif  /* DFLASH_LOGGING */
+#endif  /* DFLASH_LOGGING || SERVING */
+}
+
 void hmcoreSetup(void)
 {
 #ifdef HEATERMETER_SERIAL
@@ -545,14 +568,7 @@ void hmcoreSetup(void)
   eepromLoadConfig(false);
 
 #ifdef HEATERMETER_NETWORKING
-  // Set the WiFi Slave Select to HIGH (disable) to
-  // prevent it from interferring with the dflash init
-  pinMode(PIN_WIFI_SS, OUTPUT);
-  digitalWrite(PIN_WIFI_SS, HIGH);
-  dflash.init(PIN_DATAFLASH_SS);
-#ifdef DFLASH_LOGGING
-  flashRingBufferInit();
-#endif  /* DFLASH_LOGGING */
+  dflashInit();
   
   g_NetworkInitialized = readButton() == BUTTON_NONE;
   if (g_NetworkInitialized)  

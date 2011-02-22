@@ -38,9 +38,11 @@ When operating in automatic mode at fan speeds below 10%, the fan will run in a 
 
 == Source Modification and Configuration == 
 Most configuration is found in hmcore.h.  There defines used to control the inclusion of some features.  To disable them insert // before the item you'd like to disable.  This "comments out" the define and prevents it from being processed.
-HEATERMETER_NETWORKING - Enable the WiFi and web server code.  The code is designed to use AsyncLabs's WiShield 1.0 or 2.0.
+HEATERMETER_NETWORKING - Enable the WiFi and web server code.  The code is designed to use AsyncLabs's WiShield 1.0/2.0 or YellowJacket 1.0.  If your WiFi shield does not have a dataflash chip on it, make sure you disable both the DFLASH_* defines.
 HEATERMETER_SERIAL - Enable per-period temperature updates to be sent out the serial port as well as configuration changes via serial.  The serial configuration protocol is handlde using the same URLs as ther web server, sent via serial, terminated with CR/CRLF/LF.
-DATAFLASH_LOGGING - Enable saving of per-period temperatures to the dataflash chip present on the WiShield.  Requires HEATERMETER_NETWORKING.
+DFLASH_LOGGING - Enable saving of per-period temperatures to the dataflash chip present on the WiShield.  Requires HEATERMETER_NETWORKING.
+DFLASH_SERVING - Enable serving web pages from the dataflash chip present on the WiShield.  Requires HEATERMETER_NETWORKING.
+USE_EXTERNAL_VREF - If enabled, use the Vref pin voltage as the reference when doing ADC measurments instead of the internal 5V reference.
 
 Some configuration is via defines and constants, here are some commonly used values:
 grillpid.cpp/Rknown - The value of the biasing resistor used in the temperature probes.
@@ -57,7 +59,7 @@ Both Serial and Web
 Web-only URLs
 / - The index status page.  Some other supporting files are also used by this URL that are not included in this document.
 /json - JSON status object.
-/csv - CSV-formated status object
+/csv - CSV-formated status line
 
 == CSV Format ==
 SetPoint,Pit,PitMovAvg,Food1,FoodMovAvg,Food2,Food2MovAvg,Ambient,AmbientMovAvg,Fan,FanMovAvg,LidOpenCountdown
