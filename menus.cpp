@@ -79,16 +79,16 @@ void MenuSystem::setState(state_t state)
 void MenuSystem::doWork(void)
 {
   button_t button = m_readButton();
-  unsigned long dur = getElapsedDuration();
+  unsigned long elapsed = getElapsedDuration();
   if (button == BUTTON_NONE)
   {
-    //unsigned long dur = getTimeoutDuration();
-    if (dur != 0 && getTimeoutDuration() < dur)
+    unsigned long dur = getTimeoutDuration();
+    if (dur != 0 && dur < elapsed)
       button = BUTTON_TIMEOUT;
   }
 
   // Debounce: wait for last button to be released
-  if (dur < 250)
+  if (elapsed < 250)
     return;
   if (button != BUTTON_TIMEOUT)
     m_lastButton = button;
