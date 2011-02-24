@@ -588,7 +588,10 @@ void hmcoreLoop(void)
   {
     checkAlarms();
     updateDisplay();
+#ifdef HEATERMETER_SERIAL
+    checkSerial();
     outputCsv(Serial);
+#endif  /* HEATERMETER_SERIAL */
     
 #ifdef HEATERMETER_NETWORKING
 #ifdef DFLASH_LOGGING
@@ -600,5 +603,4 @@ void hmcoreLoop(void)
 #else
   }
 #endif /* HEATERMETER_NETWORKING */
-  checkSerial();
 }
