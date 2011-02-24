@@ -5,6 +5,8 @@
 // See hmcore.h for most options and tweaks
 
 #ifdef HEATERMETER_NETWORKING
+// these are redundant but if you don't include them, the Arduino build 
+// process won't include them to the temporary build location
 #include <WiServer.h>  
 #include <dataflash.h>
 // Wireless configuration parameters ----------------------------------------
