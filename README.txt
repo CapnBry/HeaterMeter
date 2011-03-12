@@ -49,6 +49,8 @@ grillpid.cpp/Rknown - The value of the biasing resistor used in the temperature 
 hmcore.h/STEINHART - The Steinhart-Hart coefficients used in the probe calculations for pit/food1/food2 (first item) and ambient (second item).
 hmcore.h/CSV_DELIMITER - The delimiter used in the CSV data sent by the /csv URL and serial updastes.
 
+Wireless parameters are stored in heatermeter.pde.
+
 == Supported URLS ==
 Both Serial and Web
 /set?sp=A - Set the setpoint to integer A
@@ -63,3 +65,4 @@ Web-only URLs
 
 == CSV Format ==
 SetPoint,Pit,PitMovAvg,Food1,FoodMovAvg,Food2,Food2MovAvg,Ambient,AmbientMovAvg,Fan,FanMovAvg,LidOpenCountdown
+
