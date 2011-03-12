@@ -231,8 +231,7 @@ void outputCsv(Print &out)
   out.print(round(pid.FanSpeedAvg), DEC);
   out.print(CSV_DELIMITER);
   out.print(pid.LidOpenResumeCountdown, DEC);
-  //out.println();
-  out.print("\r\n");  // printing \r\n saves 38 bytes of codespace over println
+  out.println();
 }
 
 /* handleCommandUrl returns true if it consumed the URL */
