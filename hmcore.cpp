@@ -575,9 +575,8 @@ void hmcoreSetup(void)
     Menus.setState(ST_CONNECTING);
     WiServer.init(sendPage);
   }
-  else
 #endif  /* HEATERMETER_NETWORKING */
-    Menus.setState(ST_HOME_AMB);
+  Menus.setState(ST_HOME_NOPROBES);
 }
 
 void hmcoreLoop(void)
