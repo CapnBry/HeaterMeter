@@ -28,6 +28,7 @@
 #define PIN_ALARM        5
 #define PIN_DATAFLASH_SS 7
 #define PIN_LCD_DATA     8
+#define PIN_WIFI_LED     9
 #define PIN_WIFI_SS     10
 #define PIN_SPI_MOSI    11  // Can not be changed
 #define PIN_SPI_MISO    12  // Can not be changed
