@@ -151,6 +151,4 @@ public:
   void resetLidOpenResumeCountdown(void);
 };
 
-extern ShiftRegLCD lcd;
-
 #endif /* __GRILLPID_H__ */

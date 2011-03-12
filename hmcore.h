@@ -61,6 +61,7 @@ void storeLidOpenOffset(unsigned char value);
 void storeLidOpenDuration(unsigned int value);
 
 extern GrillPid pid;
+extern ShiftRegLCD lcd;
 
 #endif /* __HMCORE_H__ */
 
