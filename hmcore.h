@@ -3,7 +3,7 @@
 
 #define HEATERMETER_NETWORKING  // enable wifi interface
 #define HEATERMETER_SERIAL      // enable serial interface
-#define USE_EXTERNAL_VREF       // Using external 5V as reference to analog inputs
+//#define USE_EXTERNAL_VREF       // Using external 5V as reference to analog inputs
 
 #ifdef HEATERMETER_NETWORKING
 //#define DFLASH_LOGGING          // Store a small CSV log in dflash
