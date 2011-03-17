@@ -29,6 +29,7 @@ const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_MAXFANSPEED, menuMaxFanSpeed, 10 },
   { ST_PALARM1_H_ON, menuProbeAlarmOn, 10 },
   { ST_PALARM1_H_VAL, menuProbeAlarmVal, 10 },
+  { ST_NETWORK_INFO, menuNetworkInfo, 10 },
   { 0, 0 },
 };
 
@@ -54,15 +55,12 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
 
   { ST_SETPOINT, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_SETPOINT, BUTTON_RIGHT, ST_MANUALMODE },
-  // UP and DOWN are caught in handler
 
   { ST_MANUALMODE, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_MANUALMODE, BUTTON_RIGHT, ST_MAXFANSPEED },
-  // UP and DOWN are caught in handler
   
   { ST_MAXFANSPEED, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_MAXFANSPEED, BUTTON_RIGHT, ST_PROBEOFF1 },
-  // UP and DOWN are caught in handler
 
   { ST_PROBEOFF1, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_PROBEOFF1, BUTTON_RIGHT, ST_PROBEOFF2 },
@@ -94,15 +92,19 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
 
   { ST_LIDOPEN_OFF, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_LIDOPEN_OFF, BUTTON_RIGHT, ST_LIDOPEN_DUR },
-  // UP, DOWN caught in handler
 
   { ST_LIDOPEN_DUR, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+#ifdef HEATERMETER_NETWORKING
+  { ST_LIDOPEN_DUR, BUTTON_RIGHT, ST_NETWORK_INFO },
+
+  { ST_NETWORK_INFO, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_NETWORK_INFO, BUTTON_RIGHT, ST_RESETCONFIG },
+#else
   { ST_LIDOPEN_DUR, BUTTON_RIGHT, ST_RESETCONFIG },
-  // UP, DOWN caught in handler
-  
+#endif  /* HEATERMETER_NETWORKING */
+
   { ST_RESETCONFIG, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_RESETCONFIG, BUTTON_RIGHT, ST_SETPOINT },
-  // UP, DOWN caught in handler
 
   { 0, 0, 0 },
 };
@@ -113,7 +115,11 @@ int editInt;
 char editString[17];
 
 #ifdef HEATERMETER_NETWORKING
-extern const prog_char ssid[];
+extern "C" {
+#include "witypes.h"
+#include "g2100.h"
+extern char ssid[];
+}
 #endif /* HEATERMETER_NETWORKING */
 
 button_t readButton(void)
@@ -193,8 +199,21 @@ state_t menuConnecting(button_t button)
 {
   lcdprint_P(LCD_CONNECTING, true); 
   lcd.setCursor(0, 1);
-  lcdprint_P(ssid, false);
+  lcd.print(ssid);
 
+  return ST_AUTO;
+}
+
+state_t menuNetworkInfo(button_t button)
+{
+  if (button == BUTTON_ENTER || button == BUTTON_UP || button == BUTTON_DOWN)
+  {
+    char buffer[17];
+    lcdprint_P(LCD_NETINFO1, true);
+    lcd.setCursor(0, 1);
+    snprintf_P(buffer, sizeof(buffer), LCD_NETINFO2, zg_get_rssi() - 100, ssid);
+    lcd.print(buffer);
+  }
   return ST_AUTO;
 }
 #endif /* HEATERMETER_NETWORKING */

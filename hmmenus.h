@@ -48,6 +48,7 @@
 #define ST_PALARM1_L_VAL (ST_VMAX+36)
 #define ST_PALARM2_L_VAL (ST_VMAX+37)
 #define ST_PALARM3_L_VAL (ST_VMAX+38)
+#define ST_NETWORK_INFO  (ST_VMAX+39)
 
 void menuBooleanEdit(button_t button);
 void menuNumberEdit(button_t button, unsigned char increment, const prog_char *format);
@@ -70,6 +71,7 @@ state_t menuResetConfig(button_t button);
 state_t menuMaxFanSpeed(button_t button);
 state_t menuProbeAlarmOn(button_t button);
 state_t menuProbeAlarmVal(button_t button);
+state_t menuNetworkInfo(button_t button);
 
 extern MenuSystem Menus;
 extern int editInt;  

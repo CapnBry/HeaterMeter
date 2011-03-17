@@ -46,6 +46,10 @@ const prog_char WEB_FAILED[] PROGMEM = "FAILED\n";
 
 const prog_char URL_CSV[] PROGMEM = "csv";
 const prog_char URL_JSON[] PROGMEM = "json";
+
+const prog_char LCD_NETINFO1[] PROGMEM = "Wireless Signal";
+const prog_char LCD_NETINFO2[] PROGMEM = "%3u%% %s";
+
 #ifdef DFLASH_LOGGING
 const prog_char URL_LOG[] PROGMEM = "log";
 #endif  /* DFLASH_LOGGING */
