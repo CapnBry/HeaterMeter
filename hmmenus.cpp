@@ -5,6 +5,7 @@
 const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
 #ifdef HEATERMETER_NETWORKING
   { ST_CONNECTING, menuConnecting, 2 },
+  { ST_NETWORK_INFO, menuNetworkInfo, 10 },
 #endif  /* HEATERMETER_NETWORKING */
   { ST_HOME_FOOD1, menuHome, 5 },
   { ST_HOME_FOOD2, menuHome, 5 },
@@ -29,7 +30,6 @@ const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_MAXFANSPEED, menuMaxFanSpeed, 10 },
   { ST_PALARM1_H_ON, menuProbeAlarmOn, 10 },
   { ST_PALARM1_H_VAL, menuProbeAlarmVal, 10 },
-  { ST_NETWORK_INFO, menuNetworkInfo, 10 },
   { 0, 0 },
 };
 
