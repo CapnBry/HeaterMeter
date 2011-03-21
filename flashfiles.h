@@ -16,7 +16,7 @@ const struct flash_file_t {
 } FLASHFILES[] PROGMEM = {
   { FNAME000,   3, 1150 },
   { FNAME001,   6, 11824 },
-  { FNAME002,  29, 6612 },
+  { FNAME002,  29, 5073 },
   { 0, 0, 0},
 };
 
