@@ -10,6 +10,7 @@
 #define DFLASH_SERVING          // Serve web pages out of dflash
 #endif
 
+#include <ShiftRegLCD.h>
 #include "grillpid.h"
 #include "hmmenus.h"
 
