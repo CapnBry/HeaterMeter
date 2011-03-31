@@ -74,7 +74,7 @@ inline void TempProbe::readTemp(unsigned char num)
 
 inline void TempProbe::calcTemp(void)
 {
-  const float Rknown = 22000.0f;
+  const float Rknown = 10000.0f;
   const float Vin = 1023.0f;  
 
   unsigned int Vout = _accumulator / TEMP_AVG_COUNT;
