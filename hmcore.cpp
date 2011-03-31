@@ -212,6 +212,7 @@ void storeLidOpenDuration(unsigned int value)
   config_store_word(lidOpenDuration, value);
 }
 
+#if defined(HEATERMETER_NETWORKING) || defined(HEATERMETER_SERIAL)
 void outputCsv(Print &out)
 {
   out.print(pid.getSetPoint());
@@ -262,6 +263,7 @@ boolean handleCommandUrl(char *URL)
   
   return false;
 }
+#endif /* defined(HEATERMETER_NETWORKING) || defined(HEATERMETER_SERIAL) */
 
 #ifdef HEATERMETER_NETWORKING
 
@@ -513,6 +515,7 @@ void eepromLoadConfig(boolean forceDefault)
     pid.setFanSpeed(0);
 }
 
+#ifdef HEATERMETER_SERIAL
 inline void checkSerial(void)
 {
   unsigned char len = strlen(g_SerialBuff);
@@ -535,6 +538,7 @@ inline void checkSerial(void)
     g_SerialBuff[len] = '\0';
   }  /* while Serial */
 }
+#endif  /* HEATERMETER_SERIAL */
 
 inline void dflashInit(void)
 {
