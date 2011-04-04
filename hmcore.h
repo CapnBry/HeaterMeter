@@ -1,6 +1,10 @@
 #ifndef __HMCORE_H__
 #define __HMCORE_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+ 
 #define HEATERMETER_NETWORKING  // enable wifi interface
 #define HEATERMETER_SERIAL      // enable serial interface
 //#define USE_EXTERNAL_VREF       // Using external 5V as reference to analog inputs
@@ -63,6 +67,10 @@ void storeLidOpenDuration(unsigned int value);
 
 extern GrillPid pid;
 extern ShiftRegLCD lcd;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __HMCORE_H__ */
 

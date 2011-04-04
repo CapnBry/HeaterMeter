@@ -1,6 +1,10 @@
 #ifndef __FLASHFILES_H__
 #define __FLASHFILES_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <avr\pgmspace.h>
 
 #define DATAFLASH_PAGE_BYTES 528
@@ -19,6 +23,10 @@ const struct flash_file_t {
   { FNAME002,  29, 5073 },
   { 0, 0, 0},
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __FLASHFILES_H__ */
 
