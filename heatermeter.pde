@@ -9,7 +9,7 @@
 // process won't include them to the temporary build location
 #include <WiServer.h>  
 #include <dataflash.h>
-#include "WiShieldConf.h"
+#include "wishieldconf.h"
 #endif /* HEATERMETER_NETWORKING */
 
 void setup(void)
