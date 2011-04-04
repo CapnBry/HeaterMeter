@@ -1,12 +1,17 @@
 #include <math.h>
 #include "grillpid.h"
 
+// Value of the resisitors used in the voltage divider on the probes
+// Remember to keep this value a float, e.g. 22k is 22000.0f
+#define Rknown 10000.0f
+
 // The temperatures are averaged over 1, 2, 4 or 8 samples
 #define TEMP_AVG_COUNT 8
 
 // The minimum fan speed (%) that activates the "long pulse" mode
 #define MINIMUM_FAN_SPEED 10
 
+// 1/(Number of samples used in the exponential moving average)
 #define TEMPPROBE_AVG_SMOOTH (1.0f/30.0f)
 #define FANSPEED_AVG_SMOOTH (1.0f/120.0f)
 
@@ -74,7 +79,6 @@ inline void TempProbe::readTemp(unsigned char num)
 
 inline void TempProbe::calcTemp(void)
 {
-  const float Rknown = 10000.0f;
   const float Vin = 1023.0f;  
 
   unsigned int Vout = _accumulator / TEMP_AVG_COUNT;
