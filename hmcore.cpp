@@ -57,7 +57,7 @@ const struct PROGMEM __eeprom_data {
   EEPROM_MAGIC,  // magic
   225,  // setpoint
   { "Pit", "Food Probe1", "Food Probe2", "Ambient" },  // probe names
-  { 0, 0, 0 },  // probe offsets
+  { 0, 0, 0, 0 },  // probe offsets
   15,  // lid open offset
   240, // lid open duration
   { 5.0f, 4.0f, 0.002f, 2.5f },
