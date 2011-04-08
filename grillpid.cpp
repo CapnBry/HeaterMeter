@@ -12,8 +12,8 @@
 #define MINIMUM_FAN_SPEED 10
 
 // 1/(Number of samples used in the exponential moving average)
-#define TEMPPROBE_AVG_SMOOTH (1.0f/30.0f)
-#define FANSPEED_AVG_SMOOTH (1.0f/120.0f)
+#define TEMPPROBE_AVG_SMOOTH (1.0f/15.0f)
+#define FANSPEED_AVG_SMOOTH (1.0f/60.0f)
 
 void calcExpMovingAverage(const float smooth, float *currAverage, float newValue)
 {
@@ -169,8 +169,8 @@ inline void GrillPid::commitFanSpeed(void)
     pwmVal = (_fanSpeed > _longPwmTmr) ? 255/MINIMUM_FAN_SPEED : 0;
     
     analogWrite(_blowerPin, pwmVal);
-    // Long PWM period is 10 intervals
-    if (++_longPwmTmr > 9)
+    // Long PWM period is 10 sec
+    if (++_longPwmTmr > 4)
       _longPwmTmr = 0;
   }  /* long PWM */
 }
@@ -213,7 +213,7 @@ void GrillPid::setFanSpeed(int value)
 boolean GrillPid::doWork(void)
 {
   unsigned long m = millis();
-  if ((m - _lastTempRead) < (1000 / TEMP_AVG_COUNT))
+  if ((m - _lastTempRead) < (2000 / TEMP_AVG_COUNT))
     return false;
   _lastTempRead = m;
 
@@ -249,7 +249,7 @@ boolean GrillPid::doWork(void)
     }
     else if (LidOpenResumeCountdown != 0)
     {
-      --LidOpenResumeCountdown;
+      LidOpenResumeCountdown = LidOpenResumeCountdown - 2;
     }
     // If the pit temperature dropped has more than [lidOpenOffset] degrees 
     // after reaching temp, and the fan has not been running more than 90% of 
