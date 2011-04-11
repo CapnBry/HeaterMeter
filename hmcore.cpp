@@ -221,15 +221,15 @@ void outputCsv(Print &out)
   unsigned char i;
   for (i=0; i<TEMP_COUNT; i++)
   {
-    out.print((double)pid.Probes[i]->Temperature, 1);
+    out.print(pid.Probes[i]->Temperature, 1);
     out.print(CSV_DELIMITER);
-    out.print((double)pid.Probes[i]->TemperatureAvg, 1);
+    out.print(pid.Probes[i]->TemperatureAvg, 1);
     out.print(CSV_DELIMITER);
   }
 
   out.print(pid.getFanSpeed(), DEC);
   out.print(CSV_DELIMITER);
-  out.print(round(pid.FanSpeedAvg), DEC);
+  out.print((int)pid.FanSpeedAvg, DEC);
   out.print(CSV_DELIMITER);
   out.print(pid.LidOpenResumeCountdown, DEC);
   out.println();
