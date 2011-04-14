@@ -1,6 +1,7 @@
 #!/bin/sh
 
-. ./heatermeter.conf
+SDIR=`dirname $0`
+. $SDIR/heatermeter.conf
 
 stty -F $SERIAL_DEVICE $SERIAL_BAUD min 1 igncr
 

@@ -1,6 +1,7 @@
 #!/bin/sh
 
-. ../heatermeter.conf
+SDIR=`dirname $0`
+. $SDIR/../heatermeter.conf
 
 # figure out where the first non NaN value is then use
 # that to determine how much data is in the rrd
