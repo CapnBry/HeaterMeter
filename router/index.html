@@ -248,7 +248,7 @@ function tstatSuccess(csv)
 
 function nameChanged(from, value)
 {
-	$.get("set", { from: value} );
+	$.get("/cgi-bin/set", { from: value} );
 	return value;
 }
 
@@ -256,7 +256,7 @@ function tempChanged(value)
 {
 	if(((value - 0) == value && value.length > 0) && value > 0 && value < 999)
 	{
-		$.get("set", { "sp": value} );
+		$.get("/cgi-bin/set", { "sp": value} );
 		return value;
 	}
 	else return "err";
