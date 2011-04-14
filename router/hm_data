@@ -1,0 +1,57 @@
+#!/bin/sh
+
+. ./heatermeter.conf
+
+# figure out where the first non NaN value is then use
+# that to determine how much data is in the rrd
+T=`date +%s`
+
+if [ -n "$QUERY_STRING" ] ; then
+  NANCNT=$QUERY_STRING
+else
+  T120=$((T/120*120))
+  NANCNT=`$RRD fetch $RRD_FILE AVERAGE -s end-20h -e $T120 -r 120 |\
+      fgrep -m1 -n e+ | cut -d":" -f1`
+  if [ -z "$NANCNT" ] ; then
+      NANCNT=600
+  fi
+fi
+
+if [ $NANCNT -gt 570 ] ; then
+  TD=6
+  ST="AVERAGE -s end-1hr"
+elif [ $NANCNT -gt 450 ] ; then
+  TD=30
+  ST="AVERAGE -s end-5hr"
+elif [ $NANCNT -gt 300 ] ; then
+  TD=60
+  ST="AVERAGE -s end-10hr"
+else
+  TD=120
+  ST="AVERAGE -s end-20hr"
+fi
+
+T=$((T/TD*TD))
+
+if [ ! -f "$RRD_FILE" ] ; then 
+    echo Status: 503 Database Unavailable
+    echo Content-Type: text/plain
+    echo
+    echo No database: $RRD_F
+    exit
+fi
+
+echo Content-Type: text/plain
+#echo Content-Encoding: gzip
+echo
+
+if [ "$1" = "json" ] ; then
+$RRD fetch $RRD_FILE $ST -r $TD -e $T |\
+    awk 'BEGIN {OFS=","; FS="[: ]"; ORS=""; print "[";} \
+	NR>2 {printf("[%s,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f]",$1,$3,$4,$5,$6,$7,$8)}\
+         END {print "[]]";}'
+else
+$RRD fetch $RRD_FILE $ST -r $TD -e $T
+fi
+
+         #NR>2 {print "["$1,$3,$4,$5,$6,$7,$8"]" } \

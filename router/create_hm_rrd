@@ -1,0 +1,23 @@
+#!/bin/sh
+
+. ./heatermeter.conf
+
+if [ -z "$1" ] ; then
+  START=""
+else
+  START="--start $1"
+fi 
+
+$RRD create $RRD_FILE \
+  --step 2 $START \
+  DS:sp:GAUGE:30:0:1000 \
+  DS:t0:GAUGE:30:0:1000 \
+  DS:t1:GAUGE:30:0:1000 \
+  DS:t2:GAUGE:30:0:1000 \
+  DS:t3:GAUGE:30:0:1000 \
+  DS:f:GAUGE:30:-1000:100 \
+  RRA:AVERAGE:0.9:3:600 \
+  RRA:AVERAGE:0.9:15:600 \
+  RRA:AVERAGE:0.9:30:600 \
+  RRA:AVERAGE:0.9:60:600
+

@@ -1,0 +1,8 @@
+#!/bin/sh
+. ./heatermeter.conf
+
+echo Content-Type: text/plain
+echo
+
+echo $REQUEST_URI > $SERIAL_DEVICE 
+echo OK
