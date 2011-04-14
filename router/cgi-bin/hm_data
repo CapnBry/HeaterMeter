@@ -37,7 +37,7 @@ if [ ! -f "$RRD_FILE" ] ; then
     echo Status: 503 Database Unavailable
     echo Content-Type: text/plain
     echo
-    echo No database: $RRD_F
+    echo No database: $RRD_FILE
     exit
 fi
 
