@@ -1,0 +1,5 @@
+This is the source code respository for the HeaterMeter and LinkMeter BBQ grill controllers.
+
+Source Layout
+router/* - Files you'd push to your router for LinkMeter
+arduinio/* - Arduino source code
