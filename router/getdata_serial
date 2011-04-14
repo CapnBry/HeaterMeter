@@ -8,6 +8,9 @@ if [ ! -f "$RRD_FILE" ] ; then
   ./create_hm_rrd
 fi
 
+ln -s "$JSON_FILE" ./json
+ln -s "$LOG_FILE" ./data.txt
+
 CNT=999
 IFS=$','
 

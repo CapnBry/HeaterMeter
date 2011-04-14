@@ -1,5 +1,5 @@
 #!/bin/sh
-. ./heatermeter.conf
+. ../heatermeter.conf
 
 echo Content-Type: text/plain
 echo
