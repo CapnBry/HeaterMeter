@@ -6,11 +6,11 @@ SDIR=`dirname $0`
 stty -F $SERIAL_DEVICE $SERIAL_BAUD min 1 igncr
 
 if [ ! -f "$RRD_FILE" ] ; then
-  ./create_hm_rrd
+  $SDIR/create_hm_rrd
 fi
 
-ln -s "$JSON_FILE" ./json
-ln -s "$LOG_FILE" ./data.txt
+ln -s "$JSON_FILE" $SDIR/json
+ln -s "$LOG_FILE" $SDIR/data.txt
 
 CNT=999
 IFS=$','
