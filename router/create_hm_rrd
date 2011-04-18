@@ -1,6 +1,6 @@
 #!/bin/sh
 
-SDIR=`dirname $0`
+cd `dirname $0`
 . ./heatermeter.conf
 
 if [ -z "$1" ] ; then
