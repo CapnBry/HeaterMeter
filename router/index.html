@@ -336,8 +336,9 @@ function connectionSuccess(o)
 		$("#temp" + i).css("border-right", slopeIndic);
 		
 	}
-	$(".fana").animate({width: o.fan.a + "%"});
+    $("#fana").animate({left: o.fan.a + "%"});
     $("#fanc").animate({width: o.fan.c + "%"});
+    $("#fanl").html("Blower Speed " + o.fan.c + "%");
     if (o.lid == 0)
         $("#lidopen").hide();
     else
@@ -396,11 +397,10 @@ div#graphtt { display: none; position: absolute; border: 1px solid #8d99c2; back
 			<div style="display: inline" id="set">---</div><div style="display: inline">&deg;</div>
 		</div> 
 
-		<div style="background: #35537d; border: 1px solid #777; width:100%; height: 20px; margin: 1px; position: relative;">
-		  <div class="fana" style="background: #08a; width: 0%; height: 4px; border-top-right-radius: 2px;"></div>
-		  <div id="fanc" style="background: #0ad; width: 0%; height: 12px; border-top-right-radius: 3px; border-bottom-right-radius: 3px;"></div>
-		  <div class="fana" style="background: #08a; width: 0%; height: 4px; border-bottom-right-radius: 2px;"></div>
-		  <div style="position: absolute; top: -1px; left: 2px; color: #003;">Blower Speed</div>
+		<div style="background: #35537d; border: 1px solid #777; width:100%; height: 20px; position: relative;">
+		  <div id="fana" style="position: relative; width: 3px; height: 20px; background: #fe4; z-index: 2; opacity: 0.5;"></div>
+		  <div id="fanc" style="background: #0ad; width: 0%; height: 14px; border-top-right-radius: 4px; border-bottom-right-radius: 4px; position: relative; top: -17px;"></div>
+		  <div id="fanl" style="position: absolute; top: -1px; color: #003; z-index: 1;"></div>
 		</div>
 
 		<table class="probelist"><tr>
