@@ -172,9 +172,9 @@ function graphClicked(event, pos, item)
     else 
     {
         var d = new Date(pos.x);
-        sInfo = formatTime(d, false) + "<br/>Fan" + sInfo;
+        $("#graphtt_title").html(formatTime(d, false));
+        $("#graphtt_content").html("Fan" + sInfo);
         $("#graphtt")
-            .html(sInfo)
             .css({top: pos.pageY, left: pos.pageX})
             .fadeIn();
     }
@@ -381,7 +381,8 @@ table.probelist { width: 100%; background: #84a6b2; background: rgba(99, 162, 23
 td.probe { width: 33%; }
 div.pname { color: #003; font-size: 18pt; line-height: 12pt;}
 div.ptemp { font-size: 32pt; line-height: 26pt; text-shadow: #111 1px 1px; }
-div#graphtt { display: none; position: absolute; border: 1px solid #8d99c2; background: #e1e5f1; opacity: 0.9; padding: 2px; color: #003; font-size: small; }
+div#graphtt { display: none; position: absolute; border: 1px solid #8d99c2; background: #eef; opacity: 0.9; padding: 2px; color: #003; font-size: small; }
+div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357; };
 </style>
 </head>
 
@@ -441,7 +442,10 @@ div#graphtt { display: none; position: absolute; border: 1px solid #8d99c2; back
         <div id="graph_legend"></div>
     </td>
 </tr></table>
-<div id="graphtt"></div>
+<div id="graphtt">
+    <div id="graphtt_title"></div>
+    <div id="graphtt_content"></div>
+</div>
 </body>
 
 </html>
