@@ -10,9 +10,9 @@
 <script language="javascript" type="text/javascript" src="js/jquery.flot.selection.min.js"></script>
 <!-- <script language="javascript" type="text/javascript" src="js/jquery.flot.crosshair.min.js"></script> -->
 <script language="javascript" type="text/javascript">
-  var inputMap = [6,1,2,3,4,5];
-  var graphLoaded = false;
-  var graphData =  [
+var inputMap = [6,1,2,3,4,5];
+var graphLoaded = false;
+var graphData =  [
         { label: "", color: "#6cf", lines: { lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },
         { label: "Set", color: "rgba(255,0,0,0.5)", shadowSize: 0, data: [] },
         { label: "Pit", color: "#f90", lines: { lineWidth: 2 }, data: [] },
@@ -24,32 +24,32 @@
     var graphOpts = {
         legend: { show: true, labelFormatter: legendLabel },
         series: {
-            lines: { show: true, lineWidth: 1 }, 
+            lines: { show: true, lineWidth: 1 },
             points: { show: false, symbol: "circle", radius: 1, fill: false },
             shadowSize: 2
-        }, 
+        },
         xaxis: { show: true, mode: "time", color: "#003" },
-        yaxis: { show: true, ticks: 10, color: "#003" }, 
+        yaxis: { show: true, ticks: 10, color: "#003" },
         yaxes: [ { }, { position: "right", min: 0, max: 100 } ],
         grid: { clickable: true }
     };
     var graphOpts2 = {
         legend: { show: false },
         series: {
-            lines: { show: true, lineWidth: 1 }, 
+            lines: { show: true, lineWidth: 1 },
             points: { show: false },
             shadowSize: 0
-        }, 
+        },
         xaxis: { show: true, mode: "time", color: "#003" },
-        yaxis: { show: false }, 
+        yaxis: { show: false },
         yaxes: [ { }, { min: 0, max: 100 } ],
         grid: { clickable: false },
         selection: { mode: "x" }
     };
     var tzOffset = new Date().getTimezoneOffset() * -60000;
 
- $(document).ready(function()
- {
+$(document).ready(function()
+{
     graphOpts.legend.container = $("#graph_legend");
     $("#graph_overview").bind("plotselected", overviewSelected);
     $("#graph_overview").bind("plotunselected", overviewUnselected);
@@ -58,25 +58,25 @@
     $("#rangeselect").change(refreshGraphData);
     $("#graph").bind("plotclick", graphClicked);
 
-    for (var srs=0; srs<4; ++srs)   
-        $("#temp" + srs).css("text-shadow", graphData[srs+2].color + " 1px 1px"); 
+    for (var srs=0; srs<4; ++srs)
+        $("#temp" + srs).css("text-shadow", graphData[srs+2].color + " 1px 1px");
 
-	//do an initial query
-	JSONQuery();
-	
-	//Begin a background timer that will 
-	//execute the query every 10 seconds
-	window.setInterval(JSONQuery, 15000);
-	
-	$(".pname").editable(function(value, settings) { 
-		 return(nameChanged(this.id, value));
-	 });
-	 
-	$("#set").editable(function(value, settings) { 
-		 return(tempChanged(value));
-	 }, {style: "display: inline"});
-    
-     refreshGraphData();
+    //do an initial query
+    JSONQuery();
+
+    //Begin a background timer that will
+    //execute the query every 10 seconds
+    window.setInterval(JSONQuery, 15000);
+
+    $(".pname").editable(function(value, settings) {
+        return(nameChanged(this.id, value));
+    });
+
+    $("#set").editable(function(value, settings) {
+        return(tempChanged(value));
+    }, {style: "display: inline"});
+
+    refreshGraphData();
 });
 
 function refreshGraphData()
@@ -100,22 +100,22 @@ function refreshGraphData()
 
 function clearLoadingIndic()
 {
-  $("#loadindic").hide();
-  $("#rangeselect").show();
+	$("#loadindic").hide();
+	$("#rangeselect").show();
 }
 
 function showFanChanged()
 {
-  if ($("#showfan").attr("checked"))
-    graphData[0].lines.show = true;
-  else
-    graphData[0].lines.show = false;
-  updateGraph();  
+	if ($("#showfan").attr("checked"))
+		graphData[0].lines.show = true;
+	else
+		graphData[0].lines.show = false;
+	updateGraph();
 }
 
 function legendLabel(label, series)
 {
-  return label + " (" + series.data.length + "pts)";
+    return label + " (" + series.data.length + "pts)";
 }
 
 function updateGraphRanges(from, to)
@@ -139,9 +139,9 @@ function overviewUnselected()
 function formatTime(date, includeSeconds)
 {
     if (includeSeconds)
-      return $.plot.formatDate(date, "%h:%M:%S %P");
-    else 
-      return $.plot.formatDate(date, "%h:%M %P");
+		return $.plot.formatDate(date, "%h:%M:%S %P");
+    else
+		return $.plot.formatDate(date, "%h:%M %P");
 }
 
 function graphClicked(event, pos, item)
@@ -152,7 +152,7 @@ function graphClicked(event, pos, item)
         var nearestIdx = -1;
         var nearestDiff;
         var srsData = graphData[srs].data;
-   
+
         for (var i=0; i<srsData.length; ++i)
         {
             var diff = Math.abs(srsData[i][0] - pos.x);
@@ -169,7 +169,7 @@ function graphClicked(event, pos, item)
     }
     if (sInfo == "")
         $("#graphtt").fadeOut();
-    else 
+    else
     {
         var d = new Date(pos.x);
         $("#graphtt_title").html(formatTime(d, false));
@@ -182,7 +182,7 @@ function graphClicked(event, pos, item)
 
 function addGraphPoint(d, time, temp)
 {
-    // Only add a point if the value is nonzero 
+    // Only add a point if the value is nonzero
     // the fan speed is excluded because it can
     // have 0 values
     if (temp == 0 && d != graphData[0].data)
@@ -200,22 +200,24 @@ function addGraphPoint(d, time, temp)
         }
     }
 
-    d.push([time, temp]); 
+    d.push([time, temp]);
 }
 
 var lastOverviewPlot;
 function updateGraph()
-{  
+{
     // we want to save the selected area, and if the selection is to the
     // end of the graph, extend it to include the new point
     var selectedArea;
     var extendSelection = false;
-    
+
     if (lastOverviewPlot)
         selectedArea = lastOverviewPlot.getSelection();
     if (selectedArea && selectedArea.xaxis.to == lastOverviewPlot.getAxes().xaxis.max)
         extendSelection = true;
+		
     lastOverviewPlot = $.plot($("#graph_overview"), graphData, graphOpts2);
+	
     if (extendSelection)
         selectedArea.xaxis.to = lastOverviewPlot.getAxes().xaxis.max;
     if (selectedArea)
@@ -234,7 +236,7 @@ function tstatSuccess(csv)
         var line = this.split(' ');
         if (line.length < 6) return;
         line[0] = line[0].replace(":", "") * 1000 + tzOffset;
-        //line[0] = line[0] * 1000 + tzOffset; 
+        //line[0] = line[0] * 1000 + tzOffset;
         for (var srs=0; srs<graphData.length; ++srs)
         {
             var value = parseFloat(line[inputMap[srs]]);
@@ -248,39 +250,39 @@ function tstatSuccess(csv)
 
 function nameChanged(from, value)
 {
-	$.get("/cgi-bin/set", { from: value} );
-	return value;
+    $.get("/cgi-bin/set", { from: value} );
+    return value;
 }
 
 function tempChanged(value)
 {
-	if(((value - 0) == value && value.length > 0) && value > 0 && value < 999)
-	{
-		$.get("/cgi-bin/set", { "sp": value} );
-		return value;
-	}
-	else return "err";
+    if(((value - 0) == value && value.length > 0) && value > 0 && value < 999)
+    {
+        $.get("/cgi-bin/set", { "sp": value} );
+        return value;
+    }
+    else return "err";
 }
 
 function JSONQuery()
 {
-	if($(document).has('form').length == 0)
-	{
-		jQuery.ajax(
-		{
-			type: "GET",
-			url: "json",
-			dataType: "json",
-			timeout: 5000,
-			success: function(data) { connectionSuccess(data); },
-			error: function () { connectionFailure(); }
-		});
-	}
+    if($(document).has('form').length == 0)
+    {
+        jQuery.ajax(
+        {
+            type: "GET",
+            url: "json",
+            dataType: "json",
+            timeout: 5000,
+            success: function(data) { connectionSuccess(data); },
+            error: function () { connectionFailure(); }
+        });
+    }
 }
 
-/* find out how many points we have on the graph and 
-   requery the server for an updated consolidation
-   if we have too much data */
+/* find out how many points we have on the graph and
+requery the server for an updated consolidation
+if we have too much data */
 function checkRefreshGraphOrUpdate()
 {
     if (!graphLoaded)
@@ -289,9 +291,9 @@ function checkRefreshGraphOrUpdate()
     var max = 0;
     jQuery.each(graphData, function () {
         if (this.data.length > max)
-          max = this.data.length;
+			max = this.data.length;
     });
-    
+
     // the RRD holds 600 points and the graph holds
     // less due to point consolidation, so best case
     // scenario 25pts * 15sec per poll = 6min 15sec
@@ -304,38 +306,38 @@ function checkRefreshGraphOrUpdate()
 function connectionSuccess(o)
 {
     o.time = o.time * 1000 + tzOffset;
-	$("#set").text(o.set);
-    
+    $("#set").text(o.set);
+
     if (graphLoaded)
     {
         addGraphPoint(graphData[0].data, o.time, o.fan.c);
         addGraphPoint(graphData[1].data, o.time, o.set);
     }
-    
-	for(var i = 0; i < 4; i++)
-	{
-	    var slopeIndic = "";
+
+    for(var i = 0; i < 4; i++)
+    {
+        var slopeIndic = "";
         graphData[i+2].label = o.temps[i].n;
         if (graphLoaded)
             addGraphPoint(graphData[i+2].data, o.time, o.temps[i].c);
-		
-		$("#pn" + i).text(o.temps[i].n);
-		var val = o.temps[i].c;
-		if(val == 0)
-			$("#temp" + i).text("off");
-		else
-		{
-			$("#temp" + i).html(val.toFixed(1) + "&deg;");
-		
-			val -= o.temps[i].a;
-			if(val > 1)
-				slopeIndic = "5px solid #f00";
-			else if(val < -1)
-				slopeIndic = "5px solid #00f";
-		}
-		$("#temp" + i).css("border-right", slopeIndic);
-		
-	}
+
+        $("#pn" + i).text(o.temps[i].n);
+        var val = o.temps[i].c;
+        if(val == 0)
+            $("#temp" + i).text("off");
+        else
+        {
+            $("#temp" + i).html(val.toFixed(1) + "&deg;");
+
+            val -= o.temps[i].a;
+            if(val > 1)
+                slopeIndic = "5px solid #f00";
+            else if(val < -1)
+                slopeIndic = "5px solid #00f";
+        }
+        $("#temp" + i).css("border-right", slopeIndic);
+
+    }
     $("#fana").animate({left: o.fan.a + "%"});
     $("#fanc").animate({width: o.fan.c + "%"});
     $("#fanl").html("Blower Speed " + o.fan.c + "%");
@@ -343,33 +345,33 @@ function connectionSuccess(o)
         $("#lidopen").hide();
     else
         $("#lidopen").html("Lid Open " + o.lid + "s").show();
-	
-	updateTime(o.time);
+
+    updateTime(o.time);
     checkRefreshGraphOrUpdate();
 }
 
 //either the request timed out or something else happened
 function connectionFailure()
 {
-	updateTime(null);
+    updateTime(null);
 }
 
 //update the "last updated" time
 function updateTime(time)
 {
-	var color = "#bbb";
+    var color = "#bbb";
     var date;
     if(!time)
     {
         color = "#f00";
         date = new Date();
     }
-	else
+    else
         date = new Date(time);
-	
-	$("#updatedtime")
-      .html(formatTime(date, true))
-      .css("color", color);
+
+    $("#updatedtime")
+    .html(formatTime(date, true))
+    .css("color", color);
 }
 
 </script>
@@ -377,7 +379,7 @@ function updateTime(time)
 <style type="text/css">
 body { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; color: #fff; background: #f0f0f0; text-align: center; margin: 0; padding: 0; }
 div.content { background: #264464; background: rgba(76,135,199,0.5); border: 1px solid #47607b; }
-table.probelist { width: 100%; background: #84a6b2; background: rgba(99, 162, 230, 0.5); border: 1px solid #243e5b; } 
+table.probelist { width: 100%; background: #84a6b2; background: rgba(99, 162, 230, 0.5); border: 1px solid #243e5b; }
 td.probe { width: 33%; }
 div.pname { color: #003; font-size: 18pt; line-height: 12pt;}
 div.ptemp { font-size: 32pt; line-height: 26pt; text-shadow: #111 1px 1px; }
@@ -388,41 +390,37 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
 
 <body>
 <div style="background: url('fire.png'); background-repeat:repeat-x; padding: 10px;">
-	<div class="content">
-		<div style="color: #bbb; font-size: 30pt;">Current Pit</div>
-		<div id="updatedtime" style="position: absolute; top: 8px; right: 13px; color: #bbb; font-size: 12pt;">00:00:00 AM</div>
-		<div id="lidopen" style="position: absolute; top: 8px; left: 13px; color: #fc3; font-size: 12pt;"></div>
-		<div style="font-size: 128pt; line-height: 100pt; text-shadow: #000 2px 2px;" id="temp0">---</div>
-		<div style="font-size: 24pt; text-align: right;">
-			<div style="display: inline">Set </div>
-			<div style="display: inline" id="set">---</div><div style="display: inline">&deg;</div>
-		</div> 
+    <div class="content">
+        <div style="color: #bbb; font-size: 30pt;">Current Pit</div>
+        <div id="updatedtime" style="position: absolute; top: 8px; right: 13px; color: #bbb; font-size: 12pt;">00:00:00 AM</div>
+        <div id="lidopen" style="position: absolute; top: 8px; left: 13px; color: #fc3; font-size: 12pt;"></div>
+        <div style="font-size: 128pt; line-height: 100pt; text-shadow: #000 2px 2px;" id="temp0">---</div>
+        <div style="font-size: 24pt; text-align: right;">
+            <div style="display: inline">Set </div>
+            <div style="display: inline" id="set">---</div><div style="display: inline">&deg;</div>
+        </div>
 
-		<div style="background: #35537d; border: 1px solid #777; height: 20px; position: relative;">
-		  <div id="fana" style="position: relative; width: 3px; height: 20px; background: #fe4; z-index: 2; opacity: 0.5;"></div>
-		  <div id="fanc" style="background: #0ad; width: 0%; height: 14px; border-top-right-radius: 4px; border-bottom-right-radius: 4px; position: relative; top: -17px;"></div>
-		  <div id="fanl" style="position: absolute; top: -1px; color: #003; z-index: 1;"></div>
-		</div>
+        <div style="background: #35537d; border: 1px solid #777; height: 20px; position: relative;">
+        <div id="fana" style="position: relative; width: 3px; height: 20px; background: #fe4; z-index: 2; opacity: 0.5;"></div>
+        <div id="fanc" style="background: #0ad; width: 0%; height: 14px; border-top-right-radius: 4px; border-bottom-right-radius: 4px; position: relative; top: -17px;"></div>
+        <div id="fanl" style="position: absolute; top: -1px; color: #003; z-index: 1;"></div>
+        </div>
 
-		<table class="probelist"><tr>
-		  <td class="probe" style="border-right: 1px solid #243e5b;">
-		    <div class="pname" style="display: inline;" id="pn1">-</div><div class="ptemp" id="temp1">-</div>
-		  </td>
-		  <td class="probe">
-  		    <div class="pname" style="display: inline" id="pn2">-</div><div class="ptemp" id="temp2">-</div>
-		  </td>
-  		  <td class="probe" style="border-left: 1px solid #243e5b;">
-		    <div class="pname" style="display: inline" id="pn3">-</div><div class="ptemp" id="temp3">-</div>
-   		  </td>
-		</tr></table>
-	</div>
+        <table class="probelist"><tr>
+			<td class="probe" style="border-right: 1px solid #243e5b;">
+				<div class="pname" style="display: inline;" id="pn1">-</div><div class="ptemp" id="temp1">-</div>
+			</td>
+			<td class="probe">
+				<div class="pname" style="display: inline" id="pn2">-</div><div class="ptemp" id="temp2">-</div>
+			</td>
+            <td class="probe" style="border-left: 1px solid #243e5b;">
+				<div class="pname" style="display: inline" id="pn3">-</div><div class="ptemp" id="temp3">-</div>
+            </td>
+        </tr></table>
+    </div>
 </div>
 <table style="background-color: #f3f1e9; width: 100%; border-spacing: 0;"><tr>
-    <td style="vertical-align: top;">
-        <!-- <p style="writing-mode: tb-rl;">Temperature &deg;F</p>
-        <img src="gleft.png">
--->&nbsp;
-    </td>
+    <td style="vertical-align: top;">&nbsp;</td>
     <td>
         <div id="graph" style="height: 350px; width: 700px;"></div>
         <div id="graph_overview" style="height: 90px; width: 700px;"></div>
