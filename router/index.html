@@ -115,7 +115,7 @@ function showFanChanged()
 
 function legendLabel(label, series)
 {
-    return label + " (" + series.data.length + "pts)";
+    return label; // + " (" + series.data.length + "pts)";
 }
 
 function updateGraphRanges(from, to)
@@ -370,9 +370,9 @@ function connectionSuccess(o)
     $("#fanc").animate({width: o.fan.c + "%"});
     $("#fanl").html("Blower Speed " + o.fan.c + "%");
     if (o.lid == 0)
-        $("#lidopen").hide();
+        $("#lid").hide();
     else
-        $("#lidopen").html("Lid Open " + o.lid + "s").show();
+        $("#lid").html("Lid Open " + o.lid + "s").show();
 
     updateTime(o.time);
     checkRefreshGraphOrUpdate();
@@ -391,7 +391,7 @@ function updateTime(time)
     var date;
     if(!time)
     {
-        color = "#f00";
+        color = "#f66";
         date = new Date();
     }
     else
@@ -421,7 +421,7 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
     <div class="content">
         <div style="color: #bbb; font-size: 28pt;">Current Pit</div>
         <div id="updatedtime" style="position: absolute; top: 8px; right: 13px; color: #bbb; font-size: 12pt;">00:00:00 AM</div>
-        <div id="lidopen" style="position: absolute; top: 8px; left: 13px; color: #fc3; font-size: 12pt;"></div>
+        <div id="lid" style="position: absolute; top: 8px; left: 13px; color: #fc3; font-size: 12pt;"></div>
         <div id="temp0" style="font-size: 120pt; line-height: 100pt; text-shadow: 3px 3px 0px #000;">---</div>
         <div id="set" style="font-size: 22pt; text-align: right;">Set ---</div>
 
