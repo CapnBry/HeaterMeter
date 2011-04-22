@@ -100,17 +100,17 @@ function refreshGraphData()
 
 function clearLoadingIndic()
 {
-	$("#loadindic").hide();
-	$("#rangeselect").show();
+    $("#loadindic").hide();
+    $("#rangeselect").show();
 }
 
 function showFanChanged()
 {
-	if ($("#showfan").attr("checked"))
-		graphData[0].lines.show = true;
-	else
-		graphData[0].lines.show = false;
-	updateGraph();
+    if ($("#showfan").attr("checked"))
+        graphData[0].lines.show = true;
+    else
+        graphData[0].lines.show = false;
+    updateGraph();
 }
 
 function legendLabel(label, series)
@@ -139,9 +139,14 @@ function overviewUnselected()
 function formatTime(date, includeSeconds)
 {
     if (includeSeconds)
-		return $.plot.formatDate(date, "%h:%M:%S %P");
+        return $.plot.formatDate(date, "%h:%M:%S %P");
     else
-		return $.plot.formatDate(date, "%h:%M %P");
+        return $.plot.formatDate(date, "%h:%M %P");
+}
+
+function lerp(n1, n2, frac)
+{
+    return (n1 * (1.0 - frac)) + (n2 * frac);
 }
 
 function graphClicked(event, pos, item)
@@ -149,31 +154,53 @@ function graphClicked(event, pos, item)
     var sInfo = "";
     for (var srs=0; srs<graphData.length; ++srs)
     {
-        var nearestIdx = -1;
-        var nearestDiff;
+        var val = NaN;
+        var firstPastIdx = -1;
         var srsData = graphData[srs].data;
-
+        
         for (var i=0; i<srsData.length; ++i)
         {
-            var diff = Math.abs(srsData[i][0] - pos.x);
-            if (nearestIdx == -1 || diff < nearestDiff)
+            if (pos.x <= srsData[i][0]  && !isNaN(srsData[i][1]))
             {
-                nearestIdx = i;
-                nearestDiff = diff;
+                firstPastIdx = i;
+                break;
             }
         }
-        if (nearestIdx != -1)
+        
+        if (firstPastIdx == -1)
+            continue;
+                
+        // This must either be the point at the same timestamp as where you 
+        // clicked or you must click between two points.  If you click off to 
+        // the left of the first point or to the right of the last, we don't 
+        // use that value because you've clicked outside the range of valid data. 
+        var ptR = srsData[firstPastIdx];
+        if (item && item.datapoint[0] == ptR[0])
+            val = ptR[1];
+        else if (firstPastIdx != 0)
         {
-            sInfo = sInfo + graphData[srs].label + " " + srsData[nearestIdx][1].toFixed(1) + "<br/>";
+            var ptL = srsData[firstPastIdx-1];
+            var timeDiff = ptR[0] - ptL[0];
+            val = lerp(ptL[1], ptR[1], (pos.x - ptL[0]) / timeDiff);
         }
-    }
+            
+        if (!isNaN(val))
+            if (srs == 0)
+            {
+                if (val >= 0)
+                    sInfo = sInfo + "Fan " + Math.round(val) + "%<br/>";
+            }
+            else
+                sInfo = sInfo + graphData[srs].label + " " + val.toFixed(1) + "&deg;<br/>";
+    }  /* for srs */
+    
     if (sInfo == "")
         $("#graphtt").fadeOut();
     else
     {
         var d = new Date(pos.x);
         $("#graphtt_title").html(formatTime(d, false));
-        $("#graphtt_content").html("Fan" + sInfo);
+        $("#graphtt_content").html(sInfo);
         $("#graphtt")
             .css({top: pos.pageY, left: pos.pageX})
             .fadeIn();
@@ -186,7 +213,8 @@ function addGraphPoint(d, time, temp)
     // the fan speed is excluded because it can
     // have 0 values
     if (temp == 0 && d != graphData[0].data)
-        return;
+        temp = NaN;
+        
     // if the last two points have the same value as the
     // new point just update the time on the last point
     if (d.length > 1)
@@ -215,9 +243,9 @@ function updateGraph()
         selectedArea = lastOverviewPlot.getSelection();
     if (selectedArea && selectedArea.xaxis.to == lastOverviewPlot.getAxes().xaxis.max)
         extendSelection = true;
-		
+        
     lastOverviewPlot = $.plot($("#graph_overview"), graphData, graphOpts2);
-	
+    
     if (extendSelection)
         selectedArea.xaxis.to = lastOverviewPlot.getAxes().xaxis.max;
     if (selectedArea)
@@ -291,7 +319,7 @@ function checkRefreshGraphOrUpdate()
     var max = 0;
     jQuery.each(graphData, function () {
         if (this.data.length > max)
-			max = this.data.length;
+            max = this.data.length;
     });
 
     // the RRD holds 600 points and the graph holds
@@ -398,20 +426,20 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
         <div id="set" style="font-size: 22pt; text-align: right;">Set ---</div>
 
         <div style="background: #357; border: 1px solid #777; height: 20px; position: relative;">
-			<div id="fanc" style="position: absolute; left: 0; top: 3px; z-index: 0; background: #0ad; width: 0%; height: 14px; border-top-right-radius: 4px; border-bottom-right-radius: 4px;"></div>
-			<div id="fanl" style="position: absolute; left: 0; top: 1px; z-index: 1; color: #003; font-size: 10pt;"></div>
-			<div id="fana" style="position: absolute; left: 0; top: 0; z-index: 2; width: 3px; height: 20px; background: #fe4; opacity: 0.5;"></div>
+            <div id="fanc" style="position: absolute; left: 0; top: 3px; z-index: 0; background: #0ad; width: 0%; height: 14px; border-top-right-radius: 4px; border-bottom-right-radius: 4px;"></div>
+            <div id="fanl" style="position: absolute; left: 0; top: 1px; z-index: 1; color: #003; font-size: 10pt;"></div>
+            <div id="fana" style="position: absolute; left: 0; top: 0; z-index: 2; width: 3px; height: 20px; background: #fe4; opacity: 0.5;"></div>
         </div>
 
         <table class="probelist"><tr>
-			<td class="probe" style="border-right: 1px solid #235;">
-				<div class="pname" style="display: inline;" id="pn1">-</div><div class="ptemp" id="temp1">-</div>
-			</td>
-			<td class="probe">
-				<div class="pname" style="display: inline" id="pn2">-</div><div class="ptemp" id="temp2">-</div>
-			</td>
+            <td class="probe" style="border-right: 1px solid #235;">
+                <div class="pname" style="display: inline;" id="pn1">-</div><div class="ptemp" id="temp1">-</div>
+            </td>
+            <td class="probe">
+                <div class="pname" style="display: inline" id="pn2">-</div><div class="ptemp" id="temp2">-</div>
+            </td>
             <td class="probe" style="border-left: 1px solid #235;">
-				<div class="pname" style="display: inline" id="pn3">-</div><div class="ptemp" id="temp3">-</div>
+                <div class="pname" style="display: inline" id="pn3">-</div><div class="ptemp" id="temp3">-</div>
             </td>
         </tr></table>
     </div>
