@@ -59,7 +59,7 @@ $(document).ready(function()
     $("#graph").bind("plotclick", graphClicked);
 
     for (var srs=0; srs<4; ++srs)
-        $("#temp" + srs).css("text-shadow", graphData[srs+2].color + " 1px 1px");
+        $("#temp" + srs).css("text-shadow", "2px 2px 1px " + graphData[srs+2].color);
 
     //do an initial query
     JSONQuery();
@@ -382,7 +382,7 @@ div.content { background: #246; background: rgba(76,135,199,0.5); border: 1px so
 table.probelist { width: 100%; background: #8ab; background: rgba(99, 162, 230, 0.5); border: 1px solid #235; }
 td.probe { width: 33%; }
 div.pname { color: #003; font-size: 18pt; line-height: 12pt;}
-div.ptemp { font-size: 32pt; line-height: 26pt; text-shadow: #111 1px 1px; }
+div.ptemp { font-size: 32pt; line-height: 26pt; text-shadow: 1px 1px 0px #111; }
 div#graphtt { display: none; position: absolute; border: 1px solid #89c; background: #eef; opacity: 0.9; padding: 2px; color: #003; font-size: small; }
 div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357; };
 </style>
@@ -394,7 +394,7 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
         <div style="color: #bbb; font-size: 28pt;">Current Pit</div>
         <div id="updatedtime" style="position: absolute; top: 8px; right: 13px; color: #bbb; font-size: 12pt;">00:00:00 AM</div>
         <div id="lidopen" style="position: absolute; top: 8px; left: 13px; color: #fc3; font-size: 12pt;"></div>
-        <div id="temp0" style="font-size: 120pt; line-height: 100pt; text-shadow: #000 2px 2px;">---</div>
+        <div id="temp0" style="font-size: 120pt; line-height: 100pt; text-shadow: 3px 3px 0px #000;">---</div>
         <div id="set" style="font-size: 22pt; text-align: right;">Set ---</div>
 
         <div style="background: #357; border: 1px solid #777; height: 20px; position: relative;">
