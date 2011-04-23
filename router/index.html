@@ -203,7 +203,7 @@ function graphClicked(event, pos, item)
         $("#graphtt_title").html(formatTime(d, false));
         $("#graphtt_content").html(sInfo);
         $("#graphtt")
-            .css({top: pos.pageY, left: pos.pageX})
+            .css({left: pos.pageX + 9, top: pos.pageY - 11})
             .fadeIn();
     }
 }
@@ -469,6 +469,7 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
 <div id="graphtt">
     <div id="graphtt_title"></div>
     <div id="graphtt_content"></div>
+    <img src="ttarrow.png" style="position: absolute; left: -9px; top: 3px;">
 </div>
 </body>
 
