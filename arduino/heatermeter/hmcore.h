@@ -30,7 +30,8 @@ extern "C" {
 #define PIN_WIFI_INT     2
 #define PIN_BLOWER       3
 #define PIN_LCD_CLK      4
-#define PIN_ALARM        5
+#define PIN_LCD_BACKLGHT 5
+#define PIN_ALARM        6
 #define PIN_DATAFLASH_SS 7
 #define PIN_LCD_DATA     8
 #define PIN_WIFI_LED     9
