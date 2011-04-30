@@ -138,7 +138,7 @@ void updateDisplay(void)
   if (!pid.getManualFanMode() && pitTemp == 0)
     memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
   else if (pid.LidOpenResumeCountdown > 0)
-    snprintf_P(buffer, sizeof(buffer), LCD_LINE1_DELAYING, pitTemp, pid.LidOpenResumeCountdown);
+    snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE"F Lid%3u"), pitTemp, pid.LidOpenResumeCountdown);
   else
   {
     char c1,c2;
@@ -152,7 +152,7 @@ void updateDisplay(void)
       c1 = '[';
       c2 = ']';
     }
-    snprintf_P(buffer, sizeof(buffer), LCD_LINE1, pitTemp, c1, pid.getFanSpeed(), c2);
+    snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE"F %c%3u%%%c"), pitTemp, c1, pid.getFanSpeed(), c2);
   }
   lcd.print(buffer); 
 
@@ -161,7 +161,7 @@ void updateDisplay(void)
   if (probeIndex < TEMP_COUNT)
   {
     loadProbeName(probeIndex);
-    snprintf_P(buffer, sizeof(buffer), LCD_LINE2, editString, (int)pid.Probes[probeIndex]->Temperature);
+    snprintf_P(buffer, sizeof(buffer), PSTR("%-12s%3d"DEGREE), editString, (int)pid.Probes[probeIndex]->Temperature);
   }
   else
   {
@@ -248,28 +248,28 @@ void reboot()
 boolean handleCommandUrl(char *URL)
 {
   unsigned char urlLen = strlen(URL);
-  if (strncmp_P(URL, URL_SETPOINT, 7) == 0) 
+  if (strncmp_P(URL, PSTR("set?sp="), 7) == 0) 
   {
     storeSetPoint(atoi(URL + 7));
     return true;
   }
-  if (strncmp_P(URL, URL_SETPID, 7) == 0 && urlLen > 9) 
+  if (strncmp_P(URL, PSTR("set?pid"), 7) == 0 && urlLen > 9) 
   {
     float f = atof(URL + 9);
     storePidParam(URL[7], f);
     return true;
   }
-  if (strncmp_P(URL, URL_SETPNAME, 6) == 0 && urlLen > 8) 
+  if (strncmp_P(URL, PSTR("set?pn"), 6) == 0 && urlLen > 8) 
   {
     storeProbeName(URL[6] - '0', URL + 8);
     return true;
   }
-  if (strncmp_P(URL, URL_SETPOFF, 6) == 0 && urlLen > 8) 
+  if (strncmp_P(URL, PSTR("set?po"), 6) == 0 && urlLen > 8) 
   {
     storeProbeOffset(URL[6] - '0', atoi(URL + 8));
     return true;
   }
-  if (strncmp_P(URL, URL_REBOOT, 5) == 0)
+  if (strncmp_P(URL, PSTR("reboot"), 5) == 0)
   {
     reboot();
     // reboot doesn't return
@@ -415,30 +415,30 @@ inline void sendFlashFile(const struct flash_file_t *file)
 
 void outputJson(void)
 {
-  WiServer.print_P(JSON1);
+  WiServer.print_P(PSTR("{\"temps\":["));
 
   unsigned char i;
   for (i=0; i<TEMP_COUNT; i++)
   {
-    WiServer.print_P(JSON_T1);
+    WiServer.print_P(PSTR("{\"n\":\""));
     loadProbeName(i);
     WiServer.print(editString);
-    WiServer.print_P(JSON_T2);
+    WiServer.print_P(PSTR("\",\"c\":"));
     WiServer.print(pid.Probes[i]->Temperature, 1);
-    WiServer.print_P(JSON_T3);
+    WiServer.print_P(PSTR(",\"a\":"));
     WiServer.print(pid.Probes[i]->TemperatureAvg, 2);
-    WiServer.print_P(JSON_T4);
+    WiServer.print_P(PSTR("},"));
   }
   
-  WiServer.print_P(JSON2);
+  WiServer.print_P(PSTR("{}],\"set\":"));
   WiServer.print(pid.getSetPoint(),DEC);
-  WiServer.print_P(JSON3);
+  WiServer.print_P(PSTR(",\"lid\":"));
   WiServer.print(pid.LidOpenResumeCountdown,DEC);
-  WiServer.print_P(JSON4);
+  WiServer.print_P(PSTR(",\"fan\":{\"c\":"));
   WiServer.print(pid.getFanSpeed(),DEC);
-  WiServer.print_P(JSON5);
+  WiServer.print_P(PSTR(",\"a\":"));
   WiServer.print((unsigned char)pid.FanSpeedAvg,DEC);
-  WiServer.print_P(JSON6);
+  WiServer.print_P(PSTR("}}"));
 }
 
 boolean sendPage(char* URL)
@@ -448,21 +448,21 @@ boolean sendPage(char* URL)
 
   if (handleCommandUrl(URL))
   {
-    WiServer.print_P(WEB_OK);
+    WiServer.print_P(PSTR("OK\n"));
     return true;
   }
-  if (strcmp_P(URL, URL_JSON) == 0) 
+  if (strcmp_P(URL, PSTR("json")) == 0) 
   {
     outputJson();
     return true;    
   }
-  if (strcmp_P(URL, URL_CSV) == 0) 
+  if (strcmp_P(URL, PSTR("csv")) == 0) 
   {
     outputCsv(WiServer);
     return true;    
   }
 #ifdef DFLASH_LOGGING  
-  if (strcmp_P(URL, URL_LOG) == 0) 
+  if (strcmp_P(URL, PSTR("log")) == 0) 
   {
     outputLog();
     return true;    

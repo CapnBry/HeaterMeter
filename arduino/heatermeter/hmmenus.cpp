@@ -189,7 +189,7 @@ state_t menuHome(button_t button)
 #ifdef HEATERMETER_NETWORKING
 state_t menuConnecting(button_t button)
 {
-  lcdprint_P(LCD_CONNECTING, true); 
+  lcdprint_P(PSTR("Connecting to"), true); 
   lcd.setCursor(0, 1);
   lcd.print(ssid);
 
@@ -205,7 +205,7 @@ void menuBooleanEdit(button_t button, const prog_char *preamble)
   lcd.setCursor(0, 1);
   if (preamble != NULL)
     lcdprint_P(preamble, false);
-  lcdprint_P((editInt != 0) ? LCD_YES : LCD_NO, false);
+  lcdprint_P((editInt != 0) ? PSTR("Yes") : PSTR("No"), false);
 }
 
 void menuNumberEdit(button_t button, unsigned char increment, 
@@ -312,7 +312,7 @@ state_t menuSetpoint(button_t button)
 {
   if (button == BUTTON_ENTER)
   {
-    lcdprint_P(LCD_SETPOINT1, true);
+    lcdprint_P(PSTR("Set temperature:"), true);
     editInt = pid.getSetPoint();
   }
   else if (button == BUTTON_LEAVE)
@@ -323,7 +323,7 @@ state_t menuSetpoint(button_t button)
       storeSetPoint(editInt);
   }
 
-  menuNumberEdit(button, 5, LCD_SETPOINT2);
+  menuNumberEdit(button, 5, PSTR("%3d"DEGREE"F"));
   return ST_AUTO;
 }
 
@@ -361,7 +361,7 @@ state_t menuProbeOffset(button_t button)
   else if (button == BUTTON_LEAVE)
     storeProbeOffset(probeIndex, editInt);
 
-  menuNumberEdit(button, 1, LCD_PROBEOFFSET2);
+  menuNumberEdit(button, 1, PSTR("Offset %4d"DEGREE"F"));
   return ST_AUTO;
 }
 
@@ -372,7 +372,7 @@ state_t menuProbeSubmenu(button_t button)
   {
     menuProbenameLine(probeIndex);
     lcd.setCursor(0, 1);  
-    lcdprint_P(LCD_CONFIGURE, false);
+    lcdprint_P(PSTR("v probe config v"), false);
   }
   
   return ST_AUTO;
@@ -382,7 +382,7 @@ state_t menuLidOpenOff(button_t button)
 {
   if (button == BUTTON_ENTER)
   {
-    lcdprint_P(LCD_LIDOPENOFFS1, true);
+    lcdprint_P(PSTR("Lid open offset"), true);
     editInt = pid.LidOpenOffset;
   }
   else if (button == BUTTON_LEAVE)
@@ -390,7 +390,7 @@ state_t menuLidOpenOff(button_t button)
     storeLidOpenOffset(editInt < 0 ? 0 : editInt);
   }
 
-  menuNumberEdit(button, 5, LCD_LIDOPENOFFS2);
+  menuNumberEdit(button, 5, PSTR("%3d"DEGREE"F"));
   return ST_AUTO;
 }
 
@@ -398,7 +398,7 @@ state_t menuLidOpenDur(button_t button)
 {
   if (button == BUTTON_ENTER)
   {
-    lcdprint_P(LCD_LIDOPENDUR1, true);
+    lcdprint_P(PSTR("Lid open timer"), true);
     editInt = pid.LidOpenDuration;    
   }
   else if (button == BUTTON_LEAVE)
@@ -406,7 +406,7 @@ state_t menuLidOpenDur(button_t button)
     storeLidOpenDuration(editInt < 0 ? 0 : editInt);
   }
 
-  menuNumberEdit(button, 10, LCD_LIDOPENDUR2);
+  menuNumberEdit(button, 10, PSTR("%3d seconds"));
   return ST_AUTO;
 }
 
@@ -414,7 +414,7 @@ state_t menuManualMode(button_t button)
 {
   if (button == BUTTON_ENTER)
   {
-    lcdprint_P(LCD_MANUALMODE, true);
+    lcdprint_P(PSTR("Manual fan mode"), true);
     editInt = pid.getManualFanMode();    
   }
   else if (button == BUTTON_LEAVE)
@@ -433,7 +433,7 @@ state_t menuResetConfig(button_t button)
 {
   if (button == BUTTON_ENTER)
   {
-    lcdprint_P(LCD_RESETCONFIG, true);
+    lcdprint_P(PSTR("Reset config?"), true);
     editInt = 0;
   }
   else if (button == BUTTON_LEAVE)
@@ -449,7 +449,7 @@ state_t menuMaxFanSpeed(button_t button)
 {
   if (button == BUTTON_ENTER)
   {
-    lcdprint_P(LCD_MAXFANSPEED, true);
+    lcdprint_P(PSTR("Maximum auto fan"), true);
     editInt = pid.MaxFanSpeed;
   }
   else if (button == BUTTON_LEAVE)
@@ -458,7 +458,7 @@ state_t menuMaxFanSpeed(button_t button)
       storeMaxFanSpeed(editInt);
   }
   
-  menuNumberEdit(button, 5, LCD_MAXFANSPEED2);
+  menuNumberEdit(button, 5, PSTR("speed %d%%"));
   return ST_AUTO;
 }
 
@@ -484,7 +484,7 @@ state_t menuProbeAlarmOn(button_t button)
 //    if 
   }
 
-  menuBooleanEdit(button, (highOrLow == ST_PALARM0_H_ON) ? LCD_PALARM_H_ON : LCD_PALARM_L_ON);
+  menuBooleanEdit(button, (highOrLow == ST_PALARM0_H_ON) ? PSTR("High alarm? ") : PSTR("Low alarm? "));
   return ST_AUTO;
 }
 
@@ -505,7 +505,7 @@ state_t menuProbeAlarmVal(button_t button)
     editInt = (highOrLow == ST_PALARM0_H_VAL) ? alarm.getHigh() : alarm.getLow();
   }
   
-  menuNumberEdit(button, 5, (highOrLow == ST_PALARM0_H_VAL) ? LCD_PALARM_H_VAL : LCD_PALARM_H_VAL);
+  menuNumberEdit(button, 5, (highOrLow == ST_PALARM0_H_VAL) ? PSTR("High Alrm %4d"DEGREE"F") : PSTR("Low Alrm %5d"DEGREE"F"));
   return ST_AUTO;
 }
 
