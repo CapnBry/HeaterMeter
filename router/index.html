@@ -10,10 +10,11 @@
 <script language="javascript" type="text/javascript" src="js/jquery.flot.selection.min.js"></script>
 <!-- <script language="javascript" type="text/javascript" src="js/jquery.flot.crosshair.min.js"></script> -->
 <script language="javascript" type="text/javascript">
-var inputMap = [6,1,2,3,4,5];
+var inputMap = [-1,2,3,4,5,6,0];
 var graphLoaded = false;
 var graphData =  [
-        { label: "", color: "#6cf", lines: { lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },
+        { label: "", color: "#6cf", lines: { lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // fanspeed
+        { label: "", color: "#fd9", lines: { lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // lidopen
         { label: "Set", color: "rgba(255,0,0,0.5)", shadowSize: 0, data: [] },
         { label: "Pit", color: "#f90", lines: { lineWidth: 2 }, data: [] },
         { label: "Food1", color: "#6c3", data: [] },
@@ -59,7 +60,7 @@ $(document).ready(function()
     $("#graph").bind("plotclick", graphClicked);
 
     for (var srs=0; srs<4; ++srs)
-        $("#temp" + srs).css("text-shadow", "2px 2px 1px " + graphData[srs+2].color);
+        $("#temp" + srs).css("text-shadow", "2px 2px 1px " + graphData[srs+3].color);
 
     //do an initial query
     JSONQuery();
@@ -108,9 +109,15 @@ function clearLoadingIndic()
 function showFanChanged()
 {
     if ($("#showfan").attr("checked"))
+    {
         graphData[0].lines.show = true;
+        graphData[1].lines.show = true;
+    }
     else
+    {
         graphData[0].lines.show = false;
+        graphData[1].lines.show = false;
+    }
     updateGraph();
 }
 
@@ -155,6 +162,10 @@ function graphClicked(event, pos, item)
     var sInfo = "";
     for (var srs=0; srs<graphData.length; ++srs)
     {
+        // Skip the lid series
+        if (srs == 1)
+            continue;
+            
         var val = NaN;
         var firstPastIdx = -1;
         var srsData = graphData[srs].data;
@@ -257,6 +268,20 @@ function updateGraph()
         $.plot($("#graph"), graphData, graphOpts);
 }
 
+function addFanGraphPoint(time, value)
+{
+    if (value < 0)
+    {
+        addGraphPoint(graphData[0].data, time, 0);
+        addGraphPoint(graphData[1].data, time, 101);
+    } 
+    else 
+    {
+        addGraphPoint(graphData[0].data, time, value);
+        addGraphPoint(graphData[1].data, time, 0);
+    }
+}
+
 function tstatSuccess(csv)
 {
     clearLoadingIndic();
@@ -266,11 +291,19 @@ function tstatSuccess(csv)
         if (line.length < 6) return;
         line[0] = line[0].replace(":", "") * 1000 + tzOffset;
         //line[0] = line[0] * 1000 + tzOffset;
-        for (var srs=0; srs<graphData.length; ++srs)
+        for (var valIdx=1; valIdx<line.length; ++valIdx)
         {
-            var value = parseFloat(line[inputMap[srs]]);
-            if (!isNaN(value))
-                addGraphPoint(graphData[srs].data, line[0], value);
+            var dest = inputMap[valIdx];
+            if (dest < 0)
+                continue;
+            var value = parseFloat(line[valIdx]);
+            if (isNaN(value))
+                continue;
+                
+            if (dest == 0)
+                addFanGraphPoint(line[0], value);
+            else    
+                addGraphPoint(graphData[dest].data, line[0], value);
         }
     });
     graphLoaded = true;
@@ -335,12 +368,12 @@ function checkRefreshGraphOrUpdate()
 function connectionSuccess(o)
 {
     o.time = o.time * 1000 + tzOffset;
-    $("#set").html("Set " + o.set + "&deg;");
+    $("#set").html(o.set);
 
     if (graphLoaded)
     {
-        addGraphPoint(graphData[0].data, o.time, o.fan.c);
-        addGraphPoint(graphData[1].data, o.time, o.set);
+        addFanGraphPoint(o.time, o.fan.c);
+        addGraphPoint(graphData[2].data, o.time, o.set);
     }
 
     for(var i = 0; i < 4; i++)
@@ -348,7 +381,7 @@ function connectionSuccess(o)
         var slopeIndic = "";
         graphData[i+2].label = o.temps[i].n;
         if (graphLoaded)
-            addGraphPoint(graphData[i+2].data, o.time, o.temps[i].c);
+            addGraphPoint(graphData[i+3].data, o.time, o.temps[i].c);
 
         $("#pn" + i).text(o.temps[i].n);
         var val = o.temps[i].c;
@@ -424,7 +457,9 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
         <div id="updatedtime" style="position: absolute; top: 8px; right: 13px; color: #bbb; font-size: 12pt;">00:00:00 AM</div>
         <div id="lid" style="position: absolute; top: 8px; left: 13px; color: #fc3; font-size: 12pt;"></div>
         <div id="temp0" style="font-size: 120pt; line-height: 100pt; text-shadow: 3px 3px 0px #000;">---</div>
-        <div id="set" style="font-size: 22pt; text-align: right;">Set ---</div>
+        <div style="font-size: 22pt; text-align: right;">Set
+            <div id="set" style="display: inline;">---</div>&deg;
+        </div>
 
         <div style="background: #357; border: 1px solid #777; height: 20px; position: relative;">
             <div id="fanc" style="position: absolute; left: 0; top: 3px; z-index: 0; background: #0ad; width: 0%; height: 14px; border-top-right-radius: 4px; border-bottom-right-radius: 4px;"></div>
