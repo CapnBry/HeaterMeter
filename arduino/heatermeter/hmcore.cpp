@@ -235,6 +235,15 @@ void outputCsv(Print &out)
   out.println();
 }
 
+void reboot()
+{
+  // Delay is here to help it sync up with avrdude on the reboot of linkmeter
+  delay(100);
+  // Once the pin goes low, the avr should reboot
+  digitalWrite(PIN_WIFI_LED, LOW);
+  while (1) { };
+}
+
 /* handleCommandUrl returns true if it consumed the URL */
 boolean handleCommandUrl(char *URL)
 {
@@ -259,6 +268,11 @@ boolean handleCommandUrl(char *URL)
   {
     storeProbeOffset(URL[6] - '0', atoi(URL + 8));
     return true;
+  }
+  if (strncmp_P(URL, URL_REBOOT, 5) == 0)
+  {
+    reboot();
+    // reboot doesn't return
   }
   
   return false;
@@ -562,6 +576,12 @@ void hmcoreSetup(void)
 #ifdef USE_EXTERNAL_VREF  
   analogReference(EXTERNAL);
 #endif  /* USE_EXTERNAL_VREF */
+
+  // Switch the pin mode first to INPUT with internal pullup
+  // to take it to 5V before setting the mode to OUTPUT. 
+  // If we reverse this, the pin will go OUTPUT,LOW and reboot.
+  digitalWrite(PIN_WIFI_LED, HIGH);
+  pinMode(PIN_WIFI_LED, OUTPUT);
   
   pid.Probes[TEMP_PIT] = &probe0;
   pid.Probes[TEMP_FOOD1] = &probe1;

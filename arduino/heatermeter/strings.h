@@ -38,6 +38,7 @@ const prog_char URL_SETPOINT[] PROGMEM = "set?sp=";
 const prog_char URL_SETPID[] PROGMEM = "set?pid";
 const prog_char URL_SETPNAME[] PROGMEM = "set?pn";
 const prog_char URL_SETPOFF[] PROGMEM = "set?po";
+const prog_char URL_REBOOT[] PROGMEM = "reboot";
 #endif /* HEATERMETER_NETWORKING || HEATERMETER_SERIAL */
 
 #ifdef HEATERMETER_NETWORKING
