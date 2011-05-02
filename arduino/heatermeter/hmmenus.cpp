@@ -390,7 +390,7 @@ state_t menuLidOpenOff(button_t button)
     storeLidOpenOffset(editInt < 0 ? 0 : editInt);
   }
 
-  menuNumberEdit(button, 5, PSTR("%3d"DEGREE"F"));
+  menuNumberEdit(button, 1, PSTR("%3d%% below set"));
   return ST_AUTO;
 }
 

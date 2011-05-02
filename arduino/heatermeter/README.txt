@@ -24,7 +24,7 @@ Manual Fan Mode - Allows you to set the fan speed manually, rather than having H
 Max Fan Speed - By default, HeaterMeter will adjust the fan speed between 0% and 100%.  If you'd like to limit the maximum fan speed which is set automatically, it can be done here.  This can be used if a large amount of ash has accumulated in the grill and the fan is blowing it to grill area. 
 Probe Name - Set the probe name here by using the Up and Down buttons.  Scroll the cursor all the way off to the left to cancel editing, or all the way off to the right to confim the edit.
 Probe Offset - Calibrate your probes by putting them in boiling water and using probe offset to set them to read 212F.
-Lid Open Offset - While temperature is being automatically maintained, if the temperature drops this many degrees, HeaterMeter will automatically enter Lid Open mode.
+Lid Open Offset - While temperature is being automatically maintained, if the temperature drops this percent from the Set Point, HeaterMeter will automatically enter Lid Open mode.  For example, if the Lid Open Offset is 6% and the Set Point is 250F, Lid Open mode will automatically be triggered below 235F.
 Lid Open Duration - The duration of the manual or automatic Lid Open delay.
 Reset Config - Reset HeaterMeter to its default configuration.
 

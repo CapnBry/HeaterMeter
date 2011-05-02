@@ -58,7 +58,7 @@ const struct PROGMEM __eeprom_data {
   225,  // setpoint
   { "Pit", "Food Probe1", "Food Probe2", "Ambient" },  // probe names
   { 0, 0, 0, 0 },  // probe offsets
-  15,  // lid open offset
+  6,  // lid open offset %
   240, // lid open duration
   { 5.0f, 4.0f, 0.004f, 2.5f },
   false, // manual mode
