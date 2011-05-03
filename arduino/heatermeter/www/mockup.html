@@ -62,7 +62,7 @@ function connectionSuccess(o)
 
 	for(var i = 0; i < 4; i++)
 	{
-	    var slopeIndic = "";
+		var slopeIndic = "";
 		
 		$("#pn" + i).text(o.temps[i].n);
 		var val = o.temps[i].c;
@@ -80,13 +80,13 @@ function connectionSuccess(o)
 		}
 		$("#temp" + i).css("border-right", slopeIndic);
 	}
-    $("#fana").animate({left: o.fan.a + "%"});
-    $("#fanc").animate({width: o.fan.c + "%"});
-    $("#fanl").html("Blower Speed " + o.fan.c + "%");
-    if (o.lid == 0)
-        $("#lid").hide();
-    else
-        $("#lid").html("Lid Open " + o.lid + "s").show();
+	$("#fana").animate({left: o.fan.a + "%"});
+	$("#fanc").animate({width: o.fan.c + "%"});
+	$("#fanl").html("Blower Speed " + o.fan.c + "%");
+	if (o.lid == 0)
+		$("#lid").hide();
+	else
+		$("#lid").html("Lid Open " + o.lid + "s").show();
 	
 	updateTime(true);
 }
@@ -148,30 +148,30 @@ div.ptemp { font-size: 32pt; line-height: 26pt; text-shadow: #111 1px 1px; }
 <div style="background: #000 url('fire.png') repeat-x scroll left bottom; padding: 10px;">
 	<div class="content">
 		<div style="color: #bbb; font-size: 30pt;">Current Pit</div>
-        <div id="updatedtime" style="position: absolute; top: 8px; right: 13px; color: #bbb; font-size: 12pt;">00:00:00 AM</div>
-        <div id="lid" style="position: absolute; top: 8px; left: 13px; color: #fc3; font-size: 12pt;"></div>
+		<div id="updatedtime" style="position: absolute; top: 8px; right: 13px; color: #bbb; font-size: 12pt;">00:00:00 AM</div>
+		<div id="lid" style="position: absolute; top: 8px; left: 13px; color: #fc3; font-size: 12pt;"></div>
 		<div style="font-size: 128pt; line-height: 100pt; text-shadow: #000 2px 2px;" id="temp0">---</div>
 		<div style="font-size: 24pt; text-align: right;">
 			<div style="display: inline">Set </div>
 			<div style="display: inline" id="set">---</div><div style="display: inline">&deg;</div>
 		</div> 
 
-        <div style="background: #357; border: 1px solid #777; height: 20px; position: relative;">
-            <div id="fanc" style="position: absolute; left: 0; top: 3px; z-index: 0; background: #0ad; width: 0%; height: 14px; border-top-right-radius: 4px; border-bottom-right-radius: 4px;"></div>
-            <div id="fanl" style="position: absolute; left: 0; top: 1px; z-index: 1; color: #003; font-size: 10pt;"></div>
-            <div id="fana" style="position: absolute; left: 0; top: 0; z-index: 2; width: 3px; height: 20px; background: #fe4; opacity: 0.5;"></div>
-        </div>
+		<div style="background: #357; border: 1px solid #777; height: 20px; position: relative;">
+			<div id="fanc" style="position: absolute; left: 0; top: 3px; z-index: 0; background: #0ad; width: 0%; height: 14px; border-top-right-radius: 4px; border-bottom-right-radius: 4px;"></div>
+			<div id="fanl" style="position: absolute; left: 0; top: 1px; z-index: 1; color: #003; font-size: 10pt;"></div>
+			<div id="fana" style="position: absolute; left: 0; top: 0; z-index: 2; width: 3px; height: 20px; background: #fe4; opacity: 0.5;"></div>
+		</div>
 
 		<table class="probelist"><tr>
 		  <td class="probe" style="border-right: 1px solid #243e5b;">
-		    <div class="pname" style="display: inline" id="pn1">-</div><div class="ptemp" id="temp1">-</div>
+			<div class="pname" style="display: inline" id="pn1">-</div><div class="ptemp" id="temp1">-</div>
 		  </td>
 		  <td class="probe">
-  		    <div class="pname" style="display: inline" id="pn2">-</div><div class="ptemp" id="temp2">-</div>
+			  <div class="pname" style="display: inline" id="pn2">-</div><div class="ptemp" id="temp2">-</div>
 		  </td>
-  		  <td class="probe" style="border-left: 1px solid #243e5b;">
-		    <div class="pname" style="display: inline" id="pn3">-</div><div class="ptemp" id="temp3">-</div>
-   		  </td>
+			<td class="probe" style="border-left: 1px solid #243e5b;">
+			<div class="pname" style="display: inline" id="pn3">-</div><div class="ptemp" id="temp3">-</div>
+			 </td>
 		</tr></table>
 	</div>
 </div>
