@@ -256,7 +256,7 @@ boolean GrillPid::doWork(void)
     // and if the fan has been running less than 90% (more than 90% would indicate probable out of fuel)
     // Note that the code assumes g_LidOpenResumeCountdown <= 0 and pitTemp < _setPoint
     else if (_pitTemperatureReached && 
-      (((_setPoint-pitTemp)*100/_setPoint) > (int)LidOpenOffset) &&
+      (((_setPoint-pitTemp)*100/_setPoint) >= (int)LidOpenOffset) &&
       ((int)FanSpeedAvg < 90))
     {
       resetLidOpenResumeCountdown();
