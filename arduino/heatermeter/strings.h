@@ -8,6 +8,5 @@
 
 #define DEGREE "\xdf" // \xdf is the degree symbol on the Hitachi HD44780
 const prog_char LCD_LINE1_UNPLUGGED[] PROGMEM = "- No Pit Probe -";
-const prog_char PID_ORDER[] PROGMEM = "bpid";
 
 #endif /* __STRINGS_H__ */

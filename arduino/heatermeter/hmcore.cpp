@@ -16,10 +16,10 @@
 
 #include "strings.h"
 
-static TempProbe probe0(PIN_PIT,   &STEINHART[0]);
-static TempProbe probe1(PIN_FOOD1, &STEINHART[0]);
-static TempProbe probe2(PIN_FOOD2, &STEINHART[0]);
-static TempProbe probe3(PIN_AMB,   &STEINHART[1]);
+static TempProbe probe0(PIN_PIT);
+static TempProbe probe1(PIN_FOOD1);
+static TempProbe probe2(PIN_FOOD2);
+static TempProbe probe3(PIN_AMB);
 GrillPid pid(PIN_BLOWER);
 
 ShiftRegLCD lcd(PIN_LCD_DATA, PIN_LCD_CLK, TWO_WIRE, 2); 
@@ -28,61 +28,74 @@ ShiftRegLCD lcd(PIN_LCD_DATA, PIN_LCD_CLK, TWO_WIRE, 2);
 static boolean g_NetworkInitialized;
 #endif /* HEATERMETER_NETWORKING */
 #ifdef HEATERMETER_SERIAL
-static char g_SerialBuff[40];  // should be 49 to support /set?pn0=(urlencoded 13 chars)
+static char g_SerialBuff[80]; 
 #endif /* HEATERMETER_SERIAL */
 
 #define config_store_byte(eeprom_field, src) { eeprom_write_byte((uint8_t *)offsetof(__eeprom_data, eeprom_field), src); }
 #define config_store_word(eeprom_field, src) { eeprom_write_word((uint16_t *)offsetof(__eeprom_data, eeprom_field), src); }
 
-#define EEPROM_MAGIC 0xf00d8000
-#define PROBE_NAME_SIZE 13
+#define EEPROM_MAGIC 0xf00d
 
-const struct PROGMEM __eeprom_data {
-  long magic;
+const struct __eeprom_data {
+  unsigned int magic;
   int setPoint;
-  char probeNames[TEMP_COUNT][PROBE_NAME_SIZE];
-  char probeTempOffsets[TEMP_COUNT];
   unsigned char lidOpenOffset;
   unsigned int lidOpenDuration;
   float pidConstants[4]; // constants are stored Kb, Kp, Ki, Kd
   boolean manualMode;
   unsigned char maxFanSpeed;  // in percent
-  struct {
-    boolean henabled;
-    boolean lenabled;
-    int high;
-    int low;
-  } alarms[TEMP_COUNT];
+  // After this is stored all the probe_config recs
 } DEFAULT_CONFIG PROGMEM = { 
   EEPROM_MAGIC,  // magic
   225,  // setpoint
-  { "Pit", "Food Probe1", "Food Probe2", "Ambient" },  // probe names
-  { 0, 0, 0, 0 },  // probe offsets
   6,  // lid open offset %
   240, // lid open duration
-  { 5.0f, 4.0f, 0.004f, 2.5f },
+  { 5.0f, 4.0f, 0.004f, 2.5f },  // PID constants
   false, // manual mode
   100,  // max fan speed
-  { { false, false, 200, 100 }, { false, false, 200, 100 }, 
-    { false, false, 200, 100 }, { false, false, 200, 100 } }
 };
 
-boolean storeProbeName(unsigned char probeIndex, const char *name)
+const struct  __eeprom_probe DEFAULT_PROBE_CONFIG PROGMEM = {
+  "Probe", // Name
+  0,  // offset
+  200, // alarm high
+  40,  // alarm low
+  false,  // high enabled
+  false,  // low enabled
+  PROBETYPE_INTERNAL,  // probeType
+  {2.3067434e-4,2.3696596e-4,1.2636414e-7,10000.0},  // Maverick Probe
+  //{8.98053228e-4,2.49263324e-4f,2.04047542e-7,10000.0}, // Radio Shack 10k
+  //{1.1415e-3,2.31905e-4,9.76423e-8,10000.0} // Vishay 10k NTCLE100E3103JB0
+};
+
+// Note the storage loaders and savers expect the entire config storage is less than 256 bytes
+unsigned char getProbeConfigOffset(unsigned char probeIndex, unsigned char off)
 {
   if (probeIndex >= TEMP_COUNT)
-    return false;
-    
-  size_t ofs = offsetof(__eeprom_data, probeNames);
-  ofs += probeIndex * (PROBE_NAME_SIZE * sizeof(char));
-  eeprom_write_block(name, (void *)ofs, PROBE_NAME_SIZE);
-  return true;
+    return 0;
+  // Point to the name in the first probe_config structure
+  unsigned char retVal = sizeof(__eeprom_data) + off;
+  // Stride to the proper configuration structure
+  retVal += probeIndex * sizeof( __eeprom_probe);
+  
+  Serial.print("getProbeConfigOffset=");
+  Serial.println(retVal, DEC);
+  return retVal;
+}
+
+void storeProbeName(unsigned char probeIndex, const char *name)
+{
+  unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, name));
+  if (ofs != 0)
+    eeprom_write_block(name, (void *)ofs, PROBE_NAME_SIZE);
 }
 
 void loadProbeName(unsigned char probeIndex)
 {
-  size_t ofs = offsetof(__eeprom_data, probeNames);
-  ofs += probeIndex * (PROBE_NAME_SIZE * sizeof(char));
-  eeprom_read_block(editString, (void *)ofs, PROBE_NAME_SIZE);
+  unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, name));
+  if (ofs != 0)
+    eeprom_read_block(editString, 
+    (void *)ofs, PROBE_NAME_SIZE);
 }
 
 void storeSetPoint(int sp)
@@ -106,16 +119,53 @@ void storeSetPoint(int sp)
   config_store_byte(manualMode, isManualMode);
 }
 
-boolean storeProbeOffset(unsigned char probeIndex, char offset)
+void storeProbeOffset(unsigned char probeIndex, char offset)
 {
-  if (probeIndex >= TEMP_COUNT)
-    return false;
+  unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, tempOffset));
+  if (ofs != 0)
+  {
+    pid.Probes[probeIndex]->Offset = offset;
+    eeprom_write_byte((uint8_t *)ofs, offset);
+  }  
+}
+
+void storeProbeCoeff(unsigned char probeIndex, char *vals)
+{
+  // vals is SteinA,SteinB,SteinC,RKnown all float
+  // If any value is 0, it won't be modified
+  unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, steinhart));
+  if (ofs == 0)
+    return;
+ Serial.println("storeProbeCoeff");
     
-  pid.Probes[probeIndex]->Offset = offset;
-  uint8_t *ofs = (uint8_t *)&((__eeprom_data*)0)->probeTempOffsets[probeIndex];
-  eeprom_write_byte(ofs, offset);
-  
-  return true;
+  float fVal;
+  float *fDest = &pid.Probes[probeIndex]->Steinhart[0];
+  for (unsigned char i=0; i<STEINHART_COUNT; ++i)
+  {
+    fVal = atof(vals);
+    while (*vals)
+    {
+      if (*vals == ',') 
+      {
+        ++vals; 
+        break;
+      }
+      ++vals;
+    }  /* while vals */
+  Serial.print(i,DEC);
+  Serial.print('=');
+  Serial.print(fVal,8);    
+  Serial.print(' ');
+    if (fVal != 0.0f)
+    {
+      eeprom_write_dword((uint32_t *)ofs, fVal);
+      *fDest = fVal;
+    }
+      
+    ofs += sizeof(float);
+    ++fDest;
+  }  /* for i */
+  Serial.println();
 }
 
 void storeMaxFanSpeed(unsigned char maxFanSpeed)
@@ -185,19 +235,22 @@ void lcdprint_P(const prog_char *p, const boolean doClear)
   lcd.print(buffer);
 }
 
-boolean storePidParam(char which, float value)
+void storePidParam(char which, float value)
 {
-  const prog_char *pos = strchr_P(PID_ORDER, which);
-  if (pos == NULL)
-    return false;
-    
-  const unsigned char k = pos - PID_ORDER;
+  unsigned char k;
+  switch (which)
+  {
+    case 'b': k = 0; break;
+    case 'p': k = 1; break;
+    case 'i': k = 2; break;
+    case 'd': k = 3; break;
+    default:
+      return;
+  }
   pid.Pid[k] = value;
-  
-  void *ofs = (void *)&((__eeprom_data*)0)->pidConstants[k];
-  eeprom_write_block(&pid.Pid[k], ofs, sizeof(value));
 
-  return true;
+  unsigned char ofs = offsetof(__eeprom_data, pidConstants[0]);
+  eeprom_write_block(&pid.Pid[k], (void *)(ofs + k * sizeof(float)), sizeof(value));
 }
 
 void storeLidOpenOffset(unsigned char value)
@@ -238,7 +291,7 @@ void outputCsv(Print &out)
 void reboot()
 {
   // Delay is here to help it sync up with avrdude on the reboot of linkmeter
-  delay(100);
+  delay(250);
   // Once the pin goes low, the avr should reboot
   digitalWrite(PIN_WIFI_LED, LOW);
   while (1) { };
@@ -248,6 +301,8 @@ void reboot()
 boolean handleCommandUrl(char *URL)
 {
   unsigned char urlLen = strlen(URL);
+  Serial.print("handlecommand=");
+  Serial.println(URL);
   if (strncmp_P(URL, PSTR("set?sp="), 7) == 0) 
   {
     storeSetPoint(atoi(URL + 7));
@@ -267,6 +322,11 @@ boolean handleCommandUrl(char *URL)
   if (strncmp_P(URL, PSTR("set?po"), 6) == 0 && urlLen > 8) 
   {
     storeProbeOffset(URL[6] - '0', atoi(URL + 8));
+    return true;
+  }
+  if (strncmp_P(URL, PSTR("set?pc"), 6) == 0 && urlLen > 8) 
+  {
+    storeProbeCoeff(URL[6] - '0', URL + 8);
     return true;
   }
   if (strncmp_P(URL, PSTR("reboot"), 5) == 0)
@@ -499,27 +559,17 @@ inline void checkAlarms(void)
   noTone(PIN_ALARM);
 }
 
-void eepromLoadConfig(boolean forceDefault)
+boolean eepromLoadBaseConfig(boolean forceDefault)
 {
   struct __eeprom_data config;
   eeprom_read_block(&config, 0, sizeof(config));
-  if (forceDefault || config.magic != EEPROM_MAGIC)
+  forceDefault = forceDefault || config.magic != EEPROM_MAGIC;
+  if (forceDefault)
   {
-    memcpy_P(&config, &DEFAULT_CONFIG, sizeof(config));
-    eeprom_write_block(&config, 0, sizeof(config));  
+    memcpy_P(&config, &DEFAULT_CONFIG, sizeof(__eeprom_data));
+    eeprom_write_block(&config, 0, sizeof(__eeprom_data));  
   }
-
-  unsigned char i;
-  for (i=0; i<TEMP_COUNT; i++)
-  {
-    pid.Probes[i]->Offset = config.probeTempOffsets[i];
-    pid.Probes[i]->Alarms.setHigh(config.alarms[i].high);
-    pid.Probes[i]->Alarms.setLow(config.alarms[i].low);
-    pid.Probes[i]->Alarms.Status =
-      config.alarms[i].henabled & ProbeAlarm::HIGH_ENABLED |
-      config.alarms[i].lenabled & ProbeAlarm::LOW_ENABLED;
-  }
-    
+  
   pid.setSetPoint(config.setPoint);
   pid.LidOpenOffset = config.lidOpenOffset;
   pid.LidOpenDuration = config.lidOpenDuration;
@@ -527,6 +577,52 @@ void eepromLoadConfig(boolean forceDefault)
   memcpy(pid.Pid, config.pidConstants, sizeof(config.pidConstants));
   if (config.manualMode)
     pid.setFanSpeed(0);
+  
+  return forceDefault;
+}
+
+void eepromLoadProbeConfig(boolean forceDefault)
+{
+  unsigned char i;
+  struct  __eeprom_probe config;
+  struct  __eeprom_probe *p;
+  p = (struct  __eeprom_probe *)(sizeof(__eeprom_data));
+  memset(&config, 0, sizeof( __eeprom_probe));
+    
+  for (i=0; i<TEMP_COUNT; i++)
+  {
+    Serial.print("Probe=");
+    Serial.print(i,DEC);
+    if (forceDefault)
+    {
+      memcpy_P(&config, &DEFAULT_PROBE_CONFIG, sizeof( __eeprom_probe));
+      eeprom_write_block(&config, p, sizeof(__eeprom_data));  
+    }
+    else
+      eeprom_read_block(&config, p, sizeof(config));
+
+    pid.Probes[i]->Offset = config.tempOffset;
+    Serial.print(" type=");
+    pid.Probes[i]->ProbeType = config.probeType;
+    Serial.print(config.probeType, DEC);
+    memcpy(pid.Probes[i]->Steinhart, config.steinhart, sizeof(config.steinhart));  
+    pid.Probes[i]->Alarms.setHigh(config.alarmHigh);
+    pid.Probes[i]->Alarms.setLow(config.alarmLow);
+    pid.Probes[i]->Alarms.Status =
+      config.alHighEnabled & ProbeAlarm::HIGH_ENABLED |
+      config.alLowEnabled & ProbeAlarm::LOW_ENABLED;
+      
+    ++p;
+    Serial.println();
+  }  /* for i<TEMP_COUNT */
+}
+
+void eepromLoadConfig(boolean forceDefault)
+{
+  // These are separated into two functions to prevent needing stack
+  // space for both a __eeprom_data and __eeprom_probe structure
+  forceDefault = eepromLoadBaseConfig(forceDefault);
+  eepromLoadProbeConfig(forceDefault);
 }
 
 #ifdef HEATERMETER_SERIAL
@@ -571,7 +667,7 @@ inline void dflashInit(void)
 void hmcoreSetup(void)
 {
 #ifdef HEATERMETER_SERIAL
-  Serial.begin(9600);
+  Serial.begin(19200);
 #endif  /* HEATERMETER_SERIAL */
 #ifdef USE_EXTERNAL_VREF  
   analogReference(EXTERNAL);

@@ -9,9 +9,25 @@
 #define TEMP_AMB    3
 #define TEMP_COUNT  4
 
-struct steinhart_param
-{ 
-    float A, B, C; 
+#define PROBE_NAME_SIZE 13
+
+// Probe types used in probeType config
+#define PROBETYPE_DISABLED 0  // do not read
+#define PROBETYPE_INTERNAL 1  // read via analogRead()
+#define PROBETYPE_RF12     2  // RFM12B wireless
+
+#define STEINHART_COUNT 4
+
+struct __eeprom_probe
+{
+  char name[PROBE_NAME_SIZE];
+  char tempOffset;
+  int alarmHigh;
+  int alarmLow;
+  boolean alHighEnabled;
+  boolean alLowEnabled;
+  unsigned char probeType;
+  float steinhart[STEINHART_COUNT];  // The last one is actually Rknown
 };
 
 class ProbeAlarm
@@ -63,13 +79,12 @@ public:
 class TempProbe
 {
 private:
-  const struct steinhart_param *_steinhart;
   const unsigned char _pin; 
   unsigned int _accumulator;
   
 public:
-  TempProbe(const unsigned char pin, const struct steinhart_param *steinhart) : 
-    _pin(pin), _steinhart(steinhart), TemperatureAvg(-1.0f)
+  TempProbe(const unsigned char pin) : 
+    _pin(pin), TemperatureAvg(-1.0f)
     // Temperature(0), Offset(0)
     {};
   
@@ -84,6 +99,10 @@ public:
   void readTemp(unsigned char num);
   // Convert ADC to Temperature
   void calcTemp(void);
+  // Steinhart coefficients
+  float Steinhart[STEINHART_COUNT];
+  // Probe Type
+  unsigned char ProbeType;  
   
   ProbeAlarm Alarms;
 };

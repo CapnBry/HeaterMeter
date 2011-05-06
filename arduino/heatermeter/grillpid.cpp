@@ -1,10 +1,6 @@
 #include <math.h>
 #include "grillpid.h"
 
-// Value of the resisitors used in the voltage divider on the probes
-// Remember to keep this value a float, e.g. 22k is 22000.0f
-#define Rknown 10000.0f
-
 // The temperatures are averaged over 1, 2, 4 or 8 samples
 #define TEMP_AVG_COUNT 8
 
@@ -92,12 +88,12 @@ inline void TempProbe::calcTemp(void)
   {
     float R, T;
     // If you put the fixed resistor on the Vcc side of the thermistor, use the following
-    R = log(Rknown / ((Vin / (float)Vout) - 1.0f));
+    R = log(Steinhart[3] / ((Vin / (float)Vout) - 1.0f));
     // If you put the thermistor on the Vcc side of the fixed resistor use the following
     // R = log(Rknown * Vin / (float)Vout - Rknown);
   
     // Compute degrees K  
-    T = 1.0f / ((_steinhart->C * R * R + _steinhart->B) * R + _steinhart->A);
+    T = 1.0f / ((Steinhart[2] * R * R + Steinhart[1]) * R + Steinhart[0]);
   
     // return degrees F
     Temperature = ((T - 273.15f) * (9.0f / 5.0f)) + 32.0f;
@@ -219,12 +215,13 @@ boolean GrillPid::doWork(void)
 
   unsigned char i;
   for (i=0; i<TEMP_COUNT; i++)
-    Probes[i]->readTemp(_accumulatedCount);
+    if (Probes[1]->ProbeType == PROBETYPE_INTERNAL)
+      Probes[i]->readTemp(_accumulatedCount);
 
   if (++_accumulatedCount < TEMP_AVG_COUNT)
     return false;
     
-  for (i=0; i<TEMP_COUNT; i++)
+  for (i=0; i<TEMP_COUNT-1; i++)
     Probes[i]->calcTemp();
 
   if (!_manualFanMode)

@@ -40,12 +40,6 @@ extern "C" {
 #define PIN_SPI_MISO    12  // Can not be changed
 #define PIN_SPI_SCK     13  // Can not be changed
 
-const struct steinhart_param STEINHART[] = {
-  {2.3067434e-4f, 2.3696596e-4f, 1.2636414e-7f},  // Maverick Probe
-  {8.98053228e-4f, 2.49263324e-4f, 2.04047542e-7f}, // Radio Shack 10k
-  //{1.1415e-3f, 2.31905e-4f, 9.76423e-8f} // Vishay 10k NTCLE100E3103JB0
-};
-
 const char CSV_DELIMITER = ',';
 
 void hmcoreSetup(void);
@@ -56,12 +50,12 @@ void lcdprint_P(const prog_char *p, const boolean doClear);
 
 void eepromLoadConfig(boolean forceDefault);
 void storeSetPoint(int sp);
-boolean storeProbeName(unsigned char probeIndex, const char *name);
+void storeProbeName(unsigned char probeIndex, const char *name);
 void loadProbeName(unsigned char probeIndex);
-boolean storeProbeOffset(unsigned char probeIndex, char offset);
+void storeProbeOffset(unsigned char probeIndex, char offset);
 void storeProbeAlarmOn(unsigned char probeIndex, boolean isHigh, boolean value);
 void storeProbeAlarmVal(unsigned char probeIndex, boolean isHigh, int value);
-boolean storePidParam(char which, float value);
+void storePidParam(char which, float value);
 void storeMaxFanSpeed(unsigned char maxFanSpeed);
 void storeLidOpenOffset(unsigned char value);
 void storeLidOpenDuration(unsigned int value);
@@ -74,4 +68,3 @@ extern ShiftRegLCD lcd;
 #endif
 
 #endif /* __HMCORE_H__ */
-
