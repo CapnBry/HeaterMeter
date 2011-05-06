@@ -94,8 +94,7 @@ void loadProbeName(unsigned char probeIndex)
 {
   unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, name));
   if (ofs != 0)
-    eeprom_read_block(editString, 
-    (void *)ofs, PROBE_NAME_SIZE);
+    eeprom_read_block(editString, (void *)ofs, PROBE_NAME_SIZE);
 }
 
 void storeSetPoint(int sp)
@@ -139,7 +138,7 @@ void storeProbeCoeff(unsigned char probeIndex, char *vals)
  Serial.println("storeProbeCoeff");
     
   float fVal;
-  float *fDest = &pid.Probes[probeIndex]->Steinhart[0];
+  float *fDest = pid.Probes[probeIndex]->Steinhart;
   for (unsigned char i=0; i<STEINHART_COUNT; ++i)
   {
     fVal = atof(vals);
@@ -155,12 +154,17 @@ void storeProbeCoeff(unsigned char probeIndex, char *vals)
   Serial.print(i,DEC);
   Serial.print('=');
   Serial.print(fVal,8);    
-  Serial.print(' ');
     if (fVal != 0.0f)
     {
-      eeprom_write_dword((uint32_t *)ofs, fVal);
+      Serial.print("@");
+      Serial.print(ofs,DEC);
+      eeprom_write_block(&fVal, (uint32_t *)ofs, sizeof(fVal));
       *fDest = fVal;
+      eeprom_read_block(&fVal, (uint32_t *)ofs, sizeof(fVal));
+  Serial.print('=');
+  Serial.print(fVal,8);    
     }
+  Serial.print(' ');
       
     ofs += sizeof(float);
     ++fDest;
@@ -587,7 +591,7 @@ void eepromLoadProbeConfig(boolean forceDefault)
   struct  __eeprom_probe config;
   struct  __eeprom_probe *p;
   p = (struct  __eeprom_probe *)(sizeof(__eeprom_data));
-  memset(&config, 0, sizeof( __eeprom_probe));
+  memset(&config, 0, sizeof(__eeprom_probe));
     
   for (i=0; i<TEMP_COUNT; i++)
   {
@@ -596,16 +600,24 @@ void eepromLoadProbeConfig(boolean forceDefault)
     if (forceDefault)
     {
       memcpy_P(&config, &DEFAULT_PROBE_CONFIG, sizeof( __eeprom_probe));
-      eeprom_write_block(&config, p, sizeof(__eeprom_data));  
+      eeprom_write_block(&config, p, sizeof(__eeprom_probe));
     }
     else
-      eeprom_read_block(&config, p, sizeof(config));
+      eeprom_read_block(&config, p, sizeof(__eeprom_probe));
 
     pid.Probes[i]->Offset = config.tempOffset;
     Serial.print(" type=");
     pid.Probes[i]->ProbeType = config.probeType;
     Serial.print(config.probeType, DEC);
     memcpy(pid.Probes[i]->Steinhart, config.steinhart, sizeof(config.steinhart));  
+    Serial.print(" s0=");
+    Serial.print(pid.Probes[i]->Steinhart[0],8);
+    Serial.print(" s1=");
+    Serial.print(pid.Probes[i]->Steinhart[1],8);
+    Serial.print(" s2=");
+    Serial.print(pid.Probes[i]->Steinhart[2],8);
+    Serial.print(" s3=");
+    Serial.print(pid.Probes[i]->Steinhart[3],8);
     pid.Probes[i]->Alarms.setHigh(config.alarmHigh);
     pid.Probes[i]->Alarms.setLow(config.alarmLow);
     pid.Probes[i]->Alarms.Status =
