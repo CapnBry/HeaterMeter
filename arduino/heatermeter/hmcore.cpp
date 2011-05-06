@@ -28,7 +28,7 @@ ShiftRegLCD lcd(PIN_LCD_DATA, PIN_LCD_CLK, TWO_WIRE, 2);
 static boolean g_NetworkInitialized;
 #endif /* HEATERMETER_NETWORKING */
 #ifdef HEATERMETER_SERIAL
-static char g_SerialBuff[80]; 
+static char g_SerialBuff[64]; 
 #endif /* HEATERMETER_SERIAL */
 
 #define config_store_byte(eeprom_field, src) { eeprom_write_byte((uint8_t *)offsetof(__eeprom_data, eeprom_field), src); }
