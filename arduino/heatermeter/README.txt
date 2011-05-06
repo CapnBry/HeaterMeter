@@ -45,18 +45,19 @@ DFLASH_SERVING - Enable serving web pages from the dataflash chip present on the
 USE_EXTERNAL_VREF - If enabled, use the Vref pin voltage as the reference when doing ADC measurments instead of the internal 5V reference.
 
 Some configuration is via defines and constants, here are some commonly used values:
-grillpid.cpp/Rknown - The value of the biasing resistor used in the temperature probes.
-hmcore.h/STEINHART - The Steinhart-Hart coefficients used in the probe calculations for pit/food1/food2 (first item) and ambient (second item).
 hmcore.h/CSV_DELIMITER - The delimiter used in the CSV data sent by the /csv URL and serial updastes.
 
 WiShield Wireless parameters are stored in wishieldconf.h.
 
 == Supported URLS ==
+Note: No url can exceed a maximum length of 63 bytes
+
 Both Serial and Web
 /set?sp=A - Set the setpoint to integer A
-/set?pidA=B - Tune PID parameter A to value float B.  A can be b (bias), p (proportional), i (integral), or d (derivitive)
+/set?pidA=B - Tune PID parameter A to value float B.  A can be b (bias), p (proportional), i (integral), or d (derivative)
 /set?pnA=B - Set probe name A to string B.  B does not support URL encoding at this time.  Probe numbers are 0=pit 1=food1 2=food2 3=ambient
 /set?poA=B - Set probe offset A to integer B.  Probe numbers are 0=pit 1=food1 2=food2 3=ambient
+/set?pcN=A,B,C,R - Set the probe coefficients for probe N.  A, B, and C are the Steinhart-Hart coeffieicents and R is the fixed side of the probe voltage divider.  All values are floating point and should be specified in scienfific noation, e.g. 0.00023067434 -> 2.3067434e-4.  Probe numbers are 0=pit 1=food1 2=food2 3=ambient
 
 Web-only URLs
 / - The index status page.  Some other supporting files are also used by this URL that are not included in this document.
@@ -64,5 +65,5 @@ Web-only URLs
 /csv - CSV-formated status line
 
 == CSV Format ==
-SetPoint,Pit,PitMovAvg,Food1,FoodMovAvg,Food2,Food2MovAvg,Ambient,AmbientMovAvg,Fan,FanMovAvg,LidOpenCountdown
+SetPoint,Pit,PitMovAvg,Food1,Food1MovAvg,Food2,Food2MovAvg,Ambient,AmbientMovAvg,Fan,FanMovAvg,LidOpenCountdown
 
