@@ -63,8 +63,8 @@ boolean ProbeAlarm::getActionNeeded(void) const
 
 void TempProbe::loadConfig(struct __eeprom_probe *config)
 {
-  Offset = config->tempOffset;
   ProbeType = config->probeType;
+  Offset = config->tempOffset;
   memcpy(Steinhart, config->steinhart, sizeof(Steinhart));
   Alarms.setHigh(config->alarmHigh);
   Alarms.setLow(config->alarmLow);

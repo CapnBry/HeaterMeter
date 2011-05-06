@@ -21,12 +21,12 @@
 struct __eeprom_probe
 {
   char name[PROBE_NAME_SIZE];
+  unsigned char probeType;
   char tempOffset;
   int alarmHigh;
   int alarmLow;
   boolean alHighEnabled;
   boolean alLowEnabled;
-  unsigned char probeType;
   float steinhart[STEINHART_COUNT];  // The last one is actually Rknown
 };
 
@@ -89,12 +89,12 @@ public:
     {};
 
   /* Configuration */  
+  // Probe Type
+  unsigned char ProbeType;  
   // Offset (in degrees) applied when calculating temperature
   char Offset;
   // Steinhart coefficients
   float Steinhart[STEINHART_COUNT];
-  // Probe Type
-  unsigned char ProbeType;  
   // Copy struct to members
   void loadConfig(struct __eeprom_probe *config);
 
