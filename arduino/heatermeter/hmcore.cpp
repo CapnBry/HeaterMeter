@@ -63,9 +63,9 @@ const struct  __eeprom_probe DEFAULT_PROBE_CONFIG PROGMEM = {
   false,  // high enabled
   false,  // low enabled
   PROBETYPE_INTERNAL,  // probeType
-  {2.3067434e-4,2.3696596e-4,1.2636414e-7,10000.0},  // Maverick Probe
-  //{8.98053228e-4,2.49263324e-4f,2.04047542e-7,10000.0}, // Radio Shack 10k
-  //{1.1415e-3,2.31905e-4,9.76423e-8,10000.0} // Vishay 10k NTCLE100E3103JB0
+  {2.3067434e-4,2.3696596e-4,1.2636414e-7,1.0e+4},  // Maverick Probe
+  //{8.98053228e-4,2.49263324e-4f,2.04047542e-7,1.0e+4}, // Radio Shack 10k
+  //{1.1415e-3,2.31905e-4,9.76423e-8,1.0e+4} // Vishay 10k NTCLE100E3103JB0
 };
 
 // Note the storage loaders and savers expect the entire config storage is less than 256 bytes
