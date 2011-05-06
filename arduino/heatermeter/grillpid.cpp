@@ -221,7 +221,7 @@ boolean GrillPid::doWork(void)
   if (++_accumulatedCount < TEMP_AVG_COUNT)
     return false;
     
-  for (i=0; i<TEMP_COUNT-1; i++)
+  for (i=0; i<TEMP_COUNT; i++)
     Probes[i]->calcTemp();
 
   if (!_manualFanMode)
