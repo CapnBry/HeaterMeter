@@ -660,6 +660,7 @@ void hmcoreSetup(void)
   pid.Probes[TEMP_AMB] = &probe3;
 
   eepromLoadConfig(false);
+  analogWrite(PIN_LCD_BACKLGHT, 128);
 
 #ifdef HEATERMETER_NETWORKING
   dflashInit();
