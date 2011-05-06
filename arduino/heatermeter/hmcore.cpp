@@ -573,13 +573,11 @@ boolean eepromLoadBaseConfig(boolean forceDefault)
 
 void eepromLoadProbeConfig(boolean forceDefault)
 {
-  unsigned char i;
   struct  __eeprom_probe config;
   struct  __eeprom_probe *p;
   p = (struct  __eeprom_probe *)(sizeof(__eeprom_data));
-  memset(&config, 0, sizeof(__eeprom_probe));
     
-  for (i=0; i<TEMP_COUNT; i++)
+  for (unsigned char i=0; i<TEMP_COUNT; i++)
   {
     if (forceDefault)
     {
@@ -589,15 +587,7 @@ void eepromLoadProbeConfig(boolean forceDefault)
     else
       eeprom_read_block(&config, p, sizeof(__eeprom_probe));
 
-    pid.Probes[i]->Offset = config.tempOffset;
-    pid.Probes[i]->ProbeType = config.probeType;
-    memcpy(pid.Probes[i]->Steinhart, config.steinhart, sizeof(config.steinhart));  
-    pid.Probes[i]->Alarms.setHigh(config.alarmHigh);
-    pid.Probes[i]->Alarms.setLow(config.alarmLow);
-    pid.Probes[i]->Alarms.Status =
-      config.alHighEnabled & ProbeAlarm::HIGH_ENABLED |
-      config.alLowEnabled & ProbeAlarm::LOW_ENABLED;
-      
+    pid.Probes[i]->loadConfig(&config);
     ++p;
   }  /* for i<TEMP_COUNT */
 }

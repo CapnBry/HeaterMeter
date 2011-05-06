@@ -87,22 +87,27 @@ public:
     _pin(pin), TemperatureAvg(-1.0f)
     // Temperature(0), Offset(0)
     {};
-  
+
+  /* Configuration */  
+  // Offset (in degrees) applied when calculating temperature
+  char Offset;
+  // Steinhart coefficients
+  float Steinhart[STEINHART_COUNT];
+  // Probe Type
+  unsigned char ProbeType;  
+  // Copy struct to members
+  void loadConfig(struct __eeprom_probe *config);
+
+  /* Runtime Data/Methods */
   // Last averaged temperature reading
   float Temperature;
   // Temperature moving average 
   float TemperatureAvg;
-  // Offset (in degrees) applied when calculating temperature
-  char Offset;
   // Do the duty of reading ADC
   // num is the number of times the ADC has been read already this cycle
   void readTemp(unsigned char num);
   // Convert ADC to Temperature
   void calcTemp(void);
-  // Steinhart coefficients
-  float Steinhart[STEINHART_COUNT];
-  // Probe Type
-  unsigned char ProbeType;  
   
   ProbeAlarm Alarms;
 };

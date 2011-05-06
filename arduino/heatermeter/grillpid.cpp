@@ -1,4 +1,5 @@
 #include <math.h>
+#include <string.h>
 #include "grillpid.h"
 
 // The temperatures are averaged over 1, 2, 4 or 8 samples
@@ -58,6 +59,18 @@ boolean ProbeAlarm::getActionNeeded(void) const
   return
     ((Status & HIGH_MASK) == (HIGH_ENABLED | HIGH_RINGING)) ||
     ((Status & LOW_MASK) == (LOW_ENABLED | LOW_RINGING));
+}
+
+void TempProbe::loadConfig(struct __eeprom_probe *config)
+{
+  Offset = config->tempOffset;
+  ProbeType = config->probeType;
+  memcpy(Steinhart, config->steinhart, sizeof(Steinhart));
+  Alarms.setHigh(config->alarmHigh);
+  Alarms.setLow(config->alarmLow);
+  Alarms.Status =
+    config->alHighEnabled & ProbeAlarm::HIGH_ENABLED |
+    config->alLowEnabled & ProbeAlarm::LOW_ENABLED;
 }
 
 inline void TempProbe::readTemp(unsigned char num)
