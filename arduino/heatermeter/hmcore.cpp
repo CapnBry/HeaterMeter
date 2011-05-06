@@ -141,23 +141,23 @@ void storeProbeCoeff(unsigned char probeIndex, char *vals)
     fVal = atof(vals);
     while (*vals)
     {
-      if (*vals == ',') 
-      {
-        ++vals; 
-        break;
-      }
       ++vals;
+      if (*vals == ',') 
+        break;
     }  /* while vals */
 
     if (fVal != 0.0f)
     {
-      eeprom_write_block(&fVal, (uint32_t *)ofs, sizeof(fVal));
       *fDest = fVal;
+      eeprom_write_block(&fVal, (void *)ofs, sizeof(fVal));
     }
-      
+
     ofs += sizeof(float);
     ++fDest;
   }  /* for i */
+  
+  // Might consider resetting the pid accumulator here, but
+  // The previous reading was wrong so who cares if one more is
 }
 
 void storeMaxFanSpeed(unsigned char maxFanSpeed)
