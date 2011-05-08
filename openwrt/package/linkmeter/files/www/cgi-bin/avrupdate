@@ -7,12 +7,12 @@ sed '1,4d;$d' <&0 > /tmp/hm.hex
 
 cd `dirname $0`
 . ../heatermeter.conf
- 
+
+stty -F $SERIAL_PORT $SERIAL_BAUD 2>&1
+
 CNT=0
-while [ "$CNT" -lt 3 ] ; do
-    stty -F $SERIAL_PORT $SERIAL_BAUD 2>&1
+while [ "$CNT" -lt 2 ] ; do
     echo -e \\n/reboot > $SERIAL_PORT
-    sleep 1
 
     avrdude -pm328p -carduino -P$SERIAL_PORT \
       -C/tmp/avrdude1.conf \
@@ -28,5 +28,3 @@ while [ "$CNT" -lt 3 ] ; do
 
     CNT=$((CNT+1))
 done 
-
-stty -F $SERIAL_PORT $SERIAL_BAUD 2>&1

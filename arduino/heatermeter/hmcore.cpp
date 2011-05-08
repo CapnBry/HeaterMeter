@@ -285,8 +285,6 @@ void outputCsv(Print &out)
 
 void reboot()
 {
-  // Delay is here to help it sync up with avrdude on the reboot of linkmeter
-  delay(250);
   // Once the pin goes low, the avr should reboot
   digitalWrite(PIN_WIFI_LED, LOW);
   while (1) { };
