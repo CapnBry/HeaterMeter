@@ -1,3 +1,4 @@
+#include <WProgram.h>
 #include <math.h>
 #include <string.h>
 #include "grillpid.h"
@@ -71,6 +72,8 @@ void TempProbe::loadConfig(struct __eeprom_probe *config)
   Alarms.Status =
     config->alHighEnabled & ProbeAlarm::HIGH_ENABLED |
     config->alLowEnabled & ProbeAlarm::LOW_ENABLED;
+  //Serial.print(" A=");Serial.print(Steinhart[0],8);Serial.print(" B=");Serial.print(Steinhart[1],8);
+  //Serial.print(" C=");Serial.print(Steinhart[2],8);Serial.print(" R=");Serial.println(Steinhart[3],8);
 }
 
 inline void TempProbe::readTemp(unsigned char num)
