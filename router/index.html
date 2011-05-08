@@ -441,6 +441,10 @@ function updateTime(time)
 function degPerHour()
 {
     var data = graphData[4].data;
+    var val = data[data.length-1][1];
+    if (isNaN)
+        return;
+        
     var time = data[data.length-1][0];
     var targetTime = time - (60 * 60 * 1000);
     for (var i=data.length-1; i>=0; i--)
@@ -450,9 +454,9 @@ function degPerHour()
             var diffTime = time - data[i][0];
             diffTime /= (60.0 * 60.0 * 1000.0);
             var dph = diffTemp / diffTime;
-            var timeRemain180 = ((180.0 - data[data.length-1][1]) / dph) * 60;
+            var timeRemain180 = ((180.0 - val) / dph) * 60;
             timeRemain180 = (timeRemain180 > 0) ? timeRemain180.toFixed(0) + "m to 180&deg;<br/>" : "";
-            var timeRemain200 = ((200.0 - data[data.length-1][1]) / dph) * 60;
+            var timeRemain200 = ((200.0 - val) / dph) * 60;
             timeRemain200 = (timeRemain200 > 0) ? timeRemain200.toFixed(0) + "m to 200&deg;" : "";
             $("#pdph1").html(diffTemp.toFixed(1) + "&deg;/hr<br/>" + timeRemain180 + timeRemain200).show();
             return;
