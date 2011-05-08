@@ -642,6 +642,19 @@ inline void dflashInit(void)
 #endif  /* DFLASH_LOGGING || SERVING */
 }
 
+inline void newTempsAvail(void)
+{
+  checkAlarms();
+  updateDisplay();
+#ifdef HEATERMETER_SERIAL
+  outputCsv(Serial);
+#endif  /* HEATERMETER_SERIAL */
+    
+#ifdef DFLASH_LOGGING
+  storeTemps();
+#endif  /* DFLASH_LOGGING */
+}
+
 void hmcoreSetup(void)
 {
 #ifdef HEATERMETER_SERIAL
@@ -679,25 +692,17 @@ void hmcoreSetup(void)
 }
 
 void hmcoreLoop(void)
-{
+{ 
   Menus.doWork();
   if (pid.doWork())
-  {
-    checkAlarms();
-    updateDisplay();
-#ifdef HEATERMETER_SERIAL
-    checkSerial();
-    outputCsv(Serial);
-#endif  /* HEATERMETER_SERIAL */
+    newTempsAvail();
     
-#ifdef HEATERMETER_NETWORKING
-#ifdef DFLASH_LOGGING
-    storeTemps();
-#endif  /* DFLASH_LOGGING */
-  }
+#ifdef HEATERMETER_SERIAL 
+  checkSerial();
+#endif /* HEATERMETER_SERIAL */
+   
+#ifdef HEATERMETER_NETWORKING 
   if (g_NetworkInitialized)
     WiServer.server_task(); 
-#else
-  }
 #endif /* HEATERMETER_NETWORKING */
 }
