@@ -380,7 +380,7 @@ function connectionSuccess(o)
     for(var i = 0; i < 4; i++)
     {
         var slopeIndic = "";
-        graphData[i+2].label = o.temps[i].n;
+        graphData[i+3].label = o.temps[i].n;
         if (graphLoaded)
             addGraphPoint(graphData[i+3].data, o.time, o.temps[i].c);
 
