@@ -280,7 +280,7 @@ void outputCsv(Print &out)
   out.print((int)pid.FanSpeedAvg, DEC);
   out.print(CSV_DELIMITER);
   out.print(pid.LidOpenResumeCountdown, DEC);
-  out.println();
+  out.print('\n');
 }
 
 void reboot()
@@ -422,7 +422,8 @@ void outputLog(void)
     
     WiServer.print(p.fan,DEC);
     WiServer.print(CSV_DELIMITER);
-    WiServer.println(p.fan_avg,DEC);
+    WiServer.print(p.fan_avg,DEC);
+    WiServer.print('\n');
   }  
   dflash.DF_CS_inactive();
 }
