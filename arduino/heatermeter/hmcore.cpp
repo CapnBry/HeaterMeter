@@ -645,7 +645,7 @@ inline void dflashInit(void)
 void hmcoreSetup(void)
 {
 #ifdef HEATERMETER_SERIAL
-  Serial.begin(19200);
+  Serial.begin(115200);
 #endif  /* HEATERMETER_SERIAL */
 #ifdef USE_EXTERNAL_VREF  
   analogReference(EXTERNAL);
