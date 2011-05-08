@@ -307,6 +307,7 @@ function tstatSuccess(csv)
         }
     });
     graphLoaded = true;
+    degPerHour();
     updateGraph();
 }
 
@@ -372,7 +373,7 @@ function connectionSuccess(o)
 
     if (graphLoaded)
     {
-        addFanGraphPoint(o.time, o.fan.c);
+        addFanGraphPoint(o.time, o.lid > 0 ? -o.lid : o.fan.c);
         addGraphPoint(graphData[2].data, o.time, o.set);
     }
 
@@ -409,6 +410,7 @@ function connectionSuccess(o)
         $("#lid").html("Lid Open " + o.lid + "s").show();
 
     updateTime(o.time);
+    degPerHour();
     checkRefreshGraphOrUpdate();
 }
 
@@ -436,6 +438,28 @@ function updateTime(time)
     .css("color", color);
 }
 
+function degPerHour()
+{
+    var data = graphData[4].data;
+    var time = data[data.length-1][0];
+    var targetTime = time - (60 * 60 * 1000);
+    for (var i=data.length-1; i>=0; i--)
+        if (data[i][0] < targetTime && !isNaN(data[i][1]))
+        {
+            var diffTemp = data[data.length-1][1] - data[i][1];
+            var diffTime = time - data[i][0];
+            diffTime /= (60.0 * 60.0 * 1000.0);
+            var dph = diffTemp / diffTime;
+            var timeRemain180 = ((180.0 - data[data.length-1][1]) / dph) * 60;
+            timeRemain180 = (timeRemain180 > 0) ? timeRemain180.toFixed(0) + "m to 180&deg;<br/>" : "";
+            var timeRemain200 = ((200.0 - data[data.length-1][1]) / dph) * 60;
+            timeRemain200 = (timeRemain200 > 0) ? timeRemain200.toFixed(0) + "m to 200&deg;" : "";
+            $("#f1dph").html(diffTemp.toFixed(1) + "&deg;/hr<br/>" + timeRemain180 + timeRemain200).show();
+            return;
+        }
+    $("#pdph1").hide();
+}
+
 </script>
 
 <style type="text/css">
@@ -443,7 +467,7 @@ body { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; color: #fff; b
 div.content { background: #246; background: rgba(76,135,199,0.5); border: 1px solid #467; }
 table.probelist { width: 100%; background: #8ab; background: rgba(99, 162, 230, 0.5); border: 1px solid #235; }
 td.probe { width: 33%; }
-div.pname { color: #003; font-size: 18pt; line-height: 12pt;}
+div.pname { color: #003; font-size: 18pt; line-height: 14pt;}
 div.ptemp { font-size: 32pt; line-height: 26pt; text-shadow: 1px 1px 0px #111; }
 div#graphtt { display: none; position: absolute; border: 1px solid #89c; background: #eef; opacity: 0.9; padding: 2px; color: #003; font-size: small; }
 div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357; };
@@ -469,13 +493,16 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
 
         <table class="probelist"><tr>
             <td class="probe" style="border-right: 1px solid #235;">
-                <div class="pname" style="display: inline;" id="pn1">-</div><div class="ptemp" id="temp1">-</div>
+                <div style="position: relative;">
+                    <div id="pdph1" style="color: #003; font-size: 10pt; text-align: right; position: absolute; right: 0; bottom: 0;"></div>
+                    <div class="pname" id="pn1">-</div><div class="ptemp" id="temp1">-</div>
+                </div>
             </td>
             <td class="probe">
-                <div class="pname" style="display: inline" id="pn2">-</div><div class="ptemp" id="temp2">-</div>
+                <div class="pname" id="pn2">-</div><div class="ptemp" id="temp2">-</div>
             </td>
             <td class="probe" style="border-left: 1px solid #235;">
-                <div class="pname" style="display: inline" id="pn3">-</div><div class="ptemp" id="temp3">-</div>
+                <div class="pname" id="pn3">-</div><div class="ptemp" id="temp3">-</div>
             </td>
         </tr></table>
     </div>
