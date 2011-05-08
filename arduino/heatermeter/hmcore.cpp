@@ -141,9 +141,12 @@ void storeProbeCoeff(unsigned char probeIndex, char *vals)
     fVal = atof(vals);
     while (*vals)
     {
-      ++vals;
       if (*vals == ',') 
+      {
+        ++vals;
         break;
+      }
+      ++vals;
     }  /* while vals */
 
     if (fVal != 0.0f)
