@@ -454,7 +454,7 @@ function degPerHour()
             timeRemain180 = (timeRemain180 > 0) ? timeRemain180.toFixed(0) + "m to 180&deg;<br/>" : "";
             var timeRemain200 = ((200.0 - data[data.length-1][1]) / dph) * 60;
             timeRemain200 = (timeRemain200 > 0) ? timeRemain200.toFixed(0) + "m to 200&deg;" : "";
-            $("#f1dph").html(diffTemp.toFixed(1) + "&deg;/hr<br/>" + timeRemain180 + timeRemain200).show();
+            $("#pdph1").html(diffTemp.toFixed(1) + "&deg;/hr<br/>" + timeRemain180 + timeRemain200).show();
             return;
         }
     $("#pdph1").hide();
