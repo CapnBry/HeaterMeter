@@ -1,0 +1,32 @@
+#!/bin/sh
+
+echo Content-Type: text/plain
+echo
+
+sed '1,4d;$d' <&0 > /tmp/hm.hex
+
+cd `dirname $0`
+. ../heatermeter.conf
+ 
+CNT=0
+while [ "$CNT" -lt 3 ] ; do
+    stty -F $SERIAL_PORT $SERIAL_BAUD 2>&1
+    echo -e \\n/reboot > $SERIAL_PORT
+    sleep 1
+
+    avrdude -pm328p -carduino -P$SERIAL_PORT \
+      -C/tmp/avrdude1.conf \
+      -V -D -Uflash:w:/tmp/hm.hex:i 2>&1
+
+    if [ $? -eq 0 ] ; then
+      echo LM Success
+      rm /tmp/hm.hex
+      CNT=999
+    else
+      echo Failed attempt $CNT
+    fi
+
+    CNT=$((CNT+1))
+done 
+
+stty -F $SERIAL_PORT $SERIAL_BAUD 2>&1
