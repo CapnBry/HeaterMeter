@@ -42,7 +42,7 @@ const struct __eeprom_data {
   float pidConstants[4]; // constants are stored Kb, Kp, Ki, Kd
   boolean manualMode;
   unsigned char maxFanSpeed;  // in percent
-  // After this is stored all the probe_config recs
+  unsigned char lcdBacklight; // in PWM (max 255)
 } DEFAULT_CONFIG PROGMEM = { 
   EEPROM_MAGIC,  // magic
   225,  // setpoint
@@ -51,7 +51,11 @@ const struct __eeprom_data {
   { 5.0f, 4.0f, 0.004f, 2.5f },  // PID constants
   false, // manual mode
   100,  // max fan speed
+  255, // lcd backlight
 };
+
+// EEPROM address of the start of the probe structs, the 2 bytes before are magic
+#define EEPROM_PROBE_START  64
 
 const struct  __eeprom_probe DEFAULT_PROBE_CONFIG PROGMEM = {
   "Probe", // Name
@@ -66,13 +70,18 @@ const struct  __eeprom_probe DEFAULT_PROBE_CONFIG PROGMEM = {
   //{1.1415e-3,2.31905e-4,9.76423e-8,1.0e+4} // Vishay 10k NTCLE100E3103JB0
 };
 
+inline void setLcdBacklight(unsigned char lcdBacklight)
+{
+  analogWrite(PIN_LCD_BACKLGHT, lcdBacklight);
+}
+
 // Note the storage loaders and savers expect the entire config storage is less than 256 bytes
 unsigned char getProbeConfigOffset(unsigned char probeIndex, unsigned char off)
 {
   if (probeIndex >= TEMP_COUNT)
     return 0;
   // Point to the name in the first probe_config structure
-  unsigned char retVal = sizeof(__eeprom_data) + off;
+  unsigned char retVal = EEPROM_PROBE_START + off;
   // Stride to the proper configuration structure
   retVal += probeIndex * sizeof( __eeprom_probe);
   
@@ -165,6 +174,12 @@ void storeMaxFanSpeed(unsigned char maxFanSpeed)
 {
   pid.MaxFanSpeed = maxFanSpeed;
   config_store_byte(maxFanSpeed, maxFanSpeed);
+}
+
+void storeLcdBacklight(unsigned char lcdBacklight)
+{
+  setLcdBacklight(lcdBacklight);
+  config_store_byte(lcdBacklight, lcdBacklight);
 }
 
 void updateDisplay(void)
@@ -295,6 +310,11 @@ boolean handleCommandUrl(char *URL)
   if (strncmp_P(URL, PSTR("set?sp="), 7) == 0) 
   {
     storeSetPoint(atoi(URL + 7));
+    return true;
+  }
+  if (strncmp_P(URL, PSTR("set?lb="), 7) == 0) 
+  {
+    storeLcdBacklight(atoi(URL + 7));
     return true;
   }
   if (strncmp_P(URL, PSTR("set?pid"), 7) == 0 && urlLen > 9) 
@@ -445,7 +465,7 @@ inline void checkAlarms(void)
   noTone(PIN_ALARM);
 }
 
-boolean eepromLoadBaseConfig(boolean forceDefault)
+void eepromLoadBaseConfig(boolean forceDefault)
 {
   struct __eeprom_data config;
   eeprom_read_block(&config, 0, sizeof(config));
@@ -459,20 +479,28 @@ boolean eepromLoadBaseConfig(boolean forceDefault)
   pid.setSetPoint(config.setPoint);
   pid.LidOpenOffset = config.lidOpenOffset;
   pid.LidOpenDuration = config.lidOpenDuration;
-  pid.MaxFanSpeed = config.maxFanSpeed;
   memcpy(pid.Pid, config.pidConstants, sizeof(config.pidConstants));
   if (config.manualMode)
     pid.setFanSpeed(0);
-  
-  return forceDefault;
+  pid.MaxFanSpeed = config.maxFanSpeed;
+  setLcdBacklight(config.lcdBacklight);
 }
 
 void eepromLoadProbeConfig(boolean forceDefault)
 {
+  unsigned int magic;
+  // instead of this use below because we don't have eeprom_read_word linked yet
+  // magic = eeprom_read_word((uint16_t *)(EEPROM_PROBE_START-sizeof(magic))); 
+  eeprom_read_block(&magic, (void *)(EEPROM_PROBE_START-sizeof(magic)), sizeof(magic));
+  if (magic != EEPROM_MAGIC)
+  {
+    forceDefault = true;
+    eeprom_write_word((uint16_t *)(EEPROM_PROBE_START-sizeof(magic)), EEPROM_MAGIC);
+  }
+    
   struct  __eeprom_probe config;
   struct  __eeprom_probe *p;
-  p = (struct  __eeprom_probe *)(sizeof(__eeprom_data));
-    
+  p = (struct  __eeprom_probe *)(EEPROM_PROBE_START);
   for (unsigned char i=0; i<TEMP_COUNT; i++)
   {
     if (forceDefault)
@@ -492,7 +520,7 @@ void eepromLoadConfig(boolean forceDefault)
 {
   // These are separated into two functions to prevent needing stack
   // space for both a __eeprom_data and __eeprom_probe structure
-  forceDefault = eepromLoadBaseConfig(forceDefault);
+  eepromLoadBaseConfig(forceDefault);
   eepromLoadProbeConfig(forceDefault);
 }
 
@@ -562,7 +590,6 @@ void hmcoreSetup(void)
   pid.Probes[TEMP_AMB] = &probe3;
 
   eepromLoadConfig(false);
-  analogWrite(PIN_LCD_BACKLGHT, 128);
 
 #ifdef HEATERMETER_NETWORKING
   dflashInit();
