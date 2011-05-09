@@ -7,11 +7,9 @@
 #include <WiServer.h>  
 #endif
 
-#if defined(DFLASH_LOGGING) || defined(DFLASH_SERVING)
+#ifdef DFLASH_SERVING
 #include <dataflash.h>
-  #ifdef DFLASH_SERVING
-  #include "flashfiles.h"
-  #endif
+#include "flashfiles.h"
 #endif
 
 #include "strings.h"
@@ -332,103 +330,6 @@ boolean handleCommandUrl(char *URL)
 
 #ifdef HEATERMETER_NETWORKING
 
-#ifdef DFLASH_LOGGING
-struct temp_log_record {
-  unsigned int temps[TEMP_COUNT]; 
-  unsigned char fan;
-  unsigned char fan_avg;
-};
-
-#define RING_POINTER_INC(x) x = (x + 1) % ((DATAFLASH_PAGE_BYTES / sizeof(struct temp_log_record)) - 1)
-
-void flashRingBufferInit(void)
-{
-  /* A simple ring buffer in the dflash buffer page, the first "record" is reserved 
-     to store the head and tail indexes ((index+1) * size = addr)
-     as well as a "write lock".  Because the web server may take several seconds
-     to serve the entire log, we stop logging during that time to keep the data
-     consistent across the entire page dispatch 
-     */
-  unsigned char dummy[sizeof(struct temp_log_record)];
-  memset(dummy, 0, sizeof(dummy));
-  
-  // The first record is actually (uint8_t head, uint8_t tail, uint32_t writestart) but 
-  // this is just to initialize it all to 0
-  dflash.Buffer_Write_Str(1, 0, sizeof(dummy), dummy);
-  dflash.DF_CS_inactive();
-}
-
-void flashRingBufferWrite(struct temp_log_record *p)
-{
-  unsigned char head = dflash.Buffer_Read_Byte(1, 0);
-  unsigned char tail = dflash.Buffer_Read_Byte(1, 1);
-
-  unsigned int addr = (tail + 1) * sizeof(*p);
-  dflash.Buffer_Write_Str(1, addr, sizeof(*p), (unsigned char *)p);
-  RING_POINTER_INC(tail);
-  dflash.Buffer_Write_Byte(1, 1, tail);
-  
-  if (tail == head)
-  {
-    RING_POINTER_INC(head);
-    dflash.Buffer_Write_Byte(1, 0, head);
-  }
-  
-  dflash.DF_CS_inactive();
-}
-
-void storeTemps(void)
-{
-  struct temp_log_record temp_log;
-  unsigned char i;
-  for (i=0; i<TEMP_COUNT; i++)
-  {
-    // Store the difference between the temp and the average in the high 7 bits
-    // This allows the temperature to be between 0-511 and the average to be 
-    // within 63 degrees of that
-    char avgOffset = (char)(pid.Probes[i]->Temperature - pid.Probes[i]->TemperatureAvg);
-    temp_log.temps[i] = (avgOffset << 9) | (int)pid.Probes[i]->Temperature;
-  }
-  temp_log.fan = pid.getFanSpeed();
-  temp_log.fan_avg = (unsigned char)pid.FanSpeedAvg;
-  
-  flashRingBufferWrite(&temp_log);
-}
-
-void outputLog(void)
-{
-  unsigned char head = dflash.Buffer_Read_Byte(1, 0);
-  unsigned char tail = dflash.Buffer_Read_Byte(1, 1);
-  
-  while (head != tail)
-  {
-    struct temp_log_record p;
-    unsigned int addr = (head + 1) * sizeof(p);
-    dflash.Buffer_Read_Str(1, addr, sizeof(p), (unsigned char *)&p);
-    RING_POINTER_INC(head);
-    
-    char offset;
-    int temp;
-    unsigned char i;
-    for (i=0; i<TEMP_COUNT; i++)
-    {
-      temp = p.temps[i] & 0x1ff;
-      WiServer.print(temp,DEC);  // temperature
-      WiServer.print(CSV_DELIMITER);
-      offset = p.temps[i] >> 9;
-      WiServer.print(temp + offset,DEC);  // average
-      WiServer.print(CSV_DELIMITER);
-    }
-    
-    WiServer.print(p.fan,DEC);
-    WiServer.print(CSV_DELIMITER);
-    WiServer.print(p.fan_avg,DEC);
-    WiServer.print('\n');
-  }  
-  dflash.DF_CS_inactive();
-}
-#endif  /* DFLASH_LOGGING */
-
 #ifdef DFLASH_SERVING 
 #define HTTP_HEADER_LENGTH 19 // "HTTP/1.0 200 OK\r\n\r\n"
 inline void sendFlashFile(const struct flash_file_t *file)
@@ -513,13 +414,6 @@ boolean sendPage(char* URL)
     outputCsv(WiServer);
     return true;    
   }
-#ifdef DFLASH_LOGGING  
-  if (strcmp_P(URL, PSTR("log")) == 0) 
-  {
-    outputLog();
-    return true;    
-  }
-#endif  /* DFLASH_LOGGING */
   
 #ifdef DFLASH_SERVING
   const struct flash_file_t *file = FLASHFILES;
@@ -629,16 +523,13 @@ inline void checkSerial(void)
 
 inline void dflashInit(void)
 {
-#if defined(DFLASH_LOGGING) || defined(DFLASH_SERVING)
+#ifdef DFLASH_SERVING
   // Set the WiFi Slave Select to HIGH (disable) to
   // prevent it from interferring with the dflash init
   pinMode(PIN_WIFI_SS, OUTPUT);
   digitalWrite(PIN_WIFI_SS, HIGH);
   dflash.init(PIN_DATAFLASH_SS);
-#ifdef DFLASH_LOGGING
-  flashRingBufferInit();
-#endif  /* DFLASH_LOGGING */
-#endif  /* DFLASH_LOGGING || SERVING */
+#endif  /* DFLASH_SERVING */
 }
 
 inline void newTempsAvail(void)
@@ -648,10 +539,6 @@ inline void newTempsAvail(void)
 #ifdef HEATERMETER_SERIAL
   outputCsv(Serial);
 #endif  /* HEATERMETER_SERIAL */
-    
-#ifdef DFLASH_LOGGING
-  storeTemps();
-#endif  /* DFLASH_LOGGING */
 }
 
 void hmcoreSetup(void)

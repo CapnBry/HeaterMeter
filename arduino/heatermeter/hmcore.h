@@ -10,7 +10,6 @@ extern "C" {
 //#define USE_EXTERNAL_VREF       // Using external 5V as reference to analog inputs
 
 #ifdef HEATERMETER_NETWORKING
-//#define DFLASH_LOGGING          // Store a small CSV log in dflash
 #define DFLASH_SERVING          // Serve web pages out of dflash
 #endif
 
