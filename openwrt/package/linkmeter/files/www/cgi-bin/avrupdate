@@ -8,13 +8,13 @@ sed '1,4d;$d' <&0 > /tmp/hm.hex
 cd `dirname $0`
 . ../heatermeter.conf
 
-stty -F $SERIAL_PORT $SERIAL_BAUD 2>&1
+stty -F $SERIAL_DEVICE $SERIAL_BAUD 2>&1
 
 CNT=0
 while [ "$CNT" -lt 2 ] ; do
-    echo -e \\n/reboot > $SERIAL_PORT
+    echo -e \\n/reboot > $SERIAL_DEVICE
 
-    avrdude -pm328p -carduino -P$SERIAL_PORT \
+    avrdude -pm328p -carduino -P$SERIAL_DEVICE \
       -C/tmp/avrdude1.conf \
       -V -D -Uflash:w:/tmp/hm.hex:i 2>&1
 
