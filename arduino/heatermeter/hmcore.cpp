@@ -544,7 +544,7 @@ inline void newTempsAvail(void)
 void hmcoreSetup(void)
 {
 #ifdef HEATERMETER_SERIAL
-  Serial.begin(115200);
+  Serial.begin(HEATERMETER_SERIAL);
 #endif  /* HEATERMETER_SERIAL */
 #ifdef USE_EXTERNAL_VREF  
   analogReference(EXTERNAL);
