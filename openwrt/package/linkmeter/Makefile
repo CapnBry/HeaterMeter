@@ -12,8 +12,8 @@ include $(INCLUDE_DIR)/package.mk
 
 define Package/linkmeter
 	SECTION:=utils
-	CATEGORY:=utilities
-	DEPENDS:=+uhttpd +rrdtool
+	CATEGORY:=Utilities
+	DEPENDS:=+uhttpd +rrdtool1 +avrdude
 	TITLE:=LinkMeter BBQ Controller
 	URL:=http://tvwbb.com/eve/forums/a/tpc/f/9270072103/m/7691098906
 	MAINTAINER:=Bryan Mayland <capnbry@gmail.com>
@@ -25,15 +25,27 @@ endef
 
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) -r ./files $(PKG_BUILD_DIR)/
+	$(CP) -r ./files/* $(PKG_BUILD_DIR)/
+endef
+
+define Build/Compile
+# nothing to compile
 endef
 
 define Package/linkmeter/install
 	$(INSTALL_DIR) $(1)/etc
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/files/etc/heatermeter.conf
-
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/etc/heatermeter.conf $(1)/etc/
 	$(INSTALL_DIR) $(1)/www
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/www
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/www/*.html $(1)/www/
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/www/*.png $(1)/www/
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/www/*.gif $(1)/www/
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/www/*.ico $(1)/www/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/www/create_hm_rrd $(1)/www/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/www/getdata_serial $(1)/www/
+	$(INSTALL_DIR) $(1)/www/js
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/www/js/* $(1)/www/js
+	$(INSTALL_DIR) $(1)/www/cgi-bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/www/cgi-bin/* $(1)/www/cgi-bin
 endef
 
 $(eval $(call BuildPackage,linkmeter))

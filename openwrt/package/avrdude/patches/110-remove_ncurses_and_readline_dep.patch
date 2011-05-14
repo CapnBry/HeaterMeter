@@ -1,0 +1,15 @@
+--- /tmp/avrdude-5.8/configure.ac	2011-05-14 08:09:12.111888350 -0400
++++ avrdude-5.8/configure.ac	2011-05-14 08:48:13.752234248 -0400
+@@ -45,9 +45,9 @@
+ AM_PROG_CC_C_O
+ 
+ # Checks for libraries.
+-AC_CHECK_LIB([termcap], [tputs])
+-AC_CHECK_LIB([ncurses], [tputs])
+-AC_CHECK_LIB([readline], [readline])
++# AC_CHECK_LIB([termcap], [tputs])
++# AC_CHECK_LIB([ncurses], [tputs])
++# AC_CHECK_LIB([readline], [readline])
+ AC_SEARCH_LIBS([gethostent], [nsl])
+ AC_SEARCH_LIBS([setsockopt], [socket])
+ AH_TEMPLATE([HAVE_LIBUSB],

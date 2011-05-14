@@ -1,7 +1,6 @@
 #!/bin/sh
 
-cd `dirname $0`
-. ./heatermeter.conf
+. /etc/heatermeter.conf
 
 if [ -z "$1" ] ; then
   START=""

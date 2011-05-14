@@ -1,7 +1,7 @@
 #!/bin/sh
 
 cd `dirname $0`
-. ./heatermeter.conf
+. /etc/heatermeter.conf
 
 stty -F $SERIAL_DEVICE $SERIAL_BAUD min 1 igncr
 
@@ -9,8 +9,8 @@ if [ ! -f "$RRD_FILE" ] ; then
   ./create_hm_rrd
 fi
 
-ln -s "$JSON_FILE" ./json
-ln -s "$LOG_FILE" ./data.txt
+ln -sf "$JSON_FILE" ./json
+ln -sf "$LOG_FILE" ./data.txt
 
 # figure out the current time zone offset in seconds
 if [ -n "$TZ" ] ; then

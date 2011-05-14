@@ -1,10 +1,10 @@
 #!/bin/sh
 
-cd `dirname $0`
-. ../heatermeter.conf
+. /etc/heatermeter.conf
 
 echo Content-Type: text/plain
 echo
 
+REQUEST_URI=${REQUEST_URI##/cgi-bin}
 echo $REQUEST_URI > $SERIAL_DEVICE 
 echo OK

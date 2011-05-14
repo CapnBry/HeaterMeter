@@ -287,12 +287,18 @@ function tstatSuccess(csv)
     clearLoadingIndic();
     jQuery.each(csv.split('\n'), function (){
         if (this == "") return;
-        var line = this.split(' ');
+        var line = this.split("  ");
         if (line.length < 6) return;
         line[0] = line[0].replace(":", "") * 1000 + tzOffset;
+        if (isNaN(line[0]))
+            return;
         //line[0] = line[0] * 1000 + tzOffset;
         for (var valIdx=1; valIdx<line.length; ++valIdx)
         {
+            if (valIdx >= inputMap.length)
+                return;
+            // inputMap translates csv field index to graphData index
+            // a graphdata index of -1 means not to map it
             var dest = inputMap[valIdx];
             if (dest < 0)
                 continue;
@@ -441,6 +447,8 @@ function updateTime(time)
 function degPerHour()
 {
     var data = graphData[4].data;
+    if (data.length == 0)
+        return;
     var val = data[data.length-1][1];
     if (isNaN)
         return;
