@@ -23,14 +23,14 @@ var graphData =  [
     ];
 
     var graphOpts = {
-        legend: { show: true, labelFormatter: legendLabel },
+        legend: { show: true, labelFormatter: legendLabel, noColumns: 10 },
         series: {
             lines: { show: true, lineWidth: 1 },
             points: { show: false, symbol: "circle", radius: 1, fill: false },
             shadowSize: 2
         },
-        xaxis: { show: true, mode: "time", color: "#003" },
-        yaxis: { show: true, ticks: 10, color: "#003" },
+        xaxis: { show: true, mode: "time", color: "#ccc" },
+        yaxis: { show: true, ticks: 10, color: "#ccc" },
         yaxes: [ { }, { position: "right", min: 0, max: 100 } ],
         grid: { clickable: true }
     };
@@ -41,7 +41,7 @@ var graphData =  [
             points: { show: false },
             shadowSize: 0
         },
-        xaxis: { show: true, mode: "time", color: "#003" },
+        xaxis: { show: true, mode: "time", color: "#ccc" },
         yaxis: { show: false },
         yaxes: [ { }, { min: 0, max: 100 } ],
         grid: { clickable: false },
@@ -476,19 +476,21 @@ function degPerHour()
 
 <style type="text/css">
 body { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; color: #fff; background: #f3f1e9; text-align: center; margin: 0; padding: 0; }
-div.content { background: #246; background: rgba(76,135,199,0.5); border: 1px solid #467; }
+div.content { background: #246; border: 1px solid #467; }
 table.probelist { width: 100%; background: #8ab; background: rgba(99, 162, 230, 0.5); border: 1px solid #235; }
 td.probe { width: 33%; }
 div.pname { color: #003; font-size: 18pt; line-height: 14pt;}
 div.ptemp { font-size: 32pt; line-height: 26pt; text-shadow: 1px 1px 0px #111; }
 div#graphtt { display: none; position: absolute; border: 1px solid #89c; background: #eef; opacity: 0.9; padding: 2px; color: #003; font-size: small; }
 div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357; }
+.legendLabel { color: #ccc; width: 100px; text-align: left; }
 </style>
 </head>
 
 <body>
-<div style="background: #000 url('fire.png') repeat-x scroll left bottom; padding: 10px;">
+<div style="background: #000; padding: 10px;">
     <div class="content">
+      <div style="background: #000 url('fire.png') repeat-x scroll left bottom;"><div style="background: rgba(76,135,199,0.5);">
         <div style="color: #bbb; font-size: 28pt;">Current Pit</div>
         <div id="updatedtime" style="position: absolute; top: 8px; right: 13px; color: #bbb; font-size: 12pt;">00:00:00 AM</div>
         <div id="lid" style="position: absolute; top: 8px; left: 13px; color: #fc3; font-size: 12pt;"></div>
@@ -517,18 +519,21 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
                 <div class="pname" id="pn3">-</div><div class="ptemp" id="temp3">-</div>
             </td>
         </tr></table>
+      </div></div>
+      <center>
+      <div id="graph" style="height: 350px; width: 700px; margin: 8px auto 0px auto;"></div>
+      <div id="graph_overview" style="height: 90px; width: 700px;"></div>
+      <div id="graph_legend"></div>
+      </center>
     </div>
 </div>
 <table style="width: 100%; border-spacing: 0;"><tr>
     <td style="vertical-align: top;">&nbsp;</td>
     <td>
-        <div id="graph" style="height: 350px; width: 700px;"></div>
-        <div id="graph_overview" style="height: 90px; width: 700px;"></div>
     </td>
     <td style="vertical-align: top;">
         <div id="graph_opts" style="color: #000;">
-            <input type="checkbox" id="showfan" checked="checked"/><label for="showfan">Show fan speed</label><br/>
-            <div id="loadindic" style="display: none;"><img src="loading.gif" style="width: 32px; height: 32px;"></div>
+            <input type="checkbox" id="showfan" checked="checked"/><label for="showfan">Show fan speed</label>
             <select id="rangeselect">
                 <option value="" selected>Auto scale</option>
                 <option value="?600">1 hour</option>
@@ -536,8 +541,8 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
                 <option value="?400">10 hours</option>
                 <option value="?0">20 hours</option>
             </select>
+            <div id="loadindic" style="display: none;"><img src="loading.gif" style="width: 32px; height: 32px;"></div>
         </div>
-        <div id="graph_legend"></div>
     </td>
 </tr></table>
 <div id="graphtt">
