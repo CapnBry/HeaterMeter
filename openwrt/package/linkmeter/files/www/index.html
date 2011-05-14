@@ -295,7 +295,7 @@ function tstatSuccess(csv)
         //line[0] = line[0] * 1000 + tzOffset;
         for (var valIdx=1; valIdx<line.length; ++valIdx)
         {
-            if (valIndex >= inputMap.length)
+            if (valIdx >= inputMap.length)
                 return;
             // inputMap translates csv field index to graphData index
             // a graphdata index of -1 means not to map it
