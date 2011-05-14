@@ -12,25 +12,12 @@ fi
 ln -sf "$JSON_FILE" ./json
 ln -sf "$LOG_FILE" ./data.txt
 
-# figure out the current time zone offset in seconds
-if [ -n "$TZ" ] ; then
-    TZO=`export TZ; date +%z`
-    TZH=`echo $TZO | cut -c1-3`
-    TZO=`echo $TZO | cut -c4-`
-    TZO=$((TZH*60 + TZO))
-    TZO=$((TZO * 60))
-    unset TZH
-else
-    TZO=0
-fi
-
 CNT=999
 IFS=$','
 
 while read SP P0 P0A P1 P1A P2 P2A P3 P3A FI FA LID CRAP; do
     if [ -n "$LID" ] ; then
       TIME=`date +%s`
-      TIME=$((TIME-TZO))
 
       cat << EOF > $JSON_FILE
 {"time":$TIME, "temps":[{"n":"Pit","c":$P0,"a":$P0A},{"n":"Food Probe1","c":$P1,"a":$P1A},{"n":"Food Probe2","c":$P2,"a":$P2A},{"n":"Ambient","c":$P3,"a":$P3A},{}],"set":$SP,"lid":$LID,"fan":{"c":$FI,"a":$FA}}
