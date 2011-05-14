@@ -5,8 +5,7 @@ echo
 
 sed '1,4d;$d' <&0 > /tmp/hm.hex
 
-cd `dirname $0`
-. ../heatermeter.conf
+. /etc/heatermeter.conf
 
 stty -F $SERIAL_PORT $SERIAL_BAUD 2>&1
 
