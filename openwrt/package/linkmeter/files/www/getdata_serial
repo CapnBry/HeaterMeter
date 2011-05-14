@@ -25,7 +25,7 @@ EOF
 
       DATA=$SP:$P0:$P1:$P2:$P3
       CNT=$((CNT+1))
-      if [ "$CNT" -eq 15 ] ; then
+      if [ "$CNT" -gt 14 ] ; then
         CNT=0
         echo $TIME:$DATA:$FI:$LID >> $LOG_FILE
       fi
