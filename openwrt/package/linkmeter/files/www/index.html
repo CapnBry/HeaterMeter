@@ -19,18 +19,18 @@ var graphData =  [
         { label: "Pit", color: "#f90", lines: { lineWidth: 2 }, data: [] },
         { label: "Food1", color: "#6c3", data: [] },
         { label: "Food2", color: "#36c", data: [] },
-        { label: "Amb", color: "#ddd", data: [] }
+        { label: "Amb", color: "#789", data: [] }
     ];
 
     var graphOpts = {
-        legend: { show: true, labelFormatter: legendLabel },
+        legend: { show: false },
         series: {
             lines: { show: true, lineWidth: 1 },
             points: { show: false, symbol: "circle", radius: 1, fill: false },
             shadowSize: 2
         },
-        xaxis: { show: true, mode: "time", color: "#003" },
-        yaxis: { show: true, ticks: 10, color: "#003" },
+        xaxis: { show: true, mode: "time", color: "#ccc" },
+        yaxis: { show: true, ticks: 10, color: "#ccc" },
         yaxes: [ { }, { position: "right", min: 0, max: 100 } ],
         grid: { clickable: true }
     };
@@ -41,7 +41,7 @@ var graphData =  [
             points: { show: false },
             shadowSize: 0
         },
-        xaxis: { show: true, mode: "time", color: "#003" },
+        xaxis: { show: true, mode: "time", color: "#ccc" },
         yaxis: { show: false },
         yaxes: [ { }, { min: 0, max: 100 } ],
         grid: { clickable: false },
@@ -59,14 +59,15 @@ $(document).ready(function()
     $("#rangeselect").change(refreshGraphData);
     $("#graph").bind("plotclick", graphClicked);
 
+    // Set colors of probe readings to match the graph colors
     for (var srs=0; srs<4; ++srs)
         $("#temp" + srs).css("text-shadow", "2px 2px 1px " + graphData[srs+3].color);
+    for (var srs=1; srs<4; ++srs)
+        $("#pl" + srs).css("background", graphData[srs+3].color);
 
-    //do an initial query
+    // do an initial query
     JSONQuery();
-
-    //Begin a background timer that will
-    //execute the query every 10 seconds
+    // and set to refresh every N secs
     window.setInterval(JSONQuery, 15000);
 
     $(".pname").editable(function(value, settings) {
@@ -76,7 +77,10 @@ $(document).ready(function()
     $("#set").editable(function(value, settings) {
         return(tempChanged(value));
     }, {style: "display: inline"});
+});
 
+$(window).load(function ()
+{
     refreshGraphData();
 });
 
@@ -119,11 +123,6 @@ function showFanChanged()
         graphData[1].lines.show = false;
     }
     updateGraph();
-}
-
-function legendLabel(label, series)
-{
-    return label; // + " (" + series.data.length + "pts)";
 }
 
 function updateGraphRanges(from, to)
@@ -363,10 +362,10 @@ function checkRefreshGraphOrUpdate()
             max = this.data.length;
     });
 
-    // the RRD holds 600 points and the graph holds
+    // the RRD holds up to 480 points and the graph holds
     // less due to point consolidation, so best case
-    // scenario 25pts * 15sec per poll = 6min 15sec
-    if (max > 625)
+    // scenario 20pts * 15sec per poll = 5mins
+    if (max > 500)
         refreshGraphData()
     else
         updateGraph();
@@ -466,20 +465,23 @@ function degPerHour()
             timeRemain180 = (timeRemain180 > 0) ? timeRemain180.toFixed(0) + "m to 180&deg;<br/>" : "";
             var timeRemain200 = ((200.0 - val) / dph) * 60;
             timeRemain200 = (timeRemain200 > 0) ? timeRemain200.toFixed(0) + "m to 200&deg;" : "";
-            $("#pdph1").html(diffTemp.toFixed(1) + "&deg;/hr<br/>" + timeRemain180 + timeRemain200).show();
+            $("#dph1").html(diffTemp.toFixed(1) + "&deg;/hr<br/>" + timeRemain180 + timeRemain200).show();
             return;
         }
-    $("#pdph1").hide();
+    $("#dph1").hide();
 }
 
 </script>
 
 <style type="text/css">
 body { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; color: #fff; background: #f3f1e9; text-align: center; margin: 0; padding: 0; }
-div.content { background: #246; background: rgba(76,135,199,0.5); border: 1px solid #467; }
-table.probelist { width: 100%; background: #8ab; background: rgba(99, 162, 230, 0.5); border: 1px solid #235; }
+div.content { background: #246; border: 1px solid #467; }
+table.probelist { width: 100%; background: #8ab; background: rgba(99, 162, 230, 0.5); border: 1px solid #235; padding: 0; }
 td.probe { width: 33%; }
-div.pname { color: #003; font-size: 18pt; line-height: 14pt;}
+div.legbord { border: 1px solid #ccc; padding: 1px; display: inline-block; }
+div.legfill { width: 14px; height: 14px; }
+div.dph { color: #003; font-size: 10pt; text-align: right; position: absolute; right: 0; bottom: 0; }
+div.pname { color: #003; font-size: 18pt; line-height: 16pt; display: inline-block; }
 div.ptemp { font-size: 32pt; line-height: 26pt; text-shadow: 1px 1px 0px #111; }
 div#graphtt { display: none; position: absolute; border: 1px solid #89c; background: #eef; opacity: 0.9; padding: 2px; color: #003; font-size: small; }
 div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357; }
@@ -487,8 +489,9 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
 </head>
 
 <body>
-<div style="background: #000 url('fire.png') repeat-x scroll left bottom; padding: 10px;">
+<div style="background: #000; padding: 10px;">
     <div class="content">
+      <div style="background: #000 url('fire.png') repeat-x scroll left bottom;"><div style="background: rgba(76,135,199,0.5);">
         <div style="color: #bbb; font-size: 28pt;">Current Pit</div>
         <div id="updatedtime" style="position: absolute; top: 8px; right: 13px; color: #bbb; font-size: 12pt;">00:00:00 AM</div>
         <div id="lid" style="position: absolute; top: 8px; left: 13px; color: #fc3; font-size: 12pt;"></div>
@@ -505,39 +508,54 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
 
         <table class="probelist"><tr>
             <td class="probe" style="border-right: 1px solid #235;">
-                <div style="position: relative;">
-                    <div id="pdph1" style="color: #003; font-size: 10pt; text-align: right; position: absolute; right: 0; bottom: 0;"></div>
-                    <div class="pname" id="pn1">-</div><div class="ptemp" id="temp1">-</div>
-                </div>
+              <div style="position: relative;">
+                    <div class="dph" id="dph1"></div>
+                    <div class="legbord"><div class="legfill" id="pl1"></div></div>
+                    <div class="pname" id="pn1">-</div>
+                    <div class="ptemp" id="temp1">-</div>
+               </div>
             </td>
             <td class="probe">
-                <div class="pname" id="pn2">-</div><div class="ptemp" id="temp2">-</div>
+              <div style="position: relative;">
+                    <div class="dph" id="dph2"></div>
+                    <div class="legbord"><div class="legfill" id="pl2"></div></div>
+                    <div class="pname" id="pn2">-</div>
+                    <div class="ptemp" id="temp2">-</div>
+               </div>
             </td>
             <td class="probe" style="border-left: 1px solid #235;">
-                <div class="pname" id="pn3">-</div><div class="ptemp" id="temp3">-</div>
+              <div style="position: relative;">
+                    <div class="dph" id="dph3"></div>
+                    <div class="legbord"><div class="legfill" id="pl3"></div></div>
+                    <div class="pname" id="pn3">-</div>
+                    <div class="ptemp" id="temp3">-</div>
+               </div>
             </td>
         </tr></table>
+      </div></div>
+      <center>
+      <div id="graph" style="height: 350px; width: 700px; margin: 8px auto 0px auto;"></div>
+      <div id="graph_overview" style="height: 90px; width: 700px;"></div>
+      <div id="graph_legend"></div>
+      </center>
     </div>
 </div>
 <table style="width: 100%; border-spacing: 0;"><tr>
     <td style="vertical-align: top;">&nbsp;</td>
     <td>
-        <div id="graph" style="height: 350px; width: 700px;"></div>
-        <div id="graph_overview" style="height: 90px; width: 700px;"></div>
     </td>
     <td style="vertical-align: top;">
         <div id="graph_opts" style="color: #000;">
-            <input type="checkbox" id="showfan" checked="checked"/><label for="showfan">Show fan speed</label><br/>
-            <div id="loadindic" style="display: none;"><img src="loading.gif" style="width: 32px; height: 32px;"></div>
+            <input type="checkbox" id="showfan" checked="checked"/><label for="showfan">Show fan speed</label>
             <select id="rangeselect">
                 <option value="" selected>Auto scale</option>
-                <option value="?600">1 hour</option>
-                <option value="?500">5 hours</option>
-                <option value="?400">10 hours</option>
-                <option value="?0">20 hours</option>
+                <option value="?480">1 hour</option>
+                <option value="?400">6 hours</option>
+                <option value="?300">12 hours</option>
+                <option value="?0">24 hours</option>
             </select>
+            <div id="loadindic" style="display: none;"><img src="loading.gif" style="width: 32px; height: 32px;"></div>
         </div>
-        <div id="graph_legend"></div>
     </td>
 </tr></table>
 <div id="graphtt">
