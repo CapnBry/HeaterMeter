@@ -59,16 +59,15 @@ $(document).ready(function()
     $("#rangeselect").change(refreshGraphData);
     $("#graph").bind("plotclick", graphClicked);
 
+    // Set colors of probe readings to match the graph colors
     for (var srs=0; srs<4; ++srs)
         $("#temp" + srs).css("text-shadow", "2px 2px 1px " + graphData[srs+3].color);
     for (var srs=1; srs<4; ++srs)
         $("#pl" + srs).css("background", graphData[srs+3].color);
 
-    //do an initial query
+    // do an initial query
     JSONQuery();
-
-    //Begin a background timer that will
-    //execute the query every 10 seconds
+    // and set to refresh every N secs
     window.setInterval(JSONQuery, 15000);
 
     $(".pname").editable(function(value, settings) {
@@ -78,7 +77,10 @@ $(document).ready(function()
     $("#set").editable(function(value, settings) {
         return(tempChanged(value));
     }, {style: "display: inline"});
+});
 
+$(window).load(function ()
+{
     refreshGraphData();
 });
 
