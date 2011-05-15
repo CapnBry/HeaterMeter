@@ -10,25 +10,25 @@ if [ -n "$QUERY_STRING" ] ; then
   NANCNT=$QUERY_STRING
 else
   T120=$((T/120*120))
-  NANCNT=`$RRD fetch $RRD_FILE AVERAGE -s end-20h -e $T120 -r 120 |\
+  NANCNT=`$RRD fetch $RRD_FILE AVERAGE -s end-24h -e $T120 -r 180 |\
       fgrep -m1 -n e+ | cut -d":" -f1`
   if [ -z "$NANCNT" ] ; then
-      NANCNT=600
+      NANCNT=480
   fi
 fi
 
-if [ $NANCNT -gt 570 ] ; then
-  TD=6
+if [ $NANCNT -ge 460 ] ; then
+  TD=10
   ST="AVERAGE -s end-1hr"
-elif [ $NANCNT -gt 450 ] ; then
-  TD=30
-  ST="AVERAGE -s end-5hr"
-elif [ $NANCNT -gt 300 ] ; then
+elif [ $NANCNT -ge 360 ] ; then
   TD=60
-  ST="AVERAGE -s end-10hr"
-else
+  ST="AVERAGE -s end-6hr"
+elif [ $NANCNT -ge 240 ] ; then
   TD=120
-  ST="AVERAGE -s end-20hr"
+  ST="AVERAGE -s end-12hr"
+else
+  TD=180
+  ST="AVERAGE -s end-24hr"
 fi
 
 T=$((T/TD*TD))

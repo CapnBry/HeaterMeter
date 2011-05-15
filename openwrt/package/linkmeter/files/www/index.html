@@ -363,10 +363,10 @@ function checkRefreshGraphOrUpdate()
             max = this.data.length;
     });
 
-    // the RRD holds 600 points and the graph holds
+    // the RRD holds up to 480 points and the graph holds
     // less due to point consolidation, so best case
-    // scenario 25pts * 15sec per poll = 6min 15sec
-    if (max > 625)
+    // scenario 20pts * 15sec per poll = 5mins
+    if (max > 500)
         refreshGraphData()
     else
         updateGraph();
@@ -536,10 +536,10 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
             <input type="checkbox" id="showfan" checked="checked"/><label for="showfan">Show fan speed</label>
             <select id="rangeselect">
                 <option value="" selected>Auto scale</option>
-                <option value="?600">1 hour</option>
-                <option value="?500">5 hours</option>
-                <option value="?400">10 hours</option>
-                <option value="?0">20 hours</option>
+                <option value="?480">1 hour</option>
+                <option value="?400">6 hours</option>
+                <option value="?300">12 hours</option>
+                <option value="?0">24 hours</option>
             </select>
             <div id="loadindic" style="display: none;"><img src="loading.gif" style="width: 32px; height: 32px;"></div>
         </div>
