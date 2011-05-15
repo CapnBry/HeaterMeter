@@ -26,6 +26,7 @@ endef
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
 	$(CP) -r ./files/* $(PKG_BUILD_DIR)/
+	$(CP) ./luasrc/* $(PKG_BUILD_DIR)/
 endef
 
 define Build/Compile
@@ -35,17 +36,24 @@ endef
 define Package/linkmeter/install
 	$(INSTALL_DIR) $(1)/etc
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/etc/heatermeter.conf $(1)/etc/
+
 	$(INSTALL_DIR) $(1)/www
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/www/*.html $(1)/www/
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/www/*.png $(1)/www/
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/www/*.gif $(1)/www/
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/www/*.ico $(1)/www/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/www/create_hm_rrd $(1)/www/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/www/getdata_serial $(1)/www/
 	$(INSTALL_DIR) $(1)/www/js
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/www/js/* $(1)/www/js
 	$(INSTALL_DIR) $(1)/www/cgi-bin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/www/cgi-bin/* $(1)/www/cgi-bin
+
+	$(INSTALL_DIR) $(1)/usr/lib/lua/linkmeter
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/rrdpipe.lua $(1)/usr/lib/lua/linkmeter/
+
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/linkmeterd.lua $(1)/usr/sbin/
+
+	$(LN) /tmp/json $(1)/www/json
 endef
 
 $(eval $(call BuildPackage,linkmeter))
