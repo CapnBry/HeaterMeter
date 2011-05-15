@@ -25,7 +25,7 @@ endef
 
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) -r ./files/* $(PKG_BUILD_DIR)/
+	$(CP) -r ./root/* $(PKG_BUILD_DIR)/
 	$(CP) ./luasrc/* $(PKG_BUILD_DIR)/
 endef
 
