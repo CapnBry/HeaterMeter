@@ -19,3 +19,4 @@ T   +--------+
 Source Layout
 openwrt/* - Files you'd push to your router for LinkMeter
 arduinio/* - AVR source code for upload to your Arduino board
+tools/* - Miscellaneous scripts and .NET apps
