@@ -1,5 +1,21 @@
 This is the source code respository for the HeaterMeter and LinkMeter BBQ grill controllers.
 
++-----+ +-----+ +------+
+|Probe| |Probe| |Blower|
++-----+ +-----+ +------+
+     |       |        |    2.5mm jacks
+A +-------------+     |
+V | HeaterMeter |-----/    (arduino/heatermeter)
+R +-------------+
+========|===============   Serial UART
+O +------------+
+p | linkmeterd |           (openwrt/package/linkmeter)
+e +------------+
+n       |                  /var/run/linkmeterd/lm.sock
+W   +--------+
+R   | uhttpd |
+T   +--------+
+
 Source Layout
 openwrt/* - Files you'd push to your router for LinkMeter
 arduinio/* - AVR source code for upload to your Arduino board
