@@ -482,7 +482,7 @@ div.legbord { border: 1px solid #ccc; padding: 1px; display: inline-block; }
 div.legfill { width: 14px; height: 14px; }
 div.dph { color: #003; font-size: 10pt; text-align: right; position: absolute; right: 0; bottom: 0; }
 div.pname { color: #003; font-size: 18pt; line-height: 16pt; display: inline-block; }
-div.ptemp { font-size: 32pt; line-height: 26pt; text-shadow: 1px 1px 0px #111; }
+div.ptemp { font-size: 32pt; line-height: 26pt; }
 div#graphtt { display: none; position: absolute; border: 1px solid #89c; background: #eef; opacity: 0.9; padding: 2px; color: #003; font-size: small; }
 div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357; }
 </style>
@@ -495,9 +495,11 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
         <div style="color: #bbb; font-size: 28pt;">Current Pit</div>
         <div id="updatedtime" style="position: absolute; top: 8px; right: 13px; color: #bbb; font-size: 12pt;">00:00:00 AM</div>
         <div id="lid" style="position: absolute; top: 8px; left: 13px; color: #fc3; font-size: 12pt;"></div>
-        <div id="temp0" style="font-size: 120pt; line-height: 100pt; text-shadow: 3px 3px 0px #000;">---</div>
-        <div style="font-size: 22pt; text-align: right;">Set
-            <div id="set" style="display: inline;">---</div>&deg;
+        <div style="font-size: 120pt; line-height: 100pt; position: relative;">
+          <span id="temp0">---</span>
+          <div style="font-size: 22pt; line-height: 22pt; position: absolute; bottom: 0; right:0;">Set
+            <span id="set">---</span>&deg;
+          </div>
         </div>
 
         <div style="background: #357; border: 1px solid #777; height: 20px; position: relative;">
