@@ -98,6 +98,7 @@ function refreshGraphData()
     jQuery.ajax({
         type: "GET",
         url: "/cgi-bin/hm_data" + range,
+        cache: false,
         dataType: "text",
         success: tstatSuccess,
         error: clearLoadingIndic
@@ -340,10 +341,11 @@ function JSONQuery()
         {
             type: "GET",
             url: "json",
+            cache: false,
             dataType: "json",
             timeout: 5000,
-            success: function(data) { connectionSuccess(data); },
-            error: function () { connectionFailure(); }
+            success: connectionSuccess,
+            error: connectionFailure
         });
     }
 }
