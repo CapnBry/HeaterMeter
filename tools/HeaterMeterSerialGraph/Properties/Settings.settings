@@ -1,0 +1,27 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="HeaterMeterSerialGraph.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="Port" Type="System.String" Scope="User">
+      <Value Profile="(Default)">3</Value>
+    </Setting>
+    <Setting Name="PidB" Type="System.String" Scope="User">
+      <Value Profile="(Default)">5.0</Value>
+    </Setting>
+    <Setting Name="PidP" Type="System.String" Scope="User">
+      <Value Profile="(Default)">4.0</Value>
+    </Setting>
+    <Setting Name="PidI" Type="System.String" Scope="User">
+      <Value Profile="(Default)">0.004</Value>
+    </Setting>
+    <Setting Name="PidD" Type="System.String" Scope="User">
+      <Value Profile="(Default)">2.5</Value>
+    </Setting>
+    <Setting Name="MainWindowPlacement" Type="System.Drawing.Point" Scope="User">
+      <Value Profile="(Default)">0, 0</Value>
+    </Setting>
+    <Setting Name="MainWindowSize" Type="System.Drawing.Size" Scope="User">
+      <Value Profile="(Default)">485, 393</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>
