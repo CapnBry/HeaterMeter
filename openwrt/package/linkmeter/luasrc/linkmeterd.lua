@@ -2,27 +2,30 @@
 
 local io = require("io")
 local os = require("os")
-local rrdpipe = require("rrdpipe")
+local rrd = require("rrd")
 local nixio = require("nixio")
 nixio.fs = require("nixio.fs")
 
 local SERIAL_DEVICE = "/dev/ttyS1"
+local SERIAL_BAUD = 115200
 local RRD_FILE = "/tmp/hm.rrd"
 local JSON_FILE = "/tmp/json"
 
 local probeNames = { "Pit", "Food Probe1", "Food Probe2", "Ambient" }
 
-function rrdCreate(rrd)
- return rrd:create("--step 2 "..
-   "DS:sp:GAUGE:30:0:1000 "..
-   "DS:t0:GAUGE:30:0:1000 "..
-   "DS:t1:GAUGE:30:0:1000 "..
-   "DS:t2:GAUGE:30:0:1000 "..
-   "DS:t3:GAUGE:30:0:1000 "..
-   "DS:f:GAUGE:30:-1000:100 "..
-   "RRA:AVERAGE:0.6:5:360 "..
-   "RRA:AVERAGE:0.6:30:360 "..
-   "RRA:AVERAGE:0.6:60:360 "..
+function rrdCreate()
+ return rrd.create(
+   RRD_FILE,
+   "--step", "2",
+   "DS:sp:GAUGE:30:0:1000",
+   "DS:t0:GAUGE:30:0:1000",
+   "DS:t1:GAUGE:30:0:1000",
+   "DS:t2:GAUGE:30:0:1000",
+   "DS:t3:GAUGE:30:0:1000",
+   "DS:f:GAUGE:30:-1000:100",
+   "RRA:AVERAGE:0.6:5:360",
+   "RRA:AVERAGE:0.6:30:360",
+   "RRA:AVERAGE:0.6:60:360",
    "RRA:AVERAGE:0.6:90:480"
  )
 end
@@ -41,17 +44,15 @@ function jsonWrite(vals)
   return nixio.fs.writefile(JSON_FILE, data)
 end
 
-local rrd = rrdpipe.new(RRD_FILE) or die("Can not launch rrdtool")
-
+os.execute(("stty -F %s %d"):format(SERIAL_DEVICE, SERIAL_BAUD))
 local hm = io.open(SERIAL_DEVICE, "rwb")
 if hm == nil then
-  rrd:close()
   die("Can not open serial device")
 end
 
 -- Create database
 if not nixio.fs.access(RRD_FILE) then
-  rrdCreate(rrd)
+  rrdCreate()
 end
 
 -- Create json file
@@ -90,11 +91,10 @@ while true do
       table.remove(vals, 6) -- food1 avg
       table.remove(vals, 4) -- pit avg
       
-      rrd:update(table.concat(vals, ":"))
+      rrd.update(RRD_FILE, table.concat(vals, ":"))
     end
     -- break
   end
 end
 
 hm:close()
-rrd:close()
