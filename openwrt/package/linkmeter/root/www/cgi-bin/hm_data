@@ -42,6 +42,7 @@ if [ ! -f "$RRD_FILE" ] ; then
 fi
 
 echo Content-Type: text/plain
+echo Cache-Control: no-cache
 #echo Content-Encoding: gzip
 echo
 
