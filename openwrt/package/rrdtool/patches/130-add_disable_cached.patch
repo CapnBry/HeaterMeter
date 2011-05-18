@@ -1,0 +1,79 @@
+--- /tmp/rrdtool-1.4.5-3/configure.ac	2011-05-17 16:22:30.600477930 -0400
++++ rrdtool-1.4.5/configure.ac	2011-05-17 16:43:17.116682796 -0400
+@@ -116,6 +116,13 @@
+  AC_DEFINE([HAVE_RRD_RESTORE], [], [is rrd_restore supported by this install])
+ fi
+ 
++AC_ARG_ENABLE(rrd_cached,AS_HELP_STRING([--disable-rrd_cached],[disable rrdcached]),
++[],[enable_rrd_cached=yes])
++
++if test $enable_rrd_cached != no; then
++ AC_DEFINE([HAVE_RRD_CACHED], [], [is rrdcached supported by this install])
++fi
++
+ dnl Check if we run on a system that has fonts
+ AC_ARG_WITH(rrd-default-font,
+ [  --with-rrd-default-font=[OPTIONS]  set the full path to your default font.],
+@@ -531,6 +538,8 @@
+ 
+ AM_CONDITIONAL(BUILD_RRDRESTORE,[test $enable_rrd_restore != no])
+ 
++AM_CONDITIONAL(BUILD_RRDCACHED,[test $enable_rrd_cached != no])
++
+ CORE_LIBS="$LIBS"
+ 
+ if test $enable_rrd_graph != no; then
+--- /tmp/rrdtool-1.4.5-3/src/Makefile.am	2011-05-17 16:22:30.600477930 -0400
++++ rrdtool-1.4.5/src/Makefile.am	2011-05-17 16:44:28.677613856 -0400
+@@ -39,7 +39,6 @@
+ 	rrd_lastupdate.c	\
+ 	rrd_first.c	\
+ 	rrd_dump.c	\
+-	rrd_flushcached.c \
+ 	rrd_fetch.c	\
+ 	rrd_resize.c \
+ 	rrd_tune.c
+@@ -57,6 +56,11 @@
+ 	rrd_restore.c	
+ endif
+ 
++if BUILD_RRDRESTORE
++RRD_C_FILES +=          \
++	rrd_flushcached.c 
++endif
++
+ noinst_HEADERS = \
+ 	unused.h \
+         gettext.h \
+@@ -101,12 +105,16 @@
+ 
+ include_HEADERS	= rrd.h rrd_format.h rrd_client.h
+ 
+-bin_PROGRAMS	= rrdtool rrdupdate rrdcached
++bin_PROGRAMS	= rrdtool rrdupdate
+ 
+ if BUILD_RRDCGI
+ bin_PROGRAMS += rrdcgi
+ endif
+ 
++if BUILD_RRDRESTORE
++bin_PROGRAMS += rrdcached
++endif
++
+ rrdcgi_SOURCES	= rrd_cgi.c
+ rrdcgi_LDADD	= librrd.la
+ 
+--- /tmp/rrdtool-1.4.5-3/src/rrd_tool.c	2011-05-17 16:22:30.600477930 -0400
++++ rrdtool-1.4.5/src/rrd_tool.c	2011-05-17 16:51:03.132744465 -0400
+@@ -834,7 +834,11 @@
+         rrd_tune(argc - 1, &argv[1]);
+ #ifndef WIN32
+     else if (strcmp("flushcached", argv[1]) == 0)
++#ifdef HAVE_RRD_CACHED
+         rrd_flushcached(argc - 1, &argv[1]);
++#else
++        rrd_set_error("the instance of rrdtool has been compiled without cached support");
++#endif
+ #endif
+     else {
+         rrd_set_error("unknown function '%s'", argv[1]);

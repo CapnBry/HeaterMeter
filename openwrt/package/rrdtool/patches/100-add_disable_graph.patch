@@ -1,0 +1,118 @@
+--- /tmp/rrdtool-1.4.5/configure.ac	2010-12-26 14:24:48.000000000 -0500
++++ rrdtool-1.4.5/configure.ac	2011-05-17 14:08:21.396723748 -0400
+@@ -102,6 +102,13 @@
+ AC_ARG_ENABLE(rrdcgi,AS_HELP_STRING([--disable-rrdcgi],[disable building of rrdcgi]),
+ [],[enable_rrdcgi=yes])
+ 
++AC_ARG_ENABLE(rrd_graph,AS_HELP_STRING([--disable-rrd_graph],[disable all rrd_graph functions]),
++[enable_rrdcgi=no],[enable_rrd_graph=yes])
++
++if test $enable_rrd_graph != no; then
++ AC_DEFINE([HAVE_RRD_GRAPH], [], [is rrd_graph supported by this install])
++fi
++
+ dnl Check if we run on a system that has fonts
+ AC_ARG_WITH(rrd-default-font,
+ [  --with-rrd-default-font=[OPTIONS]  set the full path to your default font.],
+@@ -536,9 +543,11 @@
+ 
+ AM_CONDITIONAL(BUILD_RRDCGI,[test $enable_rrdcgi != no])
+ 
++AM_CONDITIONAL(BUILD_RRDGRAPH,[test $enable_rrd_graph != no])
+ 
+ CORE_LIBS="$LIBS"
+ 
++if test $enable_rrd_graph != no; then
+ dnl EX_CHECK_ALL(z,          zlibVersion,               zlib.h,                 zlib,        1.2.3,  http://www.gzip.org/zlib/, "")
+ dnl EX_CHECK_ALL(png,        png_access_version_number, png.h,                  libpng,      1.2.10,  http://prdownloads.sourceforge.net/libpng/, "")
+ dnl EX_CHECK_ALL(freetype,   FT_Init_FreeType,          ft2build.h,		freetype2,   2.1.10,  http://prdownloads.sourceforge.net/freetype/, /usr/include/freetype2)
+@@ -549,6 +558,9 @@
+ EX_CHECK_ALL(cairo,      cairo_ps_surface_create,       cairo-ps.h,             cairo-ps,    1.4.6,  http://cairographics.org/releases/, "")
+ EX_CHECK_ALL(glib-2.0,   glib_check_version,            glib.h,                 glib-2.0,    2.12.12, ftp://ftp.gtk.org/pub/glib/2.12/, "")
+ EX_CHECK_ALL(pangocairo-1.0,  pango_cairo_context_set_font_options,  pango/pango.h,  pangocairo,  1.17,    http://ftp.gnome.org/pub/GNOME/sources/pango/1.17, "")
++
++fi
++
+ EX_CHECK_ALL(xml2,       xmlParseFile,                  libxml/parser.h,        libxml-2.0,        2.6.31,  http://xmlsoft.org/downloads.html, /usr/include/libxml2)
+ 
+ if test "$EX_CHECK_ALL_ERR" = "YES"; then
+--- /tmp/rrdtool-1.4.5/src/Makefile.am	2009-10-15 00:47:55.000000000 -0400
++++ rrdtool-1.4.5/src/Makefile.am	2011-05-17 14:09:58.257957568 -0400
+@@ -32,24 +32,27 @@
+ 	rrd_update.c
+ 
+ RRD_C_FILES =		\
+-	hash_32.c	\
+-	pngsize.c	\
+ 	rrd_create.c	\
+-	rrd_graph.c	\
+-	rrd_graph_helper.c	\
++	hash_32.c	\
+ 	rrd_version.c	\
+ 	rrd_last.c	\
+ 	rrd_lastupdate.c	\
+ 	rrd_first.c	\
+ 	rrd_restore.c	\
+-	rrd_xport.c	\
+-	rrd_gfx.c \
+ 	rrd_dump.c	\
+ 	rrd_flushcached.c \
+ 	rrd_fetch.c	\
+ 	rrd_resize.c \
+ 	rrd_tune.c
+ 
++if BUILD_RRDGRAPH
++RRD_C_FILES += rrd_graph.c      \
++        rrd_graph_helper.c      \
++        rrd_xport.c     \
++        rrd_gfx.c \
++        pngsize.c
++endif
++
+ noinst_HEADERS = \
+ 	unused.h \
+         gettext.h \
+--- /tmp/rrdtool-1.4.5/src/rrd_tool.c	2010-12-26 14:24:48.000000000 -0500
++++ rrdtool-1.4.5/src/rrd_tool.c	2011-05-17 14:13:58.721022355 -0400
+@@ -695,6 +695,7 @@
+             free(data);
+         }
+     } else if (strcmp("xport", argv[1]) == 0) {
++#ifdef HAVE_RRD_GRAPH
+         int       xxsize;
+         unsigned long int j = 0;
+         time_t    start, end, ti;
+@@ -771,7 +772,11 @@
+             setlocale(LC_NUMERIC, old_locale);
+         }
+         free(vtag);
++#else
++        rrd_set_error("the instance of rrdtool has been compiled without graphics");
++#endif
+     } else if (strcmp("graph", argv[1]) == 0) {
++#ifdef HAVE_RRD_GRAPH
+         char    **calcpr;
+ 
+ #ifdef notused /*XXX*/
+@@ -805,7 +810,11 @@
+             }
+         }
+ 
++#else
++       rrd_set_error("the instance of rrdtool has been compiled without graphics");
++#endif
+     } else if (strcmp("graphv", argv[1]) == 0) {
++#ifdef HAVE_RRD_GRAPH
+         rrd_info_t *grinfo = NULL;  /* 1 to distinguish it from the NULL that rrd_graph sends in */
+ 
+         grinfo = rrd_graph_v(argc - 1, &argv[1]);
+@@ -814,6 +823,9 @@
+             rrd_info_free(grinfo);
+         }
+ 
++#else
++       rrd_set_error("the instance of rrdtool has been compiled without graphics");
++#endif
+     } else if (strcmp("tune", argv[1]) == 0)
+         rrd_tune(argc - 1, &argv[1]);
+ #ifndef WIN32

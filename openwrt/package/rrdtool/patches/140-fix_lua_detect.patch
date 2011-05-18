@@ -1,0 +1,15 @@
+--- /tmp/rrdtool-1.4.5-4/configure.ac	2011-05-18 13:58:07.894187696 -0400
++++ rrdtool-1.4.5/configure.ac	2011-05-18 14:39:07.034665407 -0400
+@@ -763,8 +763,10 @@
+              test "$?" = "0" && LUA_HAVE_COMPAT51=HAVE_COMPAT51],
+             [AC_SEARCH_LIBS(luaL_openlib, lualib$lua_vdot lualib$lua_vndot lualib,
+               [lua_havelib=$lua_vndot],
+-              [COMP_LUA=], [-lm])], [-lm])], [-lm])],
+-        [COMP_LUA=], [-lm])
++              [COMP_LUA=], [-lm -ldl])],
++            [-lm -ldl])],
++          [-lm -ldl])],
++        [COMP_LUA=], [-lm -ldl])
+       lua_libs=$LIBS
+       LIBS=
+ 

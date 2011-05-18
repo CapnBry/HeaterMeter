@@ -1,0 +1,73 @@
+--- /tmp/rrdtool-1.4.5-2/configure.ac	2011-05-17 15:50:09.445215086 -0400
++++ rrdtool-1.4.5/configure.ac	2011-05-17 15:59:49.052732479 -0400
+@@ -109,6 +109,13 @@
+  AC_DEFINE([HAVE_RRD_GRAPH], [], [is rrd_graph supported by this install])
+ fi
+ 
++AC_ARG_ENABLE(rrd_restore,AS_HELP_STRING([--disable-rrd_restore],[disable all rrd_restore functions]),
++[],[enable_rrd_restore=yes])
++
++if test $enable_rrd_restore != no; then
++ AC_DEFINE([HAVE_RRD_RESTORE], [], [is rrd_restore supported by this install])
++fi
++
+ dnl Check if we run on a system that has fonts
+ AC_ARG_WITH(rrd-default-font,
+ [  --with-rrd-default-font=[OPTIONS]  set the full path to your default font.],
+@@ -522,6 +529,8 @@
+ 
+ AM_CONDITIONAL(BUILD_RRDGRAPH,[test $enable_rrd_graph != no])
+ 
++AM_CONDITIONAL(BUILD_RRDRESTORE,[test $enable_rrd_restore != no])
++
+ CORE_LIBS="$LIBS"
+ 
+ if test $enable_rrd_graph != no; then
+@@ -538,8 +547,11 @@
+ 
+ fi
+ 
++if test $enable_rrd_restore != no; then
+ EX_CHECK_ALL(xml2,       xmlParseFile,                  libxml/parser.h,        libxml-2.0,        2.6.31,  http://xmlsoft.org/downloads.html, /usr/include/libxml2)
+ 
++fi
++
+ if test "$EX_CHECK_ALL_ERR" = "YES"; then
+   AC_MSG_ERROR([Please fix the library issues listed above and try again.])
+ fi
+--- /tmp/rrdtool-1.4.5-2/src/Makefile.am	2011-05-17 14:09:58.257957568 -0400
++++ rrdtool-1.4.5/src/Makefile.am	2011-05-17 16:01:37.934144341 -0400
+@@ -38,7 +38,6 @@
+ 	rrd_last.c	\
+ 	rrd_lastupdate.c	\
+ 	rrd_first.c	\
+-	rrd_restore.c	\
+ 	rrd_dump.c	\
+ 	rrd_flushcached.c \
+ 	rrd_fetch.c	\
+@@ -53,6 +52,11 @@
+         pngsize.c
+ endif
+ 
++if BUILD_RRDRESTORE
++RRD_C_FILES +=          \
++	rrd_restore.c	
++endif
++
+ noinst_HEADERS = \
+ 	unused.h \
+         gettext.h \
+--- /tmp/rrdtool-1.4.5-2/src/rrd_tool.c	2011-05-17 14:13:58.721022355 -0400
++++ rrdtool-1.4.5/src/rrd_tool.c	2011-05-17 16:03:04.765270211 -0400
+@@ -658,7 +658,11 @@
+                "  Copyright by Tobi Oetiker, 1997-2008 (%f)\n",
+                rrd_version());
+     else if (strcmp("restore", argv[1]) == 0)
++#ifdef BUILD_RRDRESTORE
+         rrd_restore(argc - 1, &argv[1]);
++#else
++        rrd_set_error("the instance of rrdtool has been compiled without restore");
++#endif
+     else if (strcmp("resize", argv[1]) == 0)
+         rrd_resize(argc - 1, &argv[1]);
+     else if (strcmp("last", argv[1]) == 0)

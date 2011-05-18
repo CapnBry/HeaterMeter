@@ -1,0 +1,49 @@
+--- /tmp/rrdtool-1.4.5-1/configure.ac	2011-05-17 14:08:21.396723748 -0400
++++ rrdtool-1.4.5/configure.ac	2011-05-17 14:51:26.139755919 -0400
+@@ -473,30 +473,7 @@
+ )
+ 
+ dnl is time_t 32 of 64 bit ?
+-AC_DEFINE([TIME_T_IS_32BIT], [], [time_t is 32bit])
+-AC_DEFINE([TIME_T_IS_64BIT], [], [time_t is 64bit])
+-AC_MSG_CHECKING([the type of time_t])
+-AC_RUN_IFELSE(
+-    AC_LANG_PROGRAM(
+-        [[#include <time.h>]],
+-        [[if (sizeof(time_t) != 4) return 1; ]]
+-        ),
+-    [ AC_MSG_RESULT([time_t is 32 bit])
+-      AC_DEFINE([TIME_T_IS_32BIT])
+-    ],
+-    [ AC_RUN_IFELSE(
+-        AC_LANG_PROGRAM(
+-        [[#include <time.h>]],
+-        [[if (sizeof(time_t) != 8) return 1; ]]
+-        ),
+-        [
+-          AC_MSG_RESULT([time_t is 64 bit])
+-          AC_DEFINE([TIME_T_IS_64BIT])
+-        ],
+-        [AC_MSG_ERROR([can not figure type of time_t])]
+-      )
+-    ]  
+-)
++AC_CHECK_SIZEOF([time_t])
+ 
+ AC_LANG_POP(C)
+ 
+--- /tmp/rrdtool-1.4.5-1/src/rrd_restore.c	2010-12-26 14:24:48.000000000 -0500
++++ rrdtool-1.4.5/src/rrd_restore.c	2011-05-17 15:05:18.510427539 -0400
+@@ -227,10 +227,10 @@
+     time_t temp;    
+     if ((text = get_xml_text(reader)) != NULL){
+         errno = 0;        
+-#ifdef TIME_T_IS_32BIT
++#if SIZEOF_TIME_T == 4
+         temp = strtol((char *)text,NULL, 0);
+ #else
+-#ifdef TIME_T_IS_64BIT
++#if SIZEOF_TIME_T == 8
+         temp = strtoll((char *)text,NULL, 0);        
+ #else
+         if (sizeof(time_t) == 4){
