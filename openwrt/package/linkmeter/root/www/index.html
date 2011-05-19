@@ -286,7 +286,7 @@ function tstatSuccess(csv)
     clearLoadingIndic();
     jQuery.each(csv.split('\n'), function (){
         if (this == "") return;
-        var line = this.split("  ");
+        var line = this.split(" ");
         if (line.length < 6) return;
         line[0] = line[0].replace(":", "") * 1000 + tzOffset;
         if (isNaN(line[0]))
