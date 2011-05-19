@@ -1,0 +1,22 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=01
+
+start()
+{
+    local device baud
+
+    config_load linkmeter
+    config_get device daemon serial_device
+    config_get baud daemon serial_baud
+
+    stty -F $device $baud
+    /usr/sbin/linkmeterd
+}
+
+stop()
+{
+    /usr/sbin/linkmeterd -k
+    rm -fR /var/run/linkmeterd
+}

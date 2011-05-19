@@ -5,8 +5,9 @@ echo
 
 sed '1,4d;$d' <&0 > /tmp/hm.hex
 
-. /etc/heatermeter.conf
-killall getdata_serial
+SERIAL_DEVICE=`uci get linkmeter.daemon.serial_device`
+SERIAL_BAUD=`uci get linkmeter.daemon.serial_baud`
+/etc/init.d/linkmeter stop
 
 stty -F $SERIAL_DEVICE $SERIAL_BAUD 2>&1
 
@@ -15,7 +16,6 @@ while [ "$CNT" -lt 2 ] ; do
     echo -e \\n/reboot > $SERIAL_DEVICE
 
     avrdude -pm328p -carduino -P$SERIAL_DEVICE \
-      -C/tmp/avrdude1.conf \
       -V -D -Uflash:w:/tmp/hm.hex:i 2>&1
 
     if [ $? -eq 0 ] ; then
@@ -28,3 +28,5 @@ while [ "$CNT" -lt 2 ] ; do
 
     CNT=$((CNT+1))
 done 
+
+/etc/init.d/linkmeter start

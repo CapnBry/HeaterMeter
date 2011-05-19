@@ -1,6 +1,6 @@
 #!/bin/sh
 
-. /etc/heatermeter.conf
+SERIAL_DEVICE=`uci get linkmeter.daemon.serial_device`
 
 echo Content-Type: text/plain
 echo

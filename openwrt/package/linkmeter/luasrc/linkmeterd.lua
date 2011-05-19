@@ -5,9 +5,9 @@ local os = require("os")
 local rrd = require("rrd")
 local nixio = require("nixio")
 nixio.fs = require("nixio.fs")
+local uci = require("uci")
 
 local SERIAL_DEVICE = "/dev/ttyS1"
-local SERIAL_BAUD = 115200
 local RRD_FILE = "/tmp/hm.rrd"
 local JSON_FILE = "/tmp/json"
 
@@ -44,11 +44,12 @@ function jsonWrite(vals)
   return nixio.fs.writefile(JSON_FILE, data)
 end
 
-os.execute(("stty -F %s %d"):format(SERIAL_DEVICE, SERIAL_BAUD))
 local hm = io.open(SERIAL_DEVICE, "rwb")
 if hm == nil then
   die("Can not open serial device")
 end
+
+nixio.umask("0022")
 
 -- Create database
 if not nixio.fs.access(RRD_FILE) then
@@ -98,3 +99,5 @@ while true do
 end
 
 hm:close()
+nixio.fs.unlink("/var/run/linkmeterd/lmd.pid")
+

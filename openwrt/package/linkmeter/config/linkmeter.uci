@@ -1,0 +1,4 @@
+config linkmeter daemon
+	option serial_device /dev/ttyS1
+	option serial_baud 115200
+	option rrd_file /tmp/hm.rrd
