@@ -8,7 +8,7 @@
 CSTANDARD = -std=gnu99
 
 all: luad.o
-	$(CC) $(LDFLAGS) $(CSTANDARD) -ldl -lm -lcrypt -ldaemon -llua luad.o -o luad
+	$(CC) $(LDFLAGS) $(CSTANDARD) -ldl -lm -ldaemon -llua luad.o -o luad
 
 luad.o: luad.c
 	$(CC) $(CFLAGS) $(CSTANDARD) -Wall -c luad.c

@@ -79,6 +79,7 @@ static void restart_add(struct restart_s *restart, time_t new_restart) {
 static int restart_max(struct restart_s *restart) {
 	int i, total;
 
+	total = 0;
 	for (i = 0; i < SUP_ALLOWED_RESTARTS; i++) {
 		if (restart->time[i] > time(NULL) - SUP_MAX_SECONDS) {
 			total++;
