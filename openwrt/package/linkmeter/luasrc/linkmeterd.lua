@@ -30,18 +30,28 @@ function rrdCreate()
  )
 end
 
+-- This might look a big hokey but rather than build the string
+-- and discard it every time, just replace the values to reduce
+-- the load on the garbage collector
+local JSON_TEMPLATE = {
+  '{"time":',
+  0,
+  ',"temps":[{"n":"', 'Pit', '","c":', 0, ',"a":', 0, -- probe1
+  '},{"n":"', 'Food Probe1', '","c":', 0, ',"a":', 0, -- probe2
+  '},{"n":"', 'Food Probe2', '","c":', 0, ',"a":', 0, -- probe3
+  '},{"n":"', 'Ambient', '","c":', 0, ',"a":', 0, -- probe4
+  '}],"set":', 0,
+  ',"lid":', 0,
+  ',"fan":{"c":', 0, ',"a":', 0, '}}'
+}
+local JSON_FROM_CSV = {2, 28, 6, 8, 12, 14, 18, 20, 24, 26, 32, 34, 30 } 
+  
 function jsonWrite(vals)
-  local p, pn
-  local data = ('{"time":%s,"temps":['):format(vals[1])
-
-  for p,pn in ipairs(probeNames) do
-    data = data .. ('{"n":"%s","c":%s,"a":%s},'):format(
-      pn, vals[p*2+1], vals[p*2+2])
+  local i,v
+  for i,v in ipairs(vals) do
+    JSON_TEMPLATE[JSON_FROM_CSV[i]] = v  
   end
-
-  data = data .. ('{}],"set":%s,"lid":%s,"fan":{"c":%s,"a":%s}}'):format(
-      vals[2],vals[13],vals[11],vals[12])
-  return nixio.fs.writefile(JSON_FILE, data)
+  return nixio.fs.writefile(JSON_FILE, table.concat(JSON_TEMPLATE))
 end
 
 local hm = io.open(SERIAL_DEVICE, "rwb")
@@ -76,8 +86,9 @@ while true do
     
     if (#vals == 12) then 
       -- Add the time as the first item
-      table.insert(vals, 1, tostring(os.time()))
+      table.insert(vals, 1, os.time())
       
+      -- vals[9] = gcinfo()
       jsonWrite(vals)
       
       local lid = tonumber(vals[13]) or 0
@@ -94,10 +105,9 @@ while true do
       
       rrd.update(RRD_FILE, table.concat(vals, ":"))
     end
-    -- break
   end
 end
 
 hm:close()
-nixio.fs.unlink("/var/run/linkmeterd/lmd.pid")
+nixio.fs.unlink("/var/run/linkmeterd/pid")
 
