@@ -74,6 +74,7 @@ if not nixio.fs.access("/www/json") then
 end
 
 local hmline
+local lastUpdate = os.time()
 while true do
   hmline = hm:read("*l") 
   if hmline == nil then break end
@@ -84,9 +85,19 @@ while true do
       vals[#vals+1] = i
     end
     
-    if (#vals == 12) then 
+    if #vals == 12 then 
+      -- If the time has shifted more than 24 hours since the last update
+      -- the clock has probably just been set from 0 (at boot) to actual 
+      -- time. Recreate the rrd to prevent a 40 year long graph
+      local time = os.time()
+      if time - lastUpdate > (24*60*60) then
+        nixio.syslog("notice", "Time jumped forward by "..(time-lastUpdate)..", restarting database")
+        rrdCreate()
+      end
+      lastUpadte = time
+
       -- Add the time as the first item
-      table.insert(vals, 1, os.time())
+      table.insert(vals, 1, time)
       
       -- vals[9] = gcinfo()
       jsonWrite(vals)
