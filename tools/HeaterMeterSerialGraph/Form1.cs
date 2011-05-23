@@ -34,7 +34,7 @@ namespace HeaterMeterSerialGraph
             string[] vals = s.Split(',');
             if (vals.Length < 12)
                 return;
-            AddVal(vals, 9, 1);
+            AddVal(vals, 9, 0);
             AddVal(vals, 0, 1);
             AddVal(vals, 1, 2);
             AddVal(vals, 3, 3);
@@ -45,7 +45,7 @@ namespace HeaterMeterSerialGraph
         private void AddVal(string[] vals, int valIdx, int seriesIdx)
         {
             double d;
-            if (double.TryParse(vals[valIdx], out d) && (d > 0.0f))
+            if (double.TryParse(vals[valIdx], out d) && ((seriesIdx == 0) || (d > 0.0f)))
                 chart1.Invoke(new MethodInvoker(delegate { chart1.Series[seriesIdx].Points.AddXY(_cnt, d); }));
         }
 
