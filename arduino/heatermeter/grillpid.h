@@ -80,12 +80,12 @@ class TempProbe
 {
 private:
   const unsigned char _pin; 
+  unsigned char _accumulatedCount;
   unsigned int _accumulator;
   
 public:
   TempProbe(const unsigned char pin) : 
     _pin(pin), TemperatureAvg(-1.0f)
-    // Temperature(0), Offset(0)
     {};
 
   /* Configuration */  
@@ -104,8 +104,7 @@ public:
   // Temperature moving average 
   float TemperatureAvg;
   // Do the duty of reading ADC
-  // num is the number of times the ADC has been read already this cycle
-  void readTemp(unsigned char num);
+  void readTemp(void);
   // Convert ADC to Temperature
   void calcTemp(void);
   
@@ -124,7 +123,6 @@ private:
   const unsigned char _blowerPin;
   unsigned char _fanSpeed;
   unsigned long _lastTempRead;
-  unsigned char _accumulatedCount;
   boolean _pitTemperatureReached;
   int _setPoint;
   boolean _manualFanMode;
@@ -137,10 +135,6 @@ public:
   float _pidErrorSum;
   GrillPid(const unsigned char blowerPin) : 
     _blowerPin(blowerPin), FanSpeedAvg(-1.0f)
-    //_lastTempRead(0), _accumulatedCount(0), 
-    //_pitTemperatureReached(false), FanSpeed(0), _fanSpeedPwm(0),
-    //_pidErrorSum(0.0f), _longPwmTmr(0), _manualFanMode(false),
-    // MaxFanSpeed(0)
     {};
   
   TempProbe *Probes[TEMP_COUNT];

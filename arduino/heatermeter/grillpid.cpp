@@ -3,12 +3,12 @@
 #include <string.h>
 #include "grillpid.h"
 
-// The temperatures are averaged over 1, 2, 4 or 8 samples
+// The time (ms) of the measurement period
+#define TEMP_MEASURE_PERIOD 2000
+// The temperatures are averaged over 1, 2, 4 or 8 samples per period
 #define TEMP_AVG_COUNT 8
-
 // The minimum fan speed (%) that activates the "long pulse" mode
 #define MINIMUM_FAN_SPEED 10
-
 // 1/(Number of samples used in the exponential moving average)
 #define TEMPPROBE_AVG_SMOOTH (1.0f/15.0f)
 #define FANSPEED_AVG_SMOOTH (1.0f/60.0f)
@@ -76,24 +76,28 @@ void TempProbe::loadConfig(struct __eeprom_probe *config)
   //Serial.print(" C=");Serial.print(Steinhart[2],8);Serial.print(" R=");Serial.println(Steinhart[3],8);
 }
 
-inline void TempProbe::readTemp(unsigned char num)
+inline void TempProbe::readTemp(void)
 {
   unsigned int analog_temp = analogRead(_pin);
   // If we get *any* analogReads that are 0 or 1023, the measurement for 
   // the entire period is invalidated, so set the _accumulator to 0
   if (analog_temp <= 0 || analog_temp >= 1023)
     _accumulator = 0;
-  else if (num == 0)
+  else if (_accumulatedCount == 0)
     _accumulator = analog_temp;
   else if (_accumulator != 0)
     _accumulator += analog_temp;
+  ++_accumulatedCount;
 }
 
 inline void TempProbe::calcTemp(void)
 {
   const float Vin = 1023.0f;  
-
-  unsigned int Vout = _accumulator / TEMP_AVG_COUNT;
+  if (_accumulatedCount == 0)
+    return;
+    
+  unsigned int Vout = _accumulator / _accumulatedCount;
+  _accumulatedCount = 0;
   
   if ((Vout == 0) || (Vout >= (unsigned int)Vin))
   {
@@ -182,7 +186,7 @@ inline void GrillPid::commitFanSpeed(void)
     
     analogWrite(_blowerPin, pwmVal);
     // Long PWM period is 10 sec
-    if (++_longPwmTmr > 4)
+    if (++_longPwmTmr > ((10000 / TEMP_MEASURE_PERIOD) - 1))
       _longPwmTmr = 0;
   }  /* long PWM */
 }
@@ -225,19 +229,27 @@ void GrillPid::setFanSpeed(int value)
 boolean GrillPid::doWork(void)
 {
   unsigned long m = millis();
-  if ((m - _lastTempRead) < (2000 / TEMP_AVG_COUNT))
+  
+  // If this is the first invocation, force an immediate read and temperature 
+  // update to display a value as soon as possible after booting
+  unsigned int elapsed;
+  if (_lastTempRead == 0)
+    elapsed = 0xffff;
+  else
+    elapsed = m - _lastTempRead;
+    
+  if (elapsed < (TEMP_MEASURE_PERIOD / TEMP_AVG_COUNT))
     return false;
   _lastTempRead = m;
 
-  unsigned char i;
-  for (i=0; i<TEMP_COUNT; i++)
+  for (unsigned char i=0; i<TEMP_COUNT; i++)
     if (Probes[1]->ProbeType == PROBETYPE_INTERNAL)
-      Probes[i]->readTemp(_accumulatedCount);
-
-  if (++_accumulatedCount < TEMP_AVG_COUNT)
+      Probes[i]->readTemp();
+  
+  if (elapsed < TEMP_MEASURE_PERIOD)
     return false;
     
-  for (i=0; i<TEMP_COUNT; i++)
+  for (unsigned char i=0; i<TEMP_COUNT; i++)
     Probes[i]->calcTemp();
 
   if (!_manualFanMode)
@@ -247,7 +259,7 @@ boolean GrillPid::doWork(void)
     TempProbe *probePit = Probes[TEMP_PIT];
     calcFanSpeed(probePit);
     
-    int pitTemp = probePit->Temperature;
+    int pitTemp = (int)probePit->Temperature;
     if (pitTemp >= _setPoint)
     {
       // When we first achieve temperature, reset any P sum we accumulated during startup
@@ -277,7 +289,6 @@ boolean GrillPid::doWork(void)
   }   /* if !manualFanMode */
   commitFanSpeed();
   
-  _accumulatedCount = 0;
   return true;
 }
 
