@@ -82,6 +82,7 @@ private:
   const unsigned char _pin; 
   unsigned char _accumulatedCount;
   unsigned int _accumulator;
+  unsigned char _probeType;  
   
 public:
   TempProbe(const unsigned char pin) : 
@@ -90,7 +91,8 @@ public:
 
   /* Configuration */  
   // Probe Type
-  unsigned char ProbeType;  
+  unsigned char getProbeType(void) const { return _probeType; };
+  void setProbeType(unsigned char probeType);
   // Offset (in degrees) applied when calculating temperature
   char Offset;
   // Steinhart coefficients

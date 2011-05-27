@@ -64,7 +64,7 @@ boolean ProbeAlarm::getActionNeeded(void) const
 
 void TempProbe::loadConfig(struct __eeprom_probe *config)
 {
-  ProbeType = config->probeType;
+  _probeType = config->probeType;
   Offset = config->tempOffset;
   memcpy(Steinhart, config->steinhart, sizeof(Steinhart));
   Alarms.setHigh(config->alarmHigh);
@@ -74,6 +74,13 @@ void TempProbe::loadConfig(struct __eeprom_probe *config)
     config->alLowEnabled & ProbeAlarm::LOW_ENABLED;
   //Serial.print(" A=");Serial.print(Steinhart[0],8);Serial.print(" B=");Serial.print(Steinhart[1],8);
   //Serial.print(" C=");Serial.print(Steinhart[2],8);Serial.print(" R=");Serial.println(Steinhart[3],8);
+}
+
+void TempProbe::setProbeType(unsigned char probeType)
+{
+  _probeType = probeType;
+  _accumulator = 0;
+  _accumulatedCount = 0;
 }
 
 inline void TempProbe::readTemp(void)
@@ -243,7 +250,7 @@ boolean GrillPid::doWork(void)
   _lastTempRead = m;
 
   for (unsigned char i=0; i<TEMP_COUNT; i++)
-    if (Probes[1]->ProbeType == PROBETYPE_INTERNAL)
+    if (Probes[1]->getProbeType() == PROBETYPE_INTERNAL)
       Probes[i]->readTemp();
   
   if (elapsed < TEMP_MEASURE_PERIOD)
