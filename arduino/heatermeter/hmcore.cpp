@@ -280,28 +280,29 @@ void storeLidOpenDuration(unsigned int value)
   config_store_word(lidOpenDuration, value);
 }
 
-#if defined(HEATERMETER_NETWORKING) || defined(HEATERMETER_SERIAL)
-void outputCsv(Print &out)
+#if defined(HEATERMETER_SERIAL)
+void outputCsv(void)
 {
-  out.print(pid.getSetPoint());
-  out.print(CSV_DELIMITER);
+  print_P(PSTR("$HMSU,"));
+  Serial.print(pid.getSetPoint());
+  Serial.print(CSV_DELIMITER);
 
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
-    out.print(pid.Probes[i]->Temperature, 1);
-    out.print(CSV_DELIMITER);
-    out.print(pid.Probes[i]->TemperatureAvg, 1);
-    out.print(CSV_DELIMITER);
+    Serial.print(pid.Probes[i]->Temperature, 1);
+    Serial.print(CSV_DELIMITER);
   }
 
-  out.print(pid.getFanSpeed(), DEC);
-  out.print(CSV_DELIMITER);
-  out.print((int)pid.FanSpeedAvg, DEC);
-  out.print(CSV_DELIMITER);
-  out.print(pid.LidOpenResumeCountdown, DEC);
-  out.print('\n');
+  Serial.print(pid.getFanSpeed(), DEC);
+  Serial.print(CSV_DELIMITER);
+  Serial.print((int)pid.FanSpeedAvg, DEC);
+  Serial.print(CSV_DELIMITER);
+  Serial.print(pid.LidOpenResumeCountdown, DEC);
+  Serial.print('\n');
 }
+#endif /* defined(HEATERMETER_SERIAL) */
 
+#if defined(HEATERMETER_NETWORKING) || defined(HEATERMETER_SERIAL)
 inline void reboot(void)
 {
   // Once the pin goes low, the avr should reboot
@@ -344,7 +345,7 @@ boolean handleCommandUrl(char *URL)
   if (strncmp_P(URL, PSTR("set?pn"), 6) == 0 && urlLen > 8) 
   {
     unsigned char probeId = URL[6];
-    if (probeId == '@')  // /set?pn@== is "list probe names"
+    if (probeId == '@')  // /set?pn@XX is "list probe names"
       reportProbeNames();
     else
       storeProbeName(probeId - '0', URL + 8);
@@ -448,11 +449,6 @@ boolean sendPage(char* URL)
   if (strcmp_P(URL, PSTR("json")) == 0) 
   {
     outputJson();
-    return true;    
-  }
-  if (strcmp_P(URL, PSTR("csv")) == 0) 
-  {
-    outputCsv(WiServer);
     return true;    
   }
   
@@ -585,7 +581,7 @@ inline void newTempsAvail(void)
   checkAlarms();
   updateDisplay();
 #ifdef HEATERMETER_SERIAL
-  outputCsv(Serial);
+  outputCsv();
 #endif  /* HEATERMETER_SERIAL */
 }
 
