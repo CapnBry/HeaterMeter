@@ -60,6 +60,10 @@ Both Serial and Web
 /set?pcN=A,B,C,R - Set the probe coefficients for probe N.  A, B, and C are the Steinhart-Hart coeffieicents and R is the fixed side of the probe voltage divider.  All values are floating point and should be specified in scienfific noation, e.g. 0.00023067434 -> 2.3067434e-4.  Probe numbers are 0=pit 1=food1 2=food2 3=ambient
 /set?lb=A - Set the LCD backlight to A.  Range is 0 (off) to 255 (full)
 
+Serial-only URLs
+/set?pn@XX - Retrieve the current probe names. Format:
+  $HMPN,Probe0,Probe1,Probe2,Probe3
+
 Web-only URLs
 / - The index status page.  Some other supporting files are also used by this URL that are not included in this document.
 /json - JSON status object.

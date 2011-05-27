@@ -70,6 +70,13 @@ const struct  __eeprom_probe DEFAULT_PROBE_CONFIG PROGMEM = {
   //{1.1415e-3,2.31905e-4,9.76423e-8,1.0e+4} // Vishay 10k NTCLE100E3103JB0
 };
 
+void print_P(const char *s)
+{
+  unsigned char c;
+  while (c = pgm_read_byte(s++))
+    Serial.print(c, BYTE);
+}
+
 inline void setLcdBacklight(unsigned char lcdBacklight)
 {
   analogWrite(PIN_LCD_BACKLGHT, lcdBacklight);
@@ -279,8 +286,7 @@ void outputCsv(Print &out)
   out.print(pid.getSetPoint());
   out.print(CSV_DELIMITER);
 
-  unsigned char i;
-  for (i=0; i<TEMP_COUNT; i++)
+  for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
     out.print(pid.Probes[i]->Temperature, 1);
     out.print(CSV_DELIMITER);
@@ -296,11 +302,23 @@ void outputCsv(Print &out)
   out.print('\n');
 }
 
-void reboot()
+inline void reboot(void)
 {
   // Once the pin goes low, the avr should reboot
   digitalWrite(PIN_WIFI_LED, LOW);
   while (1) { };
+}
+
+inline void reportProbeNames(void)
+{
+  print_P(PSTR("$HMPN"));
+  for (unsigned char i=0; i<TEMP_COUNT; ++i)
+  {
+    loadProbeName(i);
+    Serial.print(CSV_DELIMITER);
+    Serial.print(editString);
+  }
+  Serial.print('\n');
 }
 
 /* handleCommandUrl returns true if it consumed the URL */
@@ -325,7 +343,11 @@ boolean handleCommandUrl(char *URL)
   }
   if (strncmp_P(URL, PSTR("set?pn"), 6) == 0 && urlLen > 8) 
   {
-    storeProbeName(URL[6] - '0', URL + 8);
+    unsigned char probeId = URL[6];
+    if (probeId == '@')  // /set?pn@== is "list probe names"
+      reportProbeNames();
+    else
+      storeProbeName(probeId - '0', URL + 8);
     return true;
   }
   if (strncmp_P(URL, PSTR("set?po"), 6) == 0 && urlLen > 8) 
@@ -390,8 +412,7 @@ void outputJson(void)
 {
   WiServer.print_P(PSTR("{\"temps\":["));
 
-  unsigned char i;
-  for (i=0; i<TEMP_COUNT; i++)
+  for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
     WiServer.print_P(PSTR("{\"n\":\""));
     loadProbeName(i);
@@ -454,8 +475,7 @@ boolean sendPage(char* URL)
 
 inline void checkAlarms(void)
 {
-  unsigned char i;
-  for (i=0; i<TEMP_COUNT; i++)
+  for (unsigned char i=0; i<TEMP_COUNT; ++i)
     if (pid.Probes[i]->Alarms.getActionNeeded())
     {
       tone(PIN_ALARM, 440);  // 440Hz = A4
@@ -501,7 +521,7 @@ void eepromLoadProbeConfig(boolean forceDefault)
   struct  __eeprom_probe config;
   struct  __eeprom_probe *p;
   p = (struct  __eeprom_probe *)(EEPROM_PROBE_START);
-  for (unsigned char i=0; i<TEMP_COUNT; i++)
+  for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
     if (forceDefault)
     {
