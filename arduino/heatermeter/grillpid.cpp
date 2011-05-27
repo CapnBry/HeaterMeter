@@ -239,12 +239,7 @@ boolean GrillPid::doWork(void)
   
   // If this is the first invocation, force an immediate read and temperature 
   // update to display a value as soon as possible after booting
-  unsigned int elapsed;
-  if (_lastTempRead == 0)
-    elapsed = 0xffff;
-  else
-    elapsed = m - _lastTempRead;
-    
+  unsigned int elapsed = m - _lastTempRead;
   if (elapsed < (TEMP_MEASURE_PERIOD / TEMP_AVG_COUNT))
     return false;
   _lastTempRead = m;
@@ -253,7 +248,8 @@ boolean GrillPid::doWork(void)
     if (Probes[1]->getProbeType() == PROBETYPE_INTERNAL)
       Probes[i]->readTemp();
   
-  if (elapsed < TEMP_MEASURE_PERIOD)
+  ++_periodCounter;
+  if (_periodCounter < TEMP_AVG_COUNT)
     return false;
     
   for (unsigned char i=0; i<TEMP_COUNT; i++)
@@ -295,7 +291,8 @@ boolean GrillPid::doWork(void)
     }
   }   /* if !manualFanMode */
   commitFanSpeed();
-  
+
+  _periodCounter = 0;  
   return true;
 }
 

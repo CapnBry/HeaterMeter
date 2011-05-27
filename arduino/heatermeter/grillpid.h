@@ -128,6 +128,7 @@ private:
   boolean _pitTemperatureReached;
   int _setPoint;
   boolean _manualFanMode;
+  unsigned char _periodCounter;
   // Counter used for "long PWM" mode
   unsigned char _longPwmTmr;
   
@@ -136,7 +137,8 @@ private:
 public:
   float _pidErrorSum;
   GrillPid(const unsigned char blowerPin) : 
-    _blowerPin(blowerPin), FanSpeedAvg(-1.0f)
+    _blowerPin(blowerPin), FanSpeedAvg(-1.0f),
+    _periodCounter(0x80)
     {};
   
   TempProbe *Probes[TEMP_COUNT];
