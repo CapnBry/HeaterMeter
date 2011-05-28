@@ -7,6 +7,10 @@
 #include <WiServer.h>  
 #endif
 
+#ifdef HEATERMETER_RFM12
+#include "rfmanager.h"
+#endif /* HEATERMETER_RFM12 */
+
 #ifdef DFLASH_SERVING
 #include <dataflash.h>
 #include "flashfiles.h"
@@ -22,6 +26,9 @@ GrillPid pid(PIN_BLOWER);
 
 ShiftRegLCD lcd(PIN_LCD_DATA, PIN_LCD_CLK, TWO_WIRE, 2); 
 
+#ifdef HEATERMETER_RFM12
+static RFManager rfmanager(PIN_WIRELESS_LED);
+#endif /* HEATERMETER_RFM12 */
 #ifdef HEATERMETER_NETWORKING
 static boolean g_NetworkInitialized;
 #endif /* HEATERMETER_NETWORKING */
@@ -283,7 +290,8 @@ void storeLidOpenDuration(unsigned int value)
 #if defined(HEATERMETER_SERIAL)
 void outputCsv(void)
 {
-  print_P(PSTR("$HMSU,"));
+  print_P(PSTR("$HMSU"));
+  Serial.print(CSV_DELIMITER);
   Serial.print(pid.getSetPoint());
   Serial.print(CSV_DELIMITER);
 
@@ -306,7 +314,7 @@ void outputCsv(void)
 inline void reboot(void)
 {
   // Once the pin goes low, the avr should reboot
-  digitalWrite(PIN_WIFI_LED, LOW);
+  digitalWrite(PIN_SOFTRESET, LOW);
   while (1) { };
 }
 
@@ -541,7 +549,7 @@ void eepromLoadConfig(boolean forceDefault)
 }
 
 #ifdef HEATERMETER_SERIAL
-inline void checkSerial(void)
+inline void serial_doWork(void)
 {
   unsigned char len = strlen(g_SerialBuff);
   while (Serial.available())
@@ -565,6 +573,32 @@ inline void checkSerial(void)
 }
 #endif  /* HEATERMETER_SERIAL */
 
+inline void outputRfStatus(void)
+{
+#ifdef HEATERMETER_RFM12
+  print_P(PSTR("$HMRF")); 
+  Serial.print(CSV_DELIMITER);
+  rfmanager.status();
+  Serial.print('\n');
+#endif /* HEATERMETER_RFM12 */
+}
+
+inline void newTempsAvail(void)
+{
+  static unsigned char pidCycleCount;
+
+  checkAlarms();
+  updateDisplay();
+  ++pidCycleCount;
+    
+  if ((pidCycleCount % 0x10) == 0)
+    outputRfStatus();
+
+#ifdef HEATERMETER_SERIAL
+  outputCsv();
+#endif  /* HEATERMETER_SERIAL */
+}
+
 inline void dflashInit(void)
 {
 #ifdef DFLASH_SERVING
@@ -574,15 +608,6 @@ inline void dflashInit(void)
   digitalWrite(PIN_WIFI_SS, HIGH);
   dflash.init(PIN_DATAFLASH_SS);
 #endif  /* DFLASH_SERVING */
-}
-
-inline void newTempsAvail(void)
-{
-  checkAlarms();
-  updateDisplay();
-#ifdef HEATERMETER_SERIAL
-  outputCsv();
-#endif  /* HEATERMETER_SERIAL */
 }
 
 void hmcoreSetup(void)
@@ -597,8 +622,8 @@ void hmcoreSetup(void)
   // Switch the pin mode first to INPUT with internal pullup
   // to take it to 5V before setting the mode to OUTPUT. 
   // If we reverse this, the pin will go OUTPUT,LOW and reboot.
-  digitalWrite(PIN_WIFI_LED, HIGH);
-  pinMode(PIN_WIFI_LED, OUTPUT);
+  digitalWrite(PIN_SOFTRESET, HIGH);
+  pinMode(PIN_SOFTRESET, OUTPUT);
   
   pid.Probes[TEMP_PIT] = &probe0;
   pid.Probes[TEMP_FOOD1] = &probe1;
@@ -606,6 +631,10 @@ void hmcoreSetup(void)
   pid.Probes[TEMP_AMB] = &probe3;
 
   eepromLoadConfig(false);
+
+#ifdef HEATERMETER_RFM12
+  rfmanager.init(HEATERMETER_RFM12);
+#endif /* HEATERMETER_RFM12 */
 
 #ifdef HEATERMETER_NETWORKING
   dflashInit();
@@ -622,16 +651,20 @@ void hmcoreSetup(void)
 
 void hmcoreLoop(void)
 { 
-  Menus.doWork();
-  if (pid.doWork())
-    newTempsAvail();
-    
 #ifdef HEATERMETER_SERIAL 
-  checkSerial();
+  serial_doWork();
 #endif /* HEATERMETER_SERIAL */
-   
+
+#ifdef HEATERMETER_RFM12
+  rfmanager.doWork();
+#endif /* HEATERMETER_RFM12 */
+
 #ifdef HEATERMETER_NETWORKING 
   if (g_NetworkInitialized)
     WiServer.server_task(); 
 #endif /* HEATERMETER_NETWORKING */
+
+  Menus.doWork();
+  if (pid.doWork())
+    newTempsAvail();
 }

@@ -7,6 +7,7 @@ extern "C" {
  
 //#define HEATERMETER_NETWORKING  // enable wifi interface
 #define HEATERMETER_SERIAL 115200 // enable serial interface
+#define HEATERMETER_RFM12  RF12_915MHZ  // enable RFM12B receiving (433MHZ|868MHZ|915MHZ)
 //#define USE_EXTERNAL_VREF       // Using external 5V as reference to analog inputs
 
 #ifdef HEATERMETER_NETWORKING
@@ -31,15 +32,13 @@ extern "C" {
 #define PIN_LCD_CLK      4
 #define PIN_LCD_BACKLGHT 5
 #define PIN_ALARM        6
-#define PIN_DATAFLASH_SS 7
+#define PIN_WIRELESS_LED 7  // DataFlash SS on WiShield
 #define PIN_LCD_DATA     8
-#define PIN_WIFI_LED     9
-#define PIN_WIFI_SS     10
+#define PIN_SOFTRESET    9
+#define PIN_SPI_SS      10  // WiFi LED on WiShield
 #define PIN_SPI_MOSI    11  // Can not be changed
 #define PIN_SPI_MISO    12  // Can not be changed
 #define PIN_SPI_SCK     13  // Can not be changed
-
-const char CSV_DELIMITER = ',';
 
 void hmcoreSetup(void);
 void hmcoreLoop(void);
