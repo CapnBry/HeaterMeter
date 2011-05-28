@@ -11,10 +11,10 @@ R +-------------+
 O +------------+
 p | linkmeterd |           (openwrt/package/linkmeter)
 e +------------+
-n       |                  /var/run/linkmeterd/lm.sock
+n       |                  /var/run/linkmeterd/sock
 W   +--------+
-R   | uhttpd |
-T   +--------+
+r   | uhttpd |
+t   +--------+
 
 Source Layout
 openwrt/* - Files you'd push to your router for LinkMeter
