@@ -149,7 +149,7 @@ void storeProbeOffset(unsigned char probeIndex, char offset)
 
 void storeProbeCoeff(unsigned char probeIndex, char *vals)
 {
-  // vals is SteinA,SteinB,SteinC,RKnown all float
+  // vals is SteinA(float),SteinB(float),SteinC(float),RKnown(float),probeType+1(int)
   // If any value is 0, it won't be modified
   unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, steinhart));
   if (ofs == 0)
@@ -179,9 +179,19 @@ void storeProbeCoeff(unsigned char probeIndex, char *vals)
     ofs += sizeof(float);
     ++fDest;
   }  /* for i */
-  
-  // Might consider resetting the pid accumulator here, but
-  // The previous reading was wrong so who cares if one more is
+
+  // The probe type is an integer but is passed as actual probeType + 1
+  // because passing 0 (PROBETYPE_DISABLED) is reserved for "don't change"
+  unsigned char probeType = atoi(vals);
+  if (probeType != 0)
+  {
+    --probeType;
+    pid.Probes[probeIndex]->setProbeType(probeType);
+
+    unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, probeType));
+    if (ofs != 0)
+      eeprom_write_byte((uint8_t *)ofs, probeType);
+  }
 }
 
 void storeMaxFanSpeed(unsigned char maxFanSpeed)

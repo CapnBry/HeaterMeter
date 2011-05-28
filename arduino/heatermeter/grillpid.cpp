@@ -72,6 +72,7 @@ void TempProbe::loadConfig(struct __eeprom_probe *config)
   Alarms.Status =
     config->alHighEnabled & ProbeAlarm::HIGH_ENABLED |
     config->alLowEnabled & ProbeAlarm::LOW_ENABLED;
+  //Serial.print(" P=");Serial.print(_probeType,DEC);Serial.print(" O=");Serial.print(Offset,DEC);
   //Serial.print(" A=");Serial.print(Steinhart[0],8);Serial.print(" B=");Serial.print(Steinhart[1],8);
   //Serial.print(" C=");Serial.print(Steinhart[2],8);Serial.print(" R=");Serial.println(Steinhart[3],8);
 }
@@ -81,6 +82,8 @@ void TempProbe::setProbeType(unsigned char probeType)
   _probeType = probeType;
   _accumulator = 0;
   _accumulatedCount = 0;
+  Temperature = 0.0f;
+  TemperatureAvg = -1.0f;
 }
 
 inline void TempProbe::readTemp(void)
@@ -245,7 +248,7 @@ boolean GrillPid::doWork(void)
   _lastTempRead = m;
 
   for (unsigned char i=0; i<TEMP_COUNT; i++)
-    if (Probes[1]->getProbeType() == PROBETYPE_INTERNAL)
+    if (Probes[i]->getProbeType() == PROBETYPE_INTERNAL)
       Probes[i]->readTemp();
   
   ++_periodCounter;
