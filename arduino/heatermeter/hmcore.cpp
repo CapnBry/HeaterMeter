@@ -362,11 +362,9 @@ boolean handleCommandUrl(char *URL)
   }
   if (strncmp_P(URL, PSTR("set?pn"), 6) == 0 && urlLen > 8) 
   {
-    unsigned char probeId = URL[6];
-    if (probeId == '@')  // /set?pn@XX is "list probe names"
-      reportProbeNames();
-    else
-      storeProbeName(probeId - '0', URL + 8);
+    // Store probe name will only store it if a valid probe number is passed
+    storeProbeName(URL[6] - '0', URL + 8);
+    reportProbeNames();
     return true;
   }
   if (strncmp_P(URL, PSTR("set?po"), 6) == 0 && urlLen > 8) 
