@@ -11,8 +11,6 @@ local SERIAL_DEVICE = "/dev/ttyS1"
 local RRD_FILE = "/tmp/hm.rrd"
 local JSON_FILE = "/tmp/json"
 
-local probeNames = { "Pit", "Food Probe1", "Food Probe2", "Ambient" }
-
 function rrdCreate()
  return rrd.create(
    RRD_FILE,
@@ -122,7 +120,7 @@ function segStateUpdate(line)
     end
 end
 
-local hm = io.open(SERIAL_DEVICE, "rwb")
+local hm = io.open(SERIAL_DEVICE, "r+b")
 if hm == nil then
   die("Can not open serial device")
 end
@@ -148,7 +146,7 @@ local segmentMap = {
 }
 
 -- Request the current probe names
-hm:write("/set?pn@XX\n")
+hm:write("/set?pnXXX\n")
 
 while true do
   local hmline = hm:read("*l") 
