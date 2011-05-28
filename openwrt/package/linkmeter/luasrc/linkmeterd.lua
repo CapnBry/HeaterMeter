@@ -35,7 +35,7 @@ end
 -- the load on the garbage collector
 local JSON_TEMPLATE = {
   '{"time":',
-  0,
+  i,
   ',"temps":[{"n":"', 'Pit', '","c":', 0, ',"a":', 0, -- probe1
   '},{"n":"', 'Food Probe1', '","c":', 0, ',"a":', 0, -- probe2
   '},{"n":"', 'Food Probe2', '","c":', 0, ',"a":', 0, -- probe3
@@ -44,7 +44,7 @@ local JSON_TEMPLATE = {
   ',"lid":', 0,
   ',"fan":{"c":', 0, ',"a":', 0, '}}'
 }
-local JSON_FROM_CSV = {2, 28, 6, 8, 12, 14, 18, 20, 24, 26, 32, 34, 30 } 
+local JSON_FROM_CSV = {2, 28, 6, 12, 18, 24, 32, 34, 30 } 
   
 function jsonWrite(vals)
   local i,v
@@ -52,6 +52,74 @@ function jsonWrite(vals)
     JSON_TEMPLATE[JSON_FROM_CSV[i]] = v  
   end
   return nixio.fs.writefile(JSON_FILE, table.concat(JSON_TEMPLATE))
+end
+
+function segSplit(line)
+  local retVal = {}
+  local fieldstart = 1
+  line = line .. ','
+  repeat
+    local nexti = line:find(',', fieldstart)
+    retVal[#retVal+1] = line:sub(fieldstart, nexti-1)
+    fieldstart = nexti + 1
+  until fieldstart > line:len()
+
+  table.remove(retVal, 1) -- remove the segment name
+  return retVal
+end
+
+function segProbeNames(line)
+  local vals = segSplit(line)
+  if #vals < 4 then return end
+
+  JSON_TEMPLATE[4] = vals[1]
+  JSON_TEMPLATE[10] = vals[2]
+  JSON_TEMPLATE[16] = vals[3]
+  JSON_TEMPLATE[22] = vals[4]
+end
+
+function segRfUpdate(line)
+  local vals = segSplit(line)
+  local idx = 1
+  while (idx < #vals) do
+    local nodeId = vals[idx]
+    local signalLevel = vals[idx+1]
+    local lastReceive = vals[idx+2]
+    --nixio.syslog("info", ("RF%s: %d last %s"):format(nodeId, math.floor(signalLevel/2.55), lastReceive))
+    idx = idx + 3
+  end
+end
+
+local lastUpdate = os.time()
+function segStateUpdate(line)
+    local vals = segSplit(line)
+    
+    if #vals == 8 then 
+      -- If the time has shifted more than 24 hours since the last update
+      -- the clock has probably just been set from 0 (at boot) to actual 
+      -- time. Recreate the rrd to prevent a 40 year long graph
+      local time = os.time()
+      if time - lastUpdate > (24*60*60) then
+        nixio.syslog("notice", "Time jumped forward by "..(time-lastUpdate)..", restarting database")
+        rrdCreate()
+      end
+      lastUpdate = time
+
+      -- Add the time as the first item
+      table.insert(vals, 1, time)
+      
+      jsonWrite(vals)
+      
+      local lid = tonumber(vals[9]) or 0
+      -- If the lid value is non-zero, it replaces the fan value
+      if lid ~= 0 then
+        vals[7] = lid
+      end
+      table.remove(vals, 9) -- lid
+      table.remove(vals, 8) -- fan avg
+      
+      rrd.update(RRD_FILE, table.concat(vals, ":"))
+    end
 end
 
 local hm = io.open(SERIAL_DEVICE, "rwb")
@@ -73,49 +141,19 @@ if not nixio.fs.access("/www/json") then
   end
 end
 
-local hmline
-local lastUpdate = os.time()
-while true do
-  hmline = hm:read("*l") 
-  if hmline == nil then break end
-  
-  if hmline:sub(1,2) ~= "OK" then
-    local vals = {}
-    for i in hmline:gmatch("[0-9.]+") do
-      vals[#vals+1] = i
-    end
-    
-    if #vals == 12 then 
-      -- If the time has shifted more than 24 hours since the last update
-      -- the clock has probably just been set from 0 (at boot) to actual 
-      -- time. Recreate the rrd to prevent a 40 year long graph
-      local time = os.time()
-      if time - lastUpdate > (24*60*60) then
-        nixio.syslog("notice", "Time jumped forward by "..(time-lastUpdate)..", restarting database")
-        rrdCreate()
-      end
-      lastUpadte = time
+local segmentMap = { 
+  ["$HMSU"] = segStateUpdate,
+  ["$HMPN"] = segProbeNames,
+  ["$HMRF"] = segRfUpdate
+}
 
-      -- Add the time as the first item
-      table.insert(vals, 1, time)
-      
-      -- vals[9] = gcinfo()
-      jsonWrite(vals)
-      
-      local lid = tonumber(vals[13]) or 0
-      -- If the lid value is non-zero, it replaces the fan value
-      if lid ~= 0 then
-        vals[11] = lid
-      end
-      table.remove(vals, 13) -- lid
-      table.remove(vals, 12) -- fan avg
-      table.remove(vals, 10) -- amb avg
-      table.remove(vals, 8) -- food2 avg
-      table.remove(vals, 6) -- food1 avg
-      table.remove(vals, 4) -- pit avg
-      
-      rrd.update(RRD_FILE, table.concat(vals, ":"))
-    end
+while true do
+  local hmline = hm:read("*l") 
+  if hmline == nil then break end
+ 
+  local segmentFunc = segmentMap[hmline:sub(1,5)];
+  if segmentFunc ~= nil then
+    segmentFunc(hmline)
   end
 end
 
