@@ -385,7 +385,6 @@ function connectionSuccess(o)
 
     for(var i = 0; i < 4; i++)
     {
-        var slopeIndic = "";
         graphData[i+3].label = o.temps[i].n;
         if (graphLoaded)
             addGraphPoint(graphData[i+3].data, o.time, o.temps[i].c);
@@ -395,16 +394,7 @@ function connectionSuccess(o)
         if(val == 0)
             $("#temp" + i).text("off");
         else
-        {
             $("#temp" + i).html(val.toFixed(1) + "&deg;");
-
-            val -= o.temps[i].a;
-            if(val > 1)
-                slopeIndic = "5px solid #f00";
-            else if(val < -1)
-                slopeIndic = "5px solid #00f";
-        }
-        $("#temp" + i).css("border-right", slopeIndic);
 
     }
     $("#fana").animate({left: o.fan.a + "%"});

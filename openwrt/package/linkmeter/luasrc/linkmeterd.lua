@@ -34,17 +34,17 @@ end
 -- and discard it every time, just replace the values to reduce
 -- the load on the garbage collector
 local JSON_TEMPLATE = {
-  '{"time":',
-  i,
-  ',"temps":[{"n":"', 'Pit', '","c":', 0, ',"a":', 0, -- probe1
-  '},{"n":"', 'Food Probe1', '","c":', 0, ',"a":', 0, -- probe2
-  '},{"n":"', 'Food Probe2', '","c":', 0, ',"a":', 0, -- probe3
-  '},{"n":"', 'Ambient', '","c":', 0, ',"a":', 0, -- probe4
-  '}],"set":', 0,
+  '{"time":', 0,
+  ',"set":', 0,
   ',"lid":', 0,
-  ',"fan":{"c":', 0, ',"a":', 0, '}}'
+  ',"fan":{"c":', 0, ',"a":', 0, 
+  '},"temps":[{"n":"', 'Pit', '","c":', 0, -- probe1
+  '},{"n":"', 'Food Probe1', '","c":', 0, -- probe2
+  '},{"n":"', 'Food Probe2', '","c":', 0, -- probe3
+  '},{"n":"', 'Ambient', '","c":', 0, -- probe4
+  '}]}'
 }
-local JSON_FROM_CSV = {2, 28, 6, 12, 18, 24, 32, 34, 30 } 
+local JSON_FROM_CSV = {2, 4, 14, 18, 22, 26, 8, 10, 6 } 
   
 function jsonWrite(vals)
   local i,v
@@ -72,10 +72,10 @@ function segProbeNames(line)
   local vals = segSplit(line)
   if #vals < 4 then return end
 
-  JSON_TEMPLATE[4] = vals[1]
-  JSON_TEMPLATE[10] = vals[2]
-  JSON_TEMPLATE[16] = vals[3]
-  JSON_TEMPLATE[22] = vals[4]
+  JSON_TEMPLATE[12] = vals[1]
+  JSON_TEMPLATE[16] = vals[2]
+  JSON_TEMPLATE[20] = vals[3]
+  JSON_TEMPLATE[24] = vals[4]
 end
 
 function segRfUpdate(line)
@@ -146,6 +146,9 @@ local segmentMap = {
   ["$HMPN"] = segProbeNames,
   ["$HMRF"] = segRfUpdate
 }
+
+-- Request the current probe names
+hm:write("/set?pn@XX\n")
 
 while true do
   local hmline = hm:read("*l") 
