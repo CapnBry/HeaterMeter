@@ -219,7 +219,7 @@ void storeLcdBacklight(unsigned char lcdBacklight)
 
 void storeRfMap(char *vals)
 {
-  // vals should be 3 bytes each, back to back
+  // vals should be 3 characters each, back to back
   // <probeIdx><rfSource (letter)><sourcePin>
   // The entire map is replace with this call
   // e.g. 1B02C03C1 sets

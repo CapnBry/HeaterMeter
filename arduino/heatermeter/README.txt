@@ -39,8 +39,8 @@ When operating in automatic mode at fan speeds below 10%, the fan will run in a 
 == Source Modification and Configuration == 
 Most configuration is found in hmcore.h.  There defines used to control the inclusion of some features.  To disable them insert // before the item you'd like to disable.  This "comments out" the define and prevents it from being processed.
 HEATERMETER_NETWORKING - Enable the WiFi and web server code.  The code is designed to use AsyncLabs's WiShield 1.0/2.0 or YellowJacket 1.0.  If your WiFi shield does not have a dataflash chip on it, make sure you disable both the DFLASH_* defines.
-HEATERMETER_SERIAL - Enable per-period temperature updates to be sent out the serial port as well as configuration changes via serial.  The serial configuration protocol is handlde using the same URLs as ther web server, sent via serial, terminated with CR/CRLF/LF.
-DFLASH_LOGGING - Enable saving of per-period temperatures to the dataflash chip present on the WiShield.  Requires HEATERMETER_NETWORKING.
+HEATERMETER_SERIAL (baud)- Enable per-period temperature updates to be sent out the serial port as well as configuration changes via serial.  The serial configuration protocol is handlde using the same URLs as ther web server, sent via serial, terminated with CR/CRLF/LF.
+HEATERMETER_RFM12 (band) - Enable the RFM12 device server.
 DFLASH_SERVING - Enable serving web pages from the dataflash chip present on the WiShield.  Requires HEATERMETER_NETWORKING.
 USE_EXTERNAL_VREF - If enabled, use the Vref pin voltage as the reference when doing ADC measurments instead of the internal 5V reference.
 
@@ -59,16 +59,23 @@ Both Serial and Web
 /set?poA=B - Set probe offset A to integer B.  Probe numbers are 0=pit 1=food1 2=food2 3=ambient
 /set?pcN=A,B,C,R,T - Set the probe coefficients and type for probe N.  A, B, and C are the Steinhart-Hart coeffieicents and R is the fixed side of the probe voltage divider.  A, B, C and R are floating point and should be specified in scienfific noation, e.g. 0.00023067434 -> 2.3067434e-4.  T is the type of probe and should be an integer value.  Probe types are 1=Disabled, 2=Internal, 3=RFM12B.  Any value set to 0 will not be modified. Probe numbers are 0=pit 1=food1 2=food2 3=ambient
 /set?lb=A - Set the LCD backlight to A.  Range is 0 (off) to 255 (full)
+/set?rm=ABC[ABC][ABC][ABC] - Configures the RF12 to HeaterMeter probe mapping.  Should be 3 characters each, back to back indicating <probeIdx><rfSource (letter)><sourcePin>.  The entire map is replace with this call.  e.g. 1B02C03C1 sets TEMP_FOOD1 = Source B pin 0, TEMP_FOOD2 = Source C pin 0, TEMP_AMB = Source C pin 1.  If a probe is mapped but its type is not RFM12B, this will automatically switch the probe to the RFM12B type.
 /reboot - Reboots the microcontroller.  Only if wired to do so (LinkMeter)
 
 Serial-only URLs
-/set?pn@XX - Retrieve the current probe names. Format:
-  $HMPN,Probe0,Probe1,Probe2,Probe3
+/set?pnXXX - Retrieve the current probe names
+/set?rmXXX - Retreives the current RF to Probe mappings
 
 Web-only URLs
 / - The index status page.  Some other supporting files are also used by this URL that are not included in this document.
 /json - JSON status object.
 
 == CSV Format ==
+Probe Names
+$HMPN,Probe0,Probe1,Probe2,Probe3
+PID State Update
 $HMSU,SetPoint,Pit,Food1,Food2,Ambient,Fan,FanMovAvg,LidOpenCountdown
-
+RF Status
+$HMRF,NodeId,PacketPct(0-255),LastSeen[,...]
+RF Mapping
+$HMRM,Probe0SourceAndPin,Probe1SourceAndPin,Probe2SourceAndPin,Probe3SourceAndPin
