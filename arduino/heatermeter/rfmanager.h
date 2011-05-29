@@ -3,12 +3,19 @@
 
 #include <RF12.h>
 
+#define RF_PINS_PER_SOURCE 4
 #define RF_SOURCE_COUNT 4
+
 // The count of milliseconds with no receive that the source is considered stale
 // This should be large enough to allow the remote node to sleep, but short enough
 // that the sequence number can't roll without being detected
 // i.e. this value should be under MIN_TRANSMIT_PERIOD * 255 * 1000
-#define RF_STALE_TIME (5 * 60 * 1000)
+#define RF_STALE_TIME (3 * 60 * 1000)
+
+typedef struct tagRFMapItem {
+  unsigned char pin: 3;
+  unsigned char source: 5;
+} rfm12_map_item_t;
 
 class RFSource
 {
@@ -32,10 +39,12 @@ public:
   unsigned long getLastReceive(void) const { return _lastReceive; };
 
   boolean isFree(void) const { return _id == 0; };
-  void doFree(void) { _id = 0; };
+  void doFree(void);
   boolean isStale(void) const { return millis() - _lastReceive > RF_STALE_TIME; };
   
   void update(struct __rfm12_probe_update_hdr *hdr, unsigned char len);
+
+  unsigned int Values[RF_PINS_PER_SOURCE];
 };
 
 class RFManager
@@ -52,8 +61,11 @@ public:
   void freeStaleSources(void);
   char findFreeSourceIdx(void);
   char findSourceIdx(unsigned char srcId);
+  char forceSourceIdx(unsigned char srcId);
   void status(void);
-  void doWork(void);
+  boolean doWork(void);
+  
+  RFSource *getSourceById(unsigned char srcId);
 };
 
 #endif /* __RFMANAGER_H__ */

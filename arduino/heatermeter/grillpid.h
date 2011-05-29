@@ -99,6 +99,8 @@ public:
   float Steinhart[STEINHART_COUNT];
   // Copy struct to members
   void loadConfig(struct __eeprom_probe *config);
+  // Takes a Temperarure ADC value and adds it to the accumulator
+  void addAdcValue(unsigned int analog_temp);
 
   /* Runtime Data/Methods */
   // Last averaged temperature reading

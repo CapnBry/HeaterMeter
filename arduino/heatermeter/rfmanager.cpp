@@ -50,6 +50,7 @@ void RFSource::update(struct __rfm12_probe_update_hdr *hdr, unsigned char len)
   len -= sizeof(struct __rfm12_probe_update_hdr);
   while (len >= sizeof(struct __rfm12_probe_update))
   {
+    Values[probe->probeIdx] = probe->adcValue;
     Serial.print(probe->probeIdx, DEC); 
     Serial.print(':');
     Serial.print(probe->adcValue, DEC); 
@@ -58,6 +59,12 @@ void RFSource::update(struct __rfm12_probe_update_hdr *hdr, unsigned char len)
     ++probe;
   }  /* while len */
 }
+
+void RFSource::doFree(void)
+{
+  _id = 0;
+  memset(Values, 0, sizeof(Values));
+} 
 
 RFManager::RFManager(char rxLed) :
   _crcOk(0xff), _rxLed(rxLed)
@@ -90,14 +97,30 @@ char RFManager::findFreeSourceIdx(void)
 
 char RFManager::findSourceIdx(unsigned char srcId)
 {
+  // Get the index of the srcId, returns -1 if it doesn't exist
   for (unsigned char idx=0; idx<RF_SOURCE_COUNT; ++idx)
     if (_sources[idx].getId() == srcId)
       return idx;
+  return -1;
+}
 
-  char retVal = findFreeSourceIdx();
-  if (retVal != -1)
-    _sources[retVal].setId(srcId);
+char RFManager::forceSourceIdx(unsigned char srcId)
+{
+  // Get the index of the srcId, allocates it if it doesn't exist
+  char retVal = findSourceIdx(srcId);
+  if (retVal == -1)
+  {
+    retVal = findFreeSourceIdx();
+    if (retVal != -1)
+      _sources[retVal].setId(srcId);
+  }
   return retVal;
+}
+
+RFSource *RFManager::getSourceById(unsigned char srcId)
+{
+  char idx = findSourceIdx(srcId);
+  return (idx != -1) ? &_sources[idx] : NULL;
 }
 
 void RFManager::status(void)
@@ -128,9 +151,10 @@ void RFManager::status(void)
   }
 }
 
-void RFManager::doWork(void)
+boolean RFManager::doWork(void)
 {
-  if (rf12_recvDone())
+  boolean retVal = false;
+  while (rf12_recvDone())
   {
     if (_rxLed >= 0)
       digitalWrite(_rxLed, HIGH);
@@ -139,16 +163,21 @@ void RFManager::doWork(void)
       if (_crcOk < 0xff) 
         ++_crcOk;
       struct __rfm12_probe_update_hdr *hdr = (struct __rfm12_probe_update_hdr *)rf12_data;
-      char src = findSourceIdx(hdr->sourceId);
+      char src = forceSourceIdx(hdr->sourceId);
       if (src != -1)
         _sources[src].update(hdr, rf12_len);
     }  /* if crc ok */
     else if (_crcOk > 0) 
       --_crcOk;
-
-    // Call again to resume receiving
-    rf12_recvDone();
-  }  /* if recvDone() */
+      
+    retVal = true;
+  }  /* while recvDone() */
+  
+  // Leave the LED on until we fail to read something
+  if (!retVal && _rxLed >= 0)
+    digitalWrite(_rxLed, LOW);
+    
+  return retVal;    
 }
 
 

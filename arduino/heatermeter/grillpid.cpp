@@ -86,9 +86,8 @@ void TempProbe::setProbeType(unsigned char probeType)
   TemperatureAvg = -1.0f;
 }
 
-inline void TempProbe::readTemp(void)
+void TempProbe::addAdcValue(unsigned int analog_temp)
 {
-  unsigned int analog_temp = analogRead(_pin);
   // If we get *any* analogReads that are 0 or 1023, the measurement for 
   // the entire period is invalidated, so set the _accumulator to 0
   if (analog_temp <= 0 || analog_temp >= 1023)
@@ -100,11 +99,16 @@ inline void TempProbe::readTemp(void)
   ++_accumulatedCount;
 }
 
+inline void TempProbe::readTemp(void)
+{
+  addAdcValue(analogRead(_pin));
+}
+
 inline void TempProbe::calcTemp(void)
 {
-  const float Vin = 1023.0f;  
+  const float Vin = 1023.0f;
   if (_accumulatedCount == 0)
-    return;
+    return; 
     
   unsigned int Vout = _accumulator / _accumulatedCount;
   _accumulatedCount = 0;

@@ -9,7 +9,7 @@
 
 #ifdef HEATERMETER_RFM12
 #include "rfmanager.h"
-#endif /* HEATERMETER_RFM12 */
+#endif
 
 #ifdef DFLASH_SERVING
 #include <dataflash.h>
@@ -35,6 +35,9 @@ static boolean g_NetworkInitialized;
 #ifdef HEATERMETER_SERIAL
 static char g_SerialBuff[64]; 
 #endif /* HEATERMETER_SERIAL */
+#ifdef HEATERMETER_RFM12
+static rfm12_map_item_t rfMap[TEMP_COUNT];
+#endif /* HEATERMETER_SERIAL */
 
 #define config_store_byte(eeprom_field, src) { eeprom_write_byte((uint8_t *)offsetof(__eeprom_data, eeprom_field), src); }
 #define config_store_word(eeprom_field, src) { eeprom_write_word((uint16_t *)offsetof(__eeprom_data, eeprom_field), src); }
@@ -50,6 +53,7 @@ const struct __eeprom_data {
   boolean manualMode;
   unsigned char maxFanSpeed;  // in percent
   unsigned char lcdBacklight; // in PWM (max 255)
+  rfm12_map_item_t rfMap[TEMP_COUNT];
 } DEFAULT_CONFIG PROGMEM = { 
   EEPROM_MAGIC,  // magic
   225,  // setpoint
@@ -59,6 +63,7 @@ const struct __eeprom_data {
   false, // manual mode
   100,  // max fan speed
   255, // lcd backlight
+  {{ 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }},  // rfMap
 };
 
 // EEPROM address of the start of the probe structs, the 2 bytes before are magic
@@ -147,6 +152,16 @@ void storeProbeOffset(unsigned char probeIndex, char offset)
   }  
 }
 
+void storeProbeType(unsigned char probeIndex, unsigned char probeType)
+{
+  unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, probeType));
+  if (ofs != 0)
+  {
+    pid.Probes[probeIndex]->setProbeType(probeType);
+    eeprom_write_byte((uint8_t *)ofs, probeType);
+  }
+}
+
 void storeProbeCoeff(unsigned char probeIndex, char *vals)
 {
   // vals is SteinA(float),SteinB(float),SteinC(float),RKnown(float),probeType+1(int)
@@ -186,11 +201,7 @@ void storeProbeCoeff(unsigned char probeIndex, char *vals)
   if (probeType != 0)
   {
     --probeType;
-    pid.Probes[probeIndex]->setProbeType(probeType);
-
-    unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, probeType));
-    if (ofs != 0)
-      eeprom_write_byte((uint8_t *)ofs, probeType);
+    storeProbeType(probeIndex, probeType);
   }
 }
 
@@ -204,6 +215,60 @@ void storeLcdBacklight(unsigned char lcdBacklight)
 {
   setLcdBacklight(lcdBacklight);
   config_store_byte(lcdBacklight, lcdBacklight);
+}
+
+void storeRfMap(char *vals)
+{
+  // vals should be 3 bytes each, back to back
+  // <probeIdx><rfSource (letter)><sourcePin>
+  // The entire map is replace with this call
+  // e.g. 1B02C03C1 sets
+  // TEMP_FOOD1 = Source B pin 0
+  // TEMP_FOOD2 = Source C pin 0
+  // TEMP_AMB = Source C pin 1
+  boolean modified = false;
+  
+  while (strlen(vals) > 2)
+  {
+    unsigned char probeIdx = (*vals++) - '0';
+    unsigned char source = (*vals++) - 'A' + 1;
+    unsigned char sourcePin = (*vals++) - '0';
+    //Serial.print("RM "); Serial.print(probeIdx, DEC); Serial.print(source, DEC); Serial.print(sourcePin, DEC); Serial.print('\n');
+    
+    if ((probeIdx >= 0) && (probeIdx < TEMP_COUNT) &&
+      (source >= 1) && (source <= 26) &&
+      (sourcePin >= 0) && (sourcePin < RF_PINS_PER_SOURCE))
+    {
+      if (!modified)
+      {
+        memset(rfMap, 0, sizeof(rfMap));
+        modified = true;
+      }
+      
+      if (pid.Probes[probeIdx]->getProbeType() != PROBETYPE_RF12)
+        storeProbeType(probeIdx, PROBETYPE_RF12);
+      
+      rfMap[probeIdx].source = source;
+      rfMap[probeIdx].pin = sourcePin;
+    }  /* if data valid */
+  }  /* while chars left */
+  if (modified)
+    eeprom_write_block(rfMap, (void *)offsetof(__eeprom_data, rfMap), sizeof(rfMap));
+}
+
+void reportRfMap(void)
+{
+  print_P(PSTR("$HMRM"));
+  for (unsigned int i=0; i<TEMP_COUNT; ++i)
+  {
+    Serial.print(CSV_DELIMITER);
+    if (rfMap[i].source != 0)
+    {
+      Serial.print(rfMap[i].source + 'A' - 1, BYTE);
+      Serial.print(rfMap[i].pin, DEC);
+    }
+  }
+  Serial.print('\n');
 }
 
 void updateDisplay(void)
@@ -377,6 +442,12 @@ boolean handleCommandUrl(char *URL)
     storeProbeCoeff(URL[6] - '0', URL + 8);
     return true;
   }
+  if (strncmp_P(URL, PSTR("set?rm"), 6) == 0 and urlLen > 6) 
+  {
+    storeRfMap(URL + 7);
+    reportRfMap();
+    return true;
+  }
   if (strncmp_P(URL, PSTR("reboot"), 5) == 0)
   {
     reboot();
@@ -485,6 +556,26 @@ boolean sendPage(char* URL)
 }
 #endif /* HEATERMETER_NETWORKING */
 
+#ifdef HEATERMETER_RFM12
+void rfDataToProbes(void)
+{
+  for (unsigned char i=0; i<TEMP_COUNT; ++i)
+    if ((pid.Probes[i]->getProbeType() == PROBETYPE_RF12) && (rfMap[i].source != 0))
+    {
+      RFSource *src = rfmanager.getSourceById(rfMap[i].source);
+      if (src != NULL)
+      {
+        unsigned char srcPin = rfMap[i].pin;
+        if (src->Values[srcPin] != 0)
+        {
+          pid.Probes[i]->addAdcValue(src->Values[srcPin]);
+          src->Values[srcPin] = 0;
+        }
+      }  /* if source present */
+    }  /* if map has source */
+}
+#endif /* HEATERMETER_RFM12 */
+
 inline void checkAlarms(void)
 {
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
@@ -516,6 +607,7 @@ void eepromLoadBaseConfig(boolean forceDefault)
     pid.setFanSpeed(0);
   pid.MaxFanSpeed = config.maxFanSpeed;
   setLcdBacklight(config.lcdBacklight);
+  memcpy(rfMap, config.rfMap, sizeof(rfMap));
 }
 
 void eepromLoadProbeConfig(boolean forceDefault)
@@ -664,7 +756,8 @@ void hmcoreLoop(void)
 #endif /* HEATERMETER_SERIAL */
 
 #ifdef HEATERMETER_RFM12
-  rfmanager.doWork();
+  if (rfmanager.doWork())
+    rfDataToProbes();
 #endif /* HEATERMETER_RFM12 */
 
 #ifdef HEATERMETER_NETWORKING 
@@ -674,5 +767,5 @@ void hmcoreLoop(void)
 
   Menus.doWork();
   if (pid.doWork())
-    newTempsAvail();
+    newTempsAvail();    
 }
