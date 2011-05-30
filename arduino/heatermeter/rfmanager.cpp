@@ -26,7 +26,7 @@ void RFSource::update(struct __rfm12_probe_update_hdr *hdr, unsigned char len)
   _lowBattery = hdr->lowBattery;
   Serial.print(_lowBattery ? "LOB " : "OKB ");
   Serial.print(hdr->seqNo, DEC);
-  Serial.print(' ', BYTE);
+  Serial_char(' ');
   if (_lastReceive != 0)
   {
     unsigned char seqDiff = hdr->seqNo - _nextSeq;
@@ -52,9 +52,9 @@ void RFSource::update(struct __rfm12_probe_update_hdr *hdr, unsigned char len)
   {
     Values[probe->probeIdx] = probe->adcValue;
     Serial.print(probe->probeIdx, DEC); 
-    Serial.print(':');
+    Serial_char(':');
     Serial.print(probe->adcValue, DEC); 
-    Serial.print('\n');
+    Serial_nl();
     len -= sizeof(struct __rfm12_probe_update);
     ++probe;
   }  /* while len */
@@ -129,22 +129,22 @@ void RFManager::status(void)
 
   // The first item in the list the manager but it has the same format as 
   // the other sources, which is: Id,Signal,TimeSinceLastReceive
-  Serial.print('A');
-  Serial.print(CSV_DELIMITER);
+  Serial_char('A');
+  Serial_csv();
   Serial.print(_crcOk, DEC);
-  Serial.print(CSV_DELIMITER);
-  Serial.print('0');  
+  Serial_csv();
+  Serial_char('0');  
 
   unsigned long m = millis();  
   for (unsigned char idx=0; idx<RF_SOURCE_COUNT; ++idx)
   {
     if (_sources[idx].isFree())
       continue;
-    Serial.print(CSV_DELIMITER);
-    Serial.print('A' + _sources[idx].getId() - 1, BYTE);
-    Serial.print(CSV_DELIMITER);
+    Serial_csv();
+    Serial_char('A' + _sources[idx].getId() - 1);
+    Serial_csv();
     Serial.print(_sources[idx].getSignalLevel(), DEC);
-    Serial.print(CSV_DELIMITER);
+    Serial_csv();
     
     unsigned int since = (m - _sources[idx].getLastReceive()) / 1000;
     Serial.print(since, DEC);

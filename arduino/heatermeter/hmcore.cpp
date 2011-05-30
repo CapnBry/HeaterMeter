@@ -82,13 +82,6 @@ const struct  __eeprom_probe DEFAULT_PROBE_CONFIG PROGMEM = {
   //{1.1415e-3,2.31905e-4,9.76423e-8,1.0e+4} // Vishay 10k NTCLE100E3103JB0
 };
 
-void print_P(const char *s)
-{
-  unsigned char c;
-  while (c = pgm_read_byte(s++))
-    Serial.print(c, BYTE);
-}
-
 inline void setLcdBacklight(unsigned char lcdBacklight)
 {
   analogWrite(PIN_LCD_BACKLGHT, lcdBacklight);
@@ -261,14 +254,14 @@ void reportRfMap(void)
   print_P(PSTR("$HMRM"));
   for (unsigned int i=0; i<TEMP_COUNT; ++i)
   {
-    Serial.print(CSV_DELIMITER);
+    Serial_csv();
     if (rfMap[i].source != 0)
     {
-      Serial.print(rfMap[i].source + 'A' - 1, BYTE);
+      Serial_char(rfMap[i].source + 'A' - 1);
       Serial.print(rfMap[i].pin, DEC);
     }
   }
-  Serial.print('\n');
+  Serial_nl();
 }
 
 void updateDisplay(void)
@@ -366,22 +359,22 @@ void storeLidOpenDuration(unsigned int value)
 void outputCsv(void)
 {
   print_P(PSTR("$HMSU"));
-  Serial.print(CSV_DELIMITER);
-  Serial.print(pid.getSetPoint());
-  Serial.print(CSV_DELIMITER);
+  Serial_csv();
+  Serial.print(pid.getSetPoint(), DEC);
+  Serial_csv();
 
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
     Serial.print(pid.Probes[i]->Temperature, 1);
-    Serial.print(CSV_DELIMITER);
+    Serial_csv();
   }
 
   Serial.print(pid.getFanSpeed(), DEC);
-  Serial.print(CSV_DELIMITER);
+  Serial_csv();
   Serial.print((int)pid.FanSpeedAvg, DEC);
-  Serial.print(CSV_DELIMITER);
+  Serial_csv();
   Serial.print(pid.LidOpenResumeCountdown, DEC);
-  Serial.print('\n');
+  Serial_nl();
 }
 #endif /* defined(HEATERMETER_SERIAL) */
 
@@ -399,10 +392,10 @@ inline void reportProbeNames(void)
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
     loadProbeName(i);
-    Serial.print(CSV_DELIMITER);
+    Serial_csv();
     Serial.print(editString);
   }
-  Serial.print('\n');
+  Serial_nl();
 }
 
 /* handleCommandUrl returns true if it consumed the URL */
@@ -677,9 +670,9 @@ inline void outputRfStatus(void)
 {
 #ifdef HEATERMETER_RFM12
   print_P(PSTR("$HMRF")); 
-  Serial.print(CSV_DELIMITER);
+  Serial_csv();
   rfmanager.status();
-  Serial.print('\n');
+  Serial_nl();
 #endif /* HEATERMETER_RFM12 */
 }
 
