@@ -172,6 +172,7 @@ public:
   // Call this in loop()
   boolean doWork(void);
   void resetLidOpenResumeCountdown(void);
+  void status(void) const;
 };
 
 #endif /* __GRILLPID_H__ */

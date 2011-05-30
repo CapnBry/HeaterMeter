@@ -355,28 +355,15 @@ void storeLidOpenDuration(unsigned int value)
   config_store_word(lidOpenDuration, value);
 }
 
-#if defined(HEATERMETER_SERIAL)
-void outputCsv(void)
+inline void outputCsv(void)
 {
+#ifdef HEATERMETER_SERIAL
   print_P(PSTR("$HMSU"));
   Serial_csv();
-  Serial.print(pid.getSetPoint(), DEC);
-  Serial_csv();
-
-  for (unsigned char i=0; i<TEMP_COUNT; ++i)
-  {
-    Serial.print(pid.Probes[i]->Temperature, 1);
-    Serial_csv();
-  }
-
-  Serial.print(pid.getFanSpeed(), DEC);
-  Serial_csv();
-  Serial.print((int)pid.FanSpeedAvg, DEC);
-  Serial_csv();
-  Serial.print(pid.LidOpenResumeCountdown, DEC);
+  pid.status();
   Serial_nl();
+#endif /* HEATERMETER_SERIAL */
 }
-#endif /* defined(HEATERMETER_SERIAL) */
 
 #if defined(HEATERMETER_NETWORKING) || defined(HEATERMETER_SERIAL)
 inline void reboot(void)
@@ -687,9 +674,7 @@ inline void newTempsAvail(void)
   if ((pidCycleCount % 0x10) == 0)
     outputRfStatus();
 
-#ifdef HEATERMETER_SERIAL
   outputCsv();
-#endif  /* HEATERMETER_SERIAL */
 }
 
 inline void dflashInit(void)

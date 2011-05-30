@@ -1,7 +1,9 @@
 #include <WProgram.h>
 #include <math.h>
 #include <string.h>
+
 #include "grillpid.h"
+#include "strings.h"
 
 // The time (ms) of the measurement period
 #define TEMP_MEASURE_PERIOD 2000
@@ -238,6 +240,24 @@ void GrillPid::setFanSpeed(int value)
     _fanSpeed = 100;
   else
     _fanSpeed = value;
+}
+
+void GrillPid::status(void) const
+{
+  Serial.print(getSetPoint(), DEC);
+  Serial_csv();
+
+  for (unsigned char i=0; i<TEMP_COUNT; ++i)
+  {
+    Serial.print(Probes[i]->Temperature, 1);
+    Serial_csv();
+  }
+
+  Serial.print(getFanSpeed(), DEC);
+  Serial_csv();
+  Serial.print((int)FanSpeedAvg, DEC);
+  Serial_csv();
+  Serial.print(LidOpenResumeCountdown, DEC);
 }
 
 boolean GrillPid::doWork(void)
