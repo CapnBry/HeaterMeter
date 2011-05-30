@@ -396,6 +396,25 @@ function connectionSuccess(o)
         else
             $("#temp" + i).html(val.toFixed(1) + "&deg;");
 
+        var rfsDiv = "#rfs" + i;
+        if (typeof o.temps[i].rf != "undefined")
+        {
+            var rf = o.temps[i].rf;
+            var img;
+            if (rf == 255)
+                img = "rf3.png";
+            else if (rf > 200)
+                img = "rf2.png";
+            else if (rf > 0)
+                img = "rf1.png";
+            else
+                img = "rf0.png";
+             $(rfsDiv).html('<img src="' + img + '" title="' + 
+               (rf/2.55).toFixed(0) + '%">')
+               .show();
+        }
+        else
+          $(rfsDiv).hide();
     }
     $("#fana").animate({left: o.fan.a + "%"});
     $("#fanc").animate({width: o.fan.c + "%"});
@@ -476,6 +495,7 @@ div.pname { color: #003; font-size: 18pt; line-height: 16pt; display: inline-blo
 div.ptemp { font-size: 32pt; line-height: 26pt; }
 div#graphtt { display: none; position: absolute; border: 1px solid #89c; background: #eef; opacity: 0.9; padding: 2px; color: #003; font-size: small; }
 div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357; }
+div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
 </style>
 </head>
 
@@ -503,6 +523,7 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
             <td class="probe" style="border-right: 1px solid #235;">
               <div style="position: relative;">
                     <div class="dph" id="dph1"></div>
+                    <div class="rfstatus" id="rfs1"></div>
                     <div class="legbord"><div class="legfill" id="pl1"></div></div>
                     <div class="pname" id="pn1">-</div>
                     <div class="ptemp" id="temp1">-</div>
@@ -511,6 +532,7 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
             <td class="probe">
               <div style="position: relative;">
                     <div class="dph" id="dph2"></div>
+                    <div class="rfstatus" id="rfs2"></div>
                     <div class="legbord"><div class="legfill" id="pl2"></div></div>
                     <div class="pname" id="pn2">-</div>
                     <div class="ptemp" id="temp2">-</div>
@@ -519,6 +541,7 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
             <td class="probe" style="border-left: 1px solid #235;">
               <div style="position: relative;">
                     <div class="dph" id="dph3"></div>
+                    <div class="rfstatus" id="rfs3"></div>
                     <div class="legbord"><div class="legfill" id="pl3"></div></div>
                     <div class="pname" id="pn3">-</div>
                     <div class="ptemp" id="temp3">-</div>

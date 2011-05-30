@@ -11,6 +11,9 @@ local SERIAL_DEVICE = "/dev/ttyS1"
 local RRD_FILE = "/tmp/hm.rrd"
 local JSON_FILE = "/tmp/json"
 
+local rfMap = {}
+local rfStatus = {}
+
 function rrdCreate()
  return rrd.create(
    RRD_FILE,
@@ -36,19 +39,31 @@ local JSON_TEMPLATE = {
   ',"set":', 0,
   ',"lid":', 0,
   ',"fan":{"c":', 0, ',"a":', 0, 
-  '},"temps":[{"n":"', 'Pit', '","c":', 0, -- probe1
-  '},{"n":"', 'Food Probe1', '","c":', 0, -- probe2
-  '},{"n":"', 'Food Probe2', '","c":', 0, -- probe3
-  '},{"n":"', 'Ambient', '","c":', 0, -- probe4
+  '},"temps":[{"n":"', 'Pit', '","c":', 0, '', -- probe1
+  '},{"n":"', 'Food Probe1', '","c":', 0, '', -- probe2
+  '},{"n":"', 'Food Probe2', '","c":', 0, '', -- probe3
+  '},{"n":"', 'Ambient', '","c":', 0, '', -- probe4
   '}]}'
 }
-local JSON_FROM_CSV = {2, 4, 14, 18, 22, 26, 8, 10, 6 } 
+local JSON_FROM_CSV = {2, 4, 14, 19, 24, 29, 8, 10, 6 } 
   
 function jsonWrite(vals)
   local i,v
   for i,v in ipairs(vals) do
     JSON_TEMPLATE[JSON_FROM_CSV[i]] = v  
   end
+  
+  -- add the rf status where applicable
+  for i,src in ipairs(rfMap) do
+    local rfval
+    if (src ~= "") then
+      rfval = ',"rf":' .. tostring(rfStatus[src] or 0)
+    else
+      rfval = ''
+    end
+    JSON_TEMPLATE[10 + (i * 5)] = rfval
+  end
+  
   return nixio.fs.writefile(JSON_FILE, table.concat(JSON_TEMPLATE))
 end
 
@@ -71,20 +86,29 @@ function segProbeNames(line)
   if #vals < 4 then return end
 
   JSON_TEMPLATE[12] = vals[1]
-  JSON_TEMPLATE[16] = vals[2]
-  JSON_TEMPLATE[20] = vals[3]
-  JSON_TEMPLATE[24] = vals[4]
+  JSON_TEMPLATE[17] = vals[2]
+  JSON_TEMPLATE[22] = vals[3]
+  JSON_TEMPLATE[27] = vals[4]
 end
 
 function segRfUpdate(line)
   local vals = segSplit(line)
+  rfStatus = {}  -- clear the table to remove stales
   local idx = 1
   while (idx < #vals) do
     local nodeId = vals[idx]
     local signalLevel = vals[idx+1]
     local lastReceive = vals[idx+2]
-    --nixio.syslog("info", ("RF%s: %d last %s"):format(nodeId, math.floor(signalLevel/2.55), lastReceive))
+    rfStatus[nodeId] = tonumber(signalLevel)
     idx = idx + 3
+  end
+end
+
+function segRfMap(line)
+  local vals = segSplit(line)
+  local idx
+  for i,s in ipairs(vals) do 
+    rfMap[i] = s:sub(1,1)
   end
 end
 
@@ -142,15 +166,18 @@ end
 local segmentMap = { 
   ["$HMSU"] = segStateUpdate,
   ["$HMPN"] = segProbeNames,
-  ["$HMRF"] = segRfUpdate
+  ["$HMRF"] = segRfUpdate,
+  ["$HMRM"] = segRfMap
 }
 
--- Request the current probe names
+-- Request current state
 hm:write("/set?pnXXX\n")
+hm:write("/set?rmXXX\n")
 
 while true do
   local hmline = hm:read("*l") 
   if hmline == nil then break end
+  print(hmline)
  
   local segmentFunc = segmentMap[hmline:sub(1,5)];
   if segmentFunc ~= nil then
