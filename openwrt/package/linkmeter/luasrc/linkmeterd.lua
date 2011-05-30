@@ -135,7 +135,7 @@ function segStateUpdate(line)
       local lid = tonumber(vals[9]) or 0
       -- If the lid value is non-zero, it replaces the fan value
       if lid ~= 0 then
-        vals[7] = lid
+        vals[7] = -lid
       end
       table.remove(vals, 9) -- lid
       table.remove(vals, 8) -- fan avg
