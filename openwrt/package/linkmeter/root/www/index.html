@@ -318,7 +318,7 @@ function tstatSuccess(csv)
 
 function nameChanged(from, value)
 {
-    $.get("/cgi-bin/set", { from: value} );
+    $.get("/cgi-bin/set?" + from + "=" + value);
     return value;
 }
 
