@@ -32,9 +32,9 @@ extern "C" {
 #define PIN_LCD_CLK      4
 #define PIN_LCD_BACKLGHT 5
 #define PIN_ALARM        6
-#define PIN_WIRELESS_LED 7  // DataFlash SS on WiShield
+#define PIN_SOFTRESET    7  // DataFlash SS on WiShield
 #define PIN_LCD_DATA     8
-#define PIN_SOFTRESET    9
+#define PIN_WIRELESS_LED 9
 #define PIN_SPI_SS      10  // WiFi LED on WiShield
 #define PIN_SPI_MOSI    11  // Can not be changed
 #define PIN_SPI_MISO    12  // Can not be changed
