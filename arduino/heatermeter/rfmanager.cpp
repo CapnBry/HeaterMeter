@@ -3,7 +3,7 @@
 #include "rfmanager.h"
 
 struct __rfm12_probe_update_hdr {
-  boolean lowBattery;
+  unsigned char battLevel;
   unsigned char sourceId;
   unsigned char seqNo;
 };
@@ -16,26 +16,35 @@ void RFSource::setId(unsigned char id)
 {
   _id = id;
   _lastReceive = 0;
-  _lowBattery = false;
-  _signalLevel = 0xff;
+  _batteryLevel = 0;
+  _signalLevel = 8;
   //_nextSeq = 0;
+  memset(Values, 0, sizeof(Values));
+}
+
+unsigned char RFSource::getSignalLevel(void) const
+{
+  unsigned char retVal = 0;
+  unsigned char signal = _signalLevel;
+  while (signal--)
+    retVal = (retVal << 1) | 1;
+  return retVal;
 }
 
 void RFSource::update(struct __rfm12_probe_update_hdr *hdr, unsigned char len)
 {
-  _lowBattery = hdr->lowBattery;
-  Serial.print(_lowBattery ? "LOB " : "OKB ");
-  Serial.print(hdr->seqNo, DEC);
-  Serial_char(' ');
+  _batteryLevel = hdr->battLevel;
   if (_lastReceive != 0)
   {
+    // Signal level is just a count of how many of the past 8 packets that have been received
     unsigned char seqDiff = hdr->seqNo - _nextSeq;
     if (seqDiff == 0)
     {
-      if (_signalLevel < 0xff) 
+      if (_signalLevel < 8) 
         ++_signalLevel;
     }
-    else {
+    else 
+    {
       if (seqDiff < _signalLevel)
         _signalLevel -= seqDiff;
       else
@@ -51,20 +60,10 @@ void RFSource::update(struct __rfm12_probe_update_hdr *hdr, unsigned char len)
   while (len >= sizeof(struct __rfm12_probe_update))
   {
     Values[probe->probeIdx] = probe->adcValue;
-    Serial.print(probe->probeIdx, DEC); 
-    Serial_char(':');
-    Serial.print(probe->adcValue, DEC); 
-    Serial_nl();
     len -= sizeof(struct __rfm12_probe_update);
     ++probe;
   }  /* while len */
 }
-
-void RFSource::doFree(void)
-{
-  _id = 0;
-  memset(Values, 0, sizeof(Values));
-} 
 
 RFManager::RFManager(char rxLed) :
   _crcOk(0xff), _rxLed(rxLed)
@@ -83,7 +82,7 @@ void RFManager::freeStaleSources(void)
 {
   for (unsigned char idx=0; idx<RF_SOURCE_COUNT; ++idx)
     if (_sources[idx].isStale())
-      _sources[idx].doFree();
+      _sources[idx].setId(RFSOURCEID_NONE);
 }
 
 char RFManager::findFreeSourceIdx(void)
@@ -131,9 +130,11 @@ void RFManager::status(void)
   // the other sources, which is: Id,Signal,TimeSinceLastReceive
   Serial_char('A');
   Serial_csv();
-  Serial.print(_crcOk, DEC);
+  Serial.print(1023, DEC);  // battery level
   Serial_csv();
-  Serial_char('0');  
+  Serial.print(_crcOk, DEC); // signal
+  Serial_csv();
+  Serial_char('0');   // last update
 
   unsigned long m = millis();  
   for (unsigned char idx=0; idx<RF_SOURCE_COUNT; ++idx)
@@ -142,6 +143,8 @@ void RFManager::status(void)
       continue;
     Serial_csv();
     Serial_char('A' + _sources[idx].getId() - 1);
+    Serial_csv();
+    Serial.print(_sources[idx].getBatteryLevel(), DEC);
     Serial_csv();
     Serial.print(_sources[idx].getSignalLevel(), DEC);
     Serial_csv();

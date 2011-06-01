@@ -3,6 +3,8 @@
 
 #include <RF12.h>
 
+#define RFSOURCEID_NONE 0
+
 #define RF_PINS_PER_SOURCE 4
 #define RF_SOURCE_COUNT 4
 
@@ -22,7 +24,7 @@ class RFSource
   unsigned char _id;
   unsigned long _lastReceive;
   unsigned char _nextSeq;
-  boolean _lowBattery;
+  unsigned int _batteryLevel;
   unsigned char _signalLevel;
   
 public:
@@ -32,15 +34,14 @@ public:
   unsigned char getId(void) const { return _id; };
   void setId(unsigned char id);
   // Signal level (0-255) representing how many packets we've missed
-  unsigned char getSignalLevel(void) const { return _signalLevel; };
+  unsigned char getSignalLevel(void) const;
   // Is the node indicating low battery?
-  boolean getLowBattery(void) const { return _lowBattery; };
+  unsigned int getBatteryLevel(void) const { return _batteryLevel; };
   // millis() of the last receive
   unsigned long getLastReceive(void) const { return _lastReceive; };
 
-  boolean isFree(void) const { return _id == 0; };
-  void doFree(void);
-  boolean isStale(void) const { return millis() - _lastReceive > RF_STALE_TIME; };
+  boolean isFree(void) const { return _id == RFSOURCEID_NONE; };
+  boolean isStale(void) const { return (millis() - _lastReceive) > RF_STALE_TIME; };
   
   void update(struct __rfm12_probe_update_hdr *hdr, unsigned char len);
 
