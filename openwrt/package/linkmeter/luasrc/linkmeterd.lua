@@ -57,7 +57,7 @@ function jsonWrite(vals)
   for i,src in ipairs(rfMap) do
     local rfval
     if (src ~= "") then
-      rfval = ',"rf":' .. tostring(rfStatus[src] or 0)
+      rfval = ',"rf":' .. ((rfStatus[src] or {}).rssi or "0")
     else
       rfval = ''
     end
@@ -97,10 +97,12 @@ function segRfUpdate(line)
   local idx = 1
   while (idx < #vals) do
     local nodeId = vals[idx]
-    local signalLevel = vals[idx+1]
-    local lastReceive = vals[idx+2]
-    rfStatus[nodeId] = tonumber(signalLevel)
-    idx = idx + 3
+    rfStatus[nodeId] = { 
+      batt = vals[idx+1],
+      rssi = vals[idx+2],
+      last = vals[idx+3]
+    }
+    idx = idx + 4
   end
 end
 
