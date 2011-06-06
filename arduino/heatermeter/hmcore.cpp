@@ -60,7 +60,7 @@ const struct __eeprom_data {
   { 5.0f, 4.0f, 0.004f, 2.0f },  // PID constants
   false, // manual mode
   100,  // max fan speed
-  255, // lcd backlight
+  128, // lcd backlight (50%)
   {{ 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }},  // rfMap
 };
 
