@@ -3,9 +3,9 @@
 #include "rfmanager.h"
 
 struct __rfm12_probe_update_hdr {
-  unsigned char battLevel;
   unsigned char sourceId;
   unsigned char seqNo;
+  unsigned int batteryLevel;
 };
 struct __rfm12_probe_update {
   unsigned char probeIdx;
@@ -33,7 +33,7 @@ unsigned char RFSource::getSignalLevel(void) const
 
 void RFSource::update(struct __rfm12_probe_update_hdr *hdr, unsigned char len)
 {
-  _batteryLevel = hdr->battLevel;
+  _batteryLevel = hdr->batteryLevel;
   if (_lastReceive != 0)
   {
     // Signal level is just a count of how many of the past 8 packets that have been received
@@ -130,7 +130,7 @@ void RFManager::status(void)
   // the other sources, which is: Id,Signal,TimeSinceLastReceive
   Serial_char('A');
   Serial_csv();
-  Serial.print(1023, DEC);  // battery level
+  Serial.print((unsigned int)3300, DEC);  // battery level
   Serial_csv();
   Serial.print(_crcOk, DEC); // signal
   Serial_csv();
