@@ -22,33 +22,22 @@ void RFSource::setId(unsigned char id)
   memset(Values, 0, sizeof(Values));
 }
 
-unsigned char RFSource::getSignalLevel(void) const
-{
-  unsigned char retVal = 0;
-  unsigned char signal = _signalLevel;
-  while (signal--)
-    retVal = (retVal << 1) | 1;
-  return retVal;
-}
-
 void RFSource::update(struct __rfm12_probe_update_hdr *hdr, unsigned char len)
 {
   _batteryLevel = hdr->batteryLevel;
   if (_lastReceive != 0)
   {
-    // Signal level is just a count of how many of the past 8 packets that have been received
+    // _signalLevel is just a bitfield that shifts in a 1 for every packet
+    // we get in sequence, and shifts out that 1 for every packet we miss
+    // e.g. 01111111 indicates 7 of the past 8 packets received
     unsigned char seqDiff = hdr->seqNo - _nextSeq;
     if (seqDiff == 0)
     {
-      if (_signalLevel < 8) 
-        ++_signalLevel;
+      _signalLevel = (_signalLevel << 1) | 1;
     }
     else 
     {
-      if (seqDiff < _signalLevel)
-        _signalLevel -= seqDiff;
-      else
-        _signalLevel = 0;
+      _signalLevel = _signalLevel >> seqDiff;
     } 
   }  /* if have received before */
   

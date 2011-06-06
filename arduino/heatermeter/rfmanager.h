@@ -34,7 +34,7 @@ public:
   unsigned char getId(void) const { return _id; };
   void setId(unsigned char id);
   // Signal level (0-255) representing how many packets we've missed
-  unsigned char getSignalLevel(void) const;
+  unsigned char getSignalLevel(void) const { return _signalLevel; };
   // Is the node indicating low battery?
   unsigned int getBatteryLevel(void) const { return _batteryLevel; };
   // millis() of the last receive
