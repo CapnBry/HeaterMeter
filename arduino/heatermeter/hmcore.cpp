@@ -26,9 +26,6 @@ GrillPid pid(PIN_BLOWER);
 
 ShiftRegLCD lcd(PIN_LCD_DATA, PIN_LCD_CLK, TWO_WIRE, 2); 
 
-#ifdef HEATERMETER_RFM12
-static RFManager rfmanager(PIN_WIRELESS_LED);
-#endif /* HEATERMETER_RFM12 */
 #ifdef HEATERMETER_NETWORKING
 static boolean g_NetworkInitialized;
 #endif /* HEATERMETER_NETWORKING */
@@ -36,8 +33,9 @@ static boolean g_NetworkInitialized;
 static char g_SerialBuff[64]; 
 #endif /* HEATERMETER_SERIAL */
 #ifdef HEATERMETER_RFM12
+static RFManager rfmanager(PIN_WIRELESS_LED);
 static rfm12_map_item_t rfMap[TEMP_COUNT];
-#endif /* HEATERMETER_SERIAL */
+#endif /* HEATERMETER_RFM12 */
 
 #define config_store_byte(eeprom_field, src) { eeprom_write_byte((uint8_t *)offsetof(__eeprom_data, eeprom_field), src); }
 #define config_store_word(eeprom_field, src) { eeprom_write_word((uint16_t *)offsetof(__eeprom_data, eeprom_field), src); }
