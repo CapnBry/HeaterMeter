@@ -108,7 +108,7 @@ void newReadAvailable(void)
     hdr->batteryLevel = 3300;
 
   // Send all values regardless of if they've changed or not
-  struct __rfm12_probe_update *up = (struct __rfm12_probe_update *)&outbuf[sizeof(struct __rfm12_probe_update_hdr)];
+  struct __rfm12_probe_update *up = (struct __rfm12_probe_update *)&hdr[1];
   for (unsigned char pin=0; pin < RF_PINS_PER_SOURCE; ++pin)
   {
     // If the pin is not enabled, skip it
@@ -124,7 +124,10 @@ void newReadAvailable(void)
   while (!rf12_canSend())
     rf12_doWork();
   
-  rf12_sendStart(1, outbuf, sizeof(outbuf));
+  // Hacky way to determine how much to send is see where our buffer pointer 
+  // compared to from the start of the buffer
+  unsigned char len = (unsigned int)up - (unsigned int)outbuf;
+  rf12_sendStart(1, outbuf, len);
   rf12_sendWait(1);
   rf12_sleep(RF12_SLEEP);
   digitalWrite(_pinLedTx, LOW);
