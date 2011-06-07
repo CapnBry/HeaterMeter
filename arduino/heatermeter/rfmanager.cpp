@@ -50,7 +50,7 @@ void RFSource::update(struct __rfm12_probe_update_hdr *hdr, unsigned char len)
   {
     Values[probe->probeIdx] = probe->adcValue;
     len -= sizeof(struct __rfm12_probe_update);
-    //Serial.print("RFM "); Serial.print(probe->probeIdx, DEC); Serial.print(" "); Serial.print(probe->adcValue, DEC); Serial_nl();
+    //print_P(PSTR("RFM ")); Serial.print(probe->probeIdx, DEC); Serial_char(' '); Serial.print(probe->adcValue, DEC); Serial_nl();
     ++probe;
   }  /* while len */
 }

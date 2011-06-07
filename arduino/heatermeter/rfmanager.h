@@ -12,7 +12,7 @@
 // This should be large enough to allow the remote node to sleep, but short enough
 // that the sequence number can't roll without being detected
 // i.e. this value should be under MIN_TRANSMIT_PERIOD * 255 * 1000
-#define RF_STALE_TIME (3 * 60 * 1000)
+#define RF_STALE_TIME (3 * 60 * 1000L)
 
 typedef struct tagRFMapItem {
   unsigned char pin: 3;
@@ -41,7 +41,7 @@ public:
   unsigned long getLastReceive(void) const { return _lastReceive; };
 
   boolean isFree(void) const { return _id == RFSOURCEID_NONE; };
-  boolean isStale(void) const { return (millis() - _lastReceive) > RF_STALE_TIME; };
+  boolean isStale(void) const { return !isFree() && ((millis() - _lastReceive) > RF_STALE_TIME); };
   
   void update(struct __rfm12_probe_update_hdr *hdr, unsigned char len);
 
