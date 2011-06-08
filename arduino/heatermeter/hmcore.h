@@ -24,7 +24,7 @@ extern "C" {
 #define PIN_FOOD1   4       // 27
 #define PIN_FOOD2   3       // 26
 #define PIN_AMB     2       // 25
-#define PIN_BUTTONS 0       // 24
+#define PIN_BUTTONS 0       // 23
 // Digital Output Pins
 #define PIN_SERIALRX     0  // 2 Can not be changed
 #define PIN_SERIALTX     1  // 3 Can not be changed
