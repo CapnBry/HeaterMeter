@@ -28,7 +28,7 @@ extern "C" {
 // Digital Output Pins
 #define PIN_SERIALRX     0  // 2 Can not be changed
 #define PIN_SERIALTX     1  // 3 Can not be changed
-#define PIN_WIFI_INT     2  // 4
+#define PIN_INTERRUPT    2  // 4
 #define PIN_BLOWER       3  // 5
 #define PIN_LCD_CLK      4  // 6
 #define PIN_LCD_BACKLGHT 5  // 11
