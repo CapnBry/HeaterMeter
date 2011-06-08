@@ -136,7 +136,7 @@ void ShiftRegLCD::home()
 
 void ShiftRegLCD::setCursor(uint8_t col, uint8_t row)
 {
-  int row_offsets[] = { 0x00, 0x40, 0x14, 0x54 };
+  const uint8_t row_offsets[] = { 0x00, 0x40, 0x14, 0x54 };
   if ( row > _numlines )
     row = _numlines-1;    // we count rows starting w/0
   command(LCD_SETDDRAMADDR | (col + row_offsets[row]));
