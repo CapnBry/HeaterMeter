@@ -51,7 +51,9 @@ const struct __eeprom_data {
   boolean manualMode;
   unsigned char maxFanSpeed;  // in percent
   unsigned char lcdBacklight; // in PWM (max 255)
+#ifdef HEATERMETER_RFM12
   rfm12_map_item_t rfMap[TEMP_COUNT];
+#endif
 } DEFAULT_CONFIG PROGMEM = { 
   EEPROM_MAGIC,  // magic
   225,  // setpoint
@@ -61,7 +63,9 @@ const struct __eeprom_data {
   false, // manual mode
   100,  // max fan speed
   128, // lcd backlight (50%)
+#ifdef HEATERMETER_RFM12
   {{ 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }},  // rfMap
+#endif
 };
 
 // EEPROM address of the start of the probe structs, the 2 bytes before are magic
@@ -208,6 +212,7 @@ void storeLcdBacklight(unsigned char lcdBacklight)
   config_store_byte(lcdBacklight, lcdBacklight);
 }
 
+#ifdef HEATERMETER_RFM12
 void storeRfMap(char *vals)
 {
   // vals should be 3 characters each, back to back
@@ -261,6 +266,7 @@ void reportRfMap(void)
   }
   Serial_nl();
 }
+#endif /* HEATERMETER_RFM12 */
 
 void updateDisplay(void)
 {
@@ -420,12 +426,14 @@ boolean handleCommandUrl(char *URL)
     storeProbeCoeff(URL[6] - '0', URL + 8);
     return true;
   }
+#ifdef HEATERMETER_RFM12
   if (strncmp_P(URL, PSTR("set?rm"), 6) == 0 and urlLen > 6) 
   {
     storeRfMap(URL + 7);
     reportRfMap();
     return true;
   }
+#endif /* HEATERMETER_RFM12 */
   if (strncmp_P(URL, PSTR("reboot"), 5) == 0)
   {
     reboot();
@@ -585,7 +593,10 @@ void eepromLoadBaseConfig(boolean forceDefault)
     pid.setFanSpeed(0);
   pid.MaxFanSpeed = config.maxFanSpeed;
   setLcdBacklight(config.lcdBacklight);
+  
+#ifdef HEATERMETER_RFM12
   memcpy(rfMap, config.rfMap, sizeof(rfMap));
+#endif
 }
 
 void eepromLoadProbeConfig(boolean forceDefault)
@@ -680,9 +691,9 @@ inline void dflashInit(void)
 #ifdef DFLASH_SERVING
   // Set the WiFi Slave Select to HIGH (disable) to
   // prevent it from interferring with the dflash init
-  pinMode(PIN_WIFI_SS, OUTPUT);
-  digitalWrite(PIN_WIFI_SS, HIGH);
-  dflash.init(PIN_DATAFLASH_SS);
+  pinMode(PIN_SPI_SS, OUTPUT);
+  digitalWrite(PIN_SPI_SS, HIGH);
+  dflash.init(PIN_SOFTRESET);  // actually DATAFLASH_SS
 #endif  /* DFLASH_SERVING */
 }
 
@@ -710,7 +721,7 @@ void hmcoreSetup(void)
 
 #ifdef HEATERMETER_RFM12
   rfmanager.init(HEATERMETER_RFM12);
-#endif /* HEATERMETER_RFM12 */
+#endif
 
 #ifdef HEATERMETER_NETWORKING
   dflashInit();
