@@ -10,6 +10,9 @@
 <script language="javascript" type="text/javascript" src="js/jquery.flot.selection.min.js"></script>
 <!-- <script language="javascript" type="text/javascript" src="js/jquery.flot.crosshair.min.js"></script> -->
 <script language="javascript" type="text/javascript">
+var lastPlot;
+var lastOverviewPlot;
+
 var inputMap = [-1,2,3,4,5,6,0];
 var graphLoaded = false;
 var graphData =  [
@@ -32,7 +35,7 @@ var graphData =  [
         xaxis: { show: true, mode: "time", color: "#ccc" },
         yaxis: { show: true, ticks: 10, color: "#ccc" },
         yaxes: [ { }, { position: "right", min: 0, max: 100 } ],
-        grid: { clickable: true }
+        grid: { clickable: true, hoverable: true }
     };
     var graphOpts2 = {
         legend: { show: false },
@@ -58,6 +61,7 @@ $(document).ready(function()
     $("#graphtt").click(function (){ $(this).fadeOut(); });
     $("#rangeselect").change(refreshGraphData);
     $("#graph").bind("plotclick", graphClicked);
+    $("#graph").bind("plothover", graphHover);
 
     // Set colors of probe readings to match the graph colors
     for (var srs=0; srs<4; ++srs)
@@ -161,9 +165,22 @@ function lerp(n1, n2, frac)
     return (n1 * (1.0 - frac)) + (n2 * frac);
 }
 
+var lastHover = 0;
+function graphHover(event, pos, item)
+{
+  var now = +new Date();
+  if (now - lastHover > 100)
+  {
+      graphClicked(event, pos, item); 
+      lastHover = now;
+  }
+}
+
 function graphClicked(event, pos, item)
 {
     var sInfo = "";
+    var srsClosestY = -1;
+    var srsClosestYIdx;
     for (var srs=0; srs<graphData.length; ++srs)
     {
         // Skip the lid series
@@ -179,6 +196,7 @@ function graphClicked(event, pos, item)
             if (pos.x <= srsData[i][0]  && !isNaN(srsData[i][1]))
             {
                 firstPastIdx = i;
+               
                 break;
             }
         }
@@ -206,14 +224,34 @@ function graphClicked(event, pos, item)
                 if (val >= 0)
                     sInfo = sInfo + "Fan " + Math.round(val) + "%<br/>";
             }
-            else
+            else 
+            {
                 sInfo = sInfo + graphData[srs].label + " " + val.toFixed(1) + "&deg;<br/>";
+
+                // Save the series with the closest Y point to where the mouse is 
+                if (srsClosestY == -1 ||
+                    Math.abs(srsData[firstPastIdx][1] - pos.y) < 
+                    Math.abs(graphData[srsClosestY].data[srsClosestYIdx][1] - pos.y))
+                {
+                    srsClosestY = srs;
+                    srsClosestYIdx = firstPastIdx;
+                }
+            }
+                  
     }  /* for srs */
     
     if (sInfo == "")
         $("#graphtt").fadeOut();
     else
     {
+        if (srsClosestY != -1)
+        {
+            var axisY = lastPlot.getYAxes()[0];
+            var valY = graphData[srsClosestY].data[srsClosestYIdx][1];
+            pos.pageY = axisY.p2c(valY) + 
+                lastPlot.offset().top + lastPlot.getPlotOffset().top;
+        }
+        
         var d = new Date(pos.x);
         $("#graphtt_title").html(formatTime(d, false));
         $("#graphtt_content").html(sInfo);
@@ -247,7 +285,6 @@ function addGraphPoint(d, time, temp)
     d.push([time, temp]);
 }
 
-var lastOverviewPlot;
 function updateGraph()
 {
     // we want to save the selected area, and if the selection is to the
@@ -269,7 +306,7 @@ function updateGraph()
 
     // if we extended selection then it would have been redrawn by the event
     if (!extendSelection)
-        $.plot($("#graph"), graphData, graphOpts);
+        lastPlot = $.plot($("#graph"), graphData, graphOpts);
 }
 
 function addFanGraphPoint(time, value)
