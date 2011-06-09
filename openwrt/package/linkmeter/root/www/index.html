@@ -151,6 +151,11 @@ function formatTime(date, includeSeconds)
         return $.plot.formatDate(date, "%h:%M %P");
 }
 
+function formatDate(date)
+{
+    return $.plot.formatDate(date, "%y %b %d, %h:%M %P");
+}
+
 function lerp(n1, n2, frac)
 {
     return (n1 * (1.0 - frac)) + (n2 * frac);
@@ -450,7 +455,8 @@ function updateTime(time)
 
     $("#updatedtime")
     .html(formatTime(date, true))
-    .css("color", color);
+    .css("color", color)
+    .attr("title", formatDate(date));
 }
 
 function degPerHour()
