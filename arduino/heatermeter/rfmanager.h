@@ -14,10 +14,23 @@
 // i.e. this value should be under MIN_TRANSMIT_PERIOD * 255 * 1000
 #define RF_STALE_TIME (3 * 60 * 1000L)
 
-typedef struct tagRFMapItem {
+typedef struct tagRf12MapItem 
+{
   unsigned char pin: 3;
   unsigned char source: 5;
-} rfm12_map_item_t;
+} rf12_map_item_t;
+
+typedef struct tagRf12ProbeUpdateHdr 
+{
+  unsigned char seqNo;
+  unsigned int batteryLevel;
+} rf12_probe_update_hdr_t;
+
+typedef struct tagRf12ProbeUpdate 
+{
+  unsigned char probeIdx: 6;
+  unsigned int adcValue: 10;
+} rf12_probe_update_t;
 
 class RFSource
 {
@@ -43,7 +56,7 @@ public:
   boolean isFree(void) const { return _id == RFSOURCEID_NONE; };
   boolean isStale(void) const { return !isFree() && ((millis() - _lastReceive) > RF_STALE_TIME); };
   
-  void update(struct __rfm12_probe_update_hdr *hdr, unsigned char len);
+  void update(rf12_probe_update_hdr_t *hdr, unsigned char len);
 
   unsigned int Values[RF_PINS_PER_SOURCE];
 };

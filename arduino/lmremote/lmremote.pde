@@ -18,16 +18,19 @@ const unsigned char _pinLedTx = 5;
 
 #define PRR_ALWAYS (_BV(PRUSART0))
 
-#define RF_PINS_PER_SOURCE 4
-struct __rfm12_probe_update_hdr {
-  unsigned char sourceId;
+#define RF_PINS_PER_SOURCE 4 
+
+typedef struct tagRf12ProbeUpdateHdr 
+{
   unsigned char seqNo;
   unsigned int batteryLevel;
-};
-struct __rfm12_probe_update {
-  unsigned char probeIdx;
-  unsigned int adcValue;
-};
+} rf12_probe_update_hdr_t;
+
+typedef struct tagRf12ProbeUpdate 
+{
+  unsigned char probeIdx: 6;
+  unsigned int adcValue: 10;
+} rf12_probe_update_t;
 
 static unsigned int _previousReads[RF_PINS_PER_SOURCE];
 static unsigned char _sameCount;
@@ -94,13 +97,12 @@ void rf12_doWork(void)
 void newReadAvailable(void)
 {
   char outbuf[
-    sizeof(struct __rfm12_probe_update_hdr) + 
-    RF_PINS_PER_SOURCE * sizeof(struct __rfm12_probe_update)
+    sizeof(rf12_probe_update_hdr_t) + 
+    RF_PINS_PER_SOURCE * sizeof(rf12_probe_update_t)
   ];
-  struct __rfm12_probe_update_hdr *hdr;
+  rf12_probe_update_hdr_t *hdr;
 
-  hdr = (struct __rfm12_probe_update_hdr *)outbuf;
-  hdr->sourceId = _rfNodeId;
+  hdr = (rf12_probe_update_hdr_t *)outbuf;
   hdr->seqNo = _seqNo++;
   if (_pinBattery != 0xff)
     hdr->batteryLevel = (unsigned long)analogRead(_pinBattery) * 3300L / 1023;
@@ -108,7 +110,7 @@ void newReadAvailable(void)
     hdr->batteryLevel = 3300;
 
   // Send all values regardless of if they've changed or not
-  struct __rfm12_probe_update *up = (struct __rfm12_probe_update *)&hdr[1];
+  rf12_probe_update_t *up = (rf12_probe_update_t *)&hdr[1];
   for (unsigned char pin=0; pin < RF_PINS_PER_SOURCE; ++pin)
   {
     // If the pin is not enabled, skip it
@@ -127,7 +129,8 @@ void newReadAvailable(void)
   // Hacky way to determine how much to send is see where our buffer pointer 
   // compared to from the start of the buffer
   unsigned char len = (unsigned int)up - (unsigned int)outbuf;
-  rf12_sendStart(1, outbuf, len);
+  // HDR is set to 0 so broadcast, no ACK requested
+  rf12_sendStart(0, outbuf, len);
   rf12_sendWait(1);
   rf12_sleep(RF12_SLEEP);
   digitalWrite(_pinLedTx, LOW);

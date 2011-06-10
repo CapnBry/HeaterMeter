@@ -2,16 +2,6 @@
 #include "strings.h"
 #include "rfmanager.h"
 
-struct __rfm12_probe_update_hdr {
-  unsigned char sourceId;
-  unsigned char seqNo;
-  unsigned int batteryLevel;
-};
-struct __rfm12_probe_update {
-  unsigned char probeIdx;
-  unsigned int adcValue;
-};
-
 void RFSource::setId(unsigned char id)
 {
   _id = id;
@@ -22,7 +12,7 @@ void RFSource::setId(unsigned char id)
   memset(Values, 0, sizeof(Values));
 }
 
-void RFSource::update(struct __rfm12_probe_update_hdr *hdr, unsigned char len)
+void RFSource::update(rf12_probe_update_hdr_t *hdr, unsigned char len)
 {
   _batteryLevel = hdr->batteryLevel;
   if (_lastReceive != 0)
@@ -44,12 +34,12 @@ void RFSource::update(struct __rfm12_probe_update_hdr *hdr, unsigned char len)
   _nextSeq = hdr->seqNo + 1;
   _lastReceive = millis();
   
-  struct __rfm12_probe_update *probe = (struct __rfm12_probe_update *)&hdr[1];
-  len -= sizeof(struct __rfm12_probe_update_hdr);
-  while (len >= sizeof(struct __rfm12_probe_update))
+  rf12_probe_update_t *probe = (rf12_probe_update_t *)&hdr[1];
+  len -= sizeof(rf12_probe_update_hdr_t);
+  while (len >= sizeof(rf12_probe_update_t))
   {
     Values[probe->probeIdx] = probe->adcValue;
-    len -= sizeof(struct __rfm12_probe_update);
+    len -= sizeof(rf12_probe_update_t);
     //print_P(PSTR("RFM ")); Serial.print(probe->probeIdx, DEC); Serial_char(' '); Serial.print(probe->adcValue, DEC); Serial_nl();
     ++probe;
   }  /* while len */
@@ -151,14 +141,20 @@ boolean RFManager::doWork(void)
   {
     if (_rxLed >= 0)
       digitalWrite(_rxLed, HIGH);
-    if ((rf12_crc == 0) && (rf12_len >= sizeof(__rfm12_probe_update_hdr)))
+    if ((rf12_crc == 0) && (rf12_len >= sizeof(rf12_probe_update_hdr_t)))
     {  
       if (_crcOk < 0xff) 
         ++_crcOk;
-      struct __rfm12_probe_update_hdr *hdr = (struct __rfm12_probe_update_hdr *)rf12_data;
-      char src = forceSourceIdx(hdr->sourceId);
-      if (src != -1)
-        _sources[src].update(hdr, rf12_len);
+        
+      // If this is a broadcast Iit should be a probe update
+      if ((rf12_hdr & RF12_HDR_DST) != 0)
+      {
+        rf12_probe_update_hdr_t *hdr = (rf12_probe_update_hdr_t *)rf12_data;
+        //Serial.print(rf12_hdr, HEX); Serial_nl();
+        char src = forceSourceIdx(rf12_hdr & RF12_HDR_MASK);
+        if (src != -1)
+          _sources[src].update(hdr, rf12_len);
+      }  /* if broadcast */
     }  /* if crc ok */
     else if (_crcOk > 0) 
       --_crcOk;
