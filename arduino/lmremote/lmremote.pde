@@ -7,7 +7,7 @@ const unsigned char _rfNodeId = 2;
 // RFM12B band RF12_433MHZ, RF12_868MHZ, RF12_915MHZ
 const unsigned char _rfBand = RF12_915MHZ;
 // How long to sleep between probe measurments, in seconds
-const unsigned char _sleepInterval = 4; 
+const unsigned char _sleepInterval = 10; 
 // Analog pins to read, this is a bitfild. LSB is analog 0
 const unsigned char _enabledProbePins = 0xff;  
 // Analog pin connected to source power.  Set to 0xff to disable sampling
@@ -16,7 +16,7 @@ const unsigned char _pinBattery = 1;
 const unsigned char _pinLedRx = 4;
 const unsigned char _pinLedTx = 5;
 
-#define PRR_ALWAYS (_BV(PRUSART0))
+#define PRR_ALWAYS (_BV(PRUSART0) | _BV(PRTWI) | _BV(PRTIM0) | _BV(PRTIM1) | _BV(PRTIM2))
 
 #define RF_PINS_PER_SOURCE 4 
 
@@ -44,13 +44,9 @@ ISR(WDT_vect) {
 void sleep(uint8_t wdt_period) {
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 
-  // Set the watchdog to wake us up and turn on its interrupt
-  wdt_enable(wdt_period);
-  WDTCSR |= _BV(WDIE);
-
   // Disable ADC, still needs to be shutdown via PRR
   ADCSRA &= ~_BV(ADEN);
-//  PRR = PRR_ALWAYS | _BV(PRADC);
+  PRR = PRR_ALWAYS; // | _BV(PRADC);
 
   // disabling SPI means it needs to be re initialized when we come back up
   //PRR |= _BV(PRSPI);
@@ -61,6 +57,10 @@ void sleep(uint8_t wdt_period) {
   // DIDR1 DIDR0 (diable digital input registers)  
   //   these should be disabled at all times, not just sleep
   
+  // Set the watchdog to wake us up and turn on its interrupt
+  wdt_enable(wdt_period);
+  WDTCSR |= _BV(WDIE);
+
   // Turn off Brown Out Detector
   // sleep must be entered within 3 cycles of BODS being set
   MCUSR |= _BV(BODS) | _BV(BODSE);
@@ -70,10 +70,8 @@ void sleep(uint8_t wdt_period) {
   sleep_mode();
   
   // Back from sleep
-  wdt_disable();
-  WDTCSR &= ~_BV(WDIE);
   ADCSRA |= _BV(ADEN);
-//  PRR = PRR_ALWAYS;
+  //PRR = PRR_ALWAYS;
 }
 
 void sleepSeconds(unsigned char secs)
@@ -165,7 +163,6 @@ void setup(void)
   //Serial.begin(115200);
   memset(_previousReads, 0xff, sizeof(_previousReads));
   
-  //PRR = PRR_ALWAYS; 
   rf12_initialize(_rfNodeId, _rfBand);
 
   pinMode(_pinLedRx, OUTPUT);
