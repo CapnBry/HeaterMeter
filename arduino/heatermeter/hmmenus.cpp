@@ -1,3 +1,4 @@
+// HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net> 
 #include "hmcore.h"
 #include "grillpid.h"
 #include "strings.h"

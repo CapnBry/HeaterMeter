@@ -1,3 +1,4 @@
+// HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net> 
 #ifndef __HMMENUS_H__
 #define __HMMENUS_H__
 

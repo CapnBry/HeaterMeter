@@ -1,4 +1,4 @@
-# Copyright (c) 2011 Bryan Mayland
+# Copyright 2011 Bryan Mayland <bmayland@capnbry.net>
 
 include $(TOPDIR)/rules.mk
 
@@ -13,7 +13,7 @@ define Package/linkmeter
 	SECTION:=utils
 	CATEGORY:=Utilities
 	DEPENDS:=+uhttpd +rrdtool +avrdude
-        PKG_BUILD_DEPENDS:=+libdaemon
+    PKG_BUILD_DEPENDS:=+libdaemon
 	TITLE:=LinkMeter BBQ Controller
 	URL:=http://tvwbb.com/eve/forums/a/tpc/f/9270072103/m/7691098906
 	MAINTAINER:=Bryan Mayland <capnbry@gmail.com>

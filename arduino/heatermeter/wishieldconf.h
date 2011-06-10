@@ -1,3 +1,4 @@
+// HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net>
 #ifndef __WISHIELDCONF_H__
 #define __WISHIELDCONF_H__
 
@@ -41,3 +42,4 @@ unsigned char security_passphrase_len;
 #endif
 
 #endif  /* __WISHIELDCONF_H__ */
+

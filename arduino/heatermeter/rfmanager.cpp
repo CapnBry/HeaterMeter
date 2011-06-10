@@ -1,3 +1,4 @@
+// HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net> 
 #include <WProgram.h>
 #include "strings.h"
 #include "rfmanager.h"

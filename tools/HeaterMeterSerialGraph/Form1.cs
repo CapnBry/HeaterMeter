@@ -1,4 +1,5 @@
-﻿using System;
+﻿// HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net> 
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;

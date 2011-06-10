@@ -1,3 +1,4 @@
+// HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net> 
 #ifndef __GRILLPID_H__
 #define __GRILLPID_H__
 

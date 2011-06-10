@@ -1,3 +1,4 @@
+// HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net> 
 #ifndef __HMCORE_H__
 #define __HMCORE_H__
 
