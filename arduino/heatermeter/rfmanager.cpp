@@ -148,7 +148,7 @@ boolean RFManager::doWork(void)
         ++_crcOk;
         
       // If this is a broadcast Iit should be a probe update
-      if ((rf12_hdr & RF12_HDR_DST) != 0)
+      if ((rf12_hdr & RF12_HDR_DST) == 0)
       {
         rf12_probe_update_hdr_t *hdr = (rf12_probe_update_hdr_t *)rf12_data;
         //Serial.print(rf12_hdr, HEX); Serial_nl();
