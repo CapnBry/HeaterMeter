@@ -60,6 +60,9 @@ public:
            reached or passed the high/low bound
   SILENCED: The alarm has failed the check and is ringing,
            but the user has requested the alarm stop notifying
+  NOTIFIED: The alarm doesn't have an event that occurs the first
+           time it rings, so the application can use this bit
+           to store if that this is the first ring in this bit
   */          
   static const unsigned char NONE         = 0x00;
   static const unsigned char HIGH_ENABLED = 0x01;
