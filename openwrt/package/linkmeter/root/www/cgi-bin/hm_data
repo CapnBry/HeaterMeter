@@ -3,37 +3,6 @@
 RRD_FILE=`uci get linkmeter.daemon.rrd_file`
 RRD="/usr/bin/rrdtool"
 
-# figure out where the first non NaN value is then use
-# that to determine how much data is in the rrd
-T=`date +%s`
-
-if [ -n "$QUERY_STRING" ] ; then
-  NANCNT=$QUERY_STRING
-else
-  T120=$((T/120*120))
-  NANCNT=`$RRD fetch $RRD_FILE AVERAGE -s end-24h -e $T120 -r 180 |\
-      fgrep -m1 -n e+ | cut -d":" -f1`
-  if [ -z "$NANCNT" ] ; then
-      NANCNT=480
-  fi
-fi
-
-if [ $NANCNT -ge 460 ] ; then
-  TD=10
-  ST="AVERAGE -s end-1hr"
-elif [ $NANCNT -ge 360 ] ; then
-  TD=60
-  ST="AVERAGE -s end-6hr"
-elif [ $NANCNT -ge 240 ] ; then
-  TD=120
-  ST="AVERAGE -s end-12hr"
-else
-  TD=180
-  ST="AVERAGE -s end-24hr"
-fi
-
-T=$((T/TD*TD))
-
 if [ ! -f "$RRD_FILE" ] ; then 
     echo Status: 503 Database Unavailable
     echo Content-Type: text/plain
@@ -42,8 +11,56 @@ if [ ! -f "$RRD_FILE" ] ; then
     exit
 fi
 
+if [ -n "$QUERY_STRING" ] ; then
+  NANCNT=$QUERY_STRING
+else
+  # RRD will spit out the least precise data it has
+  # Find the first non NaN value is then use
+  # that to determine how much data is in the rrd
+  NANCNT=`$RRD fetch $RRD_FILE AVERAGE |\
+      fgrep -m1 -n e+ | cut -d":" -f1`
+  if [ -z "$NANCNT" ] ; then
+      NANCNT=480
+  fi
+fi
+
+if [ $NANCNT -ge 460 ] ; then
+  # 1hr of 10s blocks
+  TD=10
+  SOFF=3600
+elif [ $NANCNT -ge 360 ] ; then
+  # 6hr of 60s blocks
+  TD=60
+  SOFF=21600
+elif [ $NANCNT -ge 240 ] ; then
+  # 12hr of 120s blocks
+  TD=120
+  SOFF=43200
+else
+  # 24hr of 180s blocks
+  TD=180
+  SOFF=86400
+fi
+
+# Make sure our end time falls on an exact previous or now time boundary
+TNOW=`date +%s`
+T=$((TNOW/TD*TD))
+ST=$((T-SOFF))
+
+# RRD always gives you one item past the end of  where you request
+# so we'll back our end time up one block to compensate. In addition,
+# if it just started a block this second you'll get a second blank record.
+# This attempts to adjust the start and end to get all the rows, no blanks.
+if [ $T -eq $TNOW ] ; then
+  T=$((T-TD-TD))
+  ST=$((ST-TD))
+else
+  T=$((T-TD))
+fi
+
 echo Content-Type: text/plain
 echo Cache-Control: no-cache
 echo
 
-$RRD fetch $RRD_FILE $ST -r $TD -e $T
+# echo $TNOW e$T s$ST r$TD
+$RRD fetch $RRD_FILE AVERAGE -r $TD -s $ST -e $T
