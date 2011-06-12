@@ -30,7 +30,7 @@ var graphData =  [
         series: {
             lines: { show: true, lineWidth: 2 },
             points: { show: false, symbol: "circle", radius: 1, fill: false },
-            shadowSize: 2
+            shadowSize: 4
         },
         xaxis: { show: true, mode: "time", color: "#ccc" },
         yaxis: { show: true, ticks: 10, color: "#ccc" },
@@ -257,7 +257,7 @@ function graphClicked(event, pos, item)
         $("#graphtt_content").html(sInfo);
         $("#graphtt")
             .css({left: pos.pageX + 9, top: pos.pageY - 14})
-            .fadeIn();
+            .show();
     }
 }
 
