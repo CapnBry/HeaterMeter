@@ -50,6 +50,7 @@ local JSON_FROM_CSV = {2, 4, 14, 19, 24, 29, 8, 10, 6 }
 function jsonWrite(vals)
   local i,v
   for i,v in ipairs(vals) do
+    if (tonumber(v) == nil) then v = "null" end
     JSON_TEMPLATE[JSON_FROM_CSV[i]] = v  
   end
   
