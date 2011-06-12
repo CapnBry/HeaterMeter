@@ -149,11 +149,11 @@ state_t menuHome(button_t button)
   {
     if (Menus.State != ST_HOME_NOPROBES && !pid.isAnyFoodProbeActive())
       return ST_HOME_NOPROBES;
-    else if (Menus.State == ST_HOME_FOOD1 && pid.Probes[TEMP_FOOD1]->Temperature == 0)
+    else if (Menus.State == ST_HOME_FOOD1 && !pid.Probes[TEMP_FOOD1]->hasTemperature())
       return ST_HOME_FOOD2;
-    else if (Menus.State == ST_HOME_FOOD2 && pid.Probes[TEMP_FOOD2]->Temperature == 0)
+    else if (Menus.State == ST_HOME_FOOD2 && !pid.Probes[TEMP_FOOD2]->hasTemperature())
       return ST_HOME_AMB;
-    else if (Menus.State == ST_HOME_AMB && pid.Probes[TEMP_AMB]->Temperature == 0)
+    else if (Menus.State == ST_HOME_AMB && !pid.Probes[TEMP_AMB]->hasTemperature())
       return ST_HOME_FOOD1;
         
     updateDisplay();

@@ -89,9 +89,7 @@ private:
   unsigned char _probeType;  
   
 public:
-  TempProbe(const unsigned char pin) : 
-    _pin(pin), TemperatureAvg(-1.0f)
-    {};
+  TempProbe(const unsigned char pin);
 
   /* Configuration */  
   // Probe Type
@@ -109,8 +107,10 @@ public:
   /* Runtime Data/Methods */
   // Last averaged temperature reading
   float Temperature;
+  boolean hasTemperature(void) const;
   // Temperature moving average 
   float TemperatureAvg;
+  boolean hasTemperatureAvg(void) const;
   // Do the duty of reading ADC
   void readTemp(void);
   // Convert ADC to Temperature
@@ -142,10 +142,7 @@ private:
   void commitFanSpeed(void);
 public:
   float _pidErrorSum;
-  GrillPid(const unsigned char blowerPin) : 
-    _blowerPin(blowerPin), FanSpeedAvg(-1.0f),
-    _periodCounter(0x80)
-    {};
+  GrillPid(const unsigned char blowerPin);
   
   TempProbe *Probes[TEMP_COUNT];
   

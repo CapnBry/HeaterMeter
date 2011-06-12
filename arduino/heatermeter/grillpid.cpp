@@ -18,7 +18,7 @@
 
 void calcExpMovingAverage(const float smooth, float *currAverage, float newValue)
 {
-  if (*currAverage == -1.0f)
+  if (isnan(*currAverage))
     *currAverage = newValue;
   else
   {
@@ -65,6 +65,11 @@ boolean ProbeAlarm::getActionNeeded(void) const
     ((Status & LOW_MASK) == (LOW_ENABLED | LOW_RINGING));
 }
 
+TempProbe::TempProbe(const unsigned char pin) :
+  _pin(pin), Temperature(NAN), TemperatureAvg(NAN)
+{
+}
+
 void TempProbe::loadConfig(struct __eeprom_probe *config)
 {
   _probeType = config->probeType;
@@ -85,8 +90,18 @@ void TempProbe::setProbeType(unsigned char probeType)
   _probeType = probeType;
   _accumulator = 0;
   _accumulatedCount = 0;
-  Temperature = 0.0f;
-  TemperatureAvg = -1.0f;
+  Temperature = NAN;
+  TemperatureAvg = NAN;
+}
+
+boolean TempProbe::hasTemperature(void) const
+{
+  return !isnan(Temperature);
+}
+
+boolean TempProbe::hasTemperatureAvg(void) const
+{
+  return !isnan(TemperatureAvg);
 }
 
 void TempProbe::addAdcValue(unsigned int analog_temp)
@@ -118,7 +133,7 @@ inline void TempProbe::calcTemp(void)
   
   if ((Vout == 0) || (Vout >= (unsigned int)Vin))
   {
-    Temperature = 0.0f;
+    Temperature = NAN;
     return;
   }
   else 
@@ -136,9 +151,9 @@ inline void TempProbe::calcTemp(void)
     Temperature = ((T - 273.15f) * (9.0f / 5.0f)) + 32.0f;
     // Sanity - anything less than 0F or greater than 999F is rejected
     if (Temperature < 0.0f || Temperature > 999.0f)
-      Temperature = 0.0f;
+      Temperature = NAN;
     
-    if (Temperature != 0.0f)
+    if (!isnan(Temperature))
     {
       Temperature += Offset;
       calcExpMovingAverage(TEMPPROBE_AVG_SMOOTH, &TemperatureAvg, Temperature);
@@ -147,16 +162,23 @@ inline void TempProbe::calcTemp(void)
   } 
 }
 
+GrillPid::GrillPid(const unsigned char blowerPin) :
+    _blowerPin(blowerPin), FanSpeedAvg(NAN),
+    _periodCounter(0x80)
+{
+}
+
 /* Calucluate the desired fan speed using the proportional–integral-derivative (PID) controller algorithm */
 inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
 {
   unsigned char lastFanSpeed = _fanSpeed;
   _fanSpeed = 0;
-   
-  float currentTemp = controlProbe->Temperature;
+
   // If the pit probe is registering 0 degrees, don't jack the fan up to MAX
-  if (currentTemp == 0.0f)
+  if (!controlProbe->hasTemperature())
     return;
+
+  float currentTemp = controlProbe->Temperature;
   // If we're in lid open mode, fan should be off
   if (LidOpenResumeCountdown != 0)
     return;
@@ -212,7 +234,7 @@ boolean GrillPid::isAnyFoodProbeActive(void) const
 {
   unsigned char i;
   for (i=TEMP_FOOD1; i<TEMP_COUNT; i++)
-    if (Probes[i]->Temperature != 0.0f)
+    if (Probes[i]->hasTemperature())
       return true;
       
   return false;
@@ -250,7 +272,10 @@ void GrillPid::status(void) const
 
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
-    Serial.print(Probes[i]->Temperature, 1);
+    if (Probes[i]->hasTemperature())
+      Serial.print(Probes[i]->Temperature, 1);
+    else
+      Serial_char('U');
     Serial_csv();
   }
 

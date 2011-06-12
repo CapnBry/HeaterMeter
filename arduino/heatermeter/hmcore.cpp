@@ -493,9 +493,15 @@ void outputJson(void)
     loadProbeName(i);
     WiServer.print(editString);
     WiServer.print_P(PSTR("\",\"c\":"));
-    WiServer.print(pid.Probes[i]->Temperature, 1);
+    if (pid.Probes[i]->hasTemperature())
+      WiServer.print(pid.Probes[i]->Temperature, 1);
+    else
+      WiServer.print_P(PSTR("null"));
     WiServer.print_P(PSTR(",\"a\":"));
-    WiServer.print(pid.Probes[i]->TemperatureAvg, 2);
+    if (pid.Probes[i]->hasTemperatureAvg())
+      WiServer.print(pid.Probes[i]->TemperatureAvg, 2);
+    else
+      WiServer.print_P(PSTR("null"));
     WiServer.print_P(PSTR("},"));
   }
   
