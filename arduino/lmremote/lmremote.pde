@@ -46,7 +46,7 @@ void sleep(uint8_t wdt_period) {
 
   // Disable ADC, still needs to be shutdown via PRR
   ADCSRA &= ~_BV(ADEN);
-  PRR = PRR_ALWAYS; // | _BV(PRADC);
+  PRR = PRR_ALWAYS | _BV(PRADC);
 
   // disabling SPI means it needs to be re initialized when we come back up
   //PRR |= _BV(PRSPI);
@@ -70,8 +70,8 @@ void sleep(uint8_t wdt_period) {
   sleep_mode();
   
   // Back from sleep
+  PRR = PRR_ALWAYS;
   ADCSRA |= _BV(ADEN);
-  //PRR = PRR_ALWAYS;
 }
 
 void sleepSeconds(unsigned char secs)
