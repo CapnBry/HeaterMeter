@@ -196,7 +196,6 @@ function graphClicked(event, pos, item)
             if (pos.x <= srsData[i][0]  && !isNaN(srsData[i][1]))
             {
                 firstPastIdx = i;
-               
                 break;
             }
         }
@@ -263,12 +262,6 @@ function graphClicked(event, pos, item)
 
 function addGraphPoint(d, time, temp)
 {
-    // Only add a point if the value is nonzero
-    // the fan speed is excluded because it can
-    // have 0 values
-    if (temp == 0 && d != graphData[0].data)
-        temp = NaN;
-        
     // if the last two points have the same value as the
     // new point just update the time on the last point
     if (d.length > 1)
@@ -311,6 +304,9 @@ function updateGraph()
 
 function addFanGraphPoint(time, value)
 {
+    if (isNaN(value))
+        return;
+        
     if (value < 0)
     {
         addGraphPoint(graphData[0].data, time, 0);
@@ -331,7 +327,7 @@ function tstatSuccess(csv)
         var line = this.split(" ");
         if (line.length < 6) return;
         line[0] = line[0].replace(":", "") * 1000 + tzOffset;
-        if (isNaN(line[0]))
+        if (isNaN(line[0]) || (line[0] <= 0))
             return;
         //line[0] = line[0] * 1000 + tzOffset;
         for (var valIdx=1; valIdx<line.length; ++valIdx)
@@ -344,9 +340,6 @@ function tstatSuccess(csv)
             if (dest < 0)
                 continue;
             var value = parseFloat(line[valIdx]);
-            if (isNaN(value))
-                continue;
-                
             if (dest == 0)
                 addFanGraphPoint(line[0], value);
             else    
@@ -428,15 +421,18 @@ function connectionSuccess(o)
     for(var i = 0; i < 4; i++)
     {
         graphData[i+3].label = o.temps[i].n;
-        if (graphLoaded)
-            addGraphPoint(graphData[i+3].data, o.time, o.temps[i].c);
-
         $("#pn" + i).text(o.temps[i].n);
+
         var val = o.temps[i].c;
-        if(val == 0)
+        if (val === null)
+        {
+            val = NaN;
             $("#temp" + i).text("off");
+        }
         else
             $("#temp" + i).html(val.toFixed(1) + "&deg;");
+        if (graphLoaded)
+            addGraphPoint(graphData[i+3].data, o.time, val);
 
         var rfsDiv = "#rfs" + i;
         if (typeof o.temps[i].rf != "undefined")
@@ -510,7 +506,9 @@ function degPerHour()
     for (var i=data.length-1; i>=0; i--)
         if (data[i][0] < targetTime && !isNaN(data[i][1]))
         {
-            var diffTemp = data[data.length-1][1] - data[i][1];
+            var diffTemp = val - data[i][1];
+            if (diffTemp == 0.0)
+                continue;
             var diffTime = time - data[i][0];
             diffTime /= (60.0 * 60.0 * 1000.0);
             var dph = diffTemp / diffTime;
