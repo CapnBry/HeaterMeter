@@ -13,16 +13,17 @@
 var lastPlot;
 var lastOverviewPlot;
 
-var inputMap = [-1,2,3,4,5,6,0];
+// mapJson translates the json temps array index to graphData index
+var mapJson = [6,5,4,3];
 var graphLoaded = false;
 var graphData =  [
         { label: "", color: "#6cf", lines: { lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // fanspeed
         { label: "", color: "#fd9", lines: { lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // lidopen
         { label: "Set", color: "rgba(255,0,0,0.8)", lines: { lineWidth: 1 }, shadowSize: 0, data: [] },
-        { label: "Pit", color: "#e73", lines: { lineWidth: 3 }, data: [] },
-        { label: "Food1", color: "#6c3", data: [] },
+        { label: "Amb", color: "#789", data: [] },
         { label: "Food2", color: "#297", data: [] },
-        { label: "Amb", color: "#789", data: [] }
+        { label: "Food1", color: "#6c3", data: [] },
+        { label: "Pit", color: "#e73", lines: { lineWidth: 3 }, data: [] }
     ];
 
     var graphOpts = {
@@ -65,9 +66,9 @@ $(document).ready(function()
 
     // Set colors of probe readings to match the graph colors
     for (var srs=0; srs<4; ++srs)
-        $("#temp" + srs).css("text-shadow", "2px 2px 1px " + graphData[srs+3].color);
+        $("#temp" + srs).css("text-shadow", "2px 2px 1px " + graphData[mapJson[srs]].color);
     for (var srs=1; srs<4; ++srs)
-        $("#pl" + srs).css("background", graphData[srs+3].color);
+        $("#pl" + srs).css("background", graphData[mapJson[srs]].color);
 
     // do an initial query
     JSONQuery();
@@ -221,11 +222,11 @@ function graphClicked(event, pos, item)
             if (srs == 0)
             {
                 if (val >= 0)
-                    sInfo = sInfo + "Fan " + Math.round(val) + "%<br/>";
+                    sInfo = sInfo + "Fan " + Math.round(val) + "%<br />";
             }
             else 
             {
-                sInfo = sInfo + graphData[srs].label + " " + val.toFixed(1) + "&deg;<br/>";
+                sInfo = sInfo + graphData[srs].label + " " + val.toFixed(1) + "&deg;<br />";
 
                 // Save the series with the closest Y point to where the mouse is 
                 if (srsClosestY == -1 ||
@@ -321,22 +322,19 @@ function addFanGraphPoint(time, value)
 
 function tstatSuccess(csv)
 {
+    // mapCsv translates csv field index to graphData index
+    // a graphData index of -1 means not to map it
+    var mapCsv = [-1,2,6,5,4,3,0];
+    
     clearLoadingIndic();
     jQuery.each(csv.split('\n'), function (){
         if (this == "") return;
         var line = this.split(" ");
-        if (line.length < 6) return;
+        if (line.length != mapCsv.length) return;
         line[0] = line[0].replace(":", "") * 1000 + tzOffset;
-        if (isNaN(line[0]) || (line[0] <= 0))
-            return;
-        //line[0] = line[0] * 1000 + tzOffset;
         for (var valIdx=1; valIdx<line.length; ++valIdx)
         {
-            if (valIdx >= inputMap.length)
-                return;
-            // inputMap translates csv field index to graphData index
-            // a graphdata index of -1 means not to map it
-            var dest = inputMap[valIdx];
+            var dest = mapCsv[valIdx];
             if (dest < 0)
                 continue;
             var value = parseFloat(line[valIdx]);
@@ -420,9 +418,7 @@ function connectionSuccess(o)
 
     for(var i = 0; i < 4; i++)
     {
-        graphData[i+3].label = o.temps[i].n;
         $("#pn" + i).text(o.temps[i].n);
-
         var val = o.temps[i].c;
         if (val === null)
         {
@@ -431,11 +427,16 @@ function connectionSuccess(o)
         }
         else
             $("#temp" + i).html(val.toFixed(1) + "&deg;");
+        
         if (graphLoaded)
-            addGraphPoint(graphData[i+3].data, o.time, val);
+        {
+            var dataIdx = mapJson[i];
+            graphData[dataIdx].label = o.temps[i].n;
+            addGraphPoint(graphData[dataIdx].data, o.time, val);
+        }
 
         var rfsDiv = "#rfs" + i;
-        if (typeof o.temps[i].rf != "undefined")
+        if (typeof o.temps[i].rf !== "undefined")
         {
             var rf = o.temps[i].rf;
             var img;
@@ -494,7 +495,7 @@ function updateTime(time)
 
 function degPerHour()
 {
-    var data = graphData[4].data;
+    var data = graphData[mapJson[1]].data;
     if (data.length == 0)
         return;
     var val = data[data.length-1][1];
@@ -513,10 +514,10 @@ function degPerHour()
             diffTime /= (60.0 * 60.0 * 1000.0);
             var dph = diffTemp / diffTime;
             var timeRemain180 = ((180.0 - val) / dph) * 60;
-            timeRemain180 = (timeRemain180 > 0) ? timeRemain180.toFixed(0) + "m to 180&deg;<br/>" : "";
+            timeRemain180 = (timeRemain180 > 0) ? timeRemain180.toFixed(0) + "m to 180&deg;<br />" : "";
             var timeRemain200 = ((200.0 - val) / dph) * 60;
             timeRemain200 = (timeRemain200 > 0) ? timeRemain200.toFixed(0) + "m to 200&deg;" : "";
-            $("#dph1").html(diffTemp.toFixed(1) + "&deg;/hr<br/>" + timeRemain180 + timeRemain200).show();
+            $("#dph1").html(diffTemp.toFixed(1) + "&deg;/hr<br />" + timeRemain180 + timeRemain200).show();
             return;
         }
     $("#dph1").hide();
