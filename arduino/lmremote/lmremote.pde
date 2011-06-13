@@ -16,8 +16,6 @@ const unsigned char _pinBattery = 1;
 const unsigned char _pinLedRx = 4;
 const unsigned char _pinLedTx = 5;
 
-#define PRR_ALWAYS (_BV(PRUSART0) | _BV(PRTWI) | _BV(PRTIM0) | _BV(PRTIM1) | _BV(PRTIM2))
-
 #define RF_PINS_PER_SOURCE 4 
 
 typedef struct tagRf12ProbeUpdateHdr 
@@ -45,33 +43,30 @@ void sleep(uint8_t wdt_period) {
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 
   // Disable ADC, still needs to be shutdown via PRR
-  ADCSRA &= ~_BV(ADEN);
-  PRR = PRR_ALWAYS | _BV(PRADC);
+  ADCSRA &= ~bit(ADEN);
 
-  // disabling SPI means it needs to be re initialized when we come back up
-  //PRR |= _BV(PRSPI);
-  // TODO: Figure out what else from PRR I can safely disable
+  // TODO: Figure out what else I can safely disable
   // Disable analog comparator to
   // Internal Voltage Reference? 
   //   When turned on again, the user must allow the reference to start up before the output is used. 
-  // DIDR1 DIDR0 (diable digital input registers)  
   //   these should be disabled at all times, not just sleep
   
   // Set the watchdog to wake us up and turn on its interrupt
   wdt_enable(wdt_period);
-  WDTCSR |= _BV(WDIE);
+  WDTCSR |= bit(WDIE);
 
   // Turn off Brown Out Detector
   // sleep must be entered within 3 cycles of BODS being set
-  MCUSR |= _BV(BODS) | _BV(BODSE);
-  MCUSR &= ~_BV(BODSE);  
+  sleep_enable();
+  MCUCR = MCUCR | bit(BODSE) | bit(BODS);
+  MCUCR = MCUCR & ~bit(BODSE) | bit(BODS);
   
   // Sleep
-  sleep_mode();
+  sleep_cpu();
   
   // Back from sleep
-  PRR = PRR_ALWAYS;
-  ADCSRA |= _BV(ADEN);
+  sleep_disable();
+  ADCSRA |= bit(ADEN);
 }
 
 void sleepSeconds(unsigned char secs)
@@ -167,6 +162,12 @@ void setup(void)
 
   pinMode(_pinLedRx, OUTPUT);
   pinMode(_pinLedTx, OUTPUT);
+
+  // Turn off the units we never use (this only affects non-sleep power
+  PRR = bit(PRUSART0) | bit(PRTWI) | bit(PRTIM0) | bit(PRTIM1) | bit(PRTIM2);
+  // Disable digital input buffers on the analog in ports
+  DIDR0 = bit(ADC5D) | bit(ADC4D) | bit(ADC3D) | bit(ADC2D) | bit(ADC1D) | bit(ADC0D);
+  DIDR1 = bit(AIN1D) | bit(AIN0D);
 }
 
 void loop(void)
