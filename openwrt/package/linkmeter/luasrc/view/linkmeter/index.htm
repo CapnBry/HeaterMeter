@@ -1,14 +1,13 @@
 <!doctype html public "-//W3C//DTD HTML 4.0//EN">
 <html>
 <head>
-<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/x-icon" href="<%=resource%>/favicon.ico">
 <title>HeaterMeter BBQ Control</title>
-<script language="javascript" src="js/jquery.min.js" type="text/javascript"></script>
-<script language="javascript" src="js/jquery.jeditable.mini.js" type="text/javascript"></script>
-<!--[if lte IE 8]><script language="javascript" type="text/javascript" src="js/excanvas.min.js"></script><![endif]-->
-<script language="javascript" type="text/javascript" src="js/jquery.flot.min.js"></script>
-<script language="javascript" type="text/javascript" src="js/jquery.flot.selection.min.js"></script>
-<!-- <script language="javascript" type="text/javascript" src="js/jquery.flot.crosshair.min.js"></script> -->
+<script language="javascript" src="<%=resource%>/js/jquery.min.js" type="text/javascript"></script>
+<script language="javascript" src="<%=resource%>/js/jquery.jeditable.mini.js" type="text/javascript"></script>
+<!--[if lte IE 8]><script language="javascript" type="text/javascript" src="<%=resource%>/js/excanvas.min.js"></script><![endif]-->
+<script language="javascript" type="text/javascript" src="<%=resource%>/js/jquery.flot.min.js"></script>
+<script language="javascript" type="text/javascript" src="<%=resource%>/js/jquery.flot.selection.min.js"></script>
 <script language="javascript" type="text/javascript">
 var lastPlot;
 var lastOverviewPlot;
@@ -372,8 +371,7 @@ function JSONQuery()
         jQuery.ajax(
         {
             type: "GET",
-            url: "json",
-            cache: false,
+            url: "/cgi-bin/luci/lm/json",
             dataType: "json",
             timeout: 5000,
             success: connectionSuccess,
@@ -448,7 +446,7 @@ function connectionSuccess(o)
                 img = "rf1.png";
             else
                 img = "rf0.png";
-             $(rfsDiv).html('<img src="' + img + '" title="' + 
+             $(rfsDiv).html('<img src="<%=resource%>/' + img + '" title="' + 
                (rf/2.55).toFixed(0) + '%">')
                .show();
         }
@@ -544,7 +542,7 @@ div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
 <body>
 <div style="background: #000; padding: 10px;">
     <div class="content">
-      <div style="font-family: Trebuchet MS; background: #000 url('fire.png') repeat-x scroll left bottom;"><div style="background: rgba(76,135,199,0.5);">
+      <div style="font-family: Trebuchet MS; background: #000 url('<%=resource%>/fire.png') repeat-x scroll left bottom;"><div style="background: rgba(76,135,199,0.5);">
         <div style="color: #bbb; font-size: 28pt;">Current Pit</div>
         <div id="updatedtime" style="position: absolute; top: 8px; right: 13px; color: #bbb; font-size: 12pt;">00:00:00 AM</div>
         <div id="lid" style="position: absolute; top: 8px; left: 13px; color: #fc3; font-size: 12pt;"></div>
@@ -607,12 +605,12 @@ div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
         <option value="?240">12 hours</option>
         <option value="?0">24 hours</option>
     </select>
-    <div id="loadindic" style="display: none;"><img src="loading.gif" style="width: 32px; height: 32px;"></div>
+    <div id="loadindic" style="display: none;"><img src="<%=resource%>/loading.gif" style="width: 32px; height: 32px;"></div>
 </div>
 <div id="graphtt">
     <div id="graphtt_title"></div>
     <div id="graphtt_content"></div>
-    <img src="ttarrow.png" style="position: absolute; left: -9px; top: 3px;">
+    <img src="<%=resource%>/ttarrow.png" style="position: absolute; left: -9px; top: 3px;">
 </div>
 </body>
 

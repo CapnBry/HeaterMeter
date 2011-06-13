@@ -41,17 +41,26 @@ define Package/linkmeter/install
 
 	$(CP) ./root/* $(1)/
 
+	$(INSTALL_DIR) $(1)/www
+	$(CP) ./htdocs/* $(1)/www/
+
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller/linkmeter
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/controller/linkmeter/lm.lua $(1)/usr/lib/lua/luci/controller/linkmeter/
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/linkmeter
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/view/linkmeter/index.htm $(1)/usr/lib/lua/luci/view/linkmeter/
+
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/luad $(1)/usr/sbin/
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/linkmeterd.lua $(1)/usr/sbin/
 	$(LN) -s /usr/sbin/luad $(1)/usr/sbin/linkmeterd
 
-	$(LN) /tmp/json $(1)/www/json
+	# $(LN) /tmp/json $(1)/www/json
 endef
 
 define Package/linkmeter/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
+    rm -f /tmp/luci-indexcache
     /etc/init.d/linkmeter enabled || /etc/init.d/linkmeter enable
     /etc/init.d/linkmeter start
     exit 0
@@ -65,6 +74,7 @@ define Package/linkmeter/prerm
     /etc/init.d/linkmeter enabled && /etc/init.d/linkmeter disable
     if [ -f "/tmp/hm.rrd" ] ; then rm "/tmp/hm.rrd" ; fi
     if [ -f "/tmp/json" ] ; then rm "/tmp/json" ; fi
+    rm -f /tmp/luci-indexcache
 }
 endef
 
