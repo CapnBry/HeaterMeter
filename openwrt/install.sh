@@ -1,7 +1,12 @@
 #!/bin/sh
 
 REPO_PATH=$(pwd)
-WRT_PATH="~/openwrt"
+WRT_PATH="$1"
+
+if [ -z "$WRT_PATH" ] ; then
+  echo "Usage: ./install.sh <wrt path>"
+  exit 1
+fi
 
 cat << EOFEEDS > $WRT_PATH/feeds.conf
 src-svn packages svn://svn.openwrt.org/openwrt/packages
