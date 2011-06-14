@@ -275,6 +275,10 @@ function addGraphPoint(d, time, temp)
             return;
         }
     }
+    // The RRD may start with a ton of NaN, don't put them into the graph
+    // because otherwise it makes a blank space until the first real value
+    else if (d.length == 0 && isNaN(temp))
+        return;
 
     d.push([time, temp]);
 }
