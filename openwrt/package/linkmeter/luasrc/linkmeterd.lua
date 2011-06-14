@@ -159,13 +159,6 @@ if not nixio.fs.access(RRD_FILE) then
   rrdCreate()
 end
 
--- Create json file
-if not nixio.fs.access("/www/json") then
-  if not nixio.fs.symlink(JSON_FILE, "/www/json") then
-    print("Can not create JSON file link")
-  end
-end
-
 local segmentMap = { 
   ["$HMSU"] = segStateUpdate,
   ["$HMPN"] = segProbeNames,

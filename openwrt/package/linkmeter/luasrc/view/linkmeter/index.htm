@@ -73,7 +73,7 @@ $(document).ready(function()
     JSONQuery();
     // and set to refresh every N secs
     window.setInterval(JSONQuery, 15000);
-
+<% if luci.dispatcher.context.authuser == "root" then %>
     $(".pname").editable(function(value, settings) {
         return(nameChanged(this.id, value));
     });
@@ -81,6 +81,7 @@ $(document).ready(function()
     $("#set").editable(function(value, settings) {
         return(tempChanged(value));
     }, {style: "display: inline"});
+<% end %>
 });
 
 $(window).load(function ()
@@ -350,7 +351,7 @@ function tstatSuccess(csv)
 
 function nameChanged(from, value)
 {
-    $.get("/cgi-bin/set?" + from + "=" + value);
+    $.get("<%=luci.dispatcher.build_url("lm", "set")%>?" + from + "=" + value);
     return value;
 }
 
@@ -358,7 +359,7 @@ function tempChanged(value)
 {
     if(((value - 0) == value && value.length > 0) && value > 0 && value < 999)
     {
-        $.get("/cgi-bin/set", { "sp": value} );
+        $.get("<%=luci.dispatcher.build_url("lm", "set")%>?sp=" + value);
         return value;
     }
     else return "err";
@@ -371,7 +372,7 @@ function JSONQuery()
         jQuery.ajax(
         {
             type: "GET",
-            url: "/cgi-bin/luci/lm/json",
+            url: "<%=luci.dispatcher.build_url("lm", "json")%>",
             dataType: "json",
             timeout: 5000,
             success: connectionSuccess,
@@ -612,6 +613,11 @@ div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
     <div id="graphtt_content"></div>
     <img src="<%=resource%>/ttarrow.png" style="position: absolute; left: -9px; top: 3px;">
 </div>
+<% 
+if luci.dispatcher.context.authuser ~= "root" then 
+  write("<a href=%q>Login</a>" % luci.dispatcher.build_url("lm", "login"))
+end
+%>
 </body>
 
 </html>
