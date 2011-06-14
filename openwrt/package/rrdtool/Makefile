@@ -63,10 +63,6 @@ CONFIGURE_VARS += \
 	rd_cv_null_realloc=nope \
 	ac_cv_func_mmap_fixed_mapped=yes \
 
-define Build/Compile
-	$(call Build/Compile/Default)
-endef
-
 define Build/InstallDev
 	$(INSTALL_DIR) $(1)/usr/lib/rrdtool-1.4/include
 	$(CP) $(PKG_INSTALL_DIR)/usr/include/rrd.h $(1)/usr/lib/rrdtool-1.4/include/
