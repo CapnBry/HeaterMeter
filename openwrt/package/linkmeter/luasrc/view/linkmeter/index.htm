@@ -93,7 +93,7 @@ function refreshGraphData()
 {
     var range = $("#rangeselect").val();
 
-    $("#rangeselect").hide();
+    $("#rangeselect").attr("disabled", true);
     $("#loadindic").show();
     graphLoaded = false;
 
@@ -112,7 +112,7 @@ function refreshGraphData()
 function clearLoadingIndic()
 {
     $("#loadindic").hide();
-    $("#rangeselect").show();
+    $("#rangeselect").removeAttr("disabled");
 }
 
 function showFanChanged()
