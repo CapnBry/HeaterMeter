@@ -58,7 +58,12 @@ function jsonWrite(vals)
   for i,src in ipairs(rfMap) do
     local rfval
     if (src ~= "") then
-      rfval = ',"rf":' .. ((rfStatus[src] or {}).rssi or "0")
+      local sts = rfStatus[src];
+      if sts then
+        rfval = (',"rf":{"s":%s,"b":%s}'):format(sts.rssi,sts.batt);
+      else
+        rfval = ',"rf":null';
+      end
     else
       rfval = ''
     end
