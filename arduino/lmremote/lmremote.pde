@@ -87,7 +87,8 @@ void rf12_doWork(void)
   else
     digitalWrite(_pinLedRx, LOW);
 }
-void newReadAvailable(void)
+
+void transmitTemps(unsigned char txCount)
 {
   char outbuf[
     sizeof(rf12_probe_update_hdr_t) + 
@@ -114,19 +115,30 @@ void newReadAvailable(void)
     ++up;
   }
 
-  digitalWrite(_pinLedTx, HIGH);
-  rf12_sleep(RF12_WAKEUP);
-  while (!rf12_canSend())
-    rf12_doWork();
-  
   // Hacky way to determine how much to send is see where our buffer pointer 
   // compared to from the start of the buffer
   unsigned char len = (unsigned int)up - (unsigned int)outbuf;
-  // HDR is set to 0 so broadcast, no ACK requested
-  rf12_sendStart(0, outbuf, len);
-  rf12_sendWait(1);
+
+  digitalWrite(_pinLedTx, HIGH);
+  rf12_sleep(RF12_WAKEUP);
+  
+  while (txCount--)
+  {
+    while (!rf12_canSend())
+      rf12_doWork();
+  
+    // HDR is set to 0 so broadcast, no ACK requested
+    rf12_sendStart(0, outbuf, len);
+    rf12_sendWait(1);
+  }  /* while txCount */ 
+  
   rf12_sleep(RF12_SLEEP);
   digitalWrite(_pinLedTx, LOW);
+}
+
+inline void newTempsAvailable(void)
+{
+  transmitTemps(1);
 }
 
 void checkTemps(void)
@@ -147,7 +159,7 @@ void checkTemps(void)
   if (modified || (_sameCount > (60 / _sleepInterval)))
   {
     _sameCount = 0;
-    newReadAvailable();
+    newTempsAvailable();
   }
   else
     ++_sameCount;
@@ -155,19 +167,22 @@ void checkTemps(void)
 
 void setup(void)
 {
-  //Serial.begin(115200);
-  memset(_previousReads, 0xff, sizeof(_previousReads));
-  
+  //Serial.begin(115200);  
   rf12_initialize(_rfNodeId, _rfBand);
 
   pinMode(_pinLedRx, OUTPUT);
   pinMode(_pinLedTx, OUTPUT);
 
   // Turn off the units we never use (this only affects non-sleep power
-  PRR = bit(PRUSART0) | bit(PRTWI) | bit(PRTIM0) | bit(PRTIM1) | bit(PRTIM2);
+  PRR = bit(PRUSART0) | bit(PRTWI) | bit(PRTIM1) | bit(PRTIM2);
   // Disable digital input buffers on the analog in ports
   DIDR0 = bit(ADC5D) | bit(ADC4D) | bit(ADC3D) | bit(ADC2D) | bit(ADC1D) | bit(ADC0D);
   DIDR1 = bit(AIN1D) | bit(AIN0D);
+
+  // Force a reading and transmit multiple times so the master can sync its seqno
+  memset(_previousReads, 0xff, sizeof(_previousReads));
+  checkTemps();
+  transmitTemps(2);
 }
 
 void loop(void)
