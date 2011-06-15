@@ -161,6 +161,24 @@ function formatDate(date)
     return $.plot.formatDate(date, "%y %b %d, %h:%M %P");
 }
 
+function formatTimer(secs, includeSeconds)
+{
+    var hours = Math.floor(secs / 3600);
+    secs -= hours * 3600;
+    var mins = Math.floor(secs / 60);
+    secs -= mins * 60;
+
+    var retVal = "";
+    if (hours > 0)
+        retVal = hours + "h";
+    if (mins > 0)
+        retVal += mins + "m";
+    if (includeSeconds && secs > 0)
+        retVal += secs + "s";
+
+    return retVal;
+}
+
 function lerp(n1, n2, frac)
 {
     return (n1 * (1.0 - frac)) + (n2 * frac);
@@ -349,7 +367,7 @@ function tstatSuccess(csv)
         }
     });
     graphLoaded = true;
-    degPerHour();
+    updateProbeEstimates();
     updateGraph();
 }
 
@@ -464,10 +482,10 @@ function connectionSuccess(o)
     if (o.lid == 0)
         $("#lid").hide();
     else
-        $("#lid").html("Lid Open " + o.lid + "s").show();
+        $("#lid").html("Lid Open " + formatTimer(o.lid, true)).show();
 
     updateTime(o.time);
-    degPerHour();
+    updateProbeEstimates();
     checkRefreshGraphOrUpdate();
 }
 
@@ -496,34 +514,42 @@ function updateTime(time)
     .attr("title", formatDate(date));
 }
 
-function degPerHour()
+function degPerHour(probeIdx)
 {
-    var data = graphData[mapJson[1]].data;
-    if (data.length == 0)
-        return;
-    var val = data[data.length-1][1];
-    if (isNaN(val))
-        return;
-        
-    var time = data[data.length-1][0];
-    var targetTime = time - (60 * 60 * 1000);
-    for (var i=data.length-1; i>=0; i--)
-        if (data[i][0] < targetTime && !isNaN(data[i][1]))
-        {
-            var diffTemp = val - data[i][1];
-            if (diffTemp == 0.0)
-                continue;
-            var diffTime = time - data[i][0];
-            diffTime /= (60.0 * 60.0 * 1000.0);
-            var dph = diffTemp / diffTime;
-            var timeRemain180 = ((180.0 - val) / dph) * 60;
-            timeRemain180 = (timeRemain180 > 0) ? timeRemain180.toFixed(0) + "m to 180&deg;<br />" : "";
-            var timeRemain200 = ((200.0 - val) / dph) * 60;
-            timeRemain200 = (timeRemain200 > 0) ? timeRemain200.toFixed(0) + "m to 200&deg;" : "";
-            $("#dph1").html(diffTemp.toFixed(1) + "&deg;/hr<br />" + timeRemain180 + timeRemain200).show();
-            return;
-        }
-    $("#dph1").hide();
+    var pname = "#dph" + probeIdx; 
+    var data = graphData[mapJson[probeIdx]].data;
+    if (data.length != 0 && !isNaN(data[data.length-1][1]))
+    {
+        var val = data[data.length-1][1];
+       
+        var time = data[data.length-1][0];
+        // Target is 59mins30secs ago, allows drawing with scale set to 1hr
+        var targetTime = time - (60 * 60 * 1000) + 30000;
+        for (var i=data.length-1; i>=0; --i)
+            if (data[i][0] <= targetTime && !isNaN(data[i][1]))
+            {
+                var diffTemp = val - data[i][1];
+                var diffTime = time - data[i][0];
+                diffTime /= (60.0 * 60.0 * 1000.0);
+                var dph = diffTemp / diffTime;
+                // Don't display if there isn't clear increase, prevents wild numbers
+                if (dph < 1.0)
+                    break;
+                var timeRemain180 = ((180.0 - val) / dph) * 3600;
+                timeRemain180 = (timeRemain180 > 0) ? formatTimer(timeRemain180, false) + " to 180&deg;<br />" : "";
+                var timeRemain200 = ((200.0 - val) / dph) * 3600;
+                timeRemain200 = (timeRemain200 > 0) ? formatTimer(timeRemain200, false) + " to 200&deg;" : "";
+                $(pname).html(diffTemp.toFixed(1) + "&deg;/hr<br />" + timeRemain180 + timeRemain200).show();
+                return;
+            }
+    }  /* if has valid data */
+    $(pname).hide();
+}
+
+function updateProbeEstimates()
+{
+  for (var i=1; i<4; ++i)
+    degPerHour(i);
 }
 
 </script>
