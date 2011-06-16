@@ -556,7 +556,9 @@ void rfDataToProbes(void)
     if ((pid.Probes[i]->getProbeType() == PROBETYPE_RF12) && (rfMap[i].source != 0))
     {
       RFSource *src = rfmanager.getSourceById(rfMap[i].source);
-      if (src != NULL)
+      if (src == NULL)
+          pid.Probes[i]->addAdcValue(0);
+      else 
       {
         unsigned char srcPin = rfMap[i].pin;
         if (src->Values[srcPin] != 0)
