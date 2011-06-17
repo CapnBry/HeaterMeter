@@ -34,7 +34,9 @@ function lmauth(validator, accs, default)
     sdat = loadstring(sdat)
     setfenv(sdat, {})
     sdat = sdat()
-    user = sdat.user
+    if sdat.token == luci.dispatcher.context.urltoken then
+      user = sdat.user
+    end
   end
   
   -- If the page requested does not allow anon acces and we're using the
@@ -52,6 +54,7 @@ function rootredirect()
 end
 
 function json()
+  -- luci.http.prepare_content("application/json")
   luci.http.prepare_content("text/plain")
   local f = io.open("/tmp/json", "rb")
   luci.ltn12.pump.all(luci.ltn12.source.file(f), luci.http.write)
