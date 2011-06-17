@@ -632,11 +632,11 @@ div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
             </td>
         </tr></table>
       </div></div>
-      <center>
-      <div id="graph" style="height: 350px; width: 700px; margin: 8px auto 0px auto;"></div>
-      <div id="graph_overview" style="height: 90px; width: 700px;"></div>
-      <div id="graph_legend"></div>
-      </center>
+      <div style="position: relative;">
+        <div id="graph" style="height: 350px; width: 700px; margin: 8px auto 0px auto;"></div>
+        <div id="graph_overview" style="height: 90px; width: 700px; margin-left: auto; margin-right: auto;"></div>
+        <div id="loadindic" style="display: none; position: relative; top: -320px; z-index: 2;"><img src="<%=resource%>/loading.gif" style="width: 126px; height: 22px;"></div>
+      </div>
     </div>
 </div>
 <div id="graph_opts" style="color: #000;">
@@ -648,7 +648,6 @@ div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
         <option value="?240">12 hours</option>
         <option value="?0">24 hours</option>
     </select>
-    <div id="loadindic" style="display: none;"><img src="<%=resource%>/loading.gif" style="width: 32px; height: 32px;"></div>
 </div>
 <div id="graphtt">
     <div id="graphtt_title"></div>
