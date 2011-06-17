@@ -15,6 +15,7 @@
 
 #ifdef HEATERMETER_RFM12
 #include <RF12.h>
+#include <Ports.h>
 #endif /* HEATERMETER_RFM12 */
 
 void setup(void)
