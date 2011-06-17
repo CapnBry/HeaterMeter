@@ -273,8 +273,11 @@ function graphClicked(event, pos, item)
         var d = new Date(pos.x);
         $("#graphtt_title").html(formatTime(d, false));
         $("#graphtt_content").html(sInfo);
+        var ttWidth = $("#graphtt").outerWidth();
+        var ttHeight = $("#graphtt").outerHeight();
+        $("#graphtt_arrow").css({left: ttWidth/2 - 7, top: ttHeight - 1});
         $("#graphtt")
-            .css({left: pos.pageX + 9, top: pos.pageY - 14})
+            .css({left: pos.pageX - (ttWidth/2) - 1, top: pos.pageY - ttHeight - 15})
             .show();
     }
 }
@@ -650,7 +653,7 @@ div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
 <div id="graphtt">
     <div id="graphtt_title"></div>
     <div id="graphtt_content"></div>
-    <img src="<%=resource%>/ttarrow.png" style="position: absolute; left: -9px; top: 3px;">
+    <img id="graphtt_arrow" src="<%=resource%>/ttarrow.png" style="position: absolute; left: 0; top: 0;">
 </div>
 <% 
 if luci.dispatcher.context.authuser ~= "root" then 
