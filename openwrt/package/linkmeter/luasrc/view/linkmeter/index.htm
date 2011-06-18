@@ -93,6 +93,7 @@ function refreshGraphData()
 {
     var range = $("#rangeselect").val();
 
+    $("#graphtt").fadeOut();
     $("#rangeselect").attr("disabled", true);
     $("#loadindic").show();
     graphLoaded = false;
