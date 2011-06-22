@@ -13,9 +13,11 @@ const unsigned char _sleepInterval = 10;
 const unsigned char _enabledProbePins = 0x0f;  
 // Analog pin connected to source power.  Set to 0xff to disable sampling
 const unsigned char _pinBattery = 1;
-// Digital pins for LEDs
-const unsigned char _pinLedRx = 4;
-const unsigned char _pinLedTx = 5;
+// Digital pins for LEDs, 0xff to disable
+const unsigned char _pinLedRx = 0xff;
+const unsigned char _pinLedTx = 9;
+// Digital pins used for sourcing power to the probe dividers
+const unsigned char _pinProbeSupplyBase = 4;
 
 #define RF_PINS_PER_SOURCE 4 
 #define PIN_DISABLED(pin) ((_enabledProbePins & (1 << pin)) == 0)
@@ -83,11 +85,11 @@ void rf12_doWork(void)
 {
   if (rf12_recvDone() && rf12_crc == 0)
   {
-    digitalWrite(_pinLedRx, HIGH);
+    if (_pinLedRx != 0xff) digitalWrite(_pinLedRx, HIGH);
     sleep(WDTO_120MS);  // temp placeholder code
   }
   else
-    digitalWrite(_pinLedRx, LOW);
+    if (_pinLedRx != 0xff) digitalWrite(_pinLedRx, LOW);
 }
 
 inline unsigned int getBatteryLevel(void)
@@ -133,7 +135,7 @@ void transmitTemps(unsigned char txCount)
   // compared to from the start of the buffer
   unsigned char len = (unsigned int)up - (unsigned int)outbuf;
 
-  digitalWrite(_pinLedTx, HIGH);
+  if (_pinLedTx != 0xff) digitalWrite(_pinLedTx, HIGH);
   rf12_sleep(RF12_WAKEUP);
   
   while (txCount--)
@@ -147,7 +149,7 @@ void transmitTemps(unsigned char txCount)
   }  /* while txCount */ 
   
   rf12_sleep(RF12_SLEEP);
-  digitalWrite(_pinLedTx, LOW);
+  if (_pinLedTx != 0xff) digitalWrite(_pinLedTx, LOW);
 }
 
 inline void newTempsAvailable(void)
@@ -162,7 +164,14 @@ void enableAdcPullups(void)
     if (PIN_DISABLED(pin))
       continue;
 
-    digitalWrite(A0+pin, HIGH);
+    // The probe themistor voltage dividers are normally powered down
+    // to save power, using digital lines to supply Vcc to them.
+    // Lines are used sequentially starting from _pinProbeSupplyBase
+    // Note you can use the analog internal pullups as the fixed half of
+    // the divider by setting this value to A0 (or higher).
+    // The analog pullups are 20k-40kOhms, about 36k on my handful of chips.
+    // If using digital lines you will supply your own resistor for the fixed half.
+    digitalWrite(_pinProbeSupplyBase + pin, HIGH);
   }
   // takes about 15uS to stabilize and the enabling process takes 6us per pin at 16MHz
   delayMicroseconds(10);  
@@ -184,7 +193,7 @@ void checkTemps(void)
       modified = true;
     _previousReads[pin] = newRead;
     
-    digitalWrite(A0+pin, LOW);
+    digitalWrite(_pinProbeSupplyBase + pin, LOW);
   }
 
   if (modified || (_sameCount > (60 / _sleepInterval)))
@@ -196,19 +205,35 @@ void checkTemps(void)
     ++_sameCount;
 }
 
+inline void setupSupplyPins(void)
+{
+  // Analog pullup supply pins don't need DIR set
+  if (_pinProbeSupplyBase >= A0)
+    return;
+  for (unsigned char pin=0; pin < RF_PINS_PER_SOURCE; ++pin)
+  {
+    if (PIN_DISABLED(pin))
+      continue;
+    pinMode(_pinProbeSupplyBase + pin, OUTPUT);
+  }
+}
+
 void setup(void)
 {
   //Serial.begin(115200);  
-  rf12_initialize(_rfNodeId, _rfBand);
-
-  pinMode(_pinLedRx, OUTPUT);
-  pinMode(_pinLedTx, OUTPUT);
 
   // Turn off the units we never use (this only affects non-sleep power
   PRR = bit(PRUSART0) | bit(PRTWI) | bit(PRTIM1) | bit(PRTIM2);
   // Disable digital input buffers on the analog in ports
   DIDR0 = bit(ADC5D) | bit(ADC4D) | bit(ADC3D) | bit(ADC2D) | bit(ADC1D) | bit(ADC0D);
   DIDR1 = bit(AIN1D) | bit(AIN0D);
+
+  rf12_initialize(_rfNodeId, _rfBand);
+
+  if (_pinLedRx != 0xff) pinMode(_pinLedRx, OUTPUT);
+  if (_pinLedTx != 0xff) pinMode(_pinLedTx, OUTPUT);
+  
+  setupSupplyPins();
 
   // Force a reading and transmit multiple times so the master can sync its seqno
   memset(_previousReads, 0xff, sizeof(_previousReads));
