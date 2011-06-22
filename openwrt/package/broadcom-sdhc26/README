@@ -1,0 +1,45 @@
+Linksys WRT54G/WRT54GS/WRT54GL hardware mod - MMHC/SDHC card driver
+
+Version: 2.0.2
+
+Authors:
+
+  Madsuk/Rohde/Cyril CATTIAUX/Marc DENTY/rcichielo KRUSCH/Chris
+
+Description:
+
+  Rework of the 1.3.5 optimized driver posted on the opewnwrt forum.
+  Support for high capacity cards (sdhc) added.
+  See the comments at the begining of the sdhc.c file for a full.
+  description of the module parameters and the release notes.
+  Supports the 2.4 kernel only.
+
+Building
+
+  Install and build the development environment for your version of openwrt.
+
+  Create the "package/broadcom-sdhc" directory.
+
+  Copy in "Makefile.x.y" as "Makefile" where "x.y" is your openwrt version.
+  (7.09 or 8.09)
+
+  Go back to the root directory of the development environment
+
+  Run "make menuconfig". You should see an sdhc module available under 
+
+  Select menu "Kernel Modules--->Other Modules".
+
+  Select module "kmod-broadcom-sdhc" to be built as a module
+
+  Exit menuconfig saving your changes
+
+  Run 'make'.
+
+  Shortcut hints for quick re-compiles and distributing modules to your
+  router while developing:
+
+    'make package/broadcom-sdhc-clean V=99'
+    'make package/broadcom-sdhc-compile V=99'
+    '(cd build_mipsel/broadcom-sdhc-2.02; make dist)'
+
+  Generated modules and ipkg found in "build_mipsel/broadcom-sdhc-2.0.2"

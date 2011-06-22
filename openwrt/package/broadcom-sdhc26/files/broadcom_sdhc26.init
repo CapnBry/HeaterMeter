@@ -1,0 +1,14 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008 OpenWrt.org
+START=90
+
+. /lib/functions/broadcom_sdhc26.sh
+
+start() {
+	start_broadcom_sdhc26
+}
+
+stop() {
+	rmmod bcm_sdhc
+}
+

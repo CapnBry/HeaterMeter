@@ -1,0 +1,135 @@
+/*==============================================================================
+ * bcm_sdhc.c - Linksys WRT54G/WRT54GS/WRT54GL hardware mod - SDHC/MMHC card driver
+ *
+ * Version: 3.0.0
+ *
+ * Authors:
+ *
+ *   Severn Tsui (kernel 2.6 port)
+ *   Madsuk/Rohde/Cyril CATTIAUX/Marc DENTY/rcichielo KRUSCH/Chris
+ *
+ * Description:
+ *
+ *   Kernel 2.6 port of the broadcom-sdhc package which was a
+ *   rework of the 1.3.5 optimized driver posted on the opewnwrt forum.
+ *   See the Release notes for a description of changes and new features.
+ * 
+ *   This is intended to be used for releases after Backfire 10.03.
+ *   NOTE: If you use this with the b43 wireless driver, you need to ensure you pass it the
+ *   gpiomask parameter to ensure it doesn't use the pins this driver uses.
+ *
+ * Module Parameters:
+ *
+ *   major  - Major number to be assigned to the sdhc device (default 0 - assign dynamically).
+ *
+ *   cs     - GPIO line connect to the card CS (chip select) pin (default 7).
+ *
+ *   cl     - GPIO line connected to the card CLK (clock) pin (default 2).
+ *
+ *   di     - GPIO line connected to the card DI (data in) pin (default 3).
+ *
+ *   do     - GPIO line connected to the card DO (data out) pin (default 4).
+ *
+ *   maxsec - Maximum number of sectors that can be clustered into one request (default 32).
+ *            Increasing this number can improve read and/or write throughput for large files.
+ *            Keep it smaller if you expect frequent concurrent IO to the card (reading/writing
+ *            of multiple files at the same time). Experiment with the setting to see what
+ *            works best for your system.
+ *
+ *   dbg    - Only valid if you load the debug version of the kernel module (default 0).
+ *            Bit flags that specify what debugging to product to the system log:
+ *
+ *            1  - Card initialization trace
+ *            6  - Calls to module "request" function
+ *            8  - Print "busy wait" information
+ *
+ *  gpio_input    - Set the gpio register memory locations.
+ *  gpio_output     Allows defaults to be overridden when testing driver
+ *  gpio_enable     on other Broadcom based devices.
+ *  gpio_control
+ *
+ *
+ * Release Notes:
+ *
+ *   Version 2.0.0 - Mar 9, 2008
+ *
+ *     - Rework of code base:
+ *
+ *         1) Rework of functions that must honour max clock frequency. These functions
+ *            were generalized and condensed. Max clock frequency now managed through 2
+ *            global vars - no need to pass timing arguments.
+ *
+ *         2) Logging functions replaced/simplified by variadic macros.
+ *
+ *         3) Document and comment. Standardize layout, variables, style, etc. Split
+ *            card initialization function into separate source file.
+ *
+ *     - Switch so module uses a dynamically assigned major number by default. Implement "major="
+ *       module parameter to allow a specific major number to be assigned.
+ *
+ *     - Implement module parameters "cs=", "clk=", "din=", "dout=" for specifying GPIO to card mapping.
+ *       Alter read/write algorithms to be more efficient with mappings in variables.
+ *
+ *     - Implement module parameters "gpio_input=", "gpio_output=", "gpio_enable=", "gpio_control=" for
+ *       specifying GPIO register addresses. May be useful if you want to try using this module on other
+ *       broadcom based platforms where the gpio registers are located at different locations.
+ *
+ *     - Debugging improvements. Implement "dbg=" module parameter to allow selective enabling of
+ *       debugging output by function. Only available when module compiled with debugging (-DDEBUG)
+ *
+ *     - Initialize max_segments array so requests are clustered. "maxsec=" module parameter
+ *       sets the maximum number of sectors that can be clustered per request (default is 32).
+ *
+ *     - Implement clustering support in the module request method. Improves speed by allowing more
+ *       clusters to be read/written per single invocation of a multi block read/write command.
+ *
+ *     - Implement Support for high capacity (> 2GB) SDHC and MMC cards.
+ *
+ *     - Implement /proc/sdhc/status for obtaining information about the detected card.
+ *
+ *     - Maximum number of supported partitions reduced from 64 to 8 (memory use reduction).
+ *
+ *     - Build using buildroot-ng environment. Generate ipkg file for installation.
+ *       With so little difference in speed, and only a 4k memory savings, compile debug enabled version
+ *
+ *   Version 2.0.1 - Feb 8, 2009
+ *
+ *     - Changed module name to sdhc (more people seem to use sdcards with this module).
+ *
+ *     - Changed device directory to /dev/sdcard.
+ *
+ *     - Build module without debugging (sdhc.o) and one with debugging enabled (sdhcd.o)
+ *       Module without debugging built in is 4Kb smaller and slightly faster.
+ *
+ *     - Rename init script to sdcard. Modify script to load sdhc.o when no degugging is requested
+ *       in the config file, and sdhcd.o when debugging is requested.
+ *
+ *     - Overhauled the module makefile to support building standalone or via buildrootng.
+ *
+ *     - Bug Fix: card size calculated incorrectly for cards > 4GB (integer overflow)
+ *
+ *     - Bug Fix: /dev/sdcard entry remained after module unloaded - it is now properly removed
+ *
+ *     - Bug Fix: Device leak under /dev/discs/ - number of discs would grow by 1 each time an sd card
+ *                was mounted. Entries are now properly removed on module unload
+ *
+ *     - Bug Fix: A cat of /proc/partitions after sdhc module was unloaded would cause a kernel fault.
+ *
+ *   Version 2.0.2 - Dec 15, 2009
+ *
+ *     - Bug Fix: Fix sdcard init script - would not properly pass kernel module arguments when debug
+ *                set to 0.
+ *
+ *   Version 3.0.0 - May 18, 2011
+ *
+ *     - Kernel 2.6 port
+ *     - Change all init scripts to OpenWRT Backfire (10.03) style
+ *
+ * Supported Linksys devices:
+ *
+ *   Developed and tested on WRT54GL V1.1. Should work on the majority of WRT54G/GS/GL devices.
+ *   Reported working on:
+ *
+ *     - WRT54GL V1.1
+ *
+ *============================================================================*/

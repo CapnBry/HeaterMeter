@@ -1,0 +1,27 @@
+#!/bin/sh
+
+init_broadcom_sdhc26() {
+	local OLD_UCI_CONFIG_DIR="$UCI_CONFIG_DIR"
+	local PREFIX=""
+
+	# from extmount.sh	
+	jffs="$(awk '/jffs2/ {print $2}' /proc/mounts)"
+	
+	if [ "$jffs" = "/tmp/overlay" ]; then
+		if [ -r "/tmp/overlay/etc/config/broadcom_sdhc26" ]; then
+			UCI_CONFIG_DIR="/tmp/overlay/etc/config"
+		fi
+		if [ -r "/tmp/overlay/lib/functions/broadcom_sdhc26.sh" ]; then
+			PREFIX="/tmp/overlay"
+		fi
+	fi
+	
+	pi_include $PREFIX/lib/functions/broadcom_sdhc26.sh
+
+	start_broadcom_sdhc26 1
+	
+	UCI_CONFIG_DIR="$OLD_UCI_CONFIG_DIR"
+}
+
+boot_hook_add preinit_mount_root init_broadcom_sdhc26
+
