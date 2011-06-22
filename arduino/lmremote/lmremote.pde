@@ -1,6 +1,7 @@
 #include <avr/wdt.h>
 #include <avr/sleep.h>
 #include <RF12.h>
+#include <Ports.h>
 
 // Node Idenfier for the RFM12B (2-30)
 const unsigned char _rfNodeId = 2; 
@@ -9,7 +10,7 @@ const unsigned char _rfBand = RF12_915MHZ;
 // How long to sleep between probe measurments, in seconds
 const unsigned char _sleepInterval = 10; 
 // Analog pins to read, this is a bitfild. LSB is analog 0
-const unsigned char _enabledProbePins = 0xff;  
+const unsigned char _enabledProbePins = 0x0f;  
 // Analog pin connected to source power.  Set to 0xff to disable sampling
 const unsigned char _pinBattery = 1;
 // Digital pins for LEDs
@@ -17,6 +18,7 @@ const unsigned char _pinLedRx = 4;
 const unsigned char _pinLedTx = 5;
 
 #define RF_PINS_PER_SOURCE 4 
+#define PIN_DISABLED(pin) ((_enabledProbePins & (1 << pin)) == 0)
 
 typedef struct tagRf12ProbeUpdateHdr 
 {
@@ -88,6 +90,22 @@ void rf12_doWork(void)
     digitalWrite(_pinLedRx, LOW);
 }
 
+inline unsigned int getBatteryLevel(void)
+{
+  const unsigned char BATREAD_COUNT = 4;
+  
+  if (_pinBattery != 0xff)
+  {
+    unsigned int retVal = 0;
+    for (unsigned char i=0; i<BATREAD_COUNT; ++i)
+      retVal += analogRead(_pinBattery);
+    retVal /= BATREAD_COUNT;
+    return (unsigned long)retVal * 3300UL / 1023;
+  }
+  else
+    return 3300;  
+}
+
 void transmitTemps(unsigned char txCount)
 {
   char outbuf[
@@ -98,17 +116,13 @@ void transmitTemps(unsigned char txCount)
 
   hdr = (rf12_probe_update_hdr_t *)outbuf;
   hdr->seqNo = _seqNo++;
-  if (_pinBattery != 0xff)
-    hdr->batteryLevel = (unsigned long)analogRead(_pinBattery) * 3300L / 1023;
-  else
-    hdr->batteryLevel = 3300;
+  hdr->batteryLevel = getBatteryLevel();
 
   // Send all values regardless of if they've changed or not
   rf12_probe_update_t *up = (rf12_probe_update_t *)&hdr[1];
   for (unsigned char pin=0; pin < RF_PINS_PER_SOURCE; ++pin)
   {
-    // If the pin is not enabled, skip it
-    if ((_enabledProbePins & (1 << pin)) == 0)
+    if (PIN_DISABLED(pin))
       continue;
     up->probeIdx = pin;
     up->adcValue = _previousReads[pin];
@@ -127,7 +141,7 @@ void transmitTemps(unsigned char txCount)
     while (!rf12_canSend())
       rf12_doWork();
   
-    // HDR is set to 0 so broadcast, no ACK requested
+    // HDR=0 means to broadcast, no ACK requested
     rf12_sendStart(0, outbuf, len);
     rf12_sendWait(1);
   }  /* while txCount */ 
@@ -141,19 +155,36 @@ inline void newTempsAvailable(void)
   transmitTemps(1);
 }
 
+void enableAdcPullups(void)
+{
+  for (unsigned char pin=0; pin < RF_PINS_PER_SOURCE; ++pin)
+  {
+    if (PIN_DISABLED(pin))
+      continue;
+
+    digitalWrite(A0+pin, HIGH);
+  }
+  // takes about 15uS to stabilize and the enabling process takes 6us per pin at 16MHz
+  delayMicroseconds(10);  
+}
+
 void checkTemps(void)
 {
   boolean modified = false;
+
+  enableAdcPullups();
   for (unsigned char pin=0; pin < RF_PINS_PER_SOURCE; ++pin)
   {
-    // If the pin is not enabled, skip it
-    if ((_enabledProbePins & (1 << pin)) == 0)
+    if (PIN_DISABLED(pin))
       continue;
       
     unsigned int newRead = analogRead(pin);
+    //Serial.println(newRead, DEC);
     if (newRead != _previousReads[pin])
       modified = true;
     _previousReads[pin] = newRead;
+    
+    digitalWrite(A0+pin, LOW);
   }
 
   if (modified || (_sameCount > (60 / _sleepInterval)))
