@@ -12,7 +12,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/linkmeter
 	SECTION:=utils
 	CATEGORY:=Utilities
-	DEPENDS:=+uhttpd +rrdtool +avrdude
+	DEPENDS:=+rrdtool +luci-lib-web +avrdude
 	PKG_BUILD_DEPENDS:=+libdaemon
 	TITLE:=LinkMeter BBQ Controller
 	URL:=http://tvwbb.com/eve/forums/a/tpc/f/9270072103/m/7691098906

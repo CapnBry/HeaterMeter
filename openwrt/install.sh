@@ -20,5 +20,6 @@ $WRT_PATH/scripts/feeds install libdaemon
 $WRT_PATH/scripts/feeds install -p linkmeter avrdude
 $WRT_PATH/scripts/feeds install -p linkmeter rrdtool
 $WRT_PATH/scripts/feeds install -p linkmeter linkmeter
+$WRT_PATH/scripts/feeds install -p linkmeter kmod-broadcom-sdhc26
 
 cp .config $WRT_PATH
