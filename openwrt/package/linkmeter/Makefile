@@ -5,7 +5,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=linkmeter
 PKG_RELEASE:=1
 
-PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_RELEASE)
+# PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_RELEASE)
 
 include $(INCLUDE_DIR)/package.mk
 
