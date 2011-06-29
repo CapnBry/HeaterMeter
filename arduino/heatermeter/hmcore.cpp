@@ -82,7 +82,7 @@ const struct  __eeprom_probe DEFAULT_PROBE_CONFIG PROGMEM = {
   false,  // low enabled
   {2.3067434e-4,2.3696596e-4,1.2636414e-7,1.0e+4},  // Maverick Probe
   //{8.98053228e-4,2.49263324e-4,2.04047542e-7,1.0e+4}, // Radio Shack 10k
-  //{1.1415e-3,2.31905e-4,9.76423e-8,1.0e+4} // Vishay 10k NTCLE100E3103JB0
+  //{1.14061e-3,2.32134e-4,9.63666e-08.1.0e+4} // Vishay 10k NTCLE100E3103JB0 or NTCLE203E3103FB0
 };
 
 inline void setLcdBacklight(unsigned char lcdBacklight)
