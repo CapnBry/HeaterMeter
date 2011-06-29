@@ -9,8 +9,8 @@ const unsigned char _rfNodeId = 2;
 const unsigned char _rfBand = RF12_915MHZ;
 // How long to sleep between probe measurments, in seconds
 const unsigned char _sleepInterval = 10; 
-// Analog pins to read, this is a bitfild. LSB is analog 0
-const unsigned char _enabledProbePins = 0x0f;  
+// Analog pins to read. This is a bitfield, LSB is analog 0
+const unsigned char _enabledProbePins = 0x3f;  
 // Analog pin connected to source power.  Set to 0xff to disable sampling
 const unsigned char _pinBattery = 1;
 // Digital pins for LEDs, 0xff to disable
@@ -19,7 +19,7 @@ const unsigned char _pinLedTx = 9;
 // Digital pins used for sourcing power to the probe dividers
 const unsigned char _pinProbeSupplyBase = 4;
 
-#define RF_PINS_PER_SOURCE 4 
+#define RF_PINS_PER_SOURCE 6 
 #define PIN_DISABLED(pin) ((_enabledProbePins & (1 << pin)) == 0)
 
 typedef struct tagRf12ProbeUpdateHdr 

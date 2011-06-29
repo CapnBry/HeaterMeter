@@ -6,14 +6,14 @@
 
 #define RFSOURCEID_NONE 0
 
-#define RF_PINS_PER_SOURCE 4
+#define RF_PINS_PER_SOURCE 6
 #define RF_SOURCE_COUNT 4
 
 // The count of milliseconds with no receive that the source is considered stale
 // This should be large enough to allow the remote node to sleep, but short enough
 // that the sequence number can't roll without being detected
 // i.e. this value should be under MIN_TRANSMIT_PERIOD * 255 * 1000
-#define RF_STALE_TIME (3 * 60 * 1000L)
+#define RF_STALE_TIME (3 * 60 * 1000UL)
 
 typedef struct tagRf12MapItem 
 {
