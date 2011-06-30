@@ -23,3 +23,5 @@ $WRT_PATH/scripts/feeds install -p linkmeter linkmeter
 $WRT_PATH/scripts/feeds install -p linkmeter kmod-broadcom-sdhc26
 
 cp .config $WRT_PATH
+
+patch -p0 -d $WRT_PATH/package < patches/100-dhcp_add_hostname.patch

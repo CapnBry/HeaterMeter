@@ -1,0 +1,11 @@
+--- /tmp/base-files/files/lib/network/config.sh	2011-06-30 10:07:56.649293323 -0400
++++ base-files/files/lib/network/config.sh	2011-06-30 10:25:14.993652898 -0400
+@@ -362,6 +362,8 @@
+ 
+ 			[ -z "$ipaddr" ] || \
+ 				$DEBUG ifconfig "$iface" "$ipaddr" ${netmask:+netmask "$netmask"}
++			[ -n "$hostname" ] || hostname=$(uci -q get system.@system[0].hostname)
++			[ "$hostname" = "none" ] && hostname=""
+ 
+ 			# additional request options
+ 			local opt dhcpopts
