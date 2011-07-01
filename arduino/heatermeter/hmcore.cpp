@@ -65,7 +65,7 @@ const struct __eeprom_data {
   100,  // max fan speed
   128, // lcd backlight (50%)
 #ifdef HEATERMETER_RFM12
-  {{ 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }},  // rfMap
+  {{ RFSOURCEID_NONE, 0 }, { RFSOURCEID_NONE, 0 }, { RFSOURCEID_NONE, 0 }, { RFSOURCEID_NONE, 0 }},  // rfMap
 #endif
 };
 
@@ -165,7 +165,7 @@ void reportRfMap(void)
   for (unsigned int i=0; i<TEMP_COUNT; ++i)
   {
     Serial_csv();
-    if (rfMap[i].source != 0)
+    if (rfMap[i].source != RFSOURCEID_NONE)
     {
       Serial_char(rfMap[i].source + 'A' - 1);
       Serial.print(rfMap[i].pin, DEC);
@@ -174,6 +174,20 @@ void reportRfMap(void)
   Serial_nl();
 }
 #endif /* HEATERMETER_RFM12 */
+
+void storeRfMap(unsigned char probeIndex, unsigned char source, unsigned char sourcePin)
+{
+#ifdef HEATERMETER_RFM12
+  rfMap[probeIndex].source = source;
+  rfMap[probeIndex].pin = sourcePin;
+      
+  rf12_map_item_t *ofs = (rf12_map_item_t *)offsetof(__eeprom_data, rfMap);
+  ofs += probeIndex;
+  eeprom_write_block(&rfMap[probeIndex], ofs, sizeof(rf12_map_item_t));
+    
+  reportRfMap();
+#endif /* HEATERMETER_RFM12 */
+}
 
 inline void storeProbeTypeOrMap(unsigned char probeIndex, char *vals)
 {
@@ -186,7 +200,13 @@ inline void storeProbeTypeOrMap(unsigned char probeIndex, char *vals)
     // The probe type is an integer but is passed as actual probeType + 1
     // because passing 0 (PROBETYPE_DISABLED) is reserved for "don't change"
     probeType -= '1';
-    storeProbeType(probeIndex, probeType);
+    unsigned char oldProbeType = pid.Probes[probeIndex]->getProbeType();
+    if (oldProbeType != probeType)
+    {
+      storeProbeType(probeIndex, probeType);
+      if (oldProbeType == PROBETYPE_RF12)
+        storeRfMap(probeIndex, RFSOURCEID_NONE, 0);
+    }
   }  /* if probeType */
   
 #ifdef HEATERMETER_RFM12
@@ -201,15 +221,7 @@ inline void storeProbeTypeOrMap(unsigned char probeIndex, char *vals)
     {
       if (pid.Probes[probeIndex]->getProbeType() != PROBETYPE_RF12)
         storeProbeType(probeIndex, PROBETYPE_RF12);
-
-      rfMap[probeIndex].source = source;
-      rfMap[probeIndex].pin = sourcePin;
-      
-      rf12_map_item_t *ofs = (rf12_map_item_t *)offsetof(__eeprom_data, rfMap);
-      ofs += probeIndex;
-      eeprom_write_block(&rfMap[probeIndex], ofs, sizeof(rf12_map_item_t));
-
-      reportRfMap();
+      storeRfMap(probeIndex, source, sourcePin);
     }
   }  /* if RF map */
 #endif /* HEATERMETER_RFM12 */
