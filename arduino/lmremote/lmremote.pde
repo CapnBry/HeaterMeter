@@ -46,7 +46,7 @@ ISR(WDT_vect) {
 void sleep(uint8_t wdt_period) {
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 
-  // Disable ADC, still needs to be shutdown via PRR
+  // Disable ADC
   ADCSRA &= ~bit(ADEN);
 
   // TODO: Figure out what else I can safely disable
@@ -86,10 +86,9 @@ void rf12_doWork(void)
   if (rf12_recvDone() && rf12_crc == 0)
   {
     if (_pinLedRx != 0xff) digitalWrite(_pinLedRx, HIGH);
-    sleep(WDTO_120MS);  // temp placeholder code
+    // (currently have nothing to receive)
   }
-  else
-    if (_pinLedRx != 0xff) digitalWrite(_pinLedRx, LOW);
+  if (_pinLedRx != 0xff) digitalWrite(_pinLedRx, LOW);
 }
 
 inline unsigned int getBatteryLevel(void)
@@ -145,7 +144,7 @@ void transmitTemps(unsigned char txCount)
   
     // HDR=0 means to broadcast, no ACK requested
     rf12_sendStart(0, outbuf, len);
-    rf12_sendWait(1);
+    rf12_sendWait(2);
   }  /* while txCount */ 
   
   rf12_sleep(RF12_SLEEP);
@@ -243,9 +242,8 @@ void setup(void)
 
 void loop(void)
 {
-  rf12_doWork();
-  checkTemps();
   sleepSeconds(_sleepInterval);
+  checkTemps();
 }
 
 
