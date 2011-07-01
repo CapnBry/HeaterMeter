@@ -372,7 +372,7 @@ inline void reboot(void)
   while (1) { };
 }
 
-inline void reportProbeNames(void)
+void reportProbeNames(void)
 {
   print_P(PSTR("$HMPN"));
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
@@ -382,6 +382,38 @@ inline void reportProbeNames(void)
     Serial.print(editString);
   }
   Serial_nl();
+}
+
+void reportPidParams(void)
+{
+  print_P(PSTR("$HMPD"));
+  for (unsigned char i=0; i<4; ++i)
+  {
+    Serial_csv();
+    Serial.print(pid.Pid[i], 8);
+  }
+  Serial_nl();
+}
+
+void reportProbeOffsets(void)
+{
+  print_P(PSTR("$HMPO"));
+  for (unsigned char i=0; i<TEMP_COUNT; ++i)
+  {
+    Serial_csv();
+    Serial.print(pid.Probes[i]->Offset, DEC);
+  }
+  Serial_nl();
+}
+
+inline void reportConfig(void)
+{
+  reportPidParams();
+  reportProbeNames();
+  reportProbeOffsets();
+#ifdef HEATERMETER_RFM12
+  reportRfMap();  
+#endif /* HEATERMETER_RFM12 */
 }
 
 /* handleCommandUrl returns true if it consumed the URL */
@@ -402,6 +434,7 @@ boolean handleCommandUrl(char *URL)
   {
     float f = atof(URL + 9);
     storePidParam(URL[7], f);
+    reportPidParams();
     return true;
   }
   if (strncmp_P(URL, PSTR("set?pn"), 6) == 0 && urlLen > 8) 
@@ -414,11 +447,17 @@ boolean handleCommandUrl(char *URL)
   if (strncmp_P(URL, PSTR("set?po"), 6) == 0 && urlLen > 8) 
   {
     storeProbeOffset(URL[6] - '0', atoi(URL + 8));
+    reportProbeOffsets();
     return true;
   }
   if (strncmp_P(URL, PSTR("set?pc"), 6) == 0 && urlLen > 8) 
   {
     storeProbeCoeff(URL[6] - '0', URL + 8);
+    return true;
+  }
+  if (strncmp_P(URL, PSTR("config"), 6) == 0) 
+  {
+    reportConfig();
     return true;
   }
   if (strncmp_P(URL, PSTR("reboot"), 5) == 0)

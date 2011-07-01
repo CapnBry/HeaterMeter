@@ -172,8 +172,7 @@ local segmentMap = {
 }
 
 -- Request current state
-hm:write("/set?pnXXX\n")
-hm:write("/set?rmXXX\n")
+hm:write("/config\n")
 
 while true do
   local hmline = hm:read("*l") 

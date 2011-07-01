@@ -63,15 +63,19 @@ Both Serial and Web
 
 Serial-only URLs
 /set?pnXXX - Retrieve the current probe names
-/set?rmXXX - Retreives the current RF to Probe mappings
+/config - Retreives the current probe names and RF map (will be expanded to all config at some point)
 
 Web-only URLs
 / - The index status page.  Some other supporting files are also used by this URL that are not included in this document.
 /json - JSON status object.
 
 == CSV Format ==
+PID coefficients
+$HMPD,PidB,PidP,PidI,PidD 
 Probe Names
 $HMPN,Probe0,Probe1,Probe2,Probe3
+Probe Offsets
+$HMPO,Probe0,Probe1,Probe2,Probe3
 PID State Update
 $HMSU,SetPoint,Pit,Food1,Food2,Ambient,Fan,FanMovAvg,LidOpenCountdown
 RF Status
