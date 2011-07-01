@@ -158,9 +158,66 @@ void storeProbeType(unsigned char probeIndex, unsigned char probeType)
   }
 }
 
+#ifdef HEATERMETER_RFM12
+void reportRfMap(void)
+{
+  print_P(PSTR("$HMRM"));
+  for (unsigned int i=0; i<TEMP_COUNT; ++i)
+  {
+    Serial_csv();
+    if (rfMap[i].source != 0)
+    {
+      Serial_char(rfMap[i].source + 'A' - 1);
+      Serial.print(rfMap[i].pin, DEC);
+    }
+  }
+  Serial_nl();
+}
+#endif /* HEATERMETER_RFM12 */
+
+inline void storeProbeTypeOrMap(unsigned char probeIndex, char *vals)
+{
+  // The last value can either be an integer, which indicates that it is a probetype
+  // Or it is an RF map description indicating it is of type PROBETYPE_RF12 and
+  // the map should be updated
+  char probeType = *vals;
+  if (probeType >= '1' && probeType <= '9')
+  {
+    // The probe type is an integer but is passed as actual probeType + 1
+    // because passing 0 (PROBETYPE_DISABLED) is reserved for "don't change"
+    probeType -= '1';
+    storeProbeType(probeIndex, probeType);
+  }  /* if probeType */
+  
+#ifdef HEATERMETER_RFM12
+  else if (probeType >= 'A' && probeType <= 'Z')
+  {
+    // If probeType is an RF source identifier, it is an RF map item consisting of
+    // a one-character source identifier A-Z and a one-character pin identifier 0-9
+    unsigned char source = probeType - 'A' + 1;
+    vals++;
+    unsigned char sourcePin = *vals - '0';
+    if (sourcePin >= 0 && sourcePin < RF_PINS_PER_SOURCE)
+    {
+      if (pid.Probes[probeIndex]->getProbeType() != PROBETYPE_RF12)
+        storeProbeType(probeIndex, PROBETYPE_RF12);
+
+      rfMap[probeIndex].source = source;
+      rfMap[probeIndex].pin = sourcePin;
+      
+      rf12_map_item_t *ofs = (rf12_map_item_t *)offsetof(__eeprom_data, rfMap);
+      ofs += probeIndex;
+      eeprom_write_block(&rfMap[probeIndex], ofs, sizeof(rf12_map_item_t));
+
+      reportRfMap();
+    }
+  }  /* if RF map */
+#endif /* HEATERMETER_RFM12 */
+}
+
 void storeProbeCoeff(unsigned char probeIndex, char *vals)
 {
-  // vals is SteinA(float),SteinB(float),SteinC(float),RKnown(float),probeType+1(int)
+  // vals is SteinA(float),SteinB(float),SteinC(float),RKnown(float),probeType+1(int)|probeMap(char+int)
   // If any value is 0, it won't be modified
   unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, steinhart));
   if (ofs == 0)
@@ -191,14 +248,7 @@ void storeProbeCoeff(unsigned char probeIndex, char *vals)
     ++fDest;
   }  /* for i */
 
-  // The probe type is an integer but is passed as actual probeType + 1
-  // because passing 0 (PROBETYPE_DISABLED) is reserved for "don't change"
-  unsigned char probeType = atoi(vals);
-  if (probeType != 0)
-  {
-    --probeType;
-    storeProbeType(probeIndex, probeType);
-  }
+  storeProbeTypeOrMap(probeIndex, vals);
 }
 
 void storeMaxFanSpeed(unsigned char maxFanSpeed)
@@ -212,62 +262,6 @@ void storeLcdBacklight(unsigned char lcdBacklight)
   setLcdBacklight(lcdBacklight);
   config_store_byte(lcdBacklight, lcdBacklight);
 }
-
-#ifdef HEATERMETER_RFM12
-void storeRfMap(char *vals)
-{
-  // vals should be 3 characters each, back to back
-  // <probeIdx><rfSource (letter)><sourcePin>
-  // The entire map is replace with this call
-  // e.g. 1B02C03C1 sets
-  // TEMP_FOOD1 = Source B pin 0
-  // TEMP_FOOD2 = Source C pin 0
-  // TEMP_AMB = Source C pin 1
-  boolean modified = false;
-  
-  while (strlen(vals) > 2)
-  {
-    unsigned char probeIdx = (*vals++) - '0';
-    unsigned char source = (*vals++) - 'A' + 1;
-    unsigned char sourcePin = (*vals++) - '0';
-    //Serial.print("RM "); Serial.print(probeIdx, DEC); Serial.print(source, DEC); Serial.print(sourcePin, DEC); Serial.print('\n');
-    
-    if ((probeIdx >= 0) && (probeIdx < TEMP_COUNT) &&
-      (source >= 1) && (source <= 26) &&
-      (sourcePin >= 0) && (sourcePin < RF_PINS_PER_SOURCE))
-    {
-      if (!modified)
-      {
-        memset(rfMap, 0, sizeof(rfMap));
-        modified = true;
-      }
-      
-      if (pid.Probes[probeIdx]->getProbeType() != PROBETYPE_RF12)
-        storeProbeType(probeIdx, PROBETYPE_RF12);
-      
-      rfMap[probeIdx].source = source;
-      rfMap[probeIdx].pin = sourcePin;
-    }  /* if data valid */
-  }  /* while chars left */
-  if (modified)
-    eeprom_write_block(rfMap, (void *)offsetof(__eeprom_data, rfMap), sizeof(rfMap));
-}
-
-void reportRfMap(void)
-{
-  print_P(PSTR("$HMRM"));
-  for (unsigned int i=0; i<TEMP_COUNT; ++i)
-  {
-    Serial_csv();
-    if (rfMap[i].source != 0)
-    {
-      Serial_char(rfMap[i].source + 'A' - 1);
-      Serial.print(rfMap[i].pin, DEC);
-    }
-  }
-  Serial_nl();
-}
-#endif /* HEATERMETER_RFM12 */
 
 void updateDisplay(void)
 {
@@ -427,14 +421,6 @@ boolean handleCommandUrl(char *URL)
     storeProbeCoeff(URL[6] - '0', URL + 8);
     return true;
   }
-#ifdef HEATERMETER_RFM12
-  if (strncmp_P(URL, PSTR("set?rm"), 6) == 0 and urlLen > 6) 
-  {
-    storeRfMap(URL + 7);
-    reportRfMap();
-    return true;
-  }
-#endif /* HEATERMETER_RFM12 */
   if (strncmp_P(URL, PSTR("reboot"), 5) == 0)
   {
     reboot();
