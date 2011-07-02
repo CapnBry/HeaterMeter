@@ -51,6 +51,7 @@ function set()
   -- If there's a rawset, explode the rawset into individual items
   local rawset = vals.rawset
   if rawset then
+    if rawset:sub(1, 5) == "/set?" then rawset = rawset:sub(6) end
     vals = require "luci.http.protocol".urldecode_params(rawset)
   end
 
