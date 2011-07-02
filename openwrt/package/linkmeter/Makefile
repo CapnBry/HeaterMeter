@@ -45,9 +45,9 @@ define Package/linkmeter/install
 	$(CP) ./htdocs/* $(1)/www/
 
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller/linkmeter
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/controller/linkmeter/lm.lua $(1)/usr/lib/lua/luci/controller/linkmeter/
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/controller/linkmeter/* $(1)/usr/lib/lua/luci/controller/linkmeter/
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/linkmeter
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/view/linkmeter/index.htm $(1)/usr/lib/lua/luci/view/linkmeter/
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/view/linkmeter/* $(1)/usr/lib/lua/luci/view/linkmeter/
 
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/luad $(1)/usr/sbin/

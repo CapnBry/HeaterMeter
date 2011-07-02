@@ -103,7 +103,7 @@ function refreshGraphData()
     });
     jQuery.ajax({
         type: "GET",
-        url: "/cgi-bin/hm_data" + range,
+        url: "<%=luci.dispatcher.build_url("lm", "hist")%>?nancnt=" + range,
         dataType: "text",
         success: tstatSuccess,
         error: clearLoadingIndic
@@ -644,10 +644,10 @@ div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
     <input type="checkbox" id="showfan" checked="checked"/><label for="showfan">Show fan speed</label>
     <select id="rangeselect">
         <option value="" selected>Auto scale</option>
-        <option value="?460">1 hour</option>
-        <option value="?360">6 hours</option>
-        <option value="?240">12 hours</option>
-        <option value="?0">24 hours</option>
+        <option value="460">1 hour</option>
+        <option value="360">6 hours</option>
+        <option value="240">12 hours</option>
+        <option value="0">24 hours</option>
     </select>
 </div>
 <div id="graphtt">

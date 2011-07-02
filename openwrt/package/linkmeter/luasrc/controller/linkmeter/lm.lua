@@ -10,19 +10,8 @@ function index()
   page.sysauth = { "anon", "root" }
   page.sysauth_authenticator = require "luci.controller.linkmeter.lm".lmauth
   
-  local page = node("lm", "json")
-  page.target = call("json")
-  page.order = 20
-
-  local page = node("lm", "set")
-  page.target = call("set")
-  page.order = 30
-  page.sysauth = "root"
-
-  local page = node("lm", "login")
-  page.target = call("rootredirect")
-  page.order = 20
-  page.sysauth = "root"
+  entry({"lm", "set"}, call("set"))
+  entry({"lm", "login"}, call("rootredirect")).sysauth = "root"
 end
 
 function lmauth(validator, accs, default)
@@ -51,13 +40,6 @@ end
 
 function rootredirect()
   luci.http.redirect(luci.dispatcher.build_url("lm/"))
-end
-
-function json()
-  -- luci.http.prepare_content("application/json")
-  luci.http.prepare_content("text/plain")
-  local f = io.open("/tmp/json", "rb")
-  luci.ltn12.pump.all(luci.ltn12.source.file(f), luci.http.write)
 end
 
 function set()
@@ -93,7 +75,6 @@ function set()
     http.write("%s to %s\n" % {k,v})
     f:write("/set?%s=%s\n" % {k,v})
   end
-  http.write("Done!")
-
   f:close()
+  http.write("Done!")
 end
