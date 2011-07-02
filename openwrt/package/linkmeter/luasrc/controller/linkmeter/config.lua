@@ -2,6 +2,7 @@ module("luci.controller.linkmeter.config", package.seeall)
 
 function index()
   entry({"admin", "linkmeter"}, alias("admin", "linkmeter", "conf"), "LinkMeter", 50).index = true
+  entry({"admin", "linkmeter", "home"}, alias("lm", "login"), "Home", 10)
   entry({"admin", "linkmeter", "conf"}, template("linkmeter/conf"), "Configuration", 10)
   entry({"admin", "linkmeter", "fw"}, call("action_fw"), "AVR Firmware", 20)
 end
