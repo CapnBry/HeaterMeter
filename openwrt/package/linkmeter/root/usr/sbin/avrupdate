@@ -1,10 +1,5 @@
 #!/bin/sh
 
-echo Content-Type: text/plain
-echo
-
-sed '1,4d;$d' <&0 > /tmp/hm.hex
-
 SERIAL_DEVICE=`uci get linkmeter.daemon.serial_device`
 SERIAL_BAUD=`uci get linkmeter.daemon.serial_baud`
 /etc/init.d/linkmeter stop

@@ -1,0 +1,21 @@
+<%+header%>
+
+<h2><a id="content" name="content">LinkMeter</a></h2>
+<h3>AVR Firmware</h3>
+
+  <form method="POST" action="<%=REQUEST_URI%>" enctype="multipart/form-data">
+  <p>Upgrade the HeaterMeter firmware running on the AVR (Arduino).  Note
+    this is <strong>not</strong> the router operating system, this is
+    the code for the BBQ microcontroller.
+  </p>
+  <div>
+    <strong>HEX file</strong> from your local machine<br />
+    <input type="file" name="hexfile" size="64" /><br />
+    <input class="cbi-button cbi-button-apply" type="submit" value="Upload and flash" />
+  </div>
+  </form>
+<% if step == 2 then %>
+  <p>Flashing AVR firmware via avrdude. Output should appear below</p>
+  <iframe src="<%=REQUEST_URI%>?step=3" style="width: 100%; height: 400px"></iframe>
+<% end %>
+<%+footer%>
