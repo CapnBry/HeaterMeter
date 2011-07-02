@@ -46,9 +46,17 @@ function set()
   local dsp = require "luci.dispatcher"
   local http = require "luci.http"
   
-  -- Make sure the user passed some values to set
   local vals = http.formvalue()
+  
+  -- If there's a rawset, explode the rawset into individual items
+  local rawset = vals.rawset
+  if rawset then
+    vals = require "luci.http.protocol".urldecode_params(rawset)
+  end
+
+  -- Make sure the user passed some values to set
   local cnt = 0
+  -- Can't use #vals because the table is actually a metatable with an indexer
   for _ in pairs(vals) do cnt = cnt + 1 end
   if cnt == 0 then
     return dsp.error500("No values specified")

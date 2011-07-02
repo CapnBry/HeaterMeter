@@ -2,7 +2,6 @@
 
 <h2><a id="content" name="content">LinkMeter</a></h2>
 <h3>Configuration</h3>
-Nothing here working yet
 <ul>
 <li>Setpoint</li>
 <li>PID params B P I D</li>
@@ -17,4 +16,11 @@ Nothing here working yet
 <li>Reboot AVR</li>
 </ul>
 </ul>
+
+<h3>Raw set command</h3>
+Note you can just build your own url from the home page if you're logged in /lm/set?...
+<form method="GET" action="<%=luci.dispatcher.build_url("lm","set")%>">
+<input name="rawset" type="text" size="64" />
+<input type="submit" value="Set" />
+</form>
 <%+footer%>
