@@ -58,7 +58,6 @@ function json()
   luci.http.prepare_content("text/plain")
   local f = io.open("/tmp/json", "rb")
   luci.ltn12.pump.all(luci.ltn12.source.file(f), luci.http.write)
-  f:close()
 end
 
 function set()
