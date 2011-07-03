@@ -147,6 +147,7 @@ function segStateUpdate(line)
       end
       table.remove(vals, 9) -- lid
       table.remove(vals, 8) -- fan avg
+      -- if rfStatus.B then vals[5] = rfStatus.B.batt end
       
       rrd.update(RRD_FILE, table.concat(vals, ":"))
     end
