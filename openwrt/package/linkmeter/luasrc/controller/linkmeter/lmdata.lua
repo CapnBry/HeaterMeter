@@ -1,4 +1,4 @@
-module("luci.controller.linkmeter.data", package.seeall)
+module("luci.controller.linkmeter.lmdata", package.seeall)
 
 function index()
   entry({"lm", "hist"}, call("hist"))
