@@ -6,16 +6,21 @@ SERIAL_BAUD=`uci get linkmeter.daemon.serial_baud`
 
 stty -F $SERIAL_DEVICE $SERIAL_BAUD 2>&1
 
+HEX="/tmp/hm.hex"
+if [ -n "$1] ; then
+ HEX=$1
+fi
+
 CNT=0
 while [ "$CNT" -lt 2 ] ; do
     echo -e \\n/reboot > $SERIAL_DEVICE
 
     avrdude -pm328p -carduino -P$SERIAL_DEVICE \
-      -V -D -Uflash:w:/tmp/hm.hex:i 2>&1
+      -V -D -Uflash:w:$HEX:i 2>&1
 
     if [ $? -eq 0 ] ; then
       echo LM Success
-      rm /tmp/hm.hex
+      rm $HEX
       CNT=999
     else
       echo Failed attempt $CNT

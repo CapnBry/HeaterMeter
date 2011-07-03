@@ -3,8 +3,8 @@ module("luci.controller.linkmeter.config", package.seeall)
 function index()
   entry({"admin", "linkmeter"}, alias("admin", "linkmeter", "conf"), "LinkMeter", 50).index = true
   entry({"admin", "linkmeter", "home"}, alias("lm", "login"), "Home", 10)
-  entry({"admin", "linkmeter", "conf"}, template("linkmeter/conf"), "Configuration", 10)
-  entry({"admin", "linkmeter", "fw"}, call("action_fw"), "AVR Firmware", 20)
+  entry({"admin", "linkmeter", "conf"}, template("linkmeter/conf"), "Configuration", 20)
+  entry({"admin", "linkmeter", "fw"}, call("action_fw"), "AVR Firmware", 30)
 end
 
 function action_fw()
@@ -37,7 +37,7 @@ function action_fw()
   if step == 3 then
     luci.http.prepare_content("text/plain")
     local pipe = require "luci.controller.admin.system".ltn12_popen(
-      "/www/cgi-bin/avrupdate %q" % hex)
+      "/usr/sbin/avrupdate %q" % hex)
     return luci.ltn12.pump.all(pipe, luci.http.write)
   end 
 end
