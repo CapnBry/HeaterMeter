@@ -6,8 +6,7 @@ function index()
 end
 
 function json()
-  -- luci.http.prepare_content("application/json")
-  luci.http.prepare_content("text/plain")
+  luci.http.prepare_content("application/json")
   local f = io.open("/tmp/json", "rb")
   luci.ltn12.pump.all(luci.ltn12.source.file(f), luci.http.write)
 end
