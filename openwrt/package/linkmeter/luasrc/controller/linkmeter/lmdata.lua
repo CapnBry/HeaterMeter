@@ -83,8 +83,7 @@ function hist()
   for _, dp in ipairs(data) do
     -- Skip the first NaN rows until we actually have data and keep
     -- sending until we get to the 1 or 2 rows at the end that are NaN
-    if (seenData or hasData(dp)) and 
-      ((start < now) or (start == now and hasData(dp))) then
+    if hasData(dp) or (seenData and (start < (now - step))) then
       http.write(("%u: %s\n"):format(start, table.concat(dp, " ")))
       seenData = true
     end
