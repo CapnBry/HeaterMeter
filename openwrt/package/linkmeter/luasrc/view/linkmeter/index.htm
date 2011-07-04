@@ -355,9 +355,9 @@ function tstatSuccess(csv)
     clearLoadingIndic();
     jQuery.each(csv.split('\n'), function (){
         if (this == "") return;
-        var line = this.split(" ");
+        var line = this.split(",");
         if (line.length != mapCsv.length) return;
-        line[0] = line[0].replace(":", "") * 1000 + tzOffset;
+        line[0] = line[0] * 1000 + tzOffset;
         for (var valIdx=1; valIdx<line.length; ++valIdx)
         {
             var dest = mapCsv[valIdx];

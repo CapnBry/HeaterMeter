@@ -79,15 +79,17 @@ function hist()
   end
   
   local seenData 
+  local results = {}
   http.prepare_content("text/plain")
   for _, dp in ipairs(data) do
     -- Skip the first NaN rows until we actually have data and keep
     -- sending until we get to the 1 or 2 rows at the end that are NaN
     if hasData(dp) or (seenData and (start < (now - step))) then
-      http.write(("%u: %s\n"):format(start, table.concat(dp, " ")))
+      results[#results+1] = ("%u,%s"):format(start, table.concat(dp, ","))
       seenData = true
     end
     
     start = start + step
   end 
+  http.write(table.concat(results, "\n"))
 end
