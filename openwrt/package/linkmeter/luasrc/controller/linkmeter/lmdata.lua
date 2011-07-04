@@ -39,6 +39,8 @@ function hist()
     return
   end
   
+  local now = os.time()
+  
   if not nancnt then
     -- scroll through the data and find the first line that has data
     -- this should indicate the start of data recording on the largest
@@ -66,20 +68,25 @@ function hist()
     soff = 86400
   end
 
-  -- Only pull new data if the nancnt probe data isn't what we're lookinf for 
+  -- Make sure our end time falls on an exact previous or now time boundary
+  now = math.floor(now/step) * step  
+
+  -- Only pull new data if the nancnt probe data isn't what we're looking for 
   if step ~= 180 or not data then
-    -- Make sure our end time falls on an exact previous or now time boundary
-    local now = os.time()
-    now = math.floor(now/step) * step  
     start, step, _, data = rrd.fetch(RRD_FILE, "AVERAGE",
       "--end", now, "--start", now - soff, "-r", step
     )
   end
   
+  local seenData 
   http.prepare_content("text/plain")
   for _, dp in ipairs(data) do
-    if hasData(dp) then
+    -- Skip the first NaN rows until we actually have data and keep
+    -- sending until we get to the 1 or 2 rows at the end that are NaN
+    if (seenData or hasData(dp)) and 
+      ((start < now) or (start == now and hasData(dp))) then
       http.write(("%u: %s\n"):format(start, table.concat(dp, " ")))
+      seenData = true
     end
     
     start = start + step
