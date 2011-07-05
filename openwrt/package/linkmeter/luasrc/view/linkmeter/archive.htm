@@ -1,0 +1,29 @@
+<%+header%>
+<h2>LinkMeter Database Archives</h2>
+<h3>Stash (archive) database</h3>
+<form method="GET" action="<%=luci.dispatcher.build_url("admin","lm","stashdb")%>">
+  Filename: <input name="rrd" type="text" value="<%=os.date("%Y-%m-%d")%>" />
+  <input type="submit" value="Stash" />
+</form>
+<% 
+  local uci = luci.model.uci.cursor()
+  local STASH_PATH = uci:get("linkmeter", "daemon", "stashpath")
+%>
+  <h3>Stored in <%=STASH_PATH%></h3>
+  
+  <table style="border-spacing: 40px 2px;">
+    <tr><th>View</th><th>Name</th><th>Date / Time</th><th>Size</th></tr>
+<% for f in nixio.fs.dir(STASH_PATH) do 
+  local fullpath = STASH_PATH .. "/" .. f
+  local s = nixio.fs.stat(fullpath)
+  if s.type == "reg" then
+    local urlv = luci.dispatcher.build_url("lm").."?rrd="..fullpath
+%>
+    <tr>
+      <td><a href="<%=urlv%>">View</a></td>
+      <td><%=f%></td><td><%=os.date("%Y-%m-%d %h:%M:%S", s.mtime)%></td><td><%=s.size%></td>
+    </tr>
+<% end end %>
+  </table>
+<%+footer%>
+

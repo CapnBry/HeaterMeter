@@ -4,7 +4,8 @@ function index()
   entry({"admin", "lm"}, alias("admin", "lm", "conf"), "LinkMeter", 50).index = true
   entry({"admin", "lm", "home"}, alias("lm", "login"), "Home", 10)
   entry({"admin", "lm", "conf"}, template("linkmeter/conf"), "Configuration", 20)
-  entry({"admin", "lm", "fw"}, call("action_fw"), "AVR Firmware", 30)
+  entry({"admin", "lm", "archive"}, template("linkmeter/archive"), "Archive", 30)
+  entry({"admin", "lm", "fw"}, call("action_fw"), "AVR Firmware", 40)
 
   entry({"admin", "lm", "stashdb"}, call("action_stashdb"))
 end

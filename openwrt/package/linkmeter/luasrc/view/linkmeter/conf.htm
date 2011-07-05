@@ -23,10 +23,4 @@ Note you can just build your own url from the home page if you're logged in /lm/
 <input name="rawset" type="text" size="64" />
 <input type="submit" value="Set" />
 </form>
-
-<h3>Stash (archive) database</h3>
-<form method="GET" action="<%=luci.dispatcher.build_url("admin","lm","stashdb")%>">
-Filename: <input name="rrd" type="text" value="<%=os.date("%Y-%m-%d")%>" />
-<input type="submit" value="Stash" />
-</form>
 <%+footer%>
