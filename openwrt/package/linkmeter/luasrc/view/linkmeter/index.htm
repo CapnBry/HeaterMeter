@@ -670,7 +670,7 @@ div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
 if luci.dispatcher.context.authuser ~= "root" then 
   write("<a href=%q>Login</a> " % luci.dispatcher.build_url("lm", "login"))
 end
-write("<a href=%q>OpenWrt Admin</a>" % luci.dispatcher.build_url("admin"))
+write("<a href=%q>Configuration</a>" % luci.dispatcher.build_url("admin","lm"))
 %>
 </body>
 
