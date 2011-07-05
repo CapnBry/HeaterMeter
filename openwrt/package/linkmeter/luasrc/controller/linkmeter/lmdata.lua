@@ -1,11 +1,11 @@
 module("luci.controller.linkmeter.lmdata", package.seeall)
 
 function index()
-  entry({"lm", "hist"}, call("hist"))
-  entry({"lm", "json"}, call("json"))
+  entry({"lm", "hist"}, call("action_hist"))
+  entry({"lm", "json"}, call("action_json"))
 end
 
-function json()
+function action_json()
   luci.http.prepare_content("application/json")
   local f = io.open("/tmp/json", "rb")
   luci.ltn12.pump.all(luci.ltn12.source.file(f), luci.http.write)
@@ -22,12 +22,12 @@ local function hasData(tbl)
   end
 end
 
-function hist()
+function action_hist()
   local http = require "luci.http"
   local rrd = require "rrd"
   local uci = luci.model.uci.cursor()
- 
-  local RRD_FILE = uci:get("linkmeter", "daemon", "rrd_file") 
+
+  local RRD_FILE = http.formvalue("rrd") or uci:get("linkmeter", "daemon", "rrd_file") 
   local nancnt = tonumber(http.formvalue("nancnt"))
   local start, step, data, soff
   
@@ -38,7 +38,7 @@ function hist()
     return
   end
   
-  local now = os.time()
+  local now = rrd.last(RRD_FILE) -- os.time()
   
   if not nancnt then
     -- scroll through the data and find the first line that has data

@@ -1,3 +1,4 @@
+<% local rrd = luci.http.formvalue("rrd") %>
 <!doctype html public "-//W3C//DTD HTML 4.0//EN">
 <html>
 <head>
@@ -69,14 +70,10 @@ $(document).ready(function()
     for (var srs=1; srs<4; ++srs)
         $("#pl" + srs).css("background", graphData[mapJson[srs]].color);
 
-    // do an initial query
-    JSONQuery();
-    // and set to refresh every N secs
-    window.setInterval(JSONQuery, 15000);
 <% if luci.dispatcher.context.authuser == "root" then %>
     $(".pname").editable(function(value, settings) {
         return(nameChanged(this.id, value));
-    });
+    }, {maxlength: 13});
 
     $("#set").editable(function(value, settings) {
         return(tempChanged(value));
@@ -86,6 +83,10 @@ $(document).ready(function()
 
 $(window).load(function ()
 {
+<% if not rrd then %>
+    JSONQuery();
+    window.setInterval(JSONQuery, 15000);
+<% end %>
     refreshGraphData();
 });
 
@@ -101,9 +102,14 @@ function refreshGraphData()
     jQuery.each(graphData, function() {
         this.data = [];
     });
+<% 
+  local url = luci.dispatcher.build_url("lm", "hist") .. "?"
+  if rrd then url = url .. "rrd=" .. rrd .. "&" end
+  url = url .. "nancnt="
+%>
     jQuery.ajax({
         type: "GET",
-        url: "<%=luci.dispatcher.build_url("lm", "hist")%>?nancnt=" + range,
+        url: "<%=url%>" + range,
         dataType: "text",
         success: tstatSuccess,
         error: clearLoadingIndic
@@ -569,6 +575,7 @@ function updateProbeEstimates()
 
 <style type="text/css">
 body { font: normal 13px Arial, sans-serif; background: #f3f1e9; text-align: center; margin: 0; padding: 0; }
+h2 { color: #bbb; }
 div.content { background: #246; border: 1px solid #467; }
 table.probelist { width: 100%; background: #8ab; background: rgba(99, 162, 230, 0.5); border: 1px solid #235; padding: 0; }
 td.probe { width: 33%; }
@@ -586,6 +593,9 @@ div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
 <body>
 <div style="background: #000; padding: 10px;">
     <div class="content">
+<% if rrd then %>
+      <h2><%=rrd%></h2>
+<% else %>
       <div style="font-family: Trebuchet MS; background: #000 url('<%=resource%>/fire.png') repeat-x scroll left bottom;"><div style="background: rgba(76,135,199,0.5);">
         <div style="color: #bbb; font-size: 28pt;">Current Pit</div>
         <div id="updatedtime" style="position: absolute; top: 8px; right: 13px; color: #bbb; font-size: 12pt;">00:00:00 AM</div>
@@ -633,6 +643,7 @@ div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
             </td>
         </tr></table>
       </div></div>
+<% end %>
       <div style="position: relative;">
         <div id="graph" style="height: 350px; width: 700px; margin: 8px auto 0px auto;"></div>
         <div id="graph_overview" style="height: 90px; width: 700px; margin-left: auto; margin-right: auto;"></div>
