@@ -80,6 +80,7 @@ function hist()
   local seenData 
   local results = {}
   http.prepare_content("text/plain")
+  http.header("Cache-Control", "max-age="..step)
   for _, dp in ipairs(data) do
     -- Skip the first NaN rows until we actually have data and keep
     -- sending until we get to the 1 or 2 rows at the end that are NaN
