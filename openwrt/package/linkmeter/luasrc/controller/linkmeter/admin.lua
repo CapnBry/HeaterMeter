@@ -6,6 +6,7 @@ function index()
   entry({"admin", "lm", "conf"}, template("linkmeter/conf"), "Configuration", 20)
   entry({"admin", "lm", "archive"}, template("linkmeter/archive"), "Archive", 30)
   entry({"admin", "lm", "fw"}, call("action_fw"), "AVR Firmware", 40)
+  entry({"admin", "lm", "credits"}, template("linkmeter/credits"), "Credits", 50)
 
   entry({"admin", "lm", "stashdb"}, call("action_stashdb"))
 end

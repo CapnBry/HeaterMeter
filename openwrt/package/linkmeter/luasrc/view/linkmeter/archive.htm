@@ -11,19 +11,38 @@
 %>
   <h3>Stored in <%=STASH_PATH%></h3>
   
-  <table style="border-spacing: 40px 2px;">
-    <tr><th>View</th><th>Name</th><th>Date / Time</th><th>Size</th></tr>
-<% for f in nixio.fs.dir(STASH_PATH) do 
-  local fullpath = STASH_PATH .. "/" .. f
-  local s = nixio.fs.stat(fullpath)
-  if s.type == "reg" then
-    local urlv = luci.dispatcher.build_url("lm").."?rrd="..fullpath
+  <table style="border-spacing: 40px 4px; width: 50%;">
+    <tr><th style="border: 1px solid #ddd;">View</th><th style="border: 1px solid #ddd;">Name</th></tr>
+<% 
+local files = {}
+for fn in nixio.fs.dir(STASH_PATH) do 
+  local f = {}
+  f.name = fn
+  f.path = STASH_PATH .. "/" .. fn
+  f.stat = nixio.fs.stat(f.path)
+  if f.stat.type == "reg" then
+    files[#files+1] = f
+  end
+end
+
+table.sort(files, function(a,b) return a.stat.mtime < b.stat.mtime end )
+
+for _,f in ipairs(files) do
+    local urlView = luci.dispatcher.build_url("lm").."?rrd="..f.path
+    local urlCsv = luci.dispatcher.build_url("lm","hist").."?rrd="..f.path
 %>
     <tr>
-      <td><a href="<%=urlv%>">View</a></td>
-      <td><%=f%></td><td><%=os.date("%Y-%m-%d %H:%M:%S", s.mtime)%></td><td><%=s.size%></td>
+      <td>
+        <a href="<%=urlView%>"><img src="<%=resource.."/chart_curve.png"%>" />View</a>
+        <a href="<%=urlCsv%>"><img src="<%=resource.."/table_go.png"%>" />CSV</a>
+      </td>
+      <td>
+        <div style="color: #999; font-style: italic; font-size: smaller;"><%=os.date("%B %d, %Y  %I:%M%p", f.stat.mtime)%></div>
+        <div style="font-size: large;"><%=f.name%></div>
+      </td>
     </tr>
-<% end end %>
+    <tr><td colspan="2" style="background: #ccc; height: 2px;"></td></tr>
+<% end %>
   </table>
 <%+footer%>
 
