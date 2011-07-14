@@ -10,6 +10,7 @@
 <script language="javascript" type="text/javascript" src="<%=resource%>/js/jquery.flot.min.js"></script>
 <script language="javascript" type="text/javascript" src="<%=resource%>/js/jquery.flot.selection.min.js"></script>
 <script language="javascript" type="text/javascript">
+var lastUpdateUtc;
 var lastPlot;
 var lastOverviewPlot;
 
@@ -80,12 +81,19 @@ $(document).ready(function()
         return(tempChanged(value));
     }, {style: "display: inline"});
 <% end %>
+<% if not rrd then %>
+    var o = <%= nixio.fs.readfile("/tmp/json") %>;
+    var now = +new Date();
+    if ((now - 15000) < (o.time * 1000))
+        connectionSuccess(o);
+<% end %>
 });
 
 $(window).load(function ()
 {
 <% if not rrd then %>
-    JSONQuery();
+    if (!lastUpdateUtc)
+        JSONQuery();
     window.setInterval(JSONQuery, 15000);
 <% end %>
     refreshGraphData();
@@ -447,7 +455,8 @@ function checkRefreshGraphOrUpdate()
 
 function connectionSuccess(o)
 {
-    o.time = o.time * 1000 + tzOffset;
+    lastUpdateUtc = o.time * 1000;
+    o.time = lastUpdateUtc + tzOffset;
     $("#set").html(o.set);
 
     if (graphLoaded)
