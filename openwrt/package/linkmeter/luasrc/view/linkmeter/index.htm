@@ -20,9 +20,9 @@ var graphData =  [
         { label: "", color: "#6cf", lines: { lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // fanspeed
         { label: "", color: "#fd9", lines: { lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // lidopen
         { label: "Set", color: "rgba(255,0,0,0.8)", lines: { lineWidth: 1 }, shadowSize: 0, data: [] },
-        { label: "Amb", color: "#789", data: [] },
-        { label: "Food2", color: "#297", data: [] },
-        { label: "Food1", color: "#6c3", data: [] },
+        { label: "Amb", color: "#789", lines: { show: true }, data: [] },
+        { label: "Food2", color: "#297", lines: { show: true }, data: [] },
+        { label: "Food1", color: "#6c3", lines: { show: true }, data: [] },
         { label: "Pit", color: "#e73", lines: { lineWidth: 3 }, data: [] }
     ];
 
@@ -63,6 +63,7 @@ $(document).ready(function()
     $("#rangeselect").change(refreshGraphData);
     $("#graph").bind("plotclick", graphClicked);
     $("#graph").bind("plothover", graphHover);
+    $("div.legfill").click(legendClicked);
 
     // Set colors of probe readings to match the graph colors
     for (var srs=0; srs<4; ++srs)
@@ -89,6 +90,14 @@ $(window).load(function ()
 <% end %>
     refreshGraphData();
 });
+
+function legendClicked()
+{
+  // The ID should be "pl?" and we want that last digit
+  var idx = mapJson[parseInt(this.id.substring(2))];
+  graphData[idx].lines.show = !graphData[idx].lines.show;
+  updateGraph();
+}
 
 function refreshGraphData()
 {
