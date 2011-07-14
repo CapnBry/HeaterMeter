@@ -101,10 +101,11 @@ $(window).load(function ()
 
 function legendClicked()
 {
-  // The ID should be "pl?" and we want that last digit
-  var idx = mapJson[parseInt(this.id.substring(2))];
-  graphData[idx].lines.show = !graphData[idx].lines.show;
-  updateGraph();
+    // The ID should be "pl?" so pull the json probe index off the end
+    // and get the graphdata index
+    var idx = mapJson[parseInt(this.id.substring(2))];
+    graphData[idx].lines.show = !graphData[idx].lines.show;
+    updateGraph();
 }
 
 function refreshGraphData()
@@ -211,12 +212,12 @@ function lerp(n1, n2, frac)
 var lastHover = 0;
 function graphHover(event, pos, item)
 {
-  var now = +new Date();
-  if (now - lastHover > 100)
-  {
-      graphClicked(event, pos, item); 
-      lastHover = now;
-  }
+    var now = +new Date();
+    if (now - lastHover > 100)
+    {
+        graphClicked(event, pos, item); 
+        lastHover = now;
+    }
 }
 
 function graphClicked(event, pos, item)
@@ -585,8 +586,8 @@ function degPerHour(probeIdx)
 
 function updateProbeEstimates()
 {
-  for (var i=1; i<4; ++i)
-    degPerHour(i);
+    for (var i=1; i<4; ++i)
+        degPerHour(i);
 }
 
 </script>
