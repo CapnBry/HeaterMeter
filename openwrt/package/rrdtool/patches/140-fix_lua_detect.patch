@@ -6,10 +6,10 @@
                [lua_havelib=$lua_vndot],
 -              [COMP_LUA=], [-lm])], [-lm])], [-lm])],
 -        [COMP_LUA=], [-lm])
-+              [COMP_LUA=], [-lm -ldl])],
-+            [-lm -ldl])],
-+          [-lm -ldl])],
-+        [COMP_LUA=], [-lm -ldl])
++              [COMP_LUA=], [-lm -ldl -lcrypt])],
++            [-lm -ldl -lcrypt])],
++          [-lm -ldl -lcrypt])],
++        [COMP_LUA=], [-lm -ldl -lcrypt])
        lua_libs=$LIBS
        LIBS=
  
