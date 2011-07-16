@@ -6,7 +6,7 @@ local nixio = require "nixio"
 local uci = require "uci" 
 local lucid = require "luci.lucid"
 
-local pairs, ipairs, table, tonumber = pairs, ipairs, table, tonumber
+local pairs, ipairs, table, tonumber, print = pairs, ipairs, table, tonumber, print
 
 module "luci.lucid.linkmeterd"
 
@@ -56,19 +56,19 @@ local JSON_FROM_CSV = {2, 4, 14, 19, 24, 29, 8, 10, 6 }
 local function jsonWrite(vals)
   local i,v
   for i,v in ipairs(vals) do
-    if (tonumber(v) == nil) then v = "null" end
+    if tonumber(v) == nil then v = "null" end
     JSON_TEMPLATE[JSON_FROM_CSV[i]] = v
   end
 
   -- add the rf status where applicable
   for i,src in ipairs(rfMap) do
     local rfval
-    if (src ~= "") then
-      local sts = rfStatus[src];
+    if src ~= "" then
+      local sts = rfStatus[src]
       if sts then
-        rfval = (',"rf":{"s":%s,"b":%s}'):format(sts.rssi,sts.batt);
+        rfval = (',"rf":{"s":%s,"b":%s}'):format(sts.rssi,sts.batt)
       else
-        rfval = ',"rf":null';
+        rfval = ',"rf":null'
       end
     else
       rfval = ''
@@ -251,8 +251,6 @@ function segmentCall(line)
 end
 
 function prepare_daemon(config, server)
-  nixio.syslog("info", "Preparing LinkMeter daemon")
-  
   local ipcfd = nixio.socket("unix", "dgram")
   if not ipcfd then
     return nil, -2, "Can't create IPC socket"
@@ -268,11 +266,11 @@ function prepare_daemon(config, server)
     revents = 0,
     handler = function (polle)
       while true do
-      local msg, addr = polle.fd:recvfrom(128)
-      if not msg and addr then return end
+        local msg, addr = polle.fd:recvfrom(128)
+        if not (msg and addr) then return end
    
-      local result = segmentCall(msg)
-      if result then polle.fd:sendto(result, addr) end
+        local result = segmentCall(msg)
+        if result then polle.fd:sendto(result, addr) end
       end
     end
   }) 

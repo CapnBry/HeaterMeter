@@ -34,8 +34,6 @@ define Package/linkmeter/conffiles
 endef
 
 define Package/linkmeter/install
-	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./config/linkmeter.init $(1)/etc/init.d/linkmeter
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) ./config/linkmeter.uci $(1)/etc/config/linkmeter
 
@@ -44,8 +42,10 @@ define Package/linkmeter/install
 	$(INSTALL_DIR) $(1)/www
 	$(CP) ./htdocs/* $(1)/www/
 
+	$(INSTALL_DIR) $(1)/usr/lib/lua
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/lmclient.lua $(1)/usr/lib/lua/
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/lucid
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/linkmeterd.lua $(1)/usr/lib/lua/luci/lucid/
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/lucid/linkmeterd.lua $(1)/usr/lib/lua/luci/lucid/
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller/linkmeter
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/controller/linkmeter/* $(1)/usr/lib/lua/luci/controller/linkmeter/
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/linkmeter

@@ -1,5 +1,4 @@
 require("nixio")
-require("nixio.fs")
 
 local client = nixio.socket("unix", "dgram")
   -- autobind to an abstract address, optionally I could explicitly specify
@@ -12,8 +11,7 @@ if not client:connect("/var/run/linkmeter.sock") then
   return false
 end
 
-local bytes = client:send(#arg > 0 and "$"..arg[1] or "$LMRF")
-print("Sent "..tostring(bytes))
+local bytes = client:send(#arg > 0 and "$"..arg[1] or "$LMSU")
 
 local polle = { fd = client, events = nixio.poll_flags("in"), revents = 0 }
 if nixio.poll({polle}, 1000) then
