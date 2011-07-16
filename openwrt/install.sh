@@ -16,7 +16,6 @@ EOFEEDS
 
 $WRT_PATH/scripts/feeds update
 
-$WRT_PATH/scripts/feeds install libdaemon
 $WRT_PATH/scripts/feeds install -p linkmeter avrdude
 $WRT_PATH/scripts/feeds install -p linkmeter rrdtool
 $WRT_PATH/scripts/feeds install -p linkmeter kmod-broadcom-sdhc26
