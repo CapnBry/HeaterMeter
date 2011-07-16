@@ -1,20 +1,26 @@
-#! /usr/bin/env lua
+local os = require "os"
+local rrd = require "rrd" 
+local nixio = require "nixio" 
+      nixio.fs = require "nixio.fs" 
+      nixio.util = require "nixio.util" 
+local uci = require "uci" 
+local lucid = require "luci.lucid"
 
-local io = require("io")
-local os = require("os")
-local rrd = require("rrd")
-local nixio = require("nixio")
-nixio.fs = require("nixio.fs")
-local uci = require("uci")
+local pairs, ipairs, table, tonumber = pairs, ipairs, table, tonumber
 
-local SERIAL_DEVICE = "/dev/ttyS1"
-local RRD_FILE = "/tmp/hm.rrd"
-local JSON_FILE = "/tmp/json"
+module "luci.lucid.linkmeterd"
 
+local serialPolle
+local lastHmUpdate
 local rfMap = {}
 local rfStatus = {}
 
-function rrdCreate()
+local segmentCall -- forward
+
+local SERIAL_DEVICE = "/dev/ttyS1"
+local RRD_FILE = "/tmp/hm.rrd"
+
+local function rrdCreate()
  return rrd.create(
    RRD_FILE,
    "--step", "2",
@@ -38,22 +44,22 @@ local JSON_TEMPLATE = {
   '{"time":', 0,
   ',"set":', 0,
   ',"lid":', 0,
-  ',"fan":{"c":', 0, ',"a":', 0, 
+  ',"fan":{"c":', 0, ',"a":', 0,
   '},"temps":[{"n":"', 'Pit', '","c":', 0, '', -- probe1
   '},{"n":"', 'Food Probe1', '","c":', 0, '', -- probe2
   '},{"n":"', 'Food Probe2', '","c":', 0, '', -- probe3
   '},{"n":"', 'Ambient', '","c":', 0, '', -- probe4
   '}]}'
 }
-local JSON_FROM_CSV = {2, 4, 14, 19, 24, 29, 8, 10, 6 } 
-  
-function jsonWrite(vals)
+local JSON_FROM_CSV = {2, 4, 14, 19, 24, 29, 8, 10, 6 }
+
+local function jsonWrite(vals)
   local i,v
   for i,v in ipairs(vals) do
     if (tonumber(v) == nil) then v = "null" end
-    JSON_TEMPLATE[JSON_FROM_CSV[i]] = v  
+    JSON_TEMPLATE[JSON_FROM_CSV[i]] = v
   end
-  
+
   -- add the rf status where applicable
   for i,src in ipairs(rfMap) do
     local rfval
@@ -69,11 +75,9 @@ function jsonWrite(vals)
     end
     JSON_TEMPLATE[10 + (i * 5)] = rfval
   end
-  
-  return nixio.fs.writefile(JSON_FILE, table.concat(JSON_TEMPLATE))
 end
 
-function segSplit(line)
+local function segSplit(line)
   local retVal = {}
   local fieldstart = 1
   line = line .. ','
@@ -87,7 +91,7 @@ function segSplit(line)
   return retVal
 end
 
-function segProbeNames(line)
+local function segProbeNames(line)
   local vals = segSplit(line)
   if #vals < 4 then return end
 
@@ -97,13 +101,13 @@ function segProbeNames(line)
   JSON_TEMPLATE[27] = vals[4]
 end
 
-function segRfUpdate(line)
+local function segRfUpdate(line)
   local vals = segSplit(line)
   rfStatus = {}  -- clear the table to remove stales
   local idx = 1
   while (idx < #vals) do
     local nodeId = vals[idx]
-    rfStatus[nodeId] = { 
+    rfStatus[nodeId] = {
       batt = vals[idx+1],
       rssi = vals[idx+2],
       last = vals[idx+3]
@@ -111,35 +115,35 @@ function segRfUpdate(line)
     idx = idx + 4
   end
 end
-
-function segRfMap(line)
+                                                                      
+local function segRfMap(line)
   local vals = segSplit(line)
   local idx
-  for i,s in ipairs(vals) do 
+  for i,s in ipairs(vals) do
     rfMap[i] = s:sub(1,1)
   end
 end
 
-local lastUpdate = os.time()
 function segStateUpdate(line)
     local vals = segSplit(line)
-    
-    if #vals == 8 then 
+
+    if #vals == 8 then
       -- If the time has shifted more than 24 hours since the last update
-      -- the clock has probably just been set from 0 (at boot) to actual 
+      -- the clock has probably just been set from 0 (at boot) to actual
       -- time. Recreate the rrd to prevent a 40 year long graph
       local time = os.time()
-      if time - lastUpdate > (24*60*60) then
-        nixio.syslog("notice", "Time jumped forward by "..(time-lastUpdate)..", restarting database")
+      if time - lastHmUpdate > (24*60*60) then
+        nixio.syslog("notice", 
+          "Time jumped forward by "..(time-lastHmUpdate)..", restarting database")
         rrdCreate()
       end
-      lastUpdate = time
+      lastHmUpdate = time
 
       -- Add the time as the first item
       table.insert(vals, 1, time)
-      
+
       jsonWrite(vals)
-      
+
       local lid = tonumber(vals[9]) or 0
       -- If the lid value is non-zero, it replaces the fan value
       if lid ~= 0 then
@@ -148,44 +152,131 @@ function segStateUpdate(line)
       table.remove(vals, 9) -- lid
       table.remove(vals, 8) -- fan avg
       -- if rfStatus.B then vals[5] = rfStatus.B.batt / 10 end
-      
+
       rrd.update(RRD_FILE, table.concat(vals, ":"))
     end
 end
 
-local hm = io.open(SERIAL_DEVICE, "r+b")
-if hm == nil then
-  die("Can not open serial device")
+local function lmdStart()
+  if serialPolle then return true end
+
+  local serialfd = nixio.open(SERIAL_DEVICE, nixio.open_flags("rdwr"))
+  if not serialfd then
+    return nil, -2, "Can't open serial device"
+  end
+  serialfd:setblocking(false) 
+
+  lastHmUpdate = os.time()
+  nixio.umask("0022")
+  -- Create database
+  if not nixio.fs.access(RRD_FILE) then
+    rrdCreate()
+  end
+
+  serialPolle = {
+    fd = serialfd,
+    events = nixio.poll_flags("in"),
+    revents = 0,
+    handler = function (polle)
+      for line in polle.fd:linesource() do
+        segmentCall(line)
+      end 
+    end
+  }
+  
+  lucid.register_pollfd(serialPolle)
+  serialfd:write("/config\n")
+  
+  return true
 end
 
-nixio.umask("0022")
-
--- Create database
-if not nixio.fs.access(RRD_FILE) then
-  rrdCreate()
+local function lmdStop()
+  if not serialPolle then return true end
+  lucid.unregister_pollfd(serialPolle)
+  serialPolle.fd:setblocking(true)
+  serialPolle.fd:close()
+  serialPolle = nil
+  
+  return true
 end
 
-local segmentMap = { 
+local function segLmRfStatus(line)
+  local retVal = ""
+  for id, item in pairs(rfStatus) do
+    if retVal ~= "" then 
+      retVal = retVal .. ","
+    end
+    
+    retVal = retVal .. ('{"id":%s,"batt":%s,"rssi":%s,"last":%s}'):format(
+      id, item.batt, item.rssi, item.last)
+  end
+  retVal = "[" .. retVal .. "]"
+  
+  return retVal
+end
+
+local function segLmDaemonStart()
+  lmdStart()
+  return "OK"
+end
+
+local function segLmDaemonStop()
+  lmdStop()
+  return "OK"
+end
+
+local function segLmStateUpdate()
+  return table.concat(JSON_TEMPLATE)
+end
+
+local segmentMap = {
   ["$HMSU"] = segStateUpdate,
   ["$HMPN"] = segProbeNames,
   ["$HMRF"] = segRfUpdate,
-  ["$HMRM"] = segRfMap
+  ["$HMRM"] = segRfMap,
+
+  ["$LMSU"] = segLmStateUpdate,
+  ["$LMRF"] = segLmRfStatus,
+  ["$LMD1"] = segLmDaemonStart,
+  ["$LMD0"] = segLmDaemonStop,
 }
 
--- Request current state
-hm:write("/config\n")
-
-while true do
-  local hmline = hm:read("*l") 
-  if hmline == nil then break end
-  print(hmline)
- 
-  local segmentFunc = segmentMap[hmline:sub(1,5)];
-  if segmentFunc ~= nil then
-    segmentFunc(hmline)
+function segmentCall(line)
+  local segmentFunc = segmentMap[line:sub(1,5)]
+  if segmentFunc then 
+    return segmentFunc(line)
+  else
+    return "ERR"
   end
 end
 
-hm:close()
-nixio.fs.unlink("/var/run/linkmeterd/pid")
-
+function prepare_daemon(config, server)
+  nixio.syslog("info", "Preparing LinkMeter daemon")
+  
+  local ipcfd = nixio.socket("unix", "dgram")
+  if not ipcfd then
+    return nil, -2, "Can't create IPC socket"
+  end
+ 
+  nixio.fs.unlink("/var/run/linkmeter.sock")
+  ipcfd:bind("/var/run/linkmeter.sock")
+  ipcfd:setblocking(false) 
+ 
+  server.register_pollfd({
+    fd = ipcfd,
+    events = nixio.poll_flags("in"),
+    revents = 0,
+    handler = function (polle)
+      while true do
+      local msg, addr = polle.fd:recvfrom(128)
+      if not msg and addr then return end
+   
+      local result = segmentCall(msg)
+      if result then polle.fd:sendto(result, addr) end
+      end
+    end
+  }) 
+  
+  return lmdStart()
+end
+        
