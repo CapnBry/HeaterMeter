@@ -3,7 +3,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=linkmeter
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 # PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_RELEASE)
 
@@ -12,8 +12,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/linkmeter
 	SECTION:=utils
 	CATEGORY:=Utilities
-	DEPENDS:=+rrdtool +luci-lib-web +avrdude
-	PKG_BUILD_DEPENDS:=+libdaemon
+	DEPENDS:=+rrdtool +luci-lib-lucid-http +avrdude
 	TITLE:=LinkMeter BBQ Controller
 	URL:=http://tvwbb.com/eve/forums/a/tpc/f/9270072103/m/7691098906
 	MAINTAINER:=Bryan Mayland <capnbry@gmail.com>
@@ -25,7 +24,6 @@ endef
 
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) ./src/* $(PKG_BUILD_DIR)/
 	$(CP) ./luasrc/* $(PKG_BUILD_DIR)/
 endef
 
@@ -44,23 +42,19 @@ define Package/linkmeter/install
 	$(INSTALL_DIR) $(1)/www
 	$(CP) ./htdocs/* $(1)/www/
 
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/lucid
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/linkmeterd.lua $(1)/usr/lib/lua/luci/lucid/
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller/linkmeter
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/controller/linkmeter/* $(1)/usr/lib/lua/luci/controller/linkmeter/
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/linkmeter
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/view/linkmeter/* $(1)/usr/lib/lua/luci/view/linkmeter/
-
-	$(INSTALL_DIR) $(1)/usr/sbin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/luad $(1)/usr/sbin/
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/linkmeterd.lua $(1)/usr/sbin/
-	$(LN) -s /usr/sbin/luad $(1)/usr/sbin/linkmeterd
 endef
 
 define Package/linkmeter/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
     rm -f /tmp/luci-indexcache
-    /etc/init.d/linkmeter enabled || /etc/init.d/linkmeter enable
-    /etc/init.d/linkmeter start
+    /etc/init.d/lucid restart
     exit 0
 }
 endef
@@ -68,11 +62,16 @@ endef
 define Package/linkmeter/prerm
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
-    /etc/init.d/linkmeter stop
-    /etc/init.d/linkmeter enabled && /etc/init.d/linkmeter disable
+    /etc/init.d/lucid stop
     if [ -f "/tmp/hm.rrd" ] ; then rm "/tmp/hm.rrd" ; fi
-    if [ -f "/tmp/json" ] ; then rm "/tmp/json" ; fi
     rm -f /tmp/luci-indexcache
+}
+endef
+
+define Package/linkmeter/postrm
+#!/bin/sh
+[ -n "$${IPKG_INSTROOT}" ] || {
+    /etc/init.d/lucid start
 }
 endef
 
