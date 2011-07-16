@@ -3,3 +3,10 @@ config linkmeter daemon
 	option serial_baud 115200
 	option rrd_file /tmp/hm.rrd
 	option stashpath /root
+
+config linkmeterd linkmeter
+        option serial_device "/dev/ttyS1"
+
+config daemon lmserver
+        option enabled 1
+        option slave linkmeter
