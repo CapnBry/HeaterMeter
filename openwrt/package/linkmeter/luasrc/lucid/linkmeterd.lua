@@ -3,7 +3,7 @@ local rrd = require "rrd"
 local nixio = require "nixio" 
       nixio.fs = require "nixio.fs" 
       nixio.util = require "nixio.util" 
-local uci = require "uci" 
+local uci = require "uci".cursor()
 local lucid = require "luci.lucid"
 
 local pairs, ipairs, table, tonumber, print = pairs, ipairs, table, tonumber, print
@@ -17,8 +17,7 @@ local rfStatus = {}
 
 local segmentCall -- forward
 
-local SERIAL_DEVICE = "/dev/ttyS1"
-local RRD_FILE = "/tmp/hm.rrd"
+local RRD_FILE = uci:get("lucid", "linkmeter", "rrd_file")
 
 local function rrdCreate()
  return rrd.create(
@@ -105,12 +104,13 @@ local function segRfUpdate(line)
   local vals = segSplit(line)
   rfStatus = {}  -- clear the table to remove stales
   local idx = 1
+  local now = os.time()
   while (idx < #vals) do
     local nodeId = vals[idx]
     rfStatus[nodeId] = {
       batt = vals[idx+1],
       rssi = vals[idx+2],
-      last = vals[idx+3]
+      last = now - tonumber(vals[idx+3])
     }
     idx = idx + 4
   end
@@ -159,6 +159,12 @@ end
 
 local function lmdStart()
   if serialPolle then return true end
+  local SERIAL_DEVICE = uci:get("lucid", "linkmeter", "serial_device")
+  local SERIAL_BAUD = uci:get("lucid", "linkmeter", "serial_baud")
+  
+  if os.execute("/bin/stty -F " .. SERIAL_DEVICE .. " " .. SERIAL_BAUD) ~= 0 then
+    return nil, -2, "Can't set serial baud"
+  end
 
   local serialfd = nixio.open(SERIAL_DEVICE, nixio.open_flags("rdwr"))
   if not serialfd then
@@ -207,7 +213,7 @@ local function segLmRfStatus(line)
       retVal = retVal .. ","
     end
     
-    retVal = retVal .. ('{"id":%s,"batt":%s,"rssi":%s,"last":%s}'):format(
+    retVal = retVal .. ('{"id":"%s","batt":%s,"rssi":%s,"last":%u}'):format(
       id, item.batt, item.rssi, item.last)
   end
   retVal = "[" .. retVal .. "]"

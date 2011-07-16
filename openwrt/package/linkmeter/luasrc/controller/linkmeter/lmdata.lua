@@ -2,13 +2,45 @@ module("luci.controller.linkmeter.lmdata", package.seeall)
 
 function index()
   entry({"lm", "hist"}, call("action_hist"))
-  entry({"lm", "json"}, call("action_json"))
+  entry({"lm", "hmstatus"}, call("action_hmstatus"))
+  entry({"lm", "rfstatus"}, call("action_rfstatus"))
 end
 
-function action_json()
-  luci.http.prepare_content("application/json")
-  local f = io.open("/tmp/json", "rb")
-  luci.ltn12.pump.all(luci.ltn12.source.file(f), luci.http.write)
+function lmclient_command(query)
+  local client = nixio.socket("unix", "dgram")
+  client:bind("")
+  if not client:connect("/var/run/linkmeter.sock") then
+    client:close()
+    return nil
+  end
+  
+  client:send(query)
+  local polle = { fd = client, events = nixio.poll_flags("in"), revents = 0 }
+  local retVal
+  if nixio.poll({polle}, 1000) then
+    retVal = client:recv(1024)
+  end
+  client:close()
+  return retVal
+end
+
+function lmclient_json(query)
+  local result = lmclient_command(query)
+  if result then
+    luci.http.prepare_content("application/json")
+    luci.http.write(result)
+    return true
+  else
+    luci.dispatcher.error500("JSON read failed: " .. query)
+  end
+end
+
+function action_hmstatus()
+  return lmclient_json("$LMSU")
+end
+
+function action_rfstatus()
+  return lmclient_json("$LMRF")
 end
 
 local function hasData(tbl)

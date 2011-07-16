@@ -1,4 +1,7 @@
-<% local rrd = luci.http.formvalue("rrd") %>
+<%
+  local rrd = luci.http.formvalue("rrd")
+  local lmdata = require "luci.controller.linkmeter.lmdata"
+%>
 <!doctype html public "-//W3C//DTD HTML 4.0//EN">
 <html>
 <head>
@@ -82,7 +85,7 @@ $(document).ready(function()
     }, {style: "display: inline"});
 <% end %>
 <% if not rrd then %>
-    var o = <%= nixio.fs.readfile("/tmp/json") %>;
+    var o = <% if not lmdata.action_hmstatus() then write("{}") end %>;
     var now = +new Date();
     if ((now - 15000) < (o.time * 1000))
         connectionSuccess(o);
@@ -422,7 +425,7 @@ function JSONQuery()
         jQuery.ajax(
         {
             type: "GET",
-            url: "<%=luci.dispatcher.build_url("lm", "json")%>",
+            url: "<%=luci.dispatcher.build_url("lm", "hmstatus")%>",
             dataType: "json",
             timeout: 5000,
             success: connectionSuccess,
