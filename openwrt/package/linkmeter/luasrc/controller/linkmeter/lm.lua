@@ -4,12 +4,10 @@ function index()
   local root = node()
   root.target = call("rootredirect") 
 
-  local page = node("lm")
-  page.target = template("linkmeter/index")
-  page.order = 10
+  local page = entry({"lm"}, template("linkmeter/index"), nil, 10)
   page.sysauth = { "anon", "root" }
   page.sysauth_authenticator = require "luci.controller.linkmeter.lm".lmauth
-  
+
   entry({"lm", "set"}, call("set"))
   entry({"lm", "login"}, call("rootredirect")).sysauth = "root"
 end
