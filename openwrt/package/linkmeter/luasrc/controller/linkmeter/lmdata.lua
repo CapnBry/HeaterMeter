@@ -43,17 +43,6 @@ function action_rfstatus()
   return lmclient_json("$LMRF")
 end
 
-local function hasData(tbl)
-  -- Returns true if the table has any non-NaN data in it
-  for _,val in ipairs(tbl) do
-    -- If val ~= val then val is a NaN, LUA doesn't have isnan()
-    -- and NaN ~= NaN by C definition (platform-specific)
-    if val == val then
-      return true
-    end
-  end
-end
-
 function action_hist()
   local http = require "luci.http"
   local rrd = require "rrd"
@@ -80,7 +69,10 @@ function action_hist()
     start, step, _, data = rrd.fetch(RRD_FILE, "AVERAGE")
     nancnt = 0
     for _, dp in ipairs(data) do
-      if hasData(dp) then break end
+      -- SetPoint (dp[1]) should always be valid if the DB was capturing
+      -- If val ~= val then val is a NaN, LUA doesn't have isnan()
+      -- and NaN ~= NaN by C definition (platform-specific)
+      if dp[1] == dp[1] then break end
       nancnt = nancnt + 1
     end
   end
@@ -116,7 +108,7 @@ function action_hist()
   for _, dp in ipairs(data) do
     -- Skip the first NaN rows until we actually have data and keep
     -- sending until we get to the 1 or 2 rows at the end that are NaN
-    if hasData(dp) or (seenData and (start < (now - step))) then
+    if (dp[1] == dp[1]) or (seenData and (start < (now - step))) then
       results[#results+1] = ("%u,%s"):format(start, table.concat(dp, ","))
       seenData = true
     end
