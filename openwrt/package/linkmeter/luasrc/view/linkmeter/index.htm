@@ -481,12 +481,10 @@ function connectionSuccess(o)
         else
             $("#temp" + i).html(val.toFixed(1) + "&deg;");
         
+        var dataIdx = mapJson[i];
+        graphData[dataIdx].label = o.temps[i].n;
         if (graphLoaded)
-        {
-            var dataIdx = mapJson[i];
-            graphData[dataIdx].label = o.temps[i].n;
             addGraphPoint(graphData[dataIdx].data, o.time, val);
-        }
 
         var rfsDiv = "#rfs" + i;
         if (typeof o.temps[i].rf !== "undefined")
