@@ -173,11 +173,9 @@ void reportRfMap(void)
   }
   Serial_nl();
 }
-#endif /* HEATERMETER_RFM12 */
 
 void storeRfMap(unsigned char probeIndex, unsigned char source, unsigned char sourcePin)
 {
-#ifdef HEATERMETER_RFM12
   rfMap[probeIndex].source = source;
   rfMap[probeIndex].pin = sourcePin;
       
@@ -186,8 +184,8 @@ void storeRfMap(unsigned char probeIndex, unsigned char source, unsigned char so
   eeprom_write_block(&rfMap[probeIndex], ofs, sizeof(rf12_map_item_t));
     
   reportRfMap();
-#endif /* HEATERMETER_RFM12 */
 }
+#endif /* HEATERMETER_RFM12 */
 
 inline void storeProbeTypeOrMap(unsigned char probeIndex, char *vals)
 {
@@ -204,8 +202,10 @@ inline void storeProbeTypeOrMap(unsigned char probeIndex, char *vals)
     if (oldProbeType != probeType)
     {
       storeProbeType(probeIndex, probeType);
+#ifdef HEATERMETER_RFM12
       if (oldProbeType == PROBETYPE_RF12)
         storeRfMap(probeIndex, RFSOURCEID_NONE, 0);
+#endif /* HEATERMETER_RFM12 */
     }
   }  /* if probeType */
   
