@@ -59,14 +59,14 @@ function action_hist()
     return
   end
   
-  local now = rrd.last(RRD_FILE) -- os.time()
+  local now = rrd.last(RRD_FILE) 
   
   if not nancnt then
     -- scroll through the data and find the first line that has data
     -- this should indicate the start of data recording on the largest
     -- step data.  Then use that to determine the smallest step that
     -- includes all the data
-    start, step, _, data = rrd.fetch(RRD_FILE, "AVERAGE")
+    start, step, _, data = rrd.fetch(RRD_FILE, "AVERAGE", "--end", now)
     nancnt = 0
     for _, dp in ipairs(data) do
       -- SetPoint (dp[1]) should always be valid if the DB was capturing
