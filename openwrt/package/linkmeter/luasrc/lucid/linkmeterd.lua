@@ -6,7 +6,8 @@ local nixio = require "nixio"
 local uci = require "uci".cursor()
 local lucid = require "luci.lucid"
 
-local pairs, ipairs, table, tonumber, print = pairs, ipairs, table, tonumber, print
+local pairs, ipairs, table = pairs, ipairs, table
+local tonumber, tostring, print = tonumber, tostring, print
 
 module "luci.lucid.linkmeterd"
 
@@ -82,11 +83,13 @@ local function segSplit(line)
   line = line .. ','
   repeat
     local nexti = line:find(',', fieldstart)
-    retVal[#retVal+1] = line:sub(fieldstart, nexti-1)
+    -- Don't add the segment name
+    if fieldstart > 1 then
+      retVal[#retVal+1] = line:sub(fieldstart, nexti-1)
+    end
     fieldstart = nexti + 1
   until fieldstart > line:len()
 
-  table.remove(retVal, 1) -- remove the segment name
   return retVal
 end
 
@@ -142,6 +145,7 @@ function segStateUpdate(line)
       -- Add the time as the first item
       table.insert(vals, 1, time)
 
+      -- if rfStatus.B then vals[5] = rfStatus.B.batt / 10 end
       jsonWrite(vals)
 
       local lid = tonumber(vals[9]) or 0
@@ -151,7 +155,6 @@ function segStateUpdate(line)
       end
       table.remove(vals, 9) -- lid
       table.remove(vals, 8) -- fan avg
-      -- if rfStatus.B then vals[5] = rfStatus.B.batt / 10 end
 
       rrd.update(RRD_FILE, table.concat(vals, ":"))
     end
@@ -182,7 +185,6 @@ local function lmdStart()
   serialPolle = {
     fd = serialfd,
     events = nixio.poll_flags("in"),
-    revents = 0,
     handler = function (polle)
       for line in polle.fd:linesource() do
         segmentCall(line)
@@ -232,7 +234,12 @@ local function segLmDaemonStop()
 end
 
 local function segLmStateUpdate()
-  return table.concat(JSON_TEMPLATE)
+  -- If the "time" field is still 0, we haven't gotten an update
+  if JSON_TEMPLATE[2] == 0 then
+    return "{}"
+  else
+    return table.concat(JSON_TEMPLATE)
+  end
 end
 
 local segmentMap = {
@@ -269,7 +276,6 @@ function prepare_daemon(config, server)
   server.register_pollfd({
     fd = ipcfd,
     events = nixio.poll_flags("in"),
-    revents = 0,
     handler = function (polle)
       while true do
         local msg, addr = polle.fd:recvfrom(128)
