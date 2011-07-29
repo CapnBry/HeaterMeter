@@ -1,4 +1,4 @@
-module("luci.controller.linkmeter.admin", package.seeall)
+module("luci.controller.linkmeter.lmadmin", package.seeall)
 
 function index()
   entry({"admin", "lm"}, alias("admin", "lm", "conf"), "LinkMeter", 50).index = true
