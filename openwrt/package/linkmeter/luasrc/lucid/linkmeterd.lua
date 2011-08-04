@@ -121,7 +121,6 @@ end
                                                                       
 local function segRfMap(line)
   local vals = segSplit(line)
-  local idx
   for i,s in ipairs(vals) do
     rfMap[i] = s:sub(1,1)
   end
@@ -184,9 +183,10 @@ local function lmdStart()
 
   serialPolle = {
     fd = serialfd,
+    lines = serialfd:linesource(),
     events = nixio.poll_flags("in"),
     handler = function (polle)
-      for line in polle.fd:linesource() do
+      for line in polle.lines do
         segmentCall(line)
       end 
     end
