@@ -6,32 +6,15 @@ function index()
   entry({"lm", "rfstatus"}, call("action_rfstatus"))
 end
 
-function lmclient_command(query)
-  local client = nixio.socket("unix", "dgram")
-  client:bind("")
-  if not client:connect("/var/run/linkmeter.sock") then
-    client:close()
-    return nil
-  end
-  
-  client:send(query)
-  local polle = { fd = client, events = nixio.poll_flags("in"), revents = 0 }
-  local retVal
-  if nixio.poll({polle}, 1000) then
-    retVal = client:recv(1024)
-  end
-  client:close()
-  return retVal
-end
-
 function lmclient_json(query)
-  local result = lmclient_command(query)
+  require "lmclient"
+  local result, err = LmClient():query(query, true) 
   if result then
     luci.http.prepare_content("application/json")
     luci.http.write(result)
     return true
   else
-    luci.dispatcher.error500("JSON read failed: " .. query)
+    luci.dispatcher.error500("JSON read failed " .. query .. " error in " .. err)
   end
 end
 
@@ -59,7 +42,7 @@ function action_hist()
     return
   end
   
-  local now = rrd.last(RRD_FILE) 
+  local now = rrd.last(RRD_FILE)
   
   if not nancnt then
     -- scroll through the data and find the first line that has data
