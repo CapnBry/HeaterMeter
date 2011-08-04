@@ -49,7 +49,8 @@ function set()
   -- If there's a rawset, explode the rawset into individual items
   local rawset = vals.rawset
   if rawset then
-    if rawset:sub(1, 5) == "/set?" then rawset = rawset:sub(6) end
+    -- remove /set? or set? if supplied
+    rawset = rawset:gsub("^/?set%?","")
     vals = require "luci.http.protocol".urldecode_params(rawset)
   end
 
@@ -60,28 +61,25 @@ function set()
   if cnt == 0 then
     return dsp.error500("No values specified")
   end
-  
-  local uci = luci.model.uci.cursor()
-  local device = uci:get("linkmeter", "daemon", "serial_device")
-  local f = nixio.open(device, "w")
-  if f == nil then
-    return dsp.error500("Can not open serial device "..device)
-  end
- 
+
+  require("lmclient")
+  local lm = LmClient()
+
   http.prepare_content("text/plain")
   http.write("User %s setting %d values...\n" % {dsp.context.authuser, cnt})
-  local firstTime = true 
+  local firstTime = true
   for k,v in pairs(vals) do
     -- Pause 100ms between commands to allow HeaterMeter to work
-    if firstTime then 
+    if firstTime then
       firstTime = nil
     else
       nixio.nanosleep(0, 100000000)
     end
-    
-    http.write("%s to %s\n" % {k,v})
-    f:write("/set?%s=%s\n" % {k,v})
+
+    local result, err = lm:query("$LMST,%s,%s" % {k,v})
+    http.write("%s to %s = %s\n" % {k,v, result or err})
+    if err then break end
   end
-  f:close()
+  lm:close()
   http.write("Done!")
 end

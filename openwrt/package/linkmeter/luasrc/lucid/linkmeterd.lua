@@ -3,11 +3,12 @@ local rrd = require "rrd"
 local nixio = require "nixio" 
       nixio.fs = require "nixio.fs" 
       nixio.util = require "nixio.util" 
-local uci = require "uci".cursor()
+local uci = require "uci"
 local lucid = require "luci.lucid"
 
-local pairs, ipairs, table = pairs, ipairs, table
+local pairs, ipairs, table = pairs, ipairs, table 
 local tonumber, tostring, print = tonumber, tostring, print
+local collectgarbage = collectgarbage
 
 module "luci.lucid.linkmeterd"
 
@@ -18,7 +19,7 @@ local rfStatus = {}
 
 local segmentCall -- forward
 
-local RRD_FILE = uci:get("lucid", "linkmeter", "rrd_file")
+local RRD_FILE = uci.cursor():get("lucid", "linkmeter", "rrd_file")
 
 local function rrdCreate()
  return rrd.create(
@@ -84,7 +85,7 @@ local function segSplit(line)
   repeat
     local nexti = line:find(',', fieldstart)
     -- Don't add the segment name
-    if fieldstart > 1 then
+    if fieldstart > 1 then 
       retVal[#retVal+1] = line:sub(fieldstart, nexti-1)
     end
     fieldstart = nexti + 1
@@ -145,6 +146,7 @@ function segStateUpdate(line)
       table.insert(vals, 1, time)
 
       -- if rfStatus.B then vals[5] = rfStatus.B.batt / 10 end
+      -- vals[4] = collectgarbage("count") / 10
       jsonWrite(vals)
 
       local lid = tonumber(vals[9]) or 0
@@ -161,8 +163,9 @@ end
 
 local function lmdStart()
   if serialPolle then return true end
-  local SERIAL_DEVICE = uci:get("lucid", "linkmeter", "serial_device")
-  local SERIAL_BAUD = uci:get("lucid", "linkmeter", "serial_baud")
+  local cfg = uci.cursor()
+  local SERIAL_DEVICE = cfg:get("lucid", "linkmeter", "serial_device")
+  local SERIAL_BAUD = cfg:get("lucid", "linkmeter", "serial_baud")
   
   if os.execute("/bin/stty -F " .. SERIAL_DEVICE .. " " .. SERIAL_BAUD) ~= 0 then
     return nil, -2, "Can't set serial baud"
@@ -208,6 +211,13 @@ local function lmdStop()
   return true
 end
 
+local function segLmSet(line)
+  if not serialPolle then return "ERR" end
+  local vals = segSplit(line)
+  serialPolle.fd:write(("/set?%s=%s\n"):format(vals[1], vals[2]))
+  return "OK"
+end
+
 local function segLmRfStatus(line)
   local retVal = ""
   for id, item in pairs(rfStatus) do
@@ -247,7 +257,8 @@ local segmentMap = {
   ["$HMPN"] = segProbeNames,
   ["$HMRF"] = segRfUpdate,
   ["$HMRM"] = segRfMap,
-
+  
+  ["$LMST"] = segLmSet,
   ["$LMSU"] = segLmStateUpdate,
   ["$LMRF"] = segLmRfStatus,
   ["$LMD1"] = segLmDaemonStart,
