@@ -50,8 +50,8 @@ function action_stashdb()
   local http = require "luci.http"
   local uci = luci.model.uci.cursor()
 
-  local RRD_FILE = uci:get("linkmeter", "daemon", "rrd_file")
-  local STASH_PATH = uci:get("linkmeter", "daemon", "stashpath") or "/root"
+  local RRD_FILE = uci:get("lucid", "linkmeter", "rrd_file")
+  local STASH_PATH = uci:get("lucid", "linkmeter", "stashpath") or "/root"
   local restoring = http.formvalue("restore")
   local resetting = http.formvalue("reset")
   local stashfile = http.formvalue("rrd") or "hm.rrd"
@@ -73,7 +73,9 @@ function action_stashdb()
   local result
   http.prepare_content("text/plain")
   if restoring == "1" or resetting == "1" then
-    luci.sys.call("/etc/init.d/linkmeterd stop")
+    require "lmclient"
+    local lm = LmClient()
+    lm:query("$LMD0") -- stop serial process
     if resetting == "1" then
       result = nixio.fs.unlink(RRD_FILE)
       http.write("Resetting "..RRD_FILE)
@@ -81,7 +83,7 @@ function action_stashdb()
       result = nixio.fs.copy(stashfile, RRD_FILE)
       http.write("Restoring "..stashfile.." to "..RRD_FILE)
     end
-    luci.sys.call("/etc/init.d/linkmeterd start")
+    lm:query("$LMD1", true) -- start serial process and close connection
   else
     result = nixio.fs.copy(RRD_FILE, stashfile)
     http.write("Stashing "..RRD_FILE.." to "..stashfile)

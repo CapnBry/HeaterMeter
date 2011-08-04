@@ -29,10 +29,6 @@ define Build/Compile
 	# Nothing to compile
 endef
 
-define Package/linkmeter/conffiles
-/etc/config/linkmeter
-endef
-
 define Package/linkmeter/install
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) ./config/linkmeter.uci $(1)/etc/config/linkmeter

@@ -31,7 +31,7 @@ function action_hist()
   local rrd = require "rrd"
   local uci = luci.model.uci.cursor()
 
-  local RRD_FILE = http.formvalue("rrd") or uci:get("linkmeter", "daemon", "rrd_file") 
+  local RRD_FILE = http.formvalue("rrd") or uci:get("lucid", "linkmeter", "rrd_file") 
   local nancnt = tonumber(http.formvalue("nancnt"))
   local start, step, data, soff
   
