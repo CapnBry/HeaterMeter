@@ -87,7 +87,7 @@ $(document).ready(function()
 <% if not rrd then %>
     var o = <% if not lmdata.action_hmstatus() then write("{}") end %>;
     var now = +new Date();
-    if ((now - 15000) < (o.time * 1000))
+    if ((now - 10000) < (o.time * 1000))
         connectionSuccess(o);
 <% end %>
 });
@@ -97,7 +97,7 @@ $(window).load(function ()
 <% if not rrd then %>
     if (!lastUpdateUtc)
         JSONQuery();
-    window.setInterval(JSONQuery, 15000);
+    window.setInterval(JSONQuery, 10000);
 <% end %>
     refreshGraphData();
 });
@@ -450,8 +450,8 @@ function checkRefreshGraphOrUpdate()
 
     // the RRD holds up to 480 points and the graph holds
     // less due to point consolidation, so best case
-    // scenario 20pts * 15sec per poll = 5mins
-    if (max > 500)
+    // scenario 24pts * 10sec per poll = 4mins
+    if (max > 504)
         refreshGraphData()
     else
         updateGraph();
