@@ -23,10 +23,10 @@ store a handful of logs before running out of space.</p>
     <tr><th style="border: 1px solid #ddd;">View</th><th style="border: 1px solid #ddd;">Name</th></tr>
 <% 
 local files = {}
-for fn in nixio.fs.dir(STASH_PATH) do 
+for fn in nixio.fs.glob(STASH_PATH .. "/*.rrd") do
   local f = {}
-  f.name = fn
-  f.path = STASH_PATH .. "/" .. fn
+  f.path = fn
+  f.name = nixio.fs.basename(fn)
   f.stat = nixio.fs.stat(f.path)
   if f.stat.type == "reg" then
     files[#files+1] = f
