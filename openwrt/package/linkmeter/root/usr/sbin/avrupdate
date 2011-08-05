@@ -1,15 +1,21 @@
 #!/bin/sh
 
-SERIAL_DEVICE=`uci get linkmeter.daemon.serial_device`
-SERIAL_BAUD=`uci get linkmeter.daemon.serial_baud`
-/etc/init.d/linkmeter stop
-
-stty -F $SERIAL_DEVICE $SERIAL_BAUD 2>&1
-
 HEX="/tmp/hm.hex"
-if [ -n "$1] ; then
- HEX=$1
+if [ -n "$1"] ; then
+  HEX=$1
 fi
+
+if [ -f "$HEX"] ; then
+  echo No input file $HEX
+  exit 1
+fi
+
+echo -n "Stopping LinkMeter "
+lua /usr/lib/lua/lmclient.lua LMD0
+
+SERIAL_DEVICE=`uci get lucid.linkmeter.serial_device`
+SERIAL_BAUD=`uci get lucid.linkmeter.serial_baud`
+stty -F $SERIAL_DEVICE $SERIAL_BAUD 2>&1
 
 CNT=0
 while [ "$CNT" -lt 2 ] ; do
@@ -29,4 +35,5 @@ while [ "$CNT" -lt 2 ] ; do
     CNT=$((CNT+1))
 done 
 
-/etc/init.d/linkmeter start
+echo -n "Starting LinkMeter "
+lua /usr/lib/lua/lmclient.lua LMD1
