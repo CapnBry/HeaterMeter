@@ -1,12 +1,39 @@
-config linkmeter daemon
-	option serial_device /dev/ttyS1
-	option serial_baud 115200
-	option rrd_file /tmp/hm.rrd
-	option stashpath /root
+define Package/linkmeter/postinst
+#!/bin/sh
 
-config linkmeterd linkmeter
-        option serial_device "/dev/ttyS1"
+[ -n "$${IPKG_INSTROOT}" ] && exit
 
-config daemon lmserver
-        option enabled 1
-        option slave linkmeter
+##
+## UCI Configuration
+##
+
+uci_set_nomodify() {
+  uci -q get $$1 > /dev/null
+  if [ $$? -ne 0 ] ; then
+    uci set $$1=$$2
+  fi
+}
+
+# Forced configuration parameters
+uci batch << EOF
+set lucid.lmserver=daemon
+set lucid.lmserver.enabled=1
+set lucid.lmserver.slave=linkmeter
+set lucid.linkmeter=linkmeterd
+EOF
+
+# Things we don't modify if they're there
+uci_set_nomodify lucid.linkmeter.serial_device /dev/ttyS1
+uci_set_nomodify lucid.linkmeter.serial_baud 115200
+uci_set_nomodify lucid.linkmeter.rrd_file /tmp/hm.rrd
+uci_set_nomodify lucid.linkmeter.stashpath /root
+
+uci commit lucid
+
+##
+## Setup
+##
+
+rm -f /tmp/luci-indexcache
+/etc/init.d/lucid restart
+endef

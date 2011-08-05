@@ -12,7 +12,7 @@ define Package/linkmeter
 	CATEGORY:=Utilities
 	DEPENDS:=+rrdtool +luci-lib-lucid-http +avrdude
 	TITLE:=LinkMeter BBQ Controller
-	URL:=http://tvwbb.com/eve/forums/a/tpc/f/9270072103/m/7691098906
+	URL:=http://github.com/CapnBry/HeaterMeter
 	MAINTAINER:=Bryan Mayland <capnbry@gmail.com>
 endef
 
@@ -22,7 +22,7 @@ endef
 
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) ./luasrc/* $(PKG_BUILD_DIR)/
+	$(CP) luasrc/* $(PKG_BUILD_DIR)/
 endef
 
 define Build/Compile
@@ -30,13 +30,10 @@ define Build/Compile
 endef
 
 define Package/linkmeter/install
-	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) ./config/linkmeter.uci $(1)/etc/config/linkmeter
-
-	$(CP) ./root/* $(1)/
+	$(CP) root/* $(1)/
 
 	$(INSTALL_DIR) $(1)/www
-	$(CP) ./htdocs/* $(1)/www/
+	$(CP) htdocs/* $(1)/www/
 
 	$(INSTALL_DIR) $(1)/usr/lib/lua
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/lmclient.lua $(1)/usr/lib/lua/
@@ -48,29 +45,24 @@ define Package/linkmeter/install
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/view/linkmeter/* $(1)/usr/lib/lua/luci/view/linkmeter/
 endef
 
-define Package/linkmeter/postinst
-#!/bin/sh
-[ -n "$${IPKG_INSTROOT}" ] || {
-    rm -f /tmp/luci-indexcache
-    /etc/init.d/lucid restart
-    exit 0
-}
-endef
+# Include has Package/linkmeter/postinst in it
+include config/linkmeter.uci
 
 define Package/linkmeter/prerm
 #!/bin/sh
-[ -n "$${IPKG_INSTROOT}" ] || {
-    /etc/init.d/lucid stop
-    if [ -f "/tmp/hm.rrd" ] ; then rm "/tmp/hm.rrd" ; fi
-    rm -f /tmp/luci-indexcache
-}
+	[ -n "$${IPKG_INSTROOT}" ] && exit
+
+	/etc/init.d/lucid stop
+	if [ -f "/tmp/hm.rrd" ] ; then rm "/tmp/hm.rrd" ; fi
+	uci del lucid.lmserver
+	uci commit lucid
+	rm -f /tmp/luci-indexcache
 endef
 
 define Package/linkmeter/postrm
 #!/bin/sh
-[ -n "$${IPKG_INSTROOT}" ] || {
-    /etc/init.d/lucid start
-}
+	[ -n "$${IPKG_INSTROOT}" ] && exit
+	/etc/init.d/lucid start
 endef
 
 $(eval $(call BuildPackage,linkmeter))
