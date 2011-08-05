@@ -15,7 +15,7 @@ store a handful of logs before running out of space.</p>
 </form>
 <% 
   local uci = luci.model.uci.cursor()
-  local STASH_PATH = uci:get("linkmeter", "daemon", "stashpath")
+  local STASH_PATH = uci:get("lucid", "linkmeter", "stashpath")
 %>
   <h3>Stored in <%=STASH_PATH%></h3>
   
