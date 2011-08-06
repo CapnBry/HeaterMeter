@@ -542,7 +542,7 @@ function updateTime(time)
     if(!time)
     {
         color = "#f33";
-        date = new Date() + tzOffset;
+        date = new Date(+new Date() + tzOffset);
     }
     else
         date = new Date(time);
