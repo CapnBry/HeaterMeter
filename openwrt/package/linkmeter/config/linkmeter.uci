@@ -16,6 +16,7 @@ uci_set_nomodify() {
 
 # Forced configuration parameters
 uci batch << EOF
+set lucid.main.threadlimit=2
 set lucid.lmserver=daemon
 set lucid.lmserver.enabled=1
 set lucid.lmserver.slave=linkmeter
