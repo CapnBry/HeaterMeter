@@ -80,23 +80,22 @@ function action_hist()
   -- Only pull new data if the nancnt probe data isn't what we're looking for 
   if step ~= 180 or not data then
     start, step, _, data = rrd.fetch(RRD_FILE, "AVERAGE",
-      "--end", now, "--start", now - soff, "-r", step
-    )
+      "--end", now, "--start", now - soff, "-r", step)
   end
   
-  local seenData 
-  local results = {}
   http.prepare_content("text/plain")
   http.header("Cache-Control", "max-age="..step)
+
+  local seenData 
+  now = now - step
   for _, dp in ipairs(data) do
     -- Skip the first NaN rows until we actually have data and keep
     -- sending until we get to the 1 or 2 rows at the end that are NaN
-    if (dp[1] == dp[1]) or (seenData and (start < (now - step))) then
-      results[#results+1] = ("%u,%s"):format(start, table.concat(dp, ","))
+    if (dp[1] == dp[1]) or (seenData and (start < now)) then
+      http.write(("%u,%s\n"):format(start, table.concat(dp, ",")))
       seenData = true
     end
     
     start = start + step
   end 
-  http.write(table.concat(results, "\n"))
 end
