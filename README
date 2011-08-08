@@ -8,14 +8,16 @@ A +-------------+     |
 V | HeaterMeter |-----/    (arduino/heatermeter)
 R +-------------+
 ========|===============   Serial UART
-O +------------+
-p | linkmeterd |           (openwrt/package/linkmeter)
-e +------------+
-n       |                  /var/run/linkmeterd/sock
-W   +--------+
-r   | uhttpd |
-t   +--------+
-
+  +-----------------+
+O |   +-----------+ |
+p | L | linkmeter | |      (openwrt/package/linkmeter)
+e | u +-----------+ |
+n | C      |        |      /var/run/linkmeter.sock
+W | I  +-------+    |
+r | d  | httpd |    |
+t |    +-------+    |
+  +-----------------+
+  
 Source Layout
 openwrt/* - Files you'd push to your router for LinkMeter
 arduinio/* - AVR source code for upload to your Arduino board
