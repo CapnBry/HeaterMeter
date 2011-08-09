@@ -1,9 +1,9 @@
 module("luci.controller.linkmeter.lmdata", package.seeall)
 
 function index()
-  entry({"lm", "hist"}, call("action_hist"))
-  entry({"lm", "hmstatus"}, call("action_hmstatus"))
-  entry({"lm", "rfstatus"}, call("action_rfstatus"))
+  entry({"lm", "hist"}, call("action_hist")).notemplate = true
+  entry({"lm", "hmstatus"}, call("action_hmstatus")).notemplate = true
+  entry({"lm", "rfstatus"}, call("action_rfstatus")).notemplate = true
 end
 
 function lmclient_json(query)
