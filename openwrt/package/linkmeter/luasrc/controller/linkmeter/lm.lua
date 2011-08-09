@@ -8,7 +8,7 @@ function index()
   page.sysauth = { "anon", "root" }
   page.sysauth_authenticator = require "luci.controller.linkmeter.lm".lmauth
 
-  entry({"lm", "set"}, call("set"))
+  entry({"lm", "set"}, call("set")).sysauth = "root"
   entry({"lm", "login"}, call("rootredirect")).sysauth = "root"
 end
 
