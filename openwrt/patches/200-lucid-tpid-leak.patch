@@ -1,0 +1,10 @@
+--- /tmp/luci/libs/lucid/luasrc/lucid.lua	2011-07-22 09:59:29.000000000 -0400
++++ luci-0.10+svn7342/libs/lucid/luasrc/lucid.lua	2011-08-09 11:35:09.101628068 -0400
+@@ -150,6 +150,7 @@
+ 				if tpids[pid] ~= true then
+ 					tpids[pid](pid, stat, code)
+ 				end
++				tpids[pid] = nil
+ 			end
+ 			pid, stat, code = nixio.wait(-1, "nohang")
+ 		end

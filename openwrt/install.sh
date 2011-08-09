@@ -16,6 +16,11 @@ EOFEEDS
 
 $WRT_PATH/scripts/feeds update
 
+LUCIP=$WRT_PATH/feeds/luci/luci/patches
+mkdir $LUCIP
+cp patches/200-lucid-tpid-leak.patch $LUCIP
+cp patches/205-luci-dispatcher-nopath.patch $LUCIP
+
 $WRT_PATH/scripts/feeds install -p linkmeter avrdude
 $WRT_PATH/scripts/feeds install -p linkmeter rrdtool
 $WRT_PATH/scripts/feeds install -p linkmeter kmod-broadcom-sdhc26
