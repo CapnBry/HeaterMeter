@@ -1,11 +1,11 @@
 #!/bin/sh
 
 HEX="/tmp/hm.hex"
-if [ -n "$1"] ; then
-  HEX=$1
+if [ -n "$1" ] ; then
+  HEX="$1"
 fi
 
-if [ -f "$HEX"] ; then
+if [ ! -f "$HEX" ] ; then
   echo No input file $HEX
   exit 1
 fi
