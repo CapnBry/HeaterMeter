@@ -3,9 +3,15 @@
 #include "grillpid.h"
 #include "strings.h"
 
+#ifdef HEATERMETER_NETWORKING
+state_t menuConnecting(button_t button);
+state_t menuNetworkInfo(button_t button);
+#endif  /* HEATERMETER_NETWORKING */
+
 const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
 #ifdef HEATERMETER_NETWORKING
   { ST_CONNECTING, menuConnecting, 2 },
+  { ST_NETWORK_INFO, menuNetworkInfo, 10 },
 #endif  /* HEATERMETER_NETWORKING */
   { ST_HOME_FOOD1, menuHome, 5 },
   { ST_HOME_FOOD2, menuHome, 5 },
@@ -94,7 +100,14 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   { ST_LIDOPEN_OFF, BUTTON_RIGHT, ST_LIDOPEN_DUR },
 
   { ST_LIDOPEN_DUR, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  { ST_LIDOPEN_DUR, BUTTON_RIGHT, ST_RESETCONFIG },
+#ifdef HEATERMETER_NETWORKING
+  { ST_LIDOPEN_DUR, BUTTON_RIGHT, ST_NETWORK_INFO },
+
+  { ST_NETWORK_INFO, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_NETWORK_INFO, BUTTON_RIGHT, ST_RESETCONFIG },
+#else
+   { ST_LIDOPEN_DUR, BUTTON_RIGHT, ST_RESETCONFIG },
+#endif  /* HEATERMETER_NETWORKING */
 
   { ST_RESETCONFIG, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_RESETCONFIG, BUTTON_RIGHT, ST_SETPOINT },
@@ -194,6 +207,19 @@ state_t menuConnecting(button_t button)
   lcd.setCursor(0, 1);
   lcd.print(ssid);
 
+  return ST_AUTO;
+}
+
+state_t menuNetworkInfo(button_t button)
+{
+  if (button == BUTTON_ENTER || button == BUTTON_UP || button == BUTTON_DOWN)
+  {
+    char buffer[17];
+    lcdprint_P(PSTR("Wireless Signal"), true);
+    lcd.setCursor(0, 1);
+    snprintf_P(buffer, sizeof(buffer), PSTR("%3u%% %s"), zg_get_rssi() - 100, ssid);
+    lcd.print(buffer);
+  }
   return ST_AUTO;
 }
 #endif /* HEATERMETER_NETWORKING */

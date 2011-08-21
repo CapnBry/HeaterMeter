@@ -755,6 +755,7 @@ void hmcoreSetup(void)
   // Switch the pin mode first to INPUT with internal pullup
   // to take it to 5V before setting the mode to OUTPUT. 
   // If we reverse this, the pin will go OUTPUT,LOW and reboot.
+  // SoftReset and WiShield are mutually exlusive, but it is HIGH/OUTPUT too
   digitalWrite(PIN_SOFTRESET, HIGH);
   pinMode(PIN_SOFTRESET, OUTPUT);
   
