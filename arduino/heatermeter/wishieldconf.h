@@ -17,6 +17,8 @@ char ssid[] = {"capnbry24"};		// max 32 bytes
 unsigned char security_type = 5;	// 0 - open; 1 - WEP; 2 - WPA; 3 - WPA2; 4 - WPA Precalc; 5 - WPA2 Precalc
 
 // Depending on your security_type, uncomment the appropriate type of security_data
+// 0 - None (open)
+//const prog_char security_data[] PROGMEM = {};
 
 // 1 - WEP 
 // UIP_WEP_KEY_LEN. 5 bytes for 64-bit key, 13 bytes for 128-bit key
@@ -40,8 +42,6 @@ const prog_char security_data[] PROGMEM = {   // capnbry24:mypassword
 // WIRELESS_MODE_INFRA - connect to AP
 // WIRELESS_MODE_ADHOC - connect to another WiFi device
 unsigned char wireless_mode = WIRELESS_MODE_INFRA;
-
-unsigned char ssid_len;
 // End of wireless configuration parameters ----------------------------------------
 
 #ifdef __cplusplus
