@@ -507,8 +507,8 @@ inline void sendFlashFile(const struct flash_file_t *file)
   unsigned int size = pgm_read_word(&file->size);
   unsigned int sendSize = size - sentBytes;
 
-  if (sendSize > UIP_TCP_MSS)
-    sendSize = UIP_TCP_MSS;
+  if (sendSize > uip_mss())
+    sendSize = uip_mss();
    
   dflash.Cont_Flash_Read_Enable(page, off);
   while (sendSize-- > 0)
