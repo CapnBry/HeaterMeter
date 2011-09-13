@@ -46,8 +46,8 @@ void RFSource::update(rf12_probe_update_hdr_t *hdr, unsigned char len)
   }  /* while len */
 }
 
-RFManager::RFManager(char rxLed) :
-  _crcOk(0xff), _rxLed(rxLed)
+RFManager::RFManager(const char rxLed, const event_callback fn) :
+  _crcOk(0xff), _rxLed(rxLed), _callback(fn)
 {
   if (_rxLed >= 0)
     pinMode(_rxLed, OUTPUT);
@@ -63,12 +63,14 @@ void RFManager::freeStaleSources(void)
 {
   for (unsigned char idx=0; idx<RF_SOURCE_COUNT; ++idx)
     if (_sources[idx].isStale())
+    {
+      if (_callback) _callback(_sources[idx], Remove);
       _sources[idx].setId(RFSOURCEID_NONE);
+    }
 }
 
 char RFManager::findFreeSourceIdx(void)
 {
-  freeStaleSources();
   for (unsigned char idx=0; idx<RF_SOURCE_COUNT; ++idx)
     if (_sources[idx].isFree())
       return idx;
@@ -84,19 +86,6 @@ char RFManager::findSourceIdx(unsigned char srcId)
   return -1;
 }
 
-char RFManager::forceSourceIdx(unsigned char srcId)
-{
-  // Get the index of the srcId, allocates it if it doesn't exist
-  char retVal = findSourceIdx(srcId);
-  if (retVal == -1)
-  {
-    retVal = findFreeSourceIdx();
-    if (retVal != -1)
-      _sources[retVal].setId(srcId);
-  }
-  return retVal;
-}
-
 RFSource *RFManager::getSourceById(unsigned char srcId)
 {
   char idx = findSourceIdx(srcId);
@@ -105,8 +94,6 @@ RFSource *RFManager::getSourceById(unsigned char srcId)
 
 void RFManager::status(void)
 {
-  freeStaleSources();
-
   // The first item in the list the manager but it has the same format as 
   // the other sources, which is: Id,Signal,TimeSinceLastReceive
   Serial_char('A');
@@ -135,7 +122,7 @@ void RFManager::status(void)
   }
 }
 
-boolean RFManager::doWork(void)
+void RFManager::doWork(void)
 {
   boolean retVal = false;
   while (rf12_recvDone())
@@ -147,14 +134,25 @@ boolean RFManager::doWork(void)
       if (_crcOk < 0xff) 
         ++_crcOk;
         
-      // If this is a broadcast Iit should be a probe update
+      // If this is a broadcast it should be a probe update
       if ((rf12_hdr & RF12_HDR_DST) == 0)
       {
         rf12_probe_update_hdr_t *hdr = (rf12_probe_update_hdr_t *)rf12_data;
-        //Serial.print(rf12_hdr, HEX); Serial_nl();
-        char src = forceSourceIdx(rf12_hdr & RF12_HDR_MASK);
+
+        event e = Update;
+        unsigned char srcId = rf12_hdr & RF12_HDR_MASK;
+        char src = findSourceIdx(srcId);
+        if (src == -1)
+        {
+          src = findFreeSourceIdx();
+          e = static_cast<event>(Add | Update);
+        }
         if (src != -1)
+        {
+          _sources[src].setId(srcId);
           _sources[src].update(hdr, rf12_len);
+          if (_callback) _callback(_sources[src], e);
+        }
       }  /* if broadcast */
     }  /* if crc ok */
     else if (_crcOk > 0) 
@@ -167,7 +165,7 @@ boolean RFManager::doWork(void)
   if (!retVal && _rxLed >= 0)
     digitalWrite(_rxLed, LOW);
     
-  return retVal;    
+  freeStaleSources();
 }
 
 

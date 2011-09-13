@@ -63,24 +63,27 @@ public:
 };
 
 class RFManager
-{
-private:
-  const char _rxLed;
-  unsigned char _crcOk;
-  RFSource _sources[RF_SOURCE_COUNT];
-  
+{  
 public:
-  RFManager(char rxLed);
+  enum event { Add = 0x01, Remove = 0x02, Update = 0x04 };
+  typedef void (*event_callback)(RFSource&, event);
+
+  RFManager(const char rxLed, const event_callback fn);
   
   void init(unsigned char band);
   void freeStaleSources(void);
   char findFreeSourceIdx(void);
   char findSourceIdx(unsigned char srcId);
-  char forceSourceIdx(unsigned char srcId);
   void status(void);
-  boolean doWork(void);
+  void doWork(void);
   
   RFSource *getSourceById(unsigned char srcId);
+  
+private:
+  const char _rxLed;
+  const event_callback _callback;
+  unsigned char _crcOk;
+  RFSource _sources[RF_SOURCE_COUNT];
 };
 
 #endif /* __RFMANAGER_H__ */

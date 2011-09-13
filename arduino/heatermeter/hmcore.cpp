@@ -34,7 +34,8 @@ static boolean g_NetworkInitialized;
 static char g_SerialBuff[64]; 
 #endif /* HEATERMETER_SERIAL */
 #ifdef HEATERMETER_RFM12
-static RFManager rfmanager(PIN_WIRELESS_LED);
+void rfSourceNotify(RFSource &r, RFManager::event e); // prototype
+static RFManager rfmanager(PIN_WIRELESS_LED, rfSourceNotify);
 static rf12_map_item_t rfMap[TEMP_COUNT];
 #endif /* HEATERMETER_RFM12 */
 
@@ -418,6 +419,16 @@ void reportProbeOffsets(void)
   Serial_nl();
 }
 
+void outputRfStatus(void)
+{
+#ifdef HEATERMETER_RFM12
+  print_P(PSTR("$HMRF")); 
+  Serial_csv();
+  rfmanager.status();
+  Serial_nl();
+#endif /* HEATERMETER_RFM12 */
+}
+
 inline void reportConfig(void)
 {
   reportPidParams();
@@ -587,24 +598,23 @@ boolean sendPage(char* URL)
 #endif /* HEATERMETER_NETWORKING */
 
 #ifdef HEATERMETER_RFM12
-void rfDataToProbes(void)
+void rfSourceNotify(RFSource &r, RFManager::event e)
 {
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
-    if ((pid.Probes[i]->getProbeType() == PROBETYPE_RF12) && (rfMap[i].source != 0))
+    if ((pid.Probes[i]->getProbeType() == PROBETYPE_RF12) && (rfMap[i].source == r.getId()))
     {
-      RFSource *src = rfmanager.getSourceById(rfMap[i].source);
-      if (src == NULL)
-          pid.Probes[i]->addAdcValue(0);
-      else 
+      if (e & (RFManager::Update | RFManager::Remove))
       {
         unsigned char srcPin = rfMap[i].pin;
-        if (src->Values[srcPin] != 0)
-        {
-          pid.Probes[i]->addAdcValue(src->Values[srcPin]);
-          src->Values[srcPin] = 0;
-        }
-      }  /* if source present */
-    }  /* if map has source */
+        pid.Probes[i]->addAdcValue(r.Values[srcPin]);
+        // Set the pin's value to 0 so when we remove the source later it 
+        // adds a 0 to the adcValue, effectively clearing it
+        r.Values[srcPin] = 0;
+      }
+    } /* if probe is this source */
+  
+  if (e & RFManager::Add)
+    outputRfStatus();
 }
 #endif /* HEATERMETER_RFM12 */
 
@@ -708,16 +718,6 @@ inline void serial_doWork(void)
 }
 #endif  /* HEATERMETER_SERIAL */
 
-inline void outputRfStatus(void)
-{
-#ifdef HEATERMETER_RFM12
-  print_P(PSTR("$HMRF")); 
-  Serial_csv();
-  rfmanager.status();
-  Serial_nl();
-#endif /* HEATERMETER_RFM12 */
-}
-
 inline void newTempsAvail(void)
 {
   static unsigned char pidCycleCount;
@@ -790,8 +790,7 @@ void hmcoreLoop(void)
 #endif /* HEATERMETER_SERIAL */
 
 #ifdef HEATERMETER_RFM12
-  if (rfmanager.doWork())
-    rfDataToProbes();
+  rfmanager.doWork();
 #endif /* HEATERMETER_RFM12 */
 
 #ifdef HEATERMETER_NETWORKING 
