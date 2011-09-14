@@ -6,7 +6,7 @@ local nixio = require "nixio"
 local uci = require "uci"
 local lucid = require "luci.lucid"
 
-local pairs, ipairs, table = pairs, ipairs, table 
+local pairs, ipairs, table, pcall = pairs, ipairs, table, pcall 
 local tonumber, tostring, print = tonumber, tostring, print
 local collectgarbage = collectgarbage
 
@@ -139,6 +139,9 @@ function segStateUpdate(line)
         nixio.syslog("notice", 
           "Time jumped forward by "..(time-lastHmUpdate)..", restarting database")
         rrdCreate()
+      elseif time == lastHmUpdate then
+        -- RRD hates it when you try to insert two PDPs at the same timestamp
+        return nixio.syslog("info", "Discarding duplicate update")
       end
       lastHmUpdate = time
 
@@ -157,7 +160,11 @@ function segStateUpdate(line)
       table.remove(vals, 9) -- lid
       table.remove(vals, 8) -- fan avg
 
-      rrd.update(RRD_FILE, table.concat(vals, ":"))
+      -- update() can throw an error if you try to insert something it
+      -- doesn't like, which will take down the whole server, so just
+      -- ignore any error
+      local status, err = pcall(rrd.update, RRD_FILE, table.concat(vals, ":"))
+      if not status then nixio.syslog("err", "RRD error: " .. err) end
     end
 end
 
