@@ -1,33 +1,19 @@
-diff -u /tmp/luci/modules/admin-full/luasrc/controller/admin//index.lua luci-0.10+svn7342/modules/admin-full/luasrc/controller/admin/index.lua
---- /tmp/luci/modules/admin-full/luasrc/controller/admin//index.lua	2011-01-13 17:21:16.000000000 -0500
-+++ luci-0.10+svn7342/modules/admin-full/luasrc/controller/admin/index.lua	2011-08-09 15:29:07.467594759 -0400
-@@ -14,7 +14,6 @@
- module("luci.controller.admin.index", package.seeall)
- 
- function index()
--	luci.i18n.loadc("base")
- 	local i18n = luci.i18n.translate
- 
- 	local root = node()
-diff -u /tmp/luci/modules/admin-full/luasrc/controller/admin//network.lua luci-0.10+svn7342/modules/admin-full/luasrc/controller/admin/network.lua
---- /tmp/luci/modules/admin-full/luasrc/controller/admin//network.lua	2011-05-03 18:06:29.000000000 -0400
-+++ luci-0.10+svn7342/modules/admin-full/luasrc/controller/admin/network.lua	2011-08-09 15:28:49.087361213 -0400
-@@ -16,10 +16,24 @@
+diff -u /tmp/luci-trunk+svn7492/modules/admin-full/luasrc/controller/admin/network.lua luci-trunk+svn7492/modules/admin-full/luasrc/controller/admin/network.lua
+--- /tmp/luci-trunk+svn7492/modules/admin-full/luasrc/controller/admin/network.lua	2011-08-12 09:16:27.000000000 -0400
++++ luci-trunk+svn7492/modules/admin-full/luasrc/controller/admin/network.lua	2011-09-14 12:23:09.583403899 -0400
+@@ -16,6 +16,20 @@
  module("luci.controller.admin.network", package.seeall)
  
  function index()
--	require("luci.i18n")
-+	local i18n = luci.i18n.translate
-+
 +	local tnode
 +	tnode = node("admin", "network")
 +	tnode.target = alias("admin", "network", "network")
-+	tnode.title  = i18n("Network")
++	tnode.title  = _("Network")
 +	tnode.order  = 50
 +	tnode.index  = true
 +
 +	local page
-+	page = entry({"admin", "network", "network"}, arcombine(cbi("admin_network/network"), cbi("admin_network/ifaces")), i18n("Interfaces"), 10)
++	page = entry({"admin", "network", "network"}, arcombine(cbi("admin_network/network"), cbi("admin_network/ifaces")), _("Interfaces"), 10)
 +	page.leaf   = true
 +	page.subindex = true
 +
@@ -35,11 +21,8 @@ diff -u /tmp/luci/modules/admin-full/luasrc/controller/admin//network.lua luci-0
 +
  	local uci = require("luci.model.uci").cursor()
  	local net = require "luci.model.network".init(uci)
--	local i18n = luci.i18n.translate
  	local has_wifi = nixio.fs.stat("/etc/config/wireless")
- 	local has_switch = false
- 
-@@ -30,14 +44,6 @@
+@@ -28,14 +42,6 @@
  		end
  	)
  
@@ -47,91 +30,73 @@ diff -u /tmp/luci/modules/admin-full/luasrc/controller/admin//network.lua luci-0
 -
 -	page = node("admin", "network")
 -	page.target = alias("admin", "network", "network")
--	page.title  = i18n("Network")
+-	page.title  = _("Network")
 -	page.order  = 50
 -	page.index  = true
 -
  	if has_switch then
  		page  = node("admin", "network", "vlan")
  		page.target = cbi("admin_network/vlan")
-@@ -75,10 +81,6 @@
+@@ -73,10 +79,6 @@
  		end
  	end
  
--	page = entry({"admin", "network", "network"}, arcombine(cbi("admin_network/network"), cbi("admin_network/ifaces")), i18n("Interfaces"), 10)
+-	page = entry({"admin", "network", "network"}, arcombine(cbi("admin_network/network"), cbi("admin_network/ifaces")), _("Interfaces"), 10)
 -	page.leaf   = true
 -	page.subindex = true
 -
  	page = entry({"admin", "network", "iface_add"}, cbi("admin_network/iface_add"), nil)
  	page.leaf = true
  
-diff -u /tmp/luci/modules/admin-full/luasrc/controller/admin//services.lua luci-0.10+svn7342/modules/admin-full/luasrc/controller/admin/services.lua
---- /tmp/luci/modules/admin-full/luasrc/controller/admin//services.lua	2011-05-03 18:06:29.000000000 -0400
-+++ luci-0.10+svn7342/modules/admin-full/luasrc/controller/admin/services.lua	2011-08-09 15:29:26.517836908 -0400
-@@ -14,7 +14,6 @@
- module("luci.controller.admin.services", package.seeall)
- 
- function index()
--	luci.i18n.loadc("base")
- 	local i18n = luci.i18n.translate
- 
- 	local page  = node("admin", "services", "crontab")
-diff -u /tmp/luci/modules/admin-full/luasrc/controller/admin//status.lua luci-0.10+svn7342/modules/admin-full/luasrc/controller/admin/status.lua
---- /tmp/luci/modules/admin-full/luasrc/controller/admin//status.lua	2011-05-04 17:23:55.000000000 -0400
-+++ luci-0.10+svn7342/modules/admin-full/luasrc/controller/admin/status.lua	2011-08-09 15:30:18.058492518 -0400
-@@ -15,11 +15,15 @@
+diff -u /tmp/luci-trunk+svn7492/modules/admin-full/luasrc/controller/admin/status.lua luci-trunk+svn7492/modules/admin-full/luasrc/controller/admin/status.lua
+--- /tmp/luci-trunk+svn7492/modules/admin-full/luasrc/controller/admin/status.lua	2011-09-13 04:25:59.000000000 -0400
++++ luci-trunk+svn7492/modules/admin-full/luasrc/controller/admin/status.lua	2011-09-14 12:25:42.385694032 -0400
+@@ -16,8 +16,12 @@
  module("luci.controller.admin.status", package.seeall)
  
  function index()
--	luci.i18n.loadc("base")
- 	local i18n = luci.i18n.translate
- 
--	entry({"admin", "status"}, alias("admin", "status", "overview"), i18n("Status"), 20).index = true
+-	entry({"admin", "status"}, alias("admin", "status", "overview"), _("Status"), 20).index = true
 +	local tnode
-+	tnode = entry({"admin", "status"}, alias("admin", "status", "overview"), i18n("Status"), 20)
++	tnode = entry({"admin", "status"}, alias("admin", "status", "overview"), _("Status"), 20)
 +	tnode.index = true
-+
- 	entry({"admin", "status", "overview"}, template("admin_status/index"), i18n("Overview"), 1)
+ 	entry({"admin", "status", "overview"}, template("admin_status/index"), _("Overview"), 1)
 +	if not tnode.inreq then return end
 +
- 	entry({"admin", "status", "iptables"}, call("action_iptables"), i18n("Firewall"), 2).leaf = true
- 	entry({"admin", "status", "routes"}, template("admin_status/routes"), i18n("Routes"), 3)
- 	entry({"admin", "status", "syslog"}, call("action_syslog"), i18n("System Log"), 4)
-diff -u /tmp/luci/modules/admin-full/luasrc/controller/admin//system.lua luci-0.10+svn7342/modules/admin-full/luasrc/controller/admin/system.lua
---- /tmp/luci/modules/admin-full/luasrc/controller/admin//system.lua	2011-06-23 06:14:26.000000000 -0400
-+++ luci-0.10+svn7342/modules/admin-full/luasrc/controller/admin/system.lua	2011-08-09 15:30:49.548893423 -0400
-@@ -16,11 +16,15 @@
+ 	entry({"admin", "status", "iptables"}, call("action_iptables"), _("Firewall"), 2).leaf = true
+ 	entry({"admin", "status", "routes"}, template("admin_status/routes"), _("Routes"), 3)
+ 	entry({"admin", "status", "syslog"}, call("action_syslog"), _("System Log"), 4)
+diff -u /tmp/luci-trunk+svn7492/modules/admin-full/luasrc/controller/admin/system.lua luci-trunk+svn7492/modules/admin-full/luasrc/controller/admin/system.lua
+--- /tmp/luci-trunk+svn7492/modules/admin-full/luasrc/controller/admin/system.lua	2011-08-12 09:16:27.000000000 -0400
++++ luci-trunk+svn7492/modules/admin-full/luasrc/controller/admin/system.lua	2011-09-14 12:27:07.816970701 -0400
+@@ -16,8 +16,12 @@
  module("luci.controller.admin.system", package.seeall)
  
  function index()
--	luci.i18n.loadc("base")
- 	local i18n = luci.i18n.translate
- 
--	entry({"admin", "system"}, alias("admin", "system", "system"), i18n("System"), 30).index = true
+-	entry({"admin", "system"}, alias("admin", "system", "system"), _("System"), 30).index = true
 +	local tnode
-+	tnode = entry({"admin", "system"}, alias("admin", "system", "system"), i18n("System"), 30)
++	tnode = entry({"admin", "system"}, alias("admin", "system", "system"), _("System"), 30)
 +	tnode.index = true
-+
- 	entry({"admin", "system", "system"}, cbi("admin_system/system"), i18n("System"), 1)
+ 	entry({"admin", "system", "system"}, cbi("admin_system/system"), _("System"), 1)
 +	if not tnode.inreq then return end
 +
- 	entry({"admin", "system", "admin"}, cbi("admin_system/admin"), i18n("Administration"), 2)
- 	entry({"admin", "system", "packages"}, call("action_packages"), i18n("Software"), 10)
+ 	entry({"admin", "system", "admin"}, cbi("admin_system/admin"), _("Administration"), 2)
+ 	entry({"admin", "system", "packages"}, call("action_packages"), _("Software"), 10)
  	entry({"admin", "system", "packages", "ipkg"}, form("admin_system/ipkg"))
-diff -u /tmp/luci/modules/admin-full/luasrc/controller/admin//uci.lua luci-0.10+svn7342/modules/admin-full/luasrc/controller/admin/uci.lua
---- /tmp/luci/modules/admin-full/luasrc/controller/admin//uci.lua	2011-01-21 19:09:43.000000000 -0500
-+++ luci-0.10+svn7342/modules/admin-full/luasrc/controller/admin/uci.lua	2011-08-09 15:31:53.509708488 -0400
-@@ -17,10 +17,12 @@
+diff -u /tmp/luci-trunk+svn7492/modules/admin-full/luasrc/controller/admin/uci.lua luci-trunk+svn7492/modules/admin-full/luasrc/controller/admin/uci.lua
+--- /tmp/luci-trunk+svn7492/modules/admin-full/luasrc/controller/admin/uci.lua	2011-08-12 09:16:27.000000000 -0400
++++ luci-trunk+svn7492/modules/admin-full/luasrc/controller/admin/uci.lua	2011-09-14 12:28:06.297843121 -0400
+@@ -16,10 +16,13 @@
+ module("luci.controller.admin.uci", package.seeall)
  
  function index()
- 	local i18n = luci.i18n.translate
-+	local tnode = entry({"admin", "uci"}, nil, i18n("Configuration"))
++	local tnode
++	tnode = entry({"admin", "uci"}, nil, _("Configuration"))
 +	if not tnode.inreq then return end
 +
  	local redir = luci.http.formvalue("redir", true) or
  	  luci.dispatcher.build_url(unpack(luci.dispatcher.context.request))
  
--	entry({"admin", "uci"}, nil, i18n("Configuration"))
- 	entry({"admin", "uci", "changes"}, call("action_changes"), i18n("Changes"), 40).query = {redir=redir}
- 	entry({"admin", "uci", "revert"}, call("action_revert"), i18n("Revert"), 30).query = {redir=redir}
- 	entry({"admin", "uci", "apply"}, call("action_apply"), i18n("Apply"), 20).query = {redir=redir}
+-	entry({"admin", "uci"}, nil, _("Configuration"))
+ 	entry({"admin", "uci", "changes"}, call("action_changes"), _("Changes"), 40).query = {redir=redir}
+ 	entry({"admin", "uci", "revert"}, call("action_revert"), _("Revert"), 30).query = {redir=redir}
+ 	entry({"admin", "uci", "apply"}, call("action_apply"), _("Apply"), 20).query = {redir=redir}
