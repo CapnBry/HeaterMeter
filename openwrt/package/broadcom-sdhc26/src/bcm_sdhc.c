@@ -1,7 +1,7 @@
 /*==============================================================================
  * bcm_sdhc.c - Linksys WRT54G/WRT54GS/WRT54GL hardware mod - SDHC/MMHC card driver
  *
- * Version: 3.0.0
+ * Version: 3.0.1
  *
  * Authors:
  *
@@ -124,6 +124,10 @@
  *
  *     - Kernel 2.6 port
  *     - Change all init scripts to OpenWRT Backfire (10.03) style
+ * 
+ *   Version 3.0.1 - Sep 6, 2011
+ *
+ *     - Disable spinlocking/yielding, next port will use kthreads
  *
  * Supported Linksys devices:
  *
@@ -237,7 +241,7 @@ static void bcm_sdhc_request ( struct request_queue * q )
     unsigned long last_req_end_address = 0;
     unsigned char last_write = 0;
     unsigned char first = 1;
-    
+    /*
     spin_lock_irq ( &Device.req_lock );
     
     if ( Device.in_request )
@@ -252,7 +256,7 @@ static void bcm_sdhc_request ( struct request_queue * q )
     Device.in_request = 1;
     
     spin_unlock_irq ( &Device.req_lock );
-
+*/
     if ( ! ( req = blk_fetch_request ( q ) ) )
         return;
 
@@ -344,12 +348,13 @@ static void bcm_sdhc_request ( struct request_queue * q )
         }
         LOG_DEBUG ( DBG_REQ, "finish %s_multi_o: ba=%lu, err=%d\n", last_write ? "write" : "read", last_req_end_address, r );
     }
-
+/*
     spin_lock_irq ( &Device.req_lock );
     Device.in_request = 0;
     spin_unlock_irq ( &Device.req_lock );
     
     blk_start_queue ( Queue );
+    */
 }
 
 static ssize_t bcm_sdhc_proc_read ( struct file * file, char *buf, size_t count, loff_t *ppos )

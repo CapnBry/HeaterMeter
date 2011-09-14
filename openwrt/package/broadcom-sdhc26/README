@@ -1,45 +1,85 @@
 Linksys WRT54G/WRT54GS/WRT54GL hardware mod - MMHC/SDHC card driver
 
-Version: 2.0.2
+Version: 3.0.1
 
 Authors:
 
-  Madsuk/Rohde/Cyril CATTIAUX/Marc DENTY/rcichielo KRUSCH/Chris
+  Severn Tsui (kernel 2.6 port)
+  Originally by Madsuk/Rohde/Cyril CATTIAUX/Marc DENTY/rcichielo KRUSCH/Chris
 
 Description:
 
-  Rework of the 1.3.5 optimized driver posted on the opewnwrt forum.
-  Support for high capacity cards (sdhc) added.
-  See the comments at the begining of the sdhc.c file for a full.
-  description of the module parameters and the release notes.
-  Supports the 2.4 kernel only.
+  Kernel 2.6 port of the Broadcom SDHC 2.0.2 driver (see README.v2.0.2 for details)
 
-Building
+Building:
 
-  Install and build the development environment for your version of openwrt.
+  Unpack to package/broadcom-sdhc26 relative to your OpenWRT build tree root directory.
 
-  Create the "package/broadcom-sdhc" directory.
+  $ make menuconfig
 
-  Copy in "Makefile.x.y" as "Makefile" where "x.y" is your openwrt version.
-  (7.09 or 8.09)
+  You should see "kmod-broadcom-sdhc26" under Kernel modules -> Block Devices. Enable it
+  and set the default options which will be used in the config file.
 
-  Go back to the root directory of the development environment
+  Build as you would with any other OpenWRT package, e.g.
 
-  Run "make menuconfig". You should see an sdhc module available under 
+  $ make package/broadcom-sdhc26/clean
+  $ make package/broadcom-sdhc26/compile
 
-  Select menu "Kernel Modules--->Other Modules".
+  You will have a package in your bin/brcm47xx/packages/ directory named something like:
 
-  Select module "kmod-broadcom-sdhc" to be built as a module
+  kmod-broadcom-sdhc26_3.0.3-2_brcm47xx.ipk
 
-  Exit menuconfig saving your changes
+Installing:
 
-  Run 'make'.
+ The package can be installed like any other OpenWRT package:
 
-  Shortcut hints for quick re-compiles and distributing modules to your
-  router while developing:
+ root@OpenWrt:/# opkg install kmod-broadcom-sdhc26_3.0.3-2_brcm47xx.ipk
 
-    'make package/broadcom-sdhc-clean V=99'
-    'make package/broadcom-sdhc-compile V=99'
-    '(cd build_mipsel/broadcom-sdhc-2.02; make dist)'
 
-  Generated modules and ipkg found in "build_mipsel/broadcom-sdhc-2.0.2"
+Configuration:
+
+ Ensure that /etc/config/broadcom_sdhc26 is properly configured for your hardware mod.
+ This works on my WRT54GL with the SD card mod with:
+   data in on gpio 2
+   data out on gpio 4
+   clock on gpio 3
+   chip select on gpio 7
+
+ Minimally, you will need to set either 'enabled' to 1.
+
+Setup wireless:
+
+ If you want to use wireless (e.g. b43), make sure you mask off the GPIOs appropriately first.
+
+ Edit: /etc/modules.d/30-b43
+
+   b43 gpiomask=0x1
+
+ A safe value is 0 (b43 will not touch GPIOs). If you use the same GPIOs and hardware as I do,
+ 0x1 is safe (this enables the wifi LED).
+
+ This gpiomask is the GPIOs to ALLOW b43 to use. (This is opposite to the gpiomask for diag,
+ which is the GPIOs it is not allowed to use.)
+
+ 
+Test it:
+
+  root@OpenWRT:/# /etc/init.d/broadcom_sdhc26 start
+
+  If the above command didn't kill your router, and you also want it to run on boot, also do:
+
+  root@OpenWRT:/# /etc/init.d/broadcom_sdhc26 enable
+
+
+Using the SD card as an external root:
+
+  This will also work with extroot, see the extroot howto
+  You'll need to have block-mount installed and configured like the howto.
+
+  Ensure that the 'preinit' option is enabled in /etc/config/broadcom_sdhc26
+
+  /etc/init.d/broadcom_sdhc26 disable
+
+  Yes, that does say "disable". The script will get run in the preinit phase so you shouldn't run it twice.
+
+

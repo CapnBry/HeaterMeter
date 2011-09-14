@@ -766,7 +766,7 @@ static INLINE unsigned char spi_card_write_multi_o ( unsigned int addr, unsigned
             *out = clk_low; *out = clk_hi;
             *out = clk_low; *out = clk_hi;
             if ( *in & do_mask ) break;
-            yield();
+//            yield();
         }
         LOG_DEBUG ( DBG_BUSY, "Write_multi: Data response busy: %d clock cycles\n",i * 8 );
     }
@@ -791,7 +791,7 @@ static INLINE unsigned char spi_card_write_multi_o ( unsigned int addr, unsigned
             *out = clk_low; *out = clk_hi;
             *out = clk_low; *out = clk_hi;
             if ( *in & do_mask ) break;
-            yield();
+//            yield();
         }
         LOG_DEBUG ( DBG_BUSY, "Write_multi: Stop tran busy: %d clock cycles\n",i * 8 );
 
@@ -915,7 +915,7 @@ static INLINE unsigned char spi_card_read_multi_o ( unsigned int addr, unsigned 
             *out = clk_low; *out = clk_hi;
             *out = clk_low; *out = clk_hi;
             if ( *in & do_mask ) break;
-            yield();
+//            yield();
         }
         LOG_DEBUG ( DBG_BUSY, "Read_multi: Stop tran busy: %d clock cycles\n",i * 8 );
         if ( ( *in & do_mask ) == 0 ) goto err1;
