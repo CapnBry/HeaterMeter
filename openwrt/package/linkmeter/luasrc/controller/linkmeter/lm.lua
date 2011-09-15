@@ -6,35 +6,33 @@ function index()
 
   local page = entry({"lm"}, template("linkmeter/index"), nil, 10)
   page.sysauth = { "anon", "root" }
-  page.sysauth_authenticator = require "luci.controller.linkmeter.lm".lmauth
+  page.sysauth_authenticator =
+    function (validator, accs, default)
+      local user = "anon"
+      local sess = luci.http.getcookie("sysauth")
+      local sdat = luci.sauth.read(sess)
+      if sdat then
+        sdat = loadstring(sdat)
+        sdat = sdat()
+        if sdat.token == luci.dispatcher.context.urltoken then
+          user = sdat.user
+        end
+      end
+  
+      -- If the page requested does not allow anon acces and we're using the
+      -- anon token, reutrn no session to get luci to prompt the user to escalate            
+      local needsRoot = not luci.util.contains(accs, "anon")
+      if needsRoot and user == "anon" then
+        return luci.dispatcher.authenticator.htmlauth(validator, accs, default)
+      else
+        return user, sess
+      end
+    end
 
   entry({"lm", "set"}, call("set")).sysauth = "root"
   entry({"lm", "login"}, call("rootredirect")).sysauth = "root"
 end
 
-function lmauth(validator, accs, default)
-  local user = "anon"
-  local sess = luci.http.getcookie("sysauth")
-  sess = sess and sess:match("^[a-f0-9]*$")
-  local sdat = luci.sauth.read(sess)
-  if sdat then
-    sdat = loadstring(sdat)
-    setfenv(sdat, {})
-    sdat = sdat()
-    if sdat.token == luci.dispatcher.context.urltoken then
-      user = sdat.user
-    end
-  end
-  
-  -- If the page requested does not allow anon acces and we're using the
-  -- anon token, reutrn no session to get luci to prompt the user to escalate            
-  local needsRoot = not luci.util.contains(accs, "anon")
-  if needsRoot and user == "anon" then
-    return luci.dispatcher.authenticator.htmlauth(validator, accs, default)
-  else
-    return user, sess
-  end
-end
 
 function rootredirect()
   luci.http.redirect(luci.dispatcher.build_url("lm/"))
