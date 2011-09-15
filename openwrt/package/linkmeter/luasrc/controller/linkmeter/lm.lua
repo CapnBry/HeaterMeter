@@ -76,7 +76,7 @@ function set()
       nixio.nanosleep(0, 100000000)
     end
 
-    local result, err = lm:query("$LMST,%s,%s" % {k,v})
+    local result, err = lm:query("$LMST,%s,%s" % {k,v}, true)
     http.write("%s to %s = %s\n" % {k,v, result or err})
     if err then break end
   end

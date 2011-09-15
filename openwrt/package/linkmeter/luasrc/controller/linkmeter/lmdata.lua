@@ -8,7 +8,7 @@ end
 
 function lmclient_json(query)
   require "lmclient"
-  local result, err = LmClient():query(query, true) 
+  local result, err = LmClient():query(query) 
   if result then
     luci.http.prepare_content("application/json")
     luci.http.write(result)

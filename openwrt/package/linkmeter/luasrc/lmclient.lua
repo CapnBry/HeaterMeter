@@ -27,7 +27,7 @@ function LmClient.close(self)
   end
 end
 
-function LmClient.query(self, qry, autoclose)
+function LmClient.query(self, qry, keepopen)
   local r = {self:_connect()}
   if not r[1] then return unpack(r) end
   
@@ -42,7 +42,7 @@ function LmClient.query(self, qry, autoclose)
     r = { nil, "poll" }
   end
   
-  if autoclose then self:close() end
+  if not keepopen then self:close() end
   return r
 end
 
@@ -52,5 +52,5 @@ if arg then
   if qry:sub(1,1) ~= "$" then 
     qry = "$" .. qry
   end
-  print(LmClient():query(qry, true))
+  print(LmClient():query(qry))
 end
