@@ -1,6 +1,6 @@
 <%
   local rrd = luci.http.formvalue("rrd")
-  local lmdata = require "luci.controller.linkmeter.lmdata"
+  require "lmclient"
 %>
 <!doctype html public "-//W3C//DTD HTML 4.0//EN">
 <html>
@@ -85,7 +85,7 @@ $(document).ready(function()
     }, {style: "display: inline"});
 <% end %>
 <% if not rrd then %>
-    var o = <% if not lmdata.action_hmstatus() then write("{}") end %>;
+    var o = <%= LmClient():query("$LMSU") or "{}" %>;
     var now = +new Date();
     if ((now - 10000) < (o.time * 1000))
         connectionSuccess(o);
