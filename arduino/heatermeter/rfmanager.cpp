@@ -46,13 +46,6 @@ void RFSource::update(rf12_probe_update_hdr_t *hdr, unsigned char len)
   }  /* while len */
 }
 
-RFManager::RFManager(const char rxLed, const event_callback fn) :
-  _crcOk(0xff), _rxLed(rxLed), _callback(fn)
-{
-  if (_rxLed >= 0)
-    pinMode(_rxLed, OUTPUT);
-}
-
 void RFManager::init(unsigned char band)
 {
   if (!_initialized)
@@ -126,13 +119,11 @@ void RFManager::status(void)
   }
 }
 
-void RFManager::doWork(void)
+boolean RFManager::doWork(void)
 {
   boolean retVal = false;
   while (rf12_recvDone())
   {
-    if (_rxLed >= 0)
-      digitalWrite(_rxLed, HIGH);
     if ((rf12_crc == 0) && (rf12_len >= sizeof(rf12_probe_update_hdr_t)))
     {  
       if (_crcOk < 0xff) 
@@ -164,12 +155,9 @@ void RFManager::doWork(void)
       
     retVal = true;
   }  /* while recvDone() */
-  
-  // Leave the LED on until we fail to read something
-  if (!retVal && _rxLed >= 0)
-    digitalWrite(_rxLed, LOW);
-    
+ 
   freeStaleSources();
+  return retVal;
 }
 
 

@@ -68,20 +68,20 @@ public:
   enum event { Add = 0x01, Remove = 0x02, Update = 0x04 };
   typedef void (*event_callback)(RFSource&, event);
 
-  RFManager(const char rxLed, const event_callback fn);
+  RFManager(const event_callback fn) :
+    _crcOk(0xff), _callback(fn) {};
   
   void init(unsigned char band);
   void freeStaleSources(void);
   char findFreeSourceIdx(void);
   char findSourceIdx(unsigned char srcId);
   void status(void);
-  void doWork(void);
+  boolean doWork(void);
   
   RFSource *getSourceById(unsigned char srcId);
   
 private:
   boolean _initialized;
-  const char _rxLed;
   const event_callback _callback;
   unsigned char _crcOk;
   RFSource _sources[RF_SOURCE_COUNT];

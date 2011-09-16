@@ -35,7 +35,7 @@ static char g_SerialBuff[64];
 #endif /* HEATERMETER_SERIAL */
 #ifdef HEATERMETER_RFM12
 void rfSourceNotify(RFSource &r, RFManager::event e); // prototype
-static RFManager rfmanager(PIN_WIRELESS_LED, rfSourceNotify);
+static RFManager rfmanager(rfSourceNotify);
 static rf12_map_item_t rfMap[TEMP_COUNT];
 #endif /* HEATERMETER_RFM12 */
 
@@ -811,7 +811,10 @@ void hmcoreLoop(void)
 #endif /* HEATERMETER_SERIAL */
 
 #ifdef HEATERMETER_RFM12
-  rfmanager.doWork();
+  if (rfmanager.doWork()) 
+    digitalWrite(PIN_WIRELESS_LED, HIGH);
+  else
+    digitalWrite(PIN_WIRELESS_LED, LOW);
 #endif /* HEATERMETER_RFM12 */
 
 #ifdef HEATERMETER_NETWORKING 
