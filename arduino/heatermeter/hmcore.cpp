@@ -693,6 +693,14 @@ void eepromLoadConfig(boolean forceDefault)
   eepromLoadProbeConfig(forceDefault);
 }
 
+void blinkLed(void)
+{
+  digitalWrite(PIN_WIRELESS_LED, HIGH);
+  delay(200);
+  digitalWrite(PIN_WIRELESS_LED, LOW);
+  delay(100);
+}
+
 #ifdef HEATERMETER_SERIAL
 inline void serial_doWork(void)
 {
@@ -745,6 +753,10 @@ inline void dflashInit(void)
 
 void hmcoreSetup(void)
 {
+  pinMode(PIN_WIRELESS_LED, OUTPUT);
+  // BLINK 1: Booted
+  blinkLed();
+  
 #ifdef HEATERMETER_SERIAL
   Serial.begin(HEATERMETER_SERIAL);
 #endif  /* HEATERMETER_SERIAL */
@@ -781,6 +793,9 @@ void hmcoreSetup(void)
   }
 #endif  /* HEATERMETER_NETWORKING */
   Menus.setState(ST_HOME_NOPROBES);
+  
+  // BLINK 2: Initialization complete
+  blinkLed();
 }
 
 void hmcoreLoop(void)
