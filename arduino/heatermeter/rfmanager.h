@@ -80,6 +80,7 @@ public:
   RFSource *getSourceById(unsigned char srcId);
   
 private:
+  boolean _initialized;
   const char _rxLed;
   const event_callback _callback;
   unsigned char _crcOk;

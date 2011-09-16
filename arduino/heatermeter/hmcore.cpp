@@ -175,6 +175,12 @@ void reportRfMap(void)
   Serial_nl();
 }
 
+void checkInitRfManager(void)
+{
+  if (pid.countOfType(PROBETYPE_RF12) != 0)
+    rfmanager.init(HEATERMETER_RFM12);
+}
+
 void storeRfMap(unsigned char probeIndex, unsigned char source, unsigned char sourcePin)
 {
   rfMap[probeIndex].source = source;
@@ -185,6 +191,7 @@ void storeRfMap(unsigned char probeIndex, unsigned char source, unsigned char so
   eeprom_write_block(&rfMap[probeIndex], ofs, sizeof(rf12_map_item_t));
     
   reportRfMap();
+  checkInitRfManager();
 }
 #endif /* HEATERMETER_RFM12 */
 
@@ -777,9 +784,8 @@ void hmcoreSetup(void)
   pid.Probes[TEMP_AMB] = &probe3;
 
   eepromLoadConfig(false);
-
 #ifdef HEATERMETER_RFM12
-  rfmanager.init(HEATERMETER_RFM12);
+  checkInitRfManager();
 #endif
 
 #ifdef HEATERMETER_NETWORKING

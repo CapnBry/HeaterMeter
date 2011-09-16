@@ -168,6 +168,15 @@ GrillPid::GrillPid(const unsigned char blowerPin) :
 {
 }
 
+unsigned int GrillPid::countOfType(unsigned char probeType) const
+{
+  unsigned char retVal = 0;
+  for (unsigned char i=0; i<TEMP_COUNT; i++)
+    if (Probes[i]->getProbeType() == probeType)
+      ++retVal;
+  return retVal;  
+}
+
 /* Calucluate the desired fan speed using the proportional–integral-derivative (PID) controller algorithm */
 inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
 {

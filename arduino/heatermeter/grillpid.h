@@ -169,6 +169,7 @@ public:
   unsigned int LidOpenResumeCountdown;
   // true if any probe has a non-zero temperature
   boolean isAnyFoodProbeActive(void) const;
+  unsigned int countOfType(unsigned char probeType) const;
   
   // Call this in loop()
   boolean doWork(void);

@@ -55,8 +55,12 @@ RFManager::RFManager(const char rxLed, const event_callback fn) :
 
 void RFManager::init(unsigned char band)
 {
-  // The master is always node 1
-  rf12_initialize(1, band);
+  if (!_initialized)
+  {
+    // The master is always node 1
+    rf12_initialize(1, band);
+    _initialized = true;
+  }
 }
 
 void RFManager::freeStaleSources(void)
