@@ -571,11 +571,67 @@ void outputJson(void)
   WiServer.print_P(PSTR("}}"));
 }
 
+/*
+  This hexdecode function may look dumb as shit but
+  the logic does this in 4 instructions (8 bytes)
+  instead of 12 instructions
+  if (c == 0)
+    return 0;
+  if (c >= '0' && c <= '9')
+    return c - '0';
+  if (c >= 'A' && c <= 'F')
+    return c - 'A';
+  if (c >= 'a' && c <= 'f')
+    return c - 'a';
+  return (undefined);
+*/
+inline unsigned char hexdecode(unsigned char c)
+{
+  // Convert 'a'-'f' to lowercase and '0'-'9' to 0-9
+  c &= 0xcf;
+  if (c > 9)
+    return c - 'A' + 10;
+  return c;
+}
+
+/* In-place URL decoder */
+inline void urldecode(char *URL)
+{
+  char *dest = URL;
+  while (true)
+  {
+    *dest = *URL;
+    char ofs = 1;
+
+    switch (*URL)
+    {
+    case 0:
+      return;
+      break;
+
+    case '+':
+      *dest = ' ';
+      break;
+
+    case '%':
+      char c1 = *(URL+1);
+      char c2 = *(URL+2);
+      if (c1 && c2)
+      {
+        *dest = (hexdecode(c1) << 4 | hexdecode(c2));
+        ofs = 3;
+      }
+      break;
+    }  /* switch */
+    URL += ofs;
+    ++dest;
+  }
+}
+
 boolean sendPage(char* URL)
 {
   ++URL;  // WARNING: URL no longer has leading '/'
-  unsigned char urlLen = strlen(URL);
-
+  urldecode(URL);
   if (handleCommandUrl(URL))
   {
     WiServer.print_P(PSTR("OK\n"));
