@@ -142,7 +142,7 @@ inline void TempProbe::calcTemp(void)
     // If you put the fixed resistor on the Vcc side of the thermistor, use the following
     R = log(Steinhart[3] / ((Vin / (float)Vout) - 1.0f));
     // If you put the thermistor on the Vcc side of the fixed resistor use the following
-    // R = log(Rknown * Vin / (float)Vout - Rknown);
+    //R = log(Steinhart[3] * Vin / (float)Vout - Steinhart[3]);
   
     // Compute degrees K  
     T = 1.0f / ((Steinhart[2] * R * R + Steinhart[1]) * R + Steinhart[0]);
