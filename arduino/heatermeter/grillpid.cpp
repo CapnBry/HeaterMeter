@@ -230,7 +230,7 @@ inline void GrillPid::commitFanSpeed(void)
     // Simple PWM, ON for first [FanSpeed] intervals then OFF 
     // for the remainder of the period
     unsigned char pwmVal;
-    pwmVal = (_fanSpeed > _longPwmTmr) ? 255/MINIMUM_FAN_SPEED : 0;
+    pwmVal = ((_fanSpeed / (TEMP_MEASURE_PERIOD / 1000)) > _longPwmTmr) ? 255/MINIMUM_FAN_SPEED : 0;
     
     analogWrite(_blowerPin, pwmVal);
     // Long PWM period is 10 sec
