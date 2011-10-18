@@ -18,13 +18,12 @@
 #include <Ports.h>
 #endif /* HEATERMETER_RFM12 */
 
-void setup(void)
+int main(void)
 {
+  init();
   hmcoreSetup();
-}
-
-void loop(void)
-{
-  hmcoreLoop();
+  for (;;)
+    hmcoreLoop();
+  return 0;
 }
 
