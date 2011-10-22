@@ -30,7 +30,9 @@ define Build/Compile
 endef
 
 define Package/linkmeter/install
-	$(CP) root/* $(1)/
+	$(CP) ./root/* $(1)/
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
+	$(INSTALL_BIN) ./config/linkmeter.uci-defaults $(1)/etc/uci-defaults/linkmeter
 
 	$(INSTALL_DIR) $(1)/www
 	$(CP) htdocs/* $(1)/www/

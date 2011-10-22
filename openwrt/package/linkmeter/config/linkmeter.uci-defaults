@@ -1,0 +1,19 @@
+#!/bin/sh
+
+uci -q get lucid.lmserver > /dev/null
+[ $$? -eq 0 ] && exit
+
+uci batch << EOF
+set lucid.main.threadlimit=2
+set lucid.https.enabled=0
+set lucid.lmserver=daemon
+set lucid.lmserver.enabled=1
+set lucid.lmserver.slave=linkmeter
+set lucid.linkmeter=linkmeterd
+set lucid.linkmeter.serial_device=/dev/ttyS1
+set lucid.linkmeter.serial_baud=115200
+set lucid.linkmeter.rrd_file=/tmp/hm.rrd
+set lucid.linkmeter.stashpath=/root
+EOF
+
+
