@@ -1,6 +1,6 @@
---- /tmp/base-files/files/lib/network/config.sh	2011-06-30 10:07:56.649293323 -0400
-+++ base-files/files/lib/network/config.sh	2011-06-30 10:25:14.993652898 -0400
-@@ -362,6 +362,8 @@
+--- /tmp/base-files-network/files/lib/network/config.sh	2011-10-22 13:43:38.138311346 -0400
++++ base-files-network/files/lib/network/config.sh	2011-10-22 13:53:51.322778137 -0400
+@@ -378,6 +378,8 @@
  
  			[ -z "$ipaddr" ] || \
  				$DEBUG ifconfig "$iface" "$ipaddr" ${netmask:+netmask "$netmask"}
