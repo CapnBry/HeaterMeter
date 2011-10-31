@@ -436,8 +436,19 @@ void outputRfStatus(void)
 #endif /* HEATERMETER_RFM12 */
 }
 
+void reportVersion(void)
+{
+  print_P(PSTR("$UCID"));
+  Serial_csv();
+  print_P(PSTR("HeaterMeter"));
+  Serial_csv();
+  print_P(HM_VERSION);
+  Serial_nl();
+}
+
 inline void reportConfig(void)
 {
+  reportVersion();
   reportPidParams();
   reportProbeNames();
   reportProbeOffsets();
@@ -824,6 +835,7 @@ void hmcoreSetup(void)
   
 #ifdef HEATERMETER_SERIAL
   Serial.begin(HEATERMETER_SERIAL);
+  reportVersion();
 #endif  /* HEATERMETER_SERIAL */
 #ifdef USE_EXTERNAL_VREF  
   analogReference(EXTERNAL);

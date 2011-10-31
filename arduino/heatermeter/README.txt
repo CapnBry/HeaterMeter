@@ -63,13 +63,15 @@ Both Serial and Web
 
 Serial-only URLs
 /set?pnXXX - Retrieve the current probe names
-/config - Retreives the current probe names and RF map (will be expanded to all config at some point)
+/config - Retreives version, current probe names and RF map (will be expanded to all config at some point)
 
 Web-only URLs
 / - The index status page.  Some other supporting files are also used by this URL that are not included in this document.
 /json - JSON status object.
 
 == CSV Format ==
+Microcontroller ID
+$UCID,HeaterMeter,VersionID
 PID coefficients
 $HMPD,PidB,PidP,PidI,PidD 
 Probe Names
