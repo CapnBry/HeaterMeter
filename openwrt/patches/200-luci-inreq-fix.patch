@@ -1,0 +1,17 @@
+--- /tmp/luci-trunk+svn7768/libs/web/luasrc/dispatcher.lua	2011-10-21 13:22:48.000000000 -0400
++++ luci-trunk+svn7768/libs/web/luasrc/dispatcher.lua	2011-10-24 16:32:25.330267979 -0400
+@@ -622,12 +622,13 @@
+ 
+ 	if not c then
+ 		local last = table.remove(path)
++		local inreq = context.path[#path+1] == last
+ 		local parent = _create_node(path)
+ 
+ 		c = {nodes={}, auto=true}
+ 		-- the node is "in request" if the request path matches
+ 		-- at least up to the length of the node path
+-		if parent.inreq and context.path[#path+1] == last then
++		if inreq and parent.inreq then
+ 		  c.inreq = true
+ 		end
+ 		parent.nodes[last] = c

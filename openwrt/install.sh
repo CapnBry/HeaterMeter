@@ -19,6 +19,7 @@ $WRT_PATH/scripts/feeds update
 LUCIP=$WRT_PATH/feeds/luci/luci/patches
 rm -fR $LUCIP
 mkdir $LUCIP
+cp patches/200-luci-inreq-fix.patch $LUCIP
 cp patches/215-luci-adminfull-inreq.patch $LUCIP
 
 $WRT_PATH/scripts/feeds install -p linkmeter avrdude
