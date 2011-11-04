@@ -16,6 +16,7 @@ local serialPolle
 local lastHmUpdate
 local rfMap = {}
 local rfStatus = {}
+local hmVersion
 
 local segmentCall -- forward
 
@@ -127,6 +128,13 @@ local function segRfMap(line)
   end
 end
 
+local function segUcIdentifier(line)
+  local vals = segSplit(line)
+  if #vals > 1 then
+    hmVersion = vals[2]
+  end
+end
+
 function segStateUpdate(line)
     local vals = segSplit(line)
 
@@ -225,6 +233,10 @@ local function segLmSet(line)
   return "OK"
 end
 
+local function segLmIdentifier(line)
+  return hmVersion
+end
+
 local function segLmRfStatus(line)
   local retVal = ""
   for id, item in pairs(rfStatus) do
@@ -264,12 +276,14 @@ local segmentMap = {
   ["$HMPN"] = segProbeNames,
   ["$HMRF"] = segRfUpdate,
   ["$HMRM"] = segRfMap,
+  ["$UCID"] = segUcIdentifier,
   
   ["$LMST"] = segLmSet,
   ["$LMSU"] = segLmStateUpdate,
   ["$LMRF"] = segLmRfStatus,
   ["$LMD1"] = segLmDaemonStart,
   ["$LMD0"] = segLmDaemonStop,
+  ["$LMID"] = segLmIdentifier
 }
 
 function segmentCall(line)
