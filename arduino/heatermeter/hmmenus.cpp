@@ -232,7 +232,7 @@ void menuBooleanEdit(button_t button, const prog_char *preamble)
   lcd.setCursor(0, 1);
   if (preamble != NULL)
     lcdprint_P(preamble, false);
-  lcdprint_P((editInt != 0) ? PSTR("Yes") : PSTR("No"), false);
+  lcdprint_P((editInt != 0) ? PSTR("Yes") : PSTR("No "), false);
 }
 
 void menuNumberEdit(button_t button, unsigned char increment, 
@@ -485,7 +485,7 @@ state_t menuMaxFanSpeed(button_t button)
       storeMaxFanSpeed(editInt);
   }
   
-  menuNumberEdit(button, 5, PSTR("speed %d%%"));
+  menuNumberEdit(button, 5, PSTR("speed %3d%%"));
   return ST_AUTO;
 }
 
