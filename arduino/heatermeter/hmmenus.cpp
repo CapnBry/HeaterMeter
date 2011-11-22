@@ -363,7 +363,7 @@ state_t menuProbename(button_t button)
   if (button == BUTTON_ENTER)
   {
     loadProbeName(probeIndex);
-    snprintf_P(buffer, sizeof(buffer), LCD_PROBENAME1, probeIndex);
+    snprintf_P(buffer, sizeof(buffer), PSTR("Set probe %1d name"), probeIndex);
   }
 
   // note that we only load the buffer with text on the ENTER call,
