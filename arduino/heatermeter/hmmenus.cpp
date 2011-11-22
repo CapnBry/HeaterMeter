@@ -426,7 +426,7 @@ state_t menuLidOpenDur(button_t button)
   if (button == BUTTON_ENTER)
   {
     lcdprint_P(PSTR("Lid open timer"), true);
-    editInt = pid.LidOpenDuration;    
+    editInt = pid.getLidOpenDuration();
   }
   else if (button == BUTTON_LEAVE)
   {

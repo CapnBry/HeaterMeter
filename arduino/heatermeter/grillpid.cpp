@@ -15,6 +15,9 @@
 // 1/(Number of samples used in the exponential moving average)
 #define TEMPPROBE_AVG_SMOOTH (1.0f/15.0f)
 #define FANSPEED_AVG_SMOOTH (1.0f/60.0f)
+// Once entering LID OPEN mode, the minimum number of seconds to stay in
+// LID OPEN mode before autoresuming due to temperature returning to setpoint 
+#define LIDOPEN_MIN_AUTORESUME 30
 
 void calcExpMovingAverage(const float smooth, float *currAverage, float newValue)
 {
@@ -251,7 +254,7 @@ boolean GrillPid::isAnyFoodProbeActive(void) const
   
 void GrillPid::resetLidOpenResumeCountdown(void)
 {
-  LidOpenResumeCountdown = LidOpenDuration;
+  LidOpenResumeCountdown = _lidOpenDuration;
   _pitTemperatureReached = false;
 }
 
@@ -272,6 +275,11 @@ void GrillPid::setFanSpeed(int value)
     _fanSpeed = 100;
   else
     _fanSpeed = value;
+}
+
+void GrillPid::setLidOpenDuration(unsigned int value)
+{
+  _lidOpenDuration = (value > LIDOPEN_MIN_AUTORESUME) ? : LIDOPEN_MIN_AUTORESUME;
 }
 
 void GrillPid::status(void) const
@@ -325,7 +333,8 @@ boolean GrillPid::doWork(void)
     calcFanSpeed(probePit);
     
     int pitTemp = (int)probePit->Temperature;
-    if (pitTemp >= _setPoint)
+    if ((pitTemp >= _setPoint) &&
+      (_lidOpenDuration - LidOpenResumeCountdown > LIDOPEN_MIN_AUTORESUME))
     {
       // When we first achieve temperature, reset any P sum we accumulated during startup
       // If we actually neded that sum to achieve temperature we'll rebuild it, and it
@@ -344,7 +353,7 @@ boolean GrillPid::doWork(void)
     // If the pit temperature has been reached
     // and if the pit temperature is [lidOpenOffset]% less that the setpoint
     // and if the fan has been running less than 90% (more than 90% would indicate probable out of fuel)
-    // Note that the code assumes g_LidOpenResumeCountdown <= 0 and pitTemp < _setPoint
+    // Note that the code assumes we're not currently counting down
     else if (_pitTemperatureReached && 
       (((_setPoint-pitTemp)*100/_setPoint) >= (int)LidOpenOffset) &&
       ((int)FanSpeedAvg < 90))

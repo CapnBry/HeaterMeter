@@ -370,7 +370,7 @@ void storeLidOpenOffset(unsigned char value)
 
 void storeLidOpenDuration(unsigned int value)
 {
-  pid.LidOpenDuration = value;    
+  pid.setLidOpenDuration(value);
   config_store_word(lidOpenDuration, value);
 }
 
@@ -717,7 +717,7 @@ void eepromLoadBaseConfig(boolean forceDefault)
   
   pid.setSetPoint(config.setPoint);
   pid.LidOpenOffset = config.lidOpenOffset;
-  pid.LidOpenDuration = config.lidOpenDuration;
+  pid.setLidOpenDuration(config.lidOpenDuration);
   memcpy(pid.Pid, config.pidConstants, sizeof(config.pidConstants));
   if (config.manualMode)
     pid.setFanSpeed(0);

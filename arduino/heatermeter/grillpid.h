@@ -137,6 +137,7 @@ private:
   unsigned char _periodCounter;
   // Counter used for "long PWM" mode
   unsigned char _longPwmTmr;
+  unsigned int _lidOpenDuration;
   
   void calcFanSpeed(TempProbe *controlProbe);
   void commitFanSpeed(void);
@@ -152,7 +153,8 @@ public:
   // The number of degrees the temperature drops before automatic lidopen mode
   unsigned char LidOpenOffset;
   // The ammount of time to turn off the blower when the lid is open 
-  unsigned int LidOpenDuration;
+  unsigned int getLidOpenDuration(void) const { return _lidOpenDuration; }
+  void setLidOpenDuration(unsigned int value);
   // The PID constants
   float Pid[4];
   // The maximum fan speed that will be used in automatic mode
