@@ -471,6 +471,16 @@ boolean handleCommandUrl(char *URL)
     storeLcdBacklight(atoi(URL + 7));
     return true;
   }
+  if (strncmp_P(URL, PSTR("set?ld="), 7) == 0) 
+  {
+    storeLidOpenDuration(atoi(URL + 7));
+    return true;
+  }
+  if (strncmp_P(URL, PSTR("set?lo="), 7) == 0) 
+  {
+    storeLidOpenOffset(atoi(URL + 7));
+    return true;
+  }
   if (strncmp_P(URL, PSTR("set?pid"), 7) == 0 && urlLen > 9) 
   {
     float f = atof(URL + 9);
