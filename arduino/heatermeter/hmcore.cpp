@@ -892,7 +892,10 @@ void hmcoreLoop(void)
 
 #ifdef HEATERMETER_RFM12
   if (rfmanager.doWork()) 
+  {
     digitalWrite(PIN_WIRELESS_LED, HIGH);
+    delay(10);
+  }
   else
     digitalWrite(PIN_WIRELESS_LED, LOW);
 #endif /* HEATERMETER_RFM12 */
