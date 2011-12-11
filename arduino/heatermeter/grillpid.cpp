@@ -279,7 +279,7 @@ void GrillPid::setFanSpeed(int value)
 
 void GrillPid::setLidOpenDuration(unsigned int value)
 {
-  _lidOpenDuration = (value > LIDOPEN_MIN_AUTORESUME) ? : LIDOPEN_MIN_AUTORESUME;
+  _lidOpenDuration = (value > LIDOPEN_MIN_AUTORESUME) ? value : LIDOPEN_MIN_AUTORESUME;
 }
 
 void GrillPid::status(void) const
