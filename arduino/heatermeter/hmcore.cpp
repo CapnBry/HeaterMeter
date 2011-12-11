@@ -845,6 +845,7 @@ void hmcoreSetup(void)
   
 #ifdef HEATERMETER_SERIAL
   Serial.begin(HEATERMETER_SERIAL);
+  Serial_nl();
   reportVersion();
 #endif  /* HEATERMETER_SERIAL */
 #ifdef USE_EXTERNAL_VREF  
