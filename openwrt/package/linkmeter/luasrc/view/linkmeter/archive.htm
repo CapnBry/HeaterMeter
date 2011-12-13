@@ -34,18 +34,24 @@ store a handful of logs before running out of space.</p>
 %>
   <h3>Stored in <%=fsInfo%></h3>
   
-  <table style="border-spacing: 40px 4px; width: 50%;">
-    <tr><th style="border: 1px solid #ddd;">View</th><th style="border: 1px solid #ddd;">Name</th></tr>
+  <table style="border-spacing: 40px 4px;">
+    <tr><th style="border: 1px solid #ddd;">View</th>
+      <th style="border: 1px solid #ddd;">Name</th>
+      <th style="border: 1px solid #ddd;">Action</th>
+    </tr>
 <% 
+local yesterday = os.time() - 86400
 local files = {}
 for fn in nixio.fs.glob(STASH_PATH .. "/*.rrd") do
   local f = {}
-  f.path = fn
+  f.path = luci.http.protocol.urlencode(fn)
   f.name = nixio.fs.basename(fn)
-  f.stat = nixio.fs.stat(f.path)
+  f.stat = nixio.fs.stat(fn)
   if f.stat.type == "reg" then
     files[#files+1] = f
   end
+  local descfile = fn:gsub("\.rrd$", ".txt")
+  f.desc = nixio.fs.readfile(descfile)
 end
 
 table.sort(files, function(a,b) return a.stat.mtime < b.stat.mtime end )
@@ -53,19 +59,33 @@ table.sort(files, function(a,b) return a.stat.mtime < b.stat.mtime end )
 for _,f in ipairs(files) do
     local urlView = luci.dispatcher.build_url("lm").."?rrd="..f.path
     local urlCsv = luci.dispatcher.build_url("lm","hist").."?rrd="..f.path
+    local urlDelete = luci.dispatcher.build_url("admin","lm","stashdb").."?delete=1&amp;rrd="..f.name
+    local urlActivate = luci.dispatcher.build_url("admin","lm","stashdb").."?restore=1&amp;rrd="..f.name
 %>
     <tr>
       <td>
-        <a href="<%=urlView%>"><img src="<%=resource.."/chart_curve.png"%>" />View</a>
-        <a href="<%=urlCsv%>"><img src="<%=resource.."/table_go.png"%>" />CSV</a>
+        <a href="<%=urlView%>"><img src="<%=resource%>/chart_curve.png" />View</a>
+        <a href="<%=urlCsv%>"><img src="<%=resource%>/table_go.png" />CSV</a>
       </td>
       <td>
         <div style="color: #999; font-style: italic; font-size: smaller;"><%=os.date("%B %d, %Y  %I:%M%p", f.stat.mtime)%></div>
         <div style="font-size: large;"><%=f.name%></div>
+        <div><%=f.desc%></div>
+      </td>
+      <td>
+        <a href="<%=urlDelete%>"><img src="<%=resource%>/database_delete.png" />Delete</a>
+<% if f.stat.mtime > yesterday then %>       <br/><a href="<%=urlActivate%>"><img src="<%=resource%>/arrow_switch.png" />Activate as current</a><% end %>
       </td>
     </tr>
-    <tr><td colspan="2" style="background: #ccc; height: 2px;"></td></tr>
+    <tr><td colspan="3" style="background: #ccc; height: 2px;"></td></tr>
 <% end %>
   </table>
+  
+  <h3>Reset current database</h3>
+  <p>This will clear all data in the current running database and start a
+  new one.<br/>
+  <img src="<%=resource%>/database_delete.png" />
+  <a href="<%=luci.dispatcher.build_url("admin","lm","stashdb").."?reset=1"%>">Reset
+  Database</a></p>
 <%+footer%>
 

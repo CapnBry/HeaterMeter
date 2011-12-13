@@ -54,13 +54,14 @@ function action_stashdb()
   local STASH_PATH = uci:get("lucid", "linkmeter", "stashpath") or "/root"
   local restoring = http.formvalue("restore")
   local resetting = http.formvalue("reset")
+  local deleting = http.formvalue("delete")
   local stashfile = http.formvalue("rrd") or "hm.rrd"
 
   -- directory traversal
   if stashfile:find("[/\\]+") then
     http.status(400, "Bad Request")
     http.prepare_content("text/plain")
-    return http.write("Invalid stashfile spefified: "..stashfile)
+    return http.write("Invalid stashfile specified: "..stashfile)
   end
 
   -- the stashfile should start with a slash
@@ -72,7 +73,15 @@ function action_stashdb()
 
   local result
   http.prepare_content("text/plain")
-  if restoring == "1" or resetting == "1" then
+  if deleting == "1" then
+    result = nixio.fs.unlink(stashfile)
+    http.write("Deleting "..stashfile)
+    stashfile = stashfile:gsub("\.rrd$", ".txt")
+    if nixio.fs.access(stashfile) then
+      nixio.fs.unlink(stashfile)
+      http.write("\nDeleting "..stashfile)
+    end
+  elseif restoring == "1" or resetting == "1" then
     require "lmclient"
     local lm = LmClient()
     lm:query("$LMD0", true) -- stop serial process
