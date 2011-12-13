@@ -16,8 +16,23 @@ store a handful of logs before running out of space.</p>
 <% 
   local uci = luci.model.uci.cursor()
   local STASH_PATH = uci:get("lucid", "linkmeter", "stashpath")
+  local ps = luci.util.execi("df -h " .. STASH_PATH)
+  local fsInfo = STASH_PATH
+  if ps then
+    ps()
+    local lineno = 0
+    for line in ps do
+      lineno = lineno + 1
+      if lineno ~= 0 then
+        local m = {}
+        for value in line:gmatch("[^%s]+") do m[#m+1] = value end
+        fsInfo = ("%s (%s) %s available"):format(STASH_PATH, m[2], m[4])
+        break
+      end
+    end
+  end
 %>
-  <h3>Stored in <%=STASH_PATH%></h3>
+  <h3>Stored in <%=fsInfo%></h3>
   
   <table style="border-spacing: 40px 4px; width: 50%;">
     <tr><th style="border: 1px solid #ddd;">View</th><th style="border: 1px solid #ddd;">Name</th></tr>
