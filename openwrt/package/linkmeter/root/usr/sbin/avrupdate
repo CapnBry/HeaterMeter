@@ -37,3 +37,6 @@ done
 
 echo -n "Starting LinkMeter "
 lua /usr/lib/lua/lmclient.lua LMD1
+echo -n "Current HeaterMeter version is "
+sleep 1
+lua /usr/lib/lua/lmclient.lua LMID
