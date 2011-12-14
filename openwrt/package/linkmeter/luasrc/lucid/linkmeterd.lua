@@ -228,8 +228,8 @@ end
 
 local function segLmSet(line)
   if not serialPolle then return "ERR" end
-  local vals = segSplit(line)
-  serialPolle.fd:write(("\n/set?%s=%s\n"):format(vals[1], vals[2]))
+  -- Replace the LMST,k,v with /set?k=v
+  serialPolle.fd:write(line:gsub("^LMST,(%w+),(.*)", "\n/set?%1=%2\n"))
   return "OK"
 end
 
