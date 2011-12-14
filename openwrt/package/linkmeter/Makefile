@@ -38,7 +38,9 @@ define Package/linkmeter/install
 	$(CP) htdocs/* $(1)/www/
 
 	$(INSTALL_DIR) $(1)/usr/lib/lua
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/lmclient.lua $(1)/usr/lib/lua/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/lmclient.lua $(1)/usr/lib/lua/
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(LN) -s $(1)/usr/lib/lua/lmclient.lua $(1)/usr/bin/lmclient
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/lucid
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/lucid/linkmeterd.lua $(1)/usr/lib/lua/luci/lucid/
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller/linkmeter

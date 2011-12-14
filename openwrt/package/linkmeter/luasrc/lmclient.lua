@@ -1,3 +1,4 @@
+#!/usr/bin/lua
 require("nixio")
 require("luci.util")
 
@@ -43,7 +44,11 @@ function LmClient.query(self, qry, keepopen)
   end
   
   if not keepopen then self:close() end
-  return r
+  if type(r) == "table" then
+    return unpack(r)
+  else
+    return r
+  end
 end
 
 -- Command line execution
