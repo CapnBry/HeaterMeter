@@ -49,7 +49,14 @@ function set()
   if rawset then
     -- remove /set? or set? if supplied
     rawset = rawset:gsub("^/?set%?","")
-    vals = require "luci.http.protocol".urldecode_params(rawset)
+    vals = {}
+    for pair in rawset:gmatch( "[^&;]+" ) do
+      local key = pair:match("^([^=]+)")
+      local val = pair:match("^[^=]+=(.+)$")
+      if key and val then
+        vals[key] = val
+      end
+    end
   end
 
   -- Make sure the user passed some values to set
