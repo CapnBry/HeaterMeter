@@ -120,17 +120,16 @@ function refreshGraphData()
     $("#loadindic").show();
     graphLoaded = false;
 
-    jQuery.each(graphData, function() {
+    $.each(graphData, function() {
         this.data = [];
     });
-<% 
-  local url = luci.dispatcher.build_url("lm", "hist") .. "?"
-  if rrd then url = url .. "rrd=" .. rrd .. "&" end
-  url = url .. "nancnt="
-%>
-    jQuery.ajax({
+    
+    var params = {nancnt: range};
+    <% if rrd then write("params.rrd = '"..rrd.."';") end %>
+    $.ajax({
         type: "GET",
-        url: "<%=url%>" + range,
+        url: "<%=luci.dispatcher.build_url("lm", "hist")%>",
+        data: params,
         dataType: "text",
         success: tstatSuccess,
         error: clearLoadingIndic
@@ -380,7 +379,7 @@ function tstatSuccess(csv)
     var mapCsv = [-1,2,6,5,4,3,0];
     
     clearLoadingIndic();
-    jQuery.each(csv.split('\n'), function (){
+    $.each(csv.split('\n'), function (){
         if (this == "") return;
         var line = this.split(",");
         if (line.length != mapCsv.length) return;
@@ -404,7 +403,8 @@ function tstatSuccess(csv)
 
 function nameChanged(from, value)
 {
-    $.get("<%=luci.dispatcher.build_url("lm", "set")%>?" + from + "=" + value);
+    var params = {}; params[from] = value;
+    $.get("<%=luci.dispatcher.build_url("lm", "set")%>", params);
     return value;
 }
 
@@ -412,7 +412,7 @@ function tempChanged(value)
 {
     if(((value - 0) == value && value.length > 0) && value > 0 && value < 999)
     {
-        $.get("<%=luci.dispatcher.build_url("lm", "set")%>?sp=" + value);
+        $.get("<%=luci.dispatcher.build_url("lm", "set")%>", {sp: value});
         return value;
     }
     else return "err";
@@ -422,8 +422,7 @@ function JSONQuery()
 {
     if($(document).has('form').length == 0)
     {
-        jQuery.ajax(
-        {
+        $.ajax({
             type: "GET",
             url: "<%=luci.dispatcher.build_url("lm", "hmstatus")%>",
             dataType: "json",
@@ -443,7 +442,7 @@ function checkRefreshGraphOrUpdate()
         return;
 
     var max = 0;
-    jQuery.each(graphData, function () {
+    $.each(graphData, function () {
         if (this.data.length > max)
             max = this.data.length;
     });
