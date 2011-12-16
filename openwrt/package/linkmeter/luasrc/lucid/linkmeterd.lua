@@ -1,3 +1,4 @@
+local io = require "io"
 local os = require "os"
 local rrd = require "rrd" 
 local nixio = require "nixio" 
@@ -8,17 +9,19 @@ local lucid = require "luci.lucid"
 
 local pairs, ipairs, table, pcall = pairs, ipairs, table, pcall 
 local tonumber, tostring, print = tonumber, tostring, print
-local collectgarbage = collectgarbage
+local collectgarbage,string = collectgarbage,string
 
 module "luci.lucid.linkmeterd"
 
 local serialPolle
+local statusListeners = {}
 local lastHmUpdate
 local rfMap = {}
 local rfStatus = {}
 local hmVersion
 
-local segmentCall -- forward
+-- forwards
+local segmentCall, broadcastStatus
 
 local RRD_FILE = uci.cursor():get("lucid", "linkmeter", "rrd_file")
 
@@ -173,6 +176,8 @@ function segStateUpdate(line)
       -- ignore any error
       local status, err = pcall(rrd.update, RRD_FILE, table.concat(vals, ":"))
       if not status then nixio.syslog("err", "RRD error: " .. err) end
+      
+      broadcastStatus()
     end
 end
 
@@ -271,6 +276,27 @@ local function segLmStateUpdate()
   end
 end
 
+function broadcastStatus()
+  local o
+  local i = 1
+  while i <= #statusListeners do
+    if not o then 
+      o = segLmStateUpdate()
+      collectgarbage("step")
+    end
+    
+    if not statusListeners[i](o) then
+      table.remove(statusListeners, i)
+    else
+      i = i + 1
+    end
+  end
+end
+
+local function registerStreamingStatus(fn)
+  statusListeners[#statusListeners + 1] = fn
+end
+
 local segmentMap = {
   ["$HMSU"] = segStateUpdate,
   ["$HMPN"] = segProbeNames,
@@ -284,6 +310,7 @@ local segmentMap = {
   ["$LMD1"] = segLmDaemonStart,
   ["$LMD0"] = segLmDaemonStop,
   ["$LMID"] = segLmIdentifier
+  -- $LMSS
 }
 
 function segmentCall(line)
@@ -293,6 +320,16 @@ function segmentCall(line)
   else
     return "ERR"
   end
+end
+
+function hex_dump(buf)
+for byte=1, #buf, 16 do
+local chunk = buf:sub(byte, byte+15)
+io.write(string.format('%08X  ',byte-1))
+chunk:gsub('.', function (c) io.write(string.format('%02X ',string.byte(c))) end)
+io.write(string.rep(' ',3*(16-#chunk)))
+io.write(' ',chunk:gsub('%c','.'),"\n") 
+end
 end
 
 function prepare_daemon(config, server)
@@ -312,9 +349,14 @@ function prepare_daemon(config, server)
       while true do
         local msg, addr = polle.fd:recvfrom(128)
         if not (msg and addr) then return end
-   
-        local result = segmentCall(msg)
-        if result then polle.fd:sendto(result, addr) end
+
+	hex_dump(addr)
+	if msg == "$LMSS" then
+	  registerStreamingStatus(function (o) return polle.fd:sendto(o, addr) end)
+	else
+          local result = segmentCall(msg)
+          if result then polle.fd:sendto(result, addr) end
+        end
       end
     end
   }) 

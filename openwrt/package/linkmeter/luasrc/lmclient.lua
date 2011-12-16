@@ -11,7 +11,10 @@ function LmClient._connect(self)
   -- autobind to an abstract address, optionally I could explicitly specify
   -- an abstract name such as "\0linkmeter"..pid
   -- Abstract socket namespace is only supported on Linux
-  sock:bind("")
+  if not sock:bind("") then
+    sock:close()
+    return nil, "bind"
+  end
   if not sock:connect("/var/run/linkmeter.sock") then
     sock:close()
     return nil, "connect"
@@ -38,7 +41,8 @@ function LmClient.query(self, qry, keepopen)
   
   local polle = { fd = self.sock, events = nixio.poll_flags("in") }
   if nixio.poll({polle}, 1000) then
-    r = self.sock:recv(1024)
+    r,a = self.sock:recvfrom(1024)
+    print(a,#a)
   else
     r = { nil, "poll" }
   end
@@ -51,11 +55,40 @@ function LmClient.query(self, qry, keepopen)
   end
 end
 
+function LmClient.stream(self, qry, fn)
+  local r = {self:_connect()}
+  if not r[1] then return unpack(r) end
+
+  if self.sock:send(qry) == 0 then
+    return nil, "send"
+  end
+  
+  local polle = { fd = self.sock, events = nixio.poll_flags("in") }
+  while nixio.poll({polle}, 4000) do
+    r = self.sock:recv(1024)
+    if r == "ERR" then break end
+    fn(r)
+  end
+ 
+  self:close() 
+  return nil, "eof"
+end
+          
 -- Command line execution
 if arg then
   local qry = arg[1] or "$LMSU"
+  local strm
+  if qry:sub(1,1) == "@" then
+    strm = true
+    qry = qry:sub(2)
+  end
   if qry:sub(1,1) ~= "$" then 
     qry = "$" .. qry
   end
-  print(LmClient():query(qry))
+  
+  if strm then
+    print(LmClient:stream(qry, function (r) print(r) end))
+  else
+    print(LmClient():query(qry))
+  end
 end

@@ -4,6 +4,7 @@ function index()
   entry({"lm", "hist"}, call("action_hist")).notemplate = true
   entry({"lm", "hmstatus"}, call("action_hmstatus")).notemplate = true
   entry({"lm", "rfstatus"}, call("action_rfstatus")).notemplate = true
+  entry({"lm", "stream"}, call("action_stream")).notemplate = true
 end
 
 function lmclient_json(query)
@@ -98,4 +99,16 @@ function action_hist()
     
     start = start + step
   end 
+end
+
+function action_stream()
+  local http = require "luci.http"
+  http.prepare_content("text/event-stream")
+  require "lmclient"
+  LmClient:stream("$LMSS", function (o) 
+    http.write("event: hmstatus\ndata: "..o.."\n\n")
+    if collectgarbage("step") then
+      nixio.fs.writefile("/tmp/after", tostring(collectgarbage("count")))
+    end
+  end)
 end

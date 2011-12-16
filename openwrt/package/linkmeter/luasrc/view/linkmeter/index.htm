@@ -95,9 +95,18 @@ $(document).ready(function()
 $(window).load(function ()
 {
 <% if not rrd then %>
-    if (!lastUpdateUtc)
-        JSONQuery();
-    window.setInterval(JSONQuery, 10000);
+    if (!!window.EventSource) {
+        var source = new EventSource("<%=luci.dispatcher.build_url("lm","stream")%>");
+        source.addEventListener("hmstatus", function(e) {
+            var o = JSON.parse(e.data);
+            connectionSuccess(o);
+        });
+        source.addEventListener("error", connectionFailure);
+    } else {
+        if (!lastUpdateUtc)
+            JSONQuery();
+        window.setInterval(JSONQuery, 10000);
+    }
 <% end %>
     refreshGraphData();
 });
@@ -420,17 +429,14 @@ function tempChanged(value)
 
 function JSONQuery()
 {
-    if($(document).has('form').length == 0)
-    {
-        $.ajax({
-            type: "GET",
-            url: "<%=luci.dispatcher.build_url("lm", "hmstatus")%>",
-            dataType: "json",
-            timeout: 5000,
-            success: connectionSuccess,
-            error: connectionFailure
-        });
-    }
+    $.ajax({
+        type: "GET",
+        url: "<%=luci.dispatcher.build_url("lm", "hmstatus")%>",
+        dataType: "json",
+        timeout: 5000,
+        success: connectionSuccess,
+        error: connectionFailure
+    });
 }
 
 /* find out how many points we have on the graph and
@@ -446,6 +452,7 @@ function checkRefreshGraphOrUpdate()
         if (this.data.length > max)
             max = this.data.length;
     });
+    console.log(max+" points in graph");
 
     // the RRD holds up to 480 points and the graph holds
     // less due to point consolidation, so best case
@@ -458,9 +465,10 @@ function checkRefreshGraphOrUpdate()
 
 function connectionSuccess(o)
 {
+    var updateEditables = ($("form").length == 0);
     lastUpdateUtc = o.time * 1000;
     o.time = lastUpdateUtc + tzOffset;
-    $("#set").html(o.set);
+    if (updateEditables) $("#set").html(o.set);
 
     if (graphLoaded)
     {
@@ -470,7 +478,7 @@ function connectionSuccess(o)
 
     for(var i = 0; i < 4; i++)
     {
-        $("#pn" + i).text(o.temps[i].n);
+        if (updateEditables) $("#pn" + i).text(o.temps[i].n);
         var val = o.temps[i].c;
         if (val === null)
         {
