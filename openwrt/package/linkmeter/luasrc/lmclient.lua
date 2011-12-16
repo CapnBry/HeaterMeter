@@ -41,8 +41,7 @@ function LmClient.query(self, qry, keepopen)
   
   local polle = { fd = self.sock, events = nixio.poll_flags("in") }
   if nixio.poll({polle}, 1000) then
-    r,a = self.sock:recvfrom(1024)
-    print(a,#a)
+    r = self.sock:recv(512)
   else
     r = { nil, "poll" }
   end
@@ -65,7 +64,7 @@ function LmClient.stream(self, qry, fn)
   
   local polle = { fd = self.sock, events = nixio.poll_flags("in") }
   while nixio.poll({polle}, 4000) do
-    r = self.sock:recv(1024)
+    r = self.sock:recv(512)
     if r == "ERR" then break end
     fn(r)
   end
