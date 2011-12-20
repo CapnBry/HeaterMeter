@@ -10,6 +10,8 @@
 #define TEMP_MEASURE_PERIOD 2000
 // The temperatures are averaged over 1, 2, 4 or 8 samples per period
 #define TEMP_AVG_COUNT 8
+// Use oversample/decimation to increase ADC resolution to 2^(10+n) bits n=[0..3]
+#define TEMP_OVERSAMPLE_BITS 3
 // The minimum fan speed (%) that activates the "long pulse" mode
 #define MINIMUM_FAN_SPEED 10
 // 1/(Number of samples used in the exponential moving average)
@@ -109,9 +111,7 @@ boolean TempProbe::hasTemperatureAvg(void) const
 
 void TempProbe::addAdcValue(unsigned int analog_temp)
 {
-  // If we get *any* analogReads that are 0 or 1023, the measurement for 
-  // the entire period is invalidated, so set the _accumulator to 0
-  if (analog_temp <= 0 || analog_temp >= 1023)
+  if (analog_temp == 0) // >= MAX is reduced in readTemp()
     _accumulator = 0;
   else if (_accumulatedCount == 0)
     _accumulator = analog_temp;
@@ -120,21 +120,36 @@ void TempProbe::addAdcValue(unsigned int analog_temp)
   ++_accumulatedCount;
 }
 
-inline void TempProbe::readTemp(void)
+void TempProbe::readTemp(void)
 {
-  addAdcValue(analogRead(_pin));
+  const unsigned char OVERSAMPLE_COUNT[] = {1, 4, 16, 64};  // 4^n
+  unsigned int oversampled_adc = 0;
+  for (unsigned char i=0; i<OVERSAMPLE_COUNT[TEMP_OVERSAMPLE_BITS]; ++i)
+  {
+    unsigned int adc = analogRead(_pin);
+    // If we get *any* analogReads that are 0 or 1023, the measurement for 
+    // the entire period is invalidated, so set the _accumulator to 0
+    if (adc == 0 || adc >= 1023)
+    {
+      addAdcValue(0);
+      return;
+    }
+    oversampled_adc += adc;
+  }
+  oversampled_adc = oversampled_adc >> TEMP_OVERSAMPLE_BITS;
+  addAdcValue(oversampled_adc);
 }
 
-inline void TempProbe::calcTemp(void)
+void TempProbe::calcTemp(void)
 {
-  const float Vin = 1023.0f;
+  const float ADCmax = (1 << (10+TEMP_OVERSAMPLE_BITS)) - 1;
   if (_accumulatedCount == 0)
     return; 
     
-  unsigned int Vout = _accumulator / _accumulatedCount;
+  unsigned int ADCval = _accumulator / _accumulatedCount;
   _accumulatedCount = 0;
   
-  if ((Vout == 0) || (Vout >= (unsigned int)Vin))
+  if (ADCval == 0)  // Vout >= MAX is reduced in readTemp()
   {
     Temperature = NAN;
     return;
@@ -143,9 +158,9 @@ inline void TempProbe::calcTemp(void)
   {
     float R, T;
     // If you put the fixed resistor on the Vcc side of the thermistor, use the following
-    R = log(Steinhart[3] / ((Vin / (float)Vout) - 1.0f));
+    R = log(Steinhart[3] / ((ADCmax / (float)ADCval) - 1.0f));
     // If you put the thermistor on the Vcc side of the fixed resistor use the following
-    //R = log(Steinhart[3] * Vin / (float)Vout - Steinhart[3]);
+    //R = log(Steinhart[3] * ADCmax / (float)Vout - Steinhart[3]);
   
     // Compute degrees K  
     T = 1.0f / ((Steinhart[2] * R * R + Steinhart[1]) * R + Steinhart[0]);
@@ -174,7 +189,7 @@ GrillPid::GrillPid(const unsigned char blowerPin) :
 unsigned int GrillPid::countOfType(unsigned char probeType) const
 {
   unsigned char retVal = 0;
-  for (unsigned char i=0; i<TEMP_COUNT; i++)
+  for (unsigned char i=0; i<TEMP_COUNT; ++i)
     if (Probes[i]->getProbeType() == probeType)
       ++retVal;
   return retVal;  
