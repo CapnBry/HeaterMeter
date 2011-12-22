@@ -107,8 +107,6 @@ function action_stream()
   require "lmclient"
   LmClient:stream("$LMSS", function (o) 
     http.write("event: hmstatus\ndata: "..o.."\n\n")
-    if collectgarbage("step") then
-      nixio.fs.writefile("/tmp/after", tostring(collectgarbage("count")))
-    end
+    collectgarbage("step")
   end)
 end
