@@ -16,6 +16,7 @@
 var lastUpdateUtc;
 var lastPlot;
 var lastOverviewPlot;
+var lastGraphHover = 0;
 
 // mapJson translates the json temps array index to graphData index
 var mapJson = [6,5,4,3];
@@ -63,7 +64,7 @@ $(document).ready(function()
     $("#graph_overview").bind("plotselected", overviewSelected);
     $("#graph_overview").bind("plotunselected", overviewUnselected);
     $("#showfan").click(showFanChanged);
-    $("#graphtt").click(function (){ $(this).fadeOut(); });
+    $("#graphtt").click(graphttClicked);
     $("#rangeselect").change(refreshGraphData);
     $("#graph").bind("plotclick", graphClicked);
     $("#graph").bind("plothover", graphHover);
@@ -220,15 +221,22 @@ function lerp(n1, n2, frac)
     return (n1 * (1.0 - frac)) + (n2 * frac);
 }
 
-var lastHover = 0;
 function graphHover(event, pos, item)
 {
     var now = +new Date();
-    if (now - lastHover > 100)
+    if (now - lastGraphHover > 100)
     {
         graphClicked(event, pos, item); 
-        lastHover = now;
+        lastGraphHover = now;
     }
+}
+
+function graphttClicked()
+{
+  // After clicking the tooltip to dismiss it, don't show again for 1s
+  lastGraphHover = +new Date();
+  lastGraphHover += 1000;
+  $(this).fadeOut(); 
 }
 
 function graphClicked(event, pos, item)
