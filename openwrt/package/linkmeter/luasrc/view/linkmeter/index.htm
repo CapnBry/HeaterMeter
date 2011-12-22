@@ -233,10 +233,10 @@ function graphHover(event, pos, item)
 
 function graphttClicked()
 {
-  // After clicking the tooltip to dismiss it, don't show again for 1s
-  lastGraphHover = +new Date();
-  lastGraphHover += 1000;
-  $(this).fadeOut(); 
+    // After clicking the tooltip to dismiss it, don't show again for 1s
+    lastGraphHover = +new Date();
+    lastGraphHover += 1000;
+    $(this).fadeOut(); 
 }
 
 function graphClicked(event, pos, item)
@@ -460,7 +460,6 @@ function checkRefreshGraphOrUpdate()
         if (this.data.length > max)
             max = this.data.length;
     });
-    console.log(max+" points in graph");
 
     // the RRD holds up to 480 points and the graph holds
     // less due to point consolidation, so best case
