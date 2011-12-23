@@ -21,7 +21,7 @@ local rfStatus = {}
 local hmVersion
 
 -- forwards
-local segmentCall, broadcastStatus
+local segmentCall, broadcastStatus, stsLmStateUpdate
 
 local RRD_FILE = uci.cursor():get("lucid", "linkmeter", "rrd_file")
 
@@ -46,6 +46,7 @@ end
 -- and discard it every time, just replace the values to reduce
 -- the load on the garbage collector
 local JSON_TEMPLATE = {
+  '',
   '{"time":', 0,
   ',"set":', 0,
   ',"lid":', 0,
@@ -54,9 +55,10 @@ local JSON_TEMPLATE = {
   '},{"n":"', 'Food Probe1', '","c":', 0, '', -- probe2
   '},{"n":"', 'Food Probe2', '","c":', 0, '', -- probe3
   '},{"n":"', 'Ambient', '","c":', 0, '', -- probe4
-  '}]}'
+  '}]}',
+  ''
 }
-local JSON_FROM_CSV = {2, 4, 14, 19, 24, 29, 8, 10, 6 }
+local JSON_FROM_CSV = {3, 5, 15, 20, 25, 30, 9, 11, 7 }
 
 local function jsonWrite(vals)
   local i,v
@@ -78,22 +80,26 @@ local function jsonWrite(vals)
     else
       rfval = ''
     end
-    JSON_TEMPLATE[10 + (i * 5)] = rfval
+    JSON_TEMPLATE[11 + (i * 5)] = rfval
   end
 end
 
 local function segSplit(line)
   local retVal = {}
   local fieldstart = 1
-  line = line .. ','
-  repeat
+  while true do
     local nexti = line:find(',', fieldstart)
-    -- Don't add the segment name
-    if fieldstart > 1 then 
-      retVal[#retVal+1] = line:sub(fieldstart, nexti-1)
+    if nexti then
+      -- Don't add the segment name
+      if fieldstart > 1 then
+        retVal[#retVal+1] = line:sub(fieldstart, nexti - 1)
+      end
+      fieldstart = nexti + 1
+    else
+      retVal[#retVal+1] = line:sub(fieldstart)
+      break
     end
-    fieldstart = nexti + 1
-  until fieldstart > line:len()
+  end
 
   return retVal
 end
@@ -102,10 +108,10 @@ local function segProbeNames(line)
   local vals = segSplit(line)
   if #vals < 4 then return end
 
-  JSON_TEMPLATE[12] = vals[1]
-  JSON_TEMPLATE[17] = vals[2]
-  JSON_TEMPLATE[22] = vals[3]
-  JSON_TEMPLATE[27] = vals[4]
+  JSON_TEMPLATE[13] = vals[1]
+  JSON_TEMPLATE[18] = vals[2]
+  JSON_TEMPLATE[23] = vals[3]
+  JSON_TEMPLATE[28] = vals[4]
 end
 
 local function segRfUpdate(line)
@@ -159,8 +165,8 @@ function segStateUpdate(line)
       -- Add the time as the first item
       table.insert(vals, 1, time)
 
-      -- if rfStatus.B then vals[5] = rfStatus.B.batt / 10 end
-      -- vals[4] = collectgarbage("count") / 10
+      -- if rfStatus.B then vals[4] = rfStatus.B.batt / 10 end
+      -- vals[5] = collectgarbage("count") / 10
       jsonWrite(vals)
 
       local lid = tonumber(vals[9]) or 0
@@ -177,7 +183,7 @@ function segStateUpdate(line)
       local status, err = pcall(rrd.update, RRD_FILE, table.concat(vals, ":"))
       if not status then nixio.syslog("err", "RRD error: " .. err) end
       
-      broadcastStatus()
+      broadcastStatus(stsLmStateUpdate)
     end
 end
 
@@ -268,21 +274,28 @@ local function segLmDaemonStop()
 end
 
 local function segLmStateUpdate()
+  JSON_TEMPLATE[1] = ""
+  JSON_TEMPLATE[33] = ""
   -- If the "time" field is still 0, we haven't gotten an update
-  if JSON_TEMPLATE[2] == 0 then
+  if JSON_TEMPLATE[3] == 0 then
     return "{}"
   else
     return table.concat(JSON_TEMPLATE)
   end
 end
 
-function broadcastStatus()
+function stsLmStateUpdate()
+  JSON_TEMPLATE[1] = "event: hmstatus\ndata: "
+  JSON_TEMPLATE[33] = "\n\n"
+  return table.concat(JSON_TEMPLATE)
+end
+
+function broadcastStatus(fn)
   local o
   local i = 1
   while i <= #statusListeners do
     if not o then 
-      o = segLmStateUpdate()
-      collectgarbage("step")
+      o = fn()
     end
     
     if not statusListeners[i](o) then
@@ -322,16 +335,6 @@ function segmentCall(line)
   end
 end
 
-function hex_dump(buf)
-for byte=1, #buf, 16 do
-local chunk = buf:sub(byte, byte+15)
-io.write(string.format('%08X  ',byte-1))
-chunk:gsub('.', function (c) io.write(string.format('%02X ',string.byte(c))) end)
-io.write(string.rep(' ',3*(16-#chunk)))
-io.write(' ',chunk:gsub('%c','.'),"\n") 
-end
-end
-
 function prepare_daemon(config, server)
   local ipcfd = nixio.socket("unix", "dgram")
   if not ipcfd then
@@ -350,7 +353,6 @@ function prepare_daemon(config, server)
         local msg, addr = polle.fd:recvfrom(128)
         if not (msg and addr) then return end
 
-	hex_dump(addr)
 	if msg == "$LMSS" then
 	  registerStreamingStatus(function (o) return polle.fd:sendto(o, addr) end)
 	else

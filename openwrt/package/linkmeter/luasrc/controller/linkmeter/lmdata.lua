@@ -105,8 +105,8 @@ function action_stream()
   local http = require "luci.http"
   http.prepare_content("text/event-stream")
   require "lmclient"
-  LmClient:stream("$LMSS", function (o) 
-    http.write("event: hmstatus\ndata: "..o.."\n\n")
-    collectgarbage("step")
+  LmClient:stream("$LMSS", function (o)
+    http.write(o)
+    collectgarbage("collect")
   end)
 end
