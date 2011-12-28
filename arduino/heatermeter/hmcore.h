@@ -16,6 +16,7 @@ extern "C" {
 #endif
 
 #include <ShiftRegLCD.h>
+#include <SPILCD.h>
 #include "grillpid.h"
 #include "hmmenus.h"
 

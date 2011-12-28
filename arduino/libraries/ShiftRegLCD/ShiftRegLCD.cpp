@@ -93,8 +93,10 @@ void ShiftRegLCD::init(uint8_t srdata, uint8_t srclock, uint8_t enable, uint8_t 
   // Page 47-ish of this (HD44780 LCD) datasheet:
   //    http://www.datasheetarchive.com/pdf-datasheets/Datasheets-13/DSA-247674.pdf
   // According to datasheet, we need at least 40ms after power rises above 2.7V
-  // before sending commands. Arduino can turn on way befer 4.5V so we'll wait 50
-  delayMicroseconds(50000);
+  // before sending commands. Arduino can turn on way befer 4.5V so we'll wait 50ms
+  delayMicroseconds(0x3fff);
+  delayMicroseconds(0x3fff);
+  delayMicroseconds(0x3fff);
   init4bits(LCD_FUNCTIONSET | LCD_8BITMODE);
   delayMicroseconds(4500);  // wait more than 4.1ms
   // Second try
@@ -117,7 +119,6 @@ void ShiftRegLCD::init(uint8_t srdata, uint8_t srclock, uint8_t enable, uint8_t 
   _displaymode = LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT;
   // set the entry mode
   command(LCD_ENTRYMODESET | _displaymode);
-  home();
 }
 
 
@@ -222,6 +223,7 @@ void ShiftRegLCD::command(uint8_t value) {
 
 void ShiftRegLCD::write(uint8_t value) {
   send(value, HIGH);
+  //return sizeof(value);
 }
 
 // For sending data via the shiftregister

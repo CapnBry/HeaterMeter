@@ -75,10 +75,11 @@ public:
   void setCursor(uint8_t, uint8_t);
   virtual void write(uint8_t);
   void command(uint8_t);
-private:
+protected:
+  ShiftRegLCD(void) {};
   void init(uint8_t srdata, uint8_t srclock, uint8_t enable, uint8_t lines, uint8_t font);
-  void send(uint8_t, uint8_t);
-  void init4bits(uint8_t);
+  virtual void send(uint8_t, uint8_t);
+  virtual void init4bits(uint8_t);
   uint8_t _srdata_pin;
   uint8_t _srclock_pin;
   uint8_t _enable_pin;
