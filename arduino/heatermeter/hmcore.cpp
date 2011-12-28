@@ -296,7 +296,7 @@ void updateDisplay(void)
   char buffer[17];
 
   // Fixed pit area
-  lcd.home();
+  lcd.setCursor(0, 0);
   int pitTemp = pid.Probes[TEMP_PIT]->Temperature;
   if (!pid.getManualFanMode() && pitTemp == 0)
     memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
@@ -340,12 +340,9 @@ void updateDisplay(void)
 
 void lcdprint_P(const prog_char *p, const boolean doClear)
 {
-  char buffer[17];
-  strncpy_P(buffer, p, sizeof(buffer));
-
   if (doClear)
     lcd.clear();
-  lcd.print(buffer);
+  while (unsigned char c = pgm_read_byte(p++)) lcd.write(c);
 }
 
 void storePidParam(char which, float value)
