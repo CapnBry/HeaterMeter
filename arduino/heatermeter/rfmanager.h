@@ -73,8 +73,8 @@ public:
   
   void init(unsigned char band);
   void freeStaleSources(void);
-  char findFreeSourceIdx(void);
-  char findSourceIdx(unsigned char srcId);
+  unsigned char findFreeSourceIdx(void);
+  unsigned char findSourceIdx(unsigned char srcId);
   void status(void);
   boolean doWork(void);
   

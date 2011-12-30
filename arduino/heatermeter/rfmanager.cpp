@@ -66,27 +66,27 @@ void RFManager::freeStaleSources(void)
     }
 }
 
-char RFManager::findFreeSourceIdx(void)
+unsigned char RFManager::findFreeSourceIdx(void)
 {
   for (unsigned char idx=0; idx<RF_SOURCE_COUNT; ++idx)
     if (_sources[idx].isFree())
       return idx;
-  return -1;
+  return 0xff;
 }
 
-char RFManager::findSourceIdx(unsigned char srcId)
+unsigned char RFManager::findSourceIdx(unsigned char srcId)
 {
-  // Get the index of the srcId, returns -1 if it doesn't exist
+  // Get the index of the srcId, returns 0xff if it doesn't exist
   for (unsigned char idx=0; idx<RF_SOURCE_COUNT; ++idx)
     if (_sources[idx].getId() == srcId)
       return idx;
-  return -1;
+  return 0xff;
 }
 
 RFSource *RFManager::getSourceById(unsigned char srcId)
 {
-  char idx = findSourceIdx(srcId);
-  return (idx != -1) ? &_sources[idx] : NULL;
+  unsigned char idx = findSourceIdx(srcId);
+  return (idx != 0xff) ? &_sources[idx] : NULL;
 }
 
 void RFManager::status(void)
@@ -136,13 +136,13 @@ boolean RFManager::doWork(void)
 
         event e = Update;
         unsigned char srcId = rf12_hdr & RF12_HDR_MASK;
-        char src = findSourceIdx(srcId);
-        if (src == -1)
+        unsigned char src = findSourceIdx(srcId);
+        if (src == 0xff)
         {
           src = findFreeSourceIdx();
           e = static_cast<event>(Add | Update);
         }
-        if (src != -1)
+        if (src != 0xff)
         {
           _sources[src].setId(srcId);
           _sources[src].update(hdr, rf12_len);

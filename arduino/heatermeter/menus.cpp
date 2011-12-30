@@ -29,7 +29,7 @@ inline state_t MenuSystem::findTransition(button_t button) const
 {
   const menu_transition_t *trans = m_transitions;
   state_t lookup;
-  while (lookup = pgm_read_byte(&trans->state))
+  while ((lookup = pgm_read_byte(&trans->state)))
   {
     if (lookup == State)
     {
@@ -57,7 +57,7 @@ void MenuSystem::setState(state_t state)
     m_currMenu = m_definitions;
 
     state_t lookup;
-    while (lookup = pgm_read_byte(&m_currMenu->state))
+    while ((lookup = pgm_read_byte(&m_currMenu->state)))
     {
       if (lookup == State)
         break;
