@@ -73,7 +73,7 @@ public:
 
   void createChar(uint8_t, uint8_t[]);
   void setCursor(uint8_t, uint8_t);
-  virtual void write(uint8_t);
+  size_t write(uint8_t);
   void command(uint8_t);
 protected:
   ShiftRegLCD(void) {};

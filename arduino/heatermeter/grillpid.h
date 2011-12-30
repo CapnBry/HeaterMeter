@@ -2,7 +2,7 @@
 #ifndef __GRILLPID_H__
 #define __GRILLPID_H__
 
-#include <wiring.h>
+#include "Arduino.h"
 
 #define TEMP_PIT    0
 #define TEMP_FOOD1  1

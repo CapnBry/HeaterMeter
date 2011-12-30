@@ -1,6 +1,5 @@
 // Port library interface to BMP085 sensors connected via I2C
-// 2009-02-17 <jcw@equi4.com> http://opensource.org/licenses/mit-license.php
-// $Id: PortsBMP085.h 5761 2010-05-29 21:06:25Z jcw $
+// 2009-02-17 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
 
 class BMP085 : public DeviceI2C {
     int16_t ac1, ac2, ac3, b1, b2, mb, mc, md;

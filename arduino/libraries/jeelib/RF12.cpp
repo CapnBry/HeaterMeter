@@ -1,48 +1,79 @@
 // RFM12B driver implementation
-// 2009-02-09 <jcw@equi4.com> http://opensource.org/licenses/mit-license.php
-// $Id: RF12.cpp 7200 2011-02-25 15:14:21Z jcw $
+// 2009-02-09 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
 
 #include "RF12.h"
 #include <avr/io.h>
 #include <util/crc16.h>
 #include <avr/eeprom.h>
 #include <avr/sleep.h>
-#include <WProgram.h>
+#if ARDUINO >= 100
+#include <Arduino.h> // Arduino 1.0
+#else
+#include <Wprogram.h> // Arduino 0022
+#endif
+
+#define OPTIMIZE_SPI 1   // uncomment this to write to the RFM12B @ 8 Mhz
 
 // maximum transmit / receive buffer: 3 header + data + 2 crc bytes
 #define RF_MAX   (RF12_MAXDATA + 5)
 
-// pins used for the RFM12B interface
-#if defined(__AVR_ATmega1280__)
+// pins used for the RFM12B interface - yes, there *is* logic in this madness:
+//
+//  - leave RFM_IRQ set to the pin which corresponds with INT0, because the
+//    current driver code will use attachInterrupt() to hook into that
+//  - use SS_DDR, SS_PORT, and SS_BIT to define the pin you will be using as
+//    select pin for the RFM12B (you're free to set them to anything you like)
+//  - please leave SPI_SS, SPI_MOSI, SPI_MISO, and SPI_SCK as is, i.e. pointing
+//    to the hardware-supported SPI pins on the ATmega, *including* SPI_SS !
+
+#if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
 
 #define RFM_IRQ     2
+#define SS_DDR      DDRB
 #define SS_PORT     PORTB
 #define SS_BIT      0
-#define SPI_SS      53
-#define SPI_MOSI    51
-#define SPI_MISO    50
-#define SPI_SCK     52
+
+#define SPI_SS      53    // PB0, pin 19
+#define SPI_MOSI    51    // PB2, pin 21
+#define SPI_MISO    50    // PB3, pin 22
+#define SPI_SCK     52    // PB1, pin 20
+
+#elif defined(__AVR_ATmega644P__)
+
+#define RFM_IRQ     10
+#define SS_DDR      DDRB
+#define SS_PORT     PORTB
+#define SS_BIT      4
+
+#define SPI_SS      4
+#define SPI_MOSI    5
+#define SPI_MISO    6
+#define SPI_SCK     7
 
 #elif defined(__AVR_ATtiny84__)
 
 #define RFM_IRQ     2
-#define SS_PORT     PORTA
-#define SS_BIT      7
-#define SPI_SS      3
-#define SPI_MISO    5
-#define SPI_MOSI    4
-#define SPI_SCK     6
+#define SS_DDR      DDRB
+#define SS_PORT     PORTB
+#define SS_BIT      1
+
+#define SPI_SS      1     // PB1, pin 3
+#define SPI_MISO    4     // PA6, pin 7
+#define SPI_MOSI    5     // PA5, pin 8
+#define SPI_SCK     6     // PA4, pin 9
 
 #else
 
-// ATmega328, etc.
+// ATmega168, ATmega328, etc.
 #define RFM_IRQ     2
+#define SS_DDR      DDRB
 #define SS_PORT     PORTB
-#define SS_BIT      2
-#define SPI_SS      10
-#define SPI_MOSI    11
-#define SPI_MISO    12
-#define SPI_SCK     13
+#define SS_BIT      2     // for PORTB: 2 = d.10, 1 = d.9, 0 = d.8
+
+#define SPI_SS      10    // PB2, pin 16
+#define SPI_MOSI    11    // PB3, pin 17
+#define SPI_MISO    12    // PB4, pin 18
+#define SPI_SCK     13    // PB5, pin 19
 
 #endif 
 
@@ -94,25 +125,26 @@ static uint32_t seqNum;             // encrypted send sequence number
 static uint32_t cryptKey[4];        // encryption key to use
 void (*crypter)(uint8_t);           // does en-/decryption (null if disabled)
 
-static void spi_initialize () {
+void rf12_spiInit () {
+    bitSet(SS_PORT, SS_BIT);
+    bitSet(SS_DDR, SS_BIT);
     digitalWrite(SPI_SS, 1);
     pinMode(SPI_SS, OUTPUT);
     pinMode(SPI_MOSI, OUTPUT);
     pinMode(SPI_MISO, INPUT);
     pinMode(SPI_SCK, OUTPUT);
 #ifdef SPCR    
-#if F_CPU <= 10000000
-    // clk/4 is ok for the RF12's SPI
     SPCR = _BV(SPE) | _BV(MSTR);
-#else
-    // use clk/8 (2x 1/16th) to avoid exceeding RF12's SPI specs of 2.5 MHz
-    SPCR = _BV(SPE) | _BV(MSTR) | _BV(SPR0);
+#if F_CPU > 10000000
+    // use clk/2 (2x 1/4th) for sending (and clk/8 for recv, see rf12_xferSlow)
     SPSR |= _BV(SPI2X);
 #endif
 #else
     // ATtiny
     USICR = bit(USIWM0);
-#endif
+#endif    
+    pinMode(RFM_IRQ, INPUT);
+    digitalWrite(RFM_IRQ, 1); // pull-up
 }
 
 static uint8_t rf12_byte (uint8_t out) {
@@ -147,24 +179,43 @@ static uint8_t rf12_byte (uint8_t out) {
 #endif
 }
 
-static uint16_t rf12_xfer (uint16_t cmd) {
+static uint16_t rf12_xferSlow (uint16_t cmd) {
+    // slow down to under 2.5 MHz
+#if F_CPU > 10000000
+    bitSet(SPCR, SPR0);
+#endif
     bitClear(SS_PORT, SS_BIT);
     uint16_t reply = rf12_byte(cmd >> 8) << 8;
     reply |= rf12_byte(cmd);
     bitSet(SS_PORT, SS_BIT);
+#if F_CPU > 10000000
+    bitClear(SPCR, SPR0);
+#endif
     return reply;
 }
+
+#if OPTIMIZE_SPI
+static void rf12_xfer (uint16_t cmd) {
+    // writing can take place at full speed, even 8 MHz works
+    bitClear(SS_PORT, SS_BIT);
+    rf12_byte(cmd >> 8) << 8;
+    rf12_byte(cmd);
+    bitSet(SS_PORT, SS_BIT);
+}
+#else
+#define rf12_xfer rf12_xferSlow
+#endif
 
 // access to the RFM12B internal registers with interrupts disabled
 uint16_t rf12_control(uint16_t cmd) {
 #ifdef EIMSK
     bitClear(EIMSK, INT0);
-    uint16_t r = rf12_xfer(cmd);
+    uint16_t r = rf12_xferSlow(cmd);
     bitSet(EIMSK, INT0);
 #else
     // ATtiny
     bitClear(GIMSK, INT0);
-    uint16_t r = rf12_xfer(cmd);
+    uint16_t r = rf12_xferSlow(cmd);
     bitSet(GIMSK, INT0);
 #endif
     return r;
@@ -172,10 +223,11 @@ uint16_t rf12_control(uint16_t cmd) {
 
 static void rf12_interrupt() {
     // a transfer of 2x 16 bits @ 2 MHz over SPI takes 2x 8 us inside this ISR
+    // correction: now takes 2 + 8 µs, since sending can be done at 8 MHz
     rf12_xfer(0x0000);
     
     if (rxstate == TXRECV) {
-        uint8_t in = rf12_xfer(RF_RX_FIFO_READ);
+        uint8_t in = rf12_xferSlow(RF_RX_FIFO_READ);
 
         if (rxfill == 0 && group != 0)
             rf12_buf[rxfill++] = group;
@@ -222,7 +274,7 @@ uint8_t rf12_recvDone () {
         rxstate = TXIDLE;
         if (rf12_len > RF12_MAXDATA)
             rf12_crc = 1; // force bad crc if packet length is invalid
-        if (!(rf12_hdr & RF12_HDR_DST) ||
+        if (!(rf12_hdr & RF12_HDR_DST) || (nodeid & NODE_ID) == 31 ||
                 (rf12_hdr & RF12_HDR_MASK) == (nodeid & NODE_ID)) {
             if (rf12_crc == 0 && crypter != 0)
                 crypter(0);
@@ -299,14 +351,11 @@ void rf12_sendWait (uint8_t mode) {
   Call this once with the node ID (0-31), frequency band (0-3), and
   optional group (0-255 for RF12B, only 212 allowed for RF12).
 */
-void rf12_initialize (uint8_t id, uint8_t band, uint8_t g) {
+uint8_t rf12_initialize (uint8_t id, uint8_t band, uint8_t g) {
     nodeid = id;
     group = g;
     
-    spi_initialize();
-    
-    pinMode(RFM_IRQ, INPUT);
-    digitalWrite(RFM_IRQ, 1); // pull-up
+    rf12_spiInit();
 
     rf12_xfer(0x0000); // intitial SPI transfer added to avoid power-up problem
 
@@ -341,6 +390,8 @@ void rf12_initialize (uint8_t id, uint8_t band, uint8_t g) {
         attachInterrupt(0, rf12_interrupt, LOW);
     else
         detachInterrupt(0);
+    
+    return nodeid;
 }
 
 void rf12_onOff (uint8_t value) {
@@ -364,7 +415,7 @@ uint8_t rf12_config (uint8_t show) {
         else if (b == 0)
             break;
         else if (show)
-            Serial.print(b);
+            Serial.print((char) b);
     }
     if (show)
         Serial.println();

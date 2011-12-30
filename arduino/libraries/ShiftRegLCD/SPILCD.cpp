@@ -12,8 +12,7 @@
 // QH - D7
 
 #include "SPILCD.h"
-#include "WProgram.h"
-#include "pins_arduino.h"
+#include "Arduino.h"
 
 SPILCD::SPILCD(uint8_t srlatch, uint8_t lines) : ShiftRegLCD()
 {

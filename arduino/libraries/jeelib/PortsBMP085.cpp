@@ -1,13 +1,16 @@
 // Port library interface to BMP085 sensors connected via I2C
-// 2009-02-17 <jcw@equi4.com> http://opensource.org/licenses/mit-license.php
-// $Id: PortsBMP085.cpp 5698 2010-05-22 09:41:48Z jcw $
+// 2009-02-17 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
 
 // computation and algorithm taken from the Bosch Sensortec BMP085 data sheet
 // (IIRC, I had to cast to an int32_t for the b3 calculation to work above 25C)
 
 #include <Ports.h>
 #include "PortsBMP085.h"
-#include <WProgram.h>
+#if ARDUINO>=100
+#include <Arduino.h> // Arduino 1.0
+#else
+#include <Wprogram.h> // Arduino 0022
+#endif
 
 uint8_t BMP085::startMeas(uint8_t type) const {
     send();

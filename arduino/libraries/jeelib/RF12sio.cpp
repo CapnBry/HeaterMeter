@@ -1,11 +1,13 @@
 // Streaming I/O layer on top of RF12 driver
-// 2009-05-07 <jcw@equi4.com> http://opensource.org/licenses/mit-license.php
-// $Id: RF12sio.cpp 4727 2009-12-08 21:39:49Z jcw $
+// 2009-05-07 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
 
-#include <Ports.h>
-#include <RF12.h>
+#include <JeeLib.h>
 #include <RF12sio.h>
-#include <WProgram.h>
+#if ARDUINO>=100
+#include <Arduino.h> // Arduino 1.0
+#else
+#include <Wprogram.h> // Arduino 0022
+#endif
 
 #define DEBUG 0
 

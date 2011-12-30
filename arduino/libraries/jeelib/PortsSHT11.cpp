@@ -1,6 +1,5 @@
 // Port library interface to SHT11 sensors connected via "something like I2C"
-// 2009-02-16 <jcw@equi4.com> http://opensource.org/licenses/mit-license.php
-// $Id: PortsSHT11.cpp 6540 2010-12-24 14:41:03Z jcw $
+// 2009-02-16 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
 
 // rewritten in C++ using the SENSIRION SHTxx Sample Code Application Note
 // the CRC calculation is from the SENSIRION SHTxx CRC Application Note
@@ -8,7 +7,11 @@
 #include <Ports.h>
 #include "PortsSHT11.h"
 #include <avr/pgmspace.h>
-#include <WProgram.h>
+#if ARDUINO>=100
+#include <Arduino.h> // Arduino 1.0
+#else
+#include <Wprogram.h> // Arduino 0022
+#endif
 
 enum {
     MEASURE_TEMP = 0x03,

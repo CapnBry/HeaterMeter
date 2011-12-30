@@ -1,9 +1,7 @@
 // Ports library remote interface to the RF12 wireless radio
-// 2009-02-14 <jcw@equi4.com> http://opensource.org/licenses/mit-license.php
-// $Id: PortsRF12.cpp 5402 2010-04-30 19:24:52Z jcw $
+// 2009-02-14 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
 
-#include <Ports.h>
-#include "RF12.h"
+#include <JeeLib.h>
 
 void RemoteHandler::setup(uint8_t id, uint8_t band, uint8_t group) {
     rf12_config();

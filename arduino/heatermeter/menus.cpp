@@ -1,5 +1,5 @@
 // HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net> 
-#include <wiring.h>
+#include "Arduino.h"
 #include <avr/pgmspace.h>
 #include "menus.h"
 

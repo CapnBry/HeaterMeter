@@ -46,7 +46,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
-#include "WProgram.h"
+#include "Arduino.h"
 
 // Assuming 1 line 8 pixel high font
 ShiftRegLCD::ShiftRegLCD(uint8_t srdata, uint8_t srclock, uint8_t enable) {
@@ -221,9 +221,9 @@ void ShiftRegLCD::command(uint8_t value) {
   send(value, LOW);
 }
 
-void ShiftRegLCD::write(uint8_t value) {
+size_t ShiftRegLCD::write(uint8_t value) {
   send(value, HIGH);
-  //return sizeof(value);
+  return sizeof(value);
 }
 
 // For sending data via the shiftregister

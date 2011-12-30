@@ -1,24 +1,49 @@
 // Ports library definitions
-// 2009-02-13 <jcw@equi4.com> http://opensource.org/licenses/mit-license.php
-// $Id: Ports.h 7705 2011-06-04 22:52:08Z jcw $
+// 2009-02-13 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
 
 #ifndef Ports_h
 #define Ports_h
 
-#include <WProgram.h>
+#if ARDUINO>=100
+#include <Arduino.h> // Arduino 1.0
+#else
+#include <Wprogram.h> // Arduino 0022
+#endif
 #include <stdint.h>
 #include <avr/pgmspace.h>
+//#include <util/delay.h>
+
+// keep the ATtiny85 on the "old" conventions until arduino-tiny gets fixed
+#if ARDUINO >= 100 && !defined(__AVR_ATtiny84__) && !defined(__AVR_ATtiny85__)
+#define WRITE_RESULT size_t
+#else
+#define WRITE_RESULT void
+#endif
 
 class Port {
 protected:
     uint8_t portNum;
 
+#if defined(__AVR_ATtiny85__)
+    inline uint8_t digiPin() const
+        { return 0; }
+    inline uint8_t digiPin2() const
+        { return 2; }
+    static uint8_t digiPin3()
+        { return 1; }
+    inline uint8_t anaPin() const
+        { return 0; }
+#else
     inline uint8_t digiPin() const
         { return portNum ? portNum + 3 : 18; }
     inline uint8_t digiPin2() const
         { return portNum ? portNum + 13 : 19; }
+    static uint8_t digiPin3()
+        { return 3; }
     inline uint8_t anaPin() const
         { return portNum - 1; }
+#endif
+
 public:
     inline Port (uint8_t num) : portNum (num) {}
 
@@ -48,13 +73,13 @@ public:
         
     // IRQ pin (INT1, shared across all ports)
     static void mode3(uint8_t value)
-        { pinMode(3, value); }
+        { pinMode(digiPin3(), value); }
     static uint8_t digiRead3()
-        { return digitalRead(3); }
+        { return digitalRead(digiPin3()); }
     static void digiWrite3(uint8_t value)
-        { return digitalWrite(3, value); }
+        { return digitalWrite(digiPin3(), value); }
     static void anaWrite3(uint8_t val)
-        { analogWrite(3, val); }
+        { analogWrite(digiPin3(), val); }
         
     // both pins: data on DIO, clock on AIO
     inline void shift(uint8_t bitOrder, uint8_t value) const
@@ -112,6 +137,19 @@ public:
 class PortI2C : public Port {
     uint8_t uswait;
     
+#if 0
+// speed test with fast hard-coded version for Port 1:
+    inline void hold() const
+        { _delay_us(1); }
+    inline void sdaOut(uint8_t value) const
+        { bitWrite(DDRD, 4, !value); bitWrite(PORTD, 4, value); }
+    inline uint8_t sdaIn() const
+        { return bitRead(PORTD, 4); }
+    inline void sclHi() const
+        { hold(); bitWrite(PORTC, 0, 1); }
+    inline void sclLo() const
+        { hold(); bitWrite(PORTC, 0, 0); }
+#else
     inline void hold() const
         { delayMicroseconds(uswait); }
     inline void sdaOut(uint8_t value) const
@@ -122,8 +160,9 @@ class PortI2C : public Port {
         { hold(); digiWrite2(1); }
     inline void sclLo() const
         { hold(); digiWrite2(0); }
+#endif
 public:
-    enum { KHZMAX = 1, KHZ400 = 2, KHZ100 = 9 };
+    enum { KHZMAX, KHZ400, KHZ100, KHZ_SLOW };
     
     PortI2C (uint8_t num, uint8_t rate =KHZMAX);
     
@@ -175,7 +214,8 @@ public:
     void set(word ms);
 };
 
-// Low-power utility code.
+// Low-power utility code using the Watchdog Timer (WDT). Requires a WDT interrupt handler, e.g.
+// EMPTY_INTERRUPT(WDT_vect);
 class Sleepy {
 public:
     // start the watchdog timer (or disable it if mode < 0)
@@ -194,7 +234,8 @@ public:
 
 // simple task scheduler for times up to 6000 seconds
 class Scheduler {
-    word* tasks, remaining;
+    word* tasks;
+    word remaining;
     byte maxTasks;
     MilliTimer ms100;
 public:
@@ -202,9 +243,10 @@ public:
     Scheduler (byte max);
     Scheduler (word* buf, byte max);
 
-    // return next task to run, or -1 if there is none
+    // return next task to run, -1 if there are none ready to run, but there are tasks waiting, or -2 if there are no tasks waiting (i.e. all are idle)
     char poll();
-    // same as poll, but wait for event in power-down mode
+    // same as poll, but wait for event in power-down mode.
+    // Uses Sleepy::loseSomeTime() - see comments there re requiring the watchdog timer. 
     char pollWaiting();
     
     // set a task timer, in tenths of seconds
@@ -277,7 +319,7 @@ public:
     byte available();
     int read();
     void flush();
-    virtual void write(byte);
+    virtual WRITE_RESULT write(byte);
 };
 
 // interface for the Dimmer Plug - see http://jeelabs.org/dp1

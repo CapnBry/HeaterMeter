@@ -1,5 +1,4 @@
 // HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net> 
-#include <WProgram.h>
 #include <math.h>
 #include <string.h>
 
@@ -34,17 +33,21 @@ void calcExpMovingAverage(const float smooth, float *currAverage, float newValue
 
 inline void ProbeAlarm::updateStatus(int value)
 {
-  if (Status & HIGH_ENABLED != 0)
+  if (Status & HIGH_ENABLED)
+  {
     if (value >= _high) 
       Status |= HIGH_RINGING;
     else
       Status &= ~(HIGH_RINGING | HIGH_SILENCED);
+  }
 
-  if (Status & LOW_ENABLED != 0)
+  if (Status & LOW_ENABLED)
+  {
     if (value <= _low) 
       Status |= LOW_RINGING;
     else
       Status &= ~(LOW_RINGING | LOW_SILENCED);
+  }
 }
 
 void ProbeAlarm::setHigh(int value)
@@ -83,8 +86,8 @@ void TempProbe::loadConfig(struct __eeprom_probe *config)
   Alarms.setHigh(config->alarmHigh);
   Alarms.setLow(config->alarmLow);
   Alarms.Status =
-    config->alHighEnabled & ProbeAlarm::HIGH_ENABLED |
-    config->alLowEnabled & ProbeAlarm::LOW_ENABLED;
+    (config->alHighEnabled & ProbeAlarm::HIGH_ENABLED) |
+    (config->alLowEnabled & ProbeAlarm::LOW_ENABLED);
   //Serial.print(" P=");Serial.print(_probeType,DEC);Serial.print(" O=");Serial.print(Offset,DEC);
   //Serial.print(" A=");Serial.print(Steinhart[0],8);Serial.print(" B=");Serial.print(Steinhart[1],8);
   //Serial.print(" C=");Serial.print(Steinhart[2],8);Serial.print(" R=");Serial.println(Steinhart[3],8);
@@ -181,8 +184,7 @@ void TempProbe::calcTemp(void)
 }
 
 GrillPid::GrillPid(const unsigned char blowerPin) :
-    _blowerPin(blowerPin), FanSpeedAvg(NAN),
-    _periodCounter(0x80)
+    _blowerPin(blowerPin), _periodCounter(0x80), FanSpeedAvg(NAN)
 {
 }
 

@@ -1,6 +1,5 @@
 // Port library interface to SHT11 sensors connected via "something like I2C"
-// 2009-02-16 <jcw@equi4.com> http://opensource.org/licenses/mit-license.php
-// $Id: PortsSHT11.h 6540 2010-12-24 14:41:03Z jcw $
+// 2009-02-16 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
 
 class SHT11 : public Port {
     void clock(uint8_t x) const;

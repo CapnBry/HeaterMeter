@@ -2,10 +2,6 @@
 #ifndef __HMCORE_H__
 #define __HMCORE_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
- 
 //#define HEATERMETER_NETWORKING  // enable wifi interface
 #define HEATERMETER_SERIAL 115200 // enable serial interface
 #define HEATERMETER_RFM12  RF12_915MHZ  // enable RFM12B receiving (433MHZ|868MHZ|915MHZ)
@@ -63,9 +59,5 @@ void storeLidOpenDuration(unsigned int value);
 
 extern GrillPid pid;
 extern ShiftRegLCD lcd;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* __HMCORE_H__ */

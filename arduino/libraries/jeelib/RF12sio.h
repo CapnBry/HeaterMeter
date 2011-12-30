@@ -1,6 +1,5 @@
 // Streaming I/O layer on top of RF12 driver
-// 2009-05-07 <jcw@equi4.com> http://opensource.org/licenses/mit-license.php
-// $Id: RF12sio.h 4727 2009-12-08 21:39:49Z jcw $
+// 2009-05-07 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
 
 class RF12 {
     enum { F_EXT = -6, F_STR, F_8, F_4, F_2, F_1 };

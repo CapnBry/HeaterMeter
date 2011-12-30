@@ -1,6 +1,5 @@
 // Ports library definitions
-// 2009-02-13 <jcw@equi4.com> http://opensource.org/licenses/mit-license.php
-// $Id: Ports.cpp 7726 2011-06-14 10:18:21Z jcw $
+// 2009-02-13 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
 
 #include "Ports.h"
 #include <avr/sleep.h>
@@ -255,6 +254,10 @@ byte BlinkPlug::buttonCheck () {
 }
 
 void MemoryPlug::load (word page, void* buf, byte offset, int count) {
+    // also don't load right after a save, see http://forum.jeelabs.net/node/469
+    while (millis() < nextSave)
+        ;
+
     setAddress(0x50 + (page >> 8));
     send();
     write((byte) page);
@@ -377,9 +380,12 @@ void UartPlug::flush () {
     in = out;
 }
 
-void UartPlug::write (byte data) {
+WRITE_RESULT UartPlug::write (byte data) {
     regSet(THR, data);
     dev.stop();
+#if ARDUINO >= 100 && !defined(__AVR_ATtiny84__) && !defined(__AVR_ATtiny85__)
+    return 1;
+#endif
 }
 
 void DimmerPlug::begin () {
@@ -757,6 +763,9 @@ void Sleepy::watchdogInterrupts (char mode) {
     byte wdtcsr = mode >= 0 ? bit(WDIE) | mode : 0;
     MCUSR &= ~(1<<WDRF);
     ATOMIC_BLOCK(ATOMIC_FORCEON) {
+#ifndef WDTCSR
+#define WDTCSR WDTCR
+#endif
         WDTCSR |= (1<<WDCE) | (1<<WDE); // timed sequence
         WDTCSR = wdtcsr;
     }
@@ -812,13 +821,13 @@ void Sleepy::watchdogEvent() {
     ++watchdogCounter;
 }
 
-Scheduler::Scheduler (byte size) : maxTasks (size) {
+Scheduler::Scheduler (byte size) : maxTasks (size), remaining (~0) {
     byte bytes = size * sizeof *tasks;
     tasks = (word*) malloc(bytes);
     memset(tasks, 0xFF, bytes);
 }
 
-Scheduler::Scheduler (word* buf, byte size) : tasks (buf), maxTasks (size) {
+Scheduler::Scheduler (word* buf, byte size) : tasks (buf), maxTasks (size), remaining(~0) {
     byte bytes = size * sizeof *tasks;
     memset(tasks, 0xFF, bytes);
 }
@@ -836,21 +845,30 @@ char Scheduler::poll() {
             if (tasks[i] < lowest)
                 lowest = tasks[i];
         }
-        if (lowest != ~0)
-            for (byte i = 0; i < maxTasks; ++i)
-                tasks[i] -= lowest;
+        if (lowest != ~0) {
+            for (byte i = 0; i < maxTasks; ++i) {
+                if(tasks[i] != ~0) {
+                    tasks[i] -= lowest;
+                }
+            }
+        }
         remaining = lowest;
-    } else if (ms100.poll(100))
+    } else if (remaining == ~0) //remaining == ~0 means nothing running
+        return -2;
+    else if (ms100.poll(100))
         --remaining;
     return -1;
 }
 
 char Scheduler::pollWaiting() {
+    if(remaining == ~0)  // Nothing running!
+        return -2;
     // first wait until the remaining time we need to wait is less than 0.1s
     while (remaining > 0) {
-        if (!Sleepy::loseSomeTime(100)) // approximate, actually waits 96 ms
+        word step = remaining > 600 ? 600 : remaining;
+        if (!Sleepy::loseSomeTime(100 * step)) // uses least amount of power
             return -1;
-        --remaining;
+        remaining -= step;
     }
     // now lose some more time until that 0.1s mark
     if (!Sleepy::loseSomeTime(ms100.remaining()))

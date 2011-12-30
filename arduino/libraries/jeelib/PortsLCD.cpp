@@ -2,7 +2,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
-#include "WProgram.h"
+#if ARDUINO>=100
+#include <Arduino.h> // Arduino 1.0
+#else
+#include <Wprogram.h> // Arduino 0022
+#endif
 
 void LiquidCrystalBase::begin(byte cols, byte lines, byte dotsize) {
   if (lines > 1) {
@@ -177,8 +181,11 @@ inline void LiquidCrystalBase::command(byte value) {
   send(value, LOW);
 }
 
-inline void LiquidCrystalBase::write(byte value) {
+inline WRITE_RESULT LiquidCrystalBase::write(byte value) {
   send(value, HIGH);
+#if ARDUINO >= 100 && !defined(__AVR_ATtiny84__) && !defined(__AVR_ATtiny85__)
+  return 1;
+#endif
 }
 
 // When the display powers up, it is configured as follows:

@@ -1,0 +1,80 @@
+#######################################
+# Syntax Coloring Map for Jeelib
+#######################################
+
+#######################################
+# Syntax Coloring Map Ports
+#######################################
+# TODO!
+
+#######################################
+# Syntax Coloring Map for RF12
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+#######################################
+# Methods and functions (KEYWORD2)
+#######################################
+rf12_initialize	KEYWORD2
+rf12_config	KEYWORD2
+rf12_recvDone	KEYWORD2
+rf12_canSend	KEYWORD2
+rf12_sendStart	KEYWORD2
+rf12_sendWait	KEYWORD2
+rf12_onOff	KEYWORD2
+rf12_sleep	KEYWORD2
+rf12_lowbat	KEYWORD2
+rf12_easyInit	KEYWORD2
+rf12_easyPoll	KEYWORD2
+rf12_easySend	KEYWORD2
+rf12_encrypt	KEYWORD2
+rf12_control	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+RF12_VERSION	LITERAL1
+RF12_HDR_CTL	LITERAL1
+RF12_HDR_DST	LITERAL1
+RF12_HDR_ACK	LITERAL1
+RF12_HDR_MASK	LITERAL1
+RF12_MAXDATA	LITERAL1
+RF12_433MHZ	LITERAL1
+RF12_868MHZ	LITERAL1
+RF12_915MHZ	LITERAL1
+RF12_EEPROM_ADDR	LITERAL1
+RF12_EEPROM_SIZE	LITERAL1
+RF12_EEPROM_EKEY	LITERAL1
+RF12_EEPROM_ELEN	LITERAL1
+RF12_SLEEP	LITERAL1
+RF12_WAKEUP	LITERAL1
+RF12_DATA_RATE_9	LITERAL1
+RF12_DATA_RATE_8	LITERAL1
+RF12_DATA_RATE_7	LITERAL1
+RF12_DATA_RATE_6	LITERAL1
+RF12_DATA_RATE_5	LITERAL1
+RF12_DATA_RATE_4	LITERAL1
+RF12_DATA_RATE_3	LITERAL1
+RF12_DATA_RATE_2	LITERAL1
+RF12_DATA_RATE_1	LITERAL1
+RF12_DATA_RATE_JEENODE_DEFAULT	LITERAL1
+
+#######################################
+# Macros (LITERAL2)
+#######################################
+RF12_WANTS_ACK	LITERAL1
+RF12_ACK_REPLY	LITERAL1
+
+#######################################
+# Variables (LITERAL2)
+#######################################
+rf12_buf	LITERAL2
+rf12_grp	LITERAL2
+rf12_hdr	LITERAL2
+rf12_len	LITERAL2
+rf12_data	LITERAL2
+rf12_crc	LITERAL2
+rf12_seq	LITERAL2

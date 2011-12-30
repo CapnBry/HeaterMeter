@@ -1,6 +1,5 @@
 // RFM12B driver definitions
-// 2009-02-09 <jcw@equi4.com> http://opensource.org/licenses/mit-license.php
-// $Id: RF12.h 7501 2011-04-07 10:33:43Z jcw $
+// 2009-02-09 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
 
 #ifndef RF12_h
 #define RF12_h
@@ -38,7 +37,7 @@
 #define RF12_ACK_REPLY (rf12_hdr & RF12_HDR_DST ? RF12_HDR_CTL : \
             RF12_HDR_CTL | RF12_HDR_DST | (rf12_hdr & RF12_HDR_MASK))
             
-// options fro RF12_sleep()
+// options for RF12_sleep()
 #define RF12_SLEEP 0
 #define RF12_WAKEUP -1
 
@@ -46,8 +45,11 @@ extern volatile uint16_t rf12_crc;  // running crc value, should be zero at end
 extern volatile uint8_t rf12_buf[]; // recv/xmit buf including hdr & crc bytes
 extern long rf12_seq;               // seq number of encrypted packet (or -1)
 
+// only needed if you want to init the SPI bus before rf12_initialize does it
+void rf12_spiInit(void);
+
 // call this once with the node ID, frequency band, and optional group
-void rf12_initialize(uint8_t id, uint8_t band, uint8_t group=0xD4);
+uint8_t rf12_initialize(uint8_t id, uint8_t band, uint8_t group=0xD4);
 
 // initialize the RF12 module from settings stored in EEPROM by "RF12demo"
 // don't call rf12_initialize() if you init the hardware with rf12_config()
@@ -68,7 +70,7 @@ void rf12_sendStart(uint8_t hdr, const void* ptr, uint8_t len);
 void rf12_sendStart(uint8_t hdr, const void* ptr, uint8_t len, uint8_t sync);
 
 // wait for send to finish, sleep mode: 0=none, 1=idle, 2=standby, 3=powerdown
-void rf12_sendWait (uint8_t mode);
+void rf12_sendWait(uint8_t mode);
 
 // this simulates OOK by turning the transmitter on and off via SPI commands
 // use this only when the radio was initialized with a fake zero node ID
@@ -94,6 +96,28 @@ char rf12_easySend(const void* data, uint8_t size);
 void rf12_encrypt(const uint8_t*);
 
 // low-level control of the RFM12B via direct register access
+// http://tools.jeelabs.org/rfm12b is useful for calculating these
 uint16_t rf12_control(uint16_t cmd);
+
+// See http://blog.strobotics.com.au/2009/07/27/rfm12-tutorial-part-3a/
+// Transmissions are packetized, don't assume you can sustain these speeds! 
+//
+// Note - data rates are approximate. For higher data rates you may need to
+// alter receiver radio bandwidth and transmitter modulator bandwidth.
+// Note that bit 7 is a prescaler - don't just interpolate rates between
+// RF12_DATA_RATE_3 and RF12_DATA_RATE_2.
+enum rf12DataRates {
+    RF12_DATA_RATE_CMD = 0xC600,
+    RF12_DATA_RATE_9 = RF12_DATA_RATE_CMD | 0x02,  // Approx 115200 bps
+    RF12_DATA_RATE_8 = RF12_DATA_RATE_CMD | 0x05,  // Approx  57600 bps
+    RF12_DATA_RATE_7 = RF12_DATA_RATE_CMD | 0x06,  // Approx  49200 bps
+    RF12_DATA_RATE_6 = RF12_DATA_RATE_CMD | 0x08,  // Approx  38400 bps
+    RF12_DATA_RATE_5 = RF12_DATA_RATE_CMD | 0x11,  // Approx  19200 bps
+    RF12_DATA_RATE_4 = RF12_DATA_RATE_CMD | 0x23,  // Approx   9600 bps
+    RF12_DATA_RATE_3 = RF12_DATA_RATE_CMD | 0x47,  // Approx   4800 bps
+    RF12_DATA_RATE_2 = RF12_DATA_RATE_CMD | 0x91,  // Approx   2400 bps
+    RF12_DATA_RATE_1 = RF12_DATA_RATE_CMD | 0x9E,  // Approx   1200 bps
+    RF12_DATA_RATE_DEFAULT = RF12_DATA_RATE_7,
+};
 
 #endif
