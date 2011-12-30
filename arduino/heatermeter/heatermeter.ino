@@ -1,6 +1,6 @@
 // HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net> 
 #include "Arduino.h"
-#include <ShiftRegLCD.h>
+#include "ShiftRegLCD.h"
 #include "hmcore.h"
 
 // See hmcore.h for most options and tweaks

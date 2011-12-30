@@ -47,12 +47,32 @@
 #define SR_RS_BIT 0x04
 #define SR_EN_BIT 0x80
 
+// SPI shift register is wired as XXRE4567
+#define SPI_LCD_RS 0x04
+#define SPI_LCD_E  0x08
+
+// To use ShiftRegisterLCD using SPI, define this
+//#define SHIFTREGLCD_SPI
+// This uses the SPI bus as the shift register's data and clock, and using a 
+// 75HC595 latched shift register instead
+// QA - N/C
+// QB - N/C
+// QC - RS
+// QD - E
+// QE - D4
+// QF - D5
+// QG - D6
+// QH - D7
 
 class ShiftRegLCD : public Print {
 public:
+#ifdef SHIFTREGLCD_SPI
+  ShiftRegLCD(uint8_t srlatch, uint8_t lines);
+#else
   ShiftRegLCD(uint8_t srdata, uint8_t srclockd, uint8_t enable);
   ShiftRegLCD(uint8_t srdata, uint8_t srclockd, uint8_t enable, uint8_t lines);
   ShiftRegLCD(uint8_t srdata, uint8_t srclockd, uint8_t enable, uint8_t lines, uint8_t font);
+#endif /* SHIFTREGLCD_SPI */
   void clear();
   void home();
 
@@ -75,15 +95,24 @@ public:
   void setCursor(uint8_t, uint8_t);
   size_t write(uint8_t);
   void command(uint8_t);
-protected:
-  ShiftRegLCD(void) {};
+private:
+  void send(uint8_t, uint8_t);
+  void send4bits(uint8_t);
+
+#ifdef SHIFTREGLCD_SPI
+  void spi_byte(uint8_t out);
+  void spi_lcd(uint8_t value);
+  void init(uint8_t srlatch, uint8_t lines, uint8_t font);
+
+  uint8_t _srlatch_pin;
+#else
   void init(uint8_t srdata, uint8_t srclock, uint8_t enable, uint8_t lines, uint8_t font);
-  virtual void send(uint8_t, uint8_t);
-  virtual void init4bits(uint8_t);
+
   uint8_t _srdata_pin;
   uint8_t _srclock_pin;
   uint8_t _enable_pin;
   uint8_t _two_wire;
+#endif /* SHIFTREGLCD_SPI */
 
   uint8_t _displayfunction;
   uint8_t _displaycontrol;
