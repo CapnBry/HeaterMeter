@@ -1,6 +1,8 @@
---- /tmp/base-files-network/files/lib/network/config.sh	2011-10-22 13:43:38.138311346 -0400
-+++ base-files-network/files/lib/network/config.sh	2011-10-22 13:53:51.322778137 -0400
-@@ -378,6 +378,8 @@
+Index: base-files-network/files/lib/network/config.sh
+===================================================================
+--- base-files-network/files/lib/network/config.sh	(revision 29665)
++++ base-files-network/files/lib/network/config.sh	(working copy)
+@@ -384,6 +384,8 @@
  
  			[ -z "$ipaddr" ] || \
  				$DEBUG ifconfig "$iface" "$ipaddr" ${netmask:+netmask "$netmask"}
@@ -8,4 +10,4 @@
 +			[ "$hostname" = "none" ] && hostname=""
  
  			# additional request options
- 			local opt dhcpopts
+ 			local opt dhcpopts daemonize
