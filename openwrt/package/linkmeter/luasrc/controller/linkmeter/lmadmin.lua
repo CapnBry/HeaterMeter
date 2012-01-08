@@ -1,7 +1,7 @@
 module("luci.controller.linkmeter.lmadmin", package.seeall)
 
 function index()
-  entry({"admin", "lm"}, alias("admin", "lm", "conf"), "LinkMeter", 50).index = true
+  entry({"admin", "lm"}, alias("admin", "lm", "conf"), "LinkMeter",60).index = true
   entry({"admin", "lm", "home"}, alias("lm", "login"), "Home", 10)
   entry({"admin", "lm", "conf"}, template("linkmeter/conf"), "Configuration", 20)
   entry({"admin", "lm", "archive"}, template("linkmeter/archive"), "Archive", 30)

@@ -1,6 +1,6 @@
-diff -u /tmp/luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//index.lua luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//index.lua
---- /tmp/luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//index.lua	2011-10-25 23:04:18.000000000 -0400
-+++ luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//index.lua	2012-01-07 11:13:25.000000000 -0500
+diff -u /tmp/luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin/index.lua luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin/index.lua
+--- /tmp/luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin/index.lua	2011-10-25 23:04:18.000000000 -0400
++++ luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin/index.lua	2012-01-07 11:13:25.000000000 -0500
 @@ -29,6 +29,7 @@
  	page.sysauth_authenticator = "htmlauth"
  	page.ucidata = true
@@ -9,30 +9,9 @@ diff -u /tmp/luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//inde
  
  	-- Empty services menu to be populated by addons
  	entry({"admin", "services"}, firstchild(), _("Services"), 40).index = true
-diff -u /tmp/luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//network.lua luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//network.lua
---- /tmp/luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//network.lua	2011-12-05 14:34:47.000000000 -0500
-+++ luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//network.lua	2012-01-07 11:09:02.000000000 -0500
-@@ -25,7 +25,7 @@
- 	page.order  = 50
- 	page.index  = true
- 
----	if page.inreq then
-+	if page.inreq then
- 		local has_switch = false
- 
- 		uci:foreach("network", "switch",
-@@ -154,7 +154,7 @@
- 
- 		page = entry({"admin", "network", "diag_traceroute"}, call("diag_traceroute"), nil)
- 		page.leaf = true
----	end
-+	end
- end
- 
- function wifi_join()
-diff -u /tmp/luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//system.lua luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//system.lua
---- /tmp/luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//system.lua	2011-12-20 12:35:50.000000000 -0500
-+++ luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//system.lua	2012-01-07 11:14:57.000000000 -0500
+diff -u /tmp/luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin/system.lua luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin/system.lua
+--- /tmp/luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin/system.lua	2011-12-20 12:35:50.000000000 -0500
++++ luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin/system.lua	2012-01-07 11:14:57.000000000 -0500
 @@ -16,7 +16,10 @@
  module("luci.controller.admin.system", package.seeall)
  
@@ -45,9 +24,9 @@ diff -u /tmp/luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//syst
  	entry({"admin", "system", "system"}, cbi("admin_system/system"), _("System"), 1)
  	entry({"admin", "system", "clock_status"}, call("action_clock_status"))
  
-diff -u /tmp/luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//uci.lua luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//uci.lua
---- /tmp/luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//uci.lua	2011-08-12 09:16:27.000000000 -0400
-+++ luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin//uci.lua	2012-01-07 11:11:08.000000000 -0500
+diff -u /tmp/luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin/uci.lua luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin/uci.lua
+--- /tmp/luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin/uci.lua	2011-08-12 09:16:27.000000000 -0400
++++ luci-trunk+svn8147/modules/admin-full/luasrc/controller/admin/uci.lua	2012-01-07 11:11:08.000000000 -0500
 @@ -16,10 +16,11 @@
  module("luci.controller.admin.uci", package.seeall)
  
