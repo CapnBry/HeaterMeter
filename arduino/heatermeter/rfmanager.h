@@ -81,11 +81,13 @@ public:
   unsigned char findSourceIdx(unsigned char srcId);
   void status(void);
   boolean doWork(void);
+  unsigned long getLastReceive(void) const { return _lastReceive; }
   
   RFSource *getSourceById(unsigned char srcId);
   
 private:
   boolean _initialized;
+  unsigned long _lastReceive;
   const event_callback _callback;
   unsigned char _crcOk;
   RFSource _sources[RF_SOURCE_COUNT];

@@ -92,6 +92,8 @@ RFSource *RFManager::getSourceById(unsigned char srcId)
 
 void RFManager::status(void)
 {
+  unsigned long m = millis();
+
   // The first item in the list the manager but it has the same format as 
   // the other sources, which is: Id,Signal,TimeSinceLastReceive
   Serial_char('A');
@@ -100,9 +102,8 @@ void RFManager::status(void)
   Serial_csv();
   Serial.print(_crcOk, DEC); // signal
   Serial_csv();
-  Serial_char('0');   // last update
+  Serial.print((m - getLastReceive()) / 1000, DEC);
 
-  unsigned long m = millis();  
   for (unsigned char idx=0; idx<RF_SOURCE_COUNT; ++idx)
   {
     if (_sources[idx].isFree())
@@ -125,6 +126,8 @@ boolean RFManager::doWork(void)
   boolean retVal = false;
   while (rf12_recvDone())
   {
+    _lastReceive = millis();
+    //print_P(PSTR("RF in")); Serial_nl();
     if ((rf12_crc == 0) && (rf12_len >= sizeof(rf12_probe_update_hdr_t)))
     {  
       if (_crcOk < 0xff) 
