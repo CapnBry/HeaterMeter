@@ -8,9 +8,9 @@ const unsigned char _rfNodeId = 2;
 // RFM12B band RF12_433MHZ, RF12_868MHZ, RF12_915MHZ
 const unsigned char _rfBand = RF12_915MHZ;
 // How long to sleep between probe measurments, in seconds
-const unsigned char _sleepInterval = 10; 
+const unsigned char _sleepInterval = 2;
 // Analog pins to read. This is a bitfield, LSB is analog 0
-const unsigned char _enabledProbePins = 0x3f;  
+const unsigned char _enabledProbePins = 0x01;  
 // Analog pin connected to source power.  Set to 0xff to disable sampling
 const unsigned char _pinBattery = 1;
 // Digital pins for LEDs, 0xff to disable
@@ -26,12 +26,13 @@ typedef struct tagRf12ProbeUpdateHdr
 {
   unsigned char seqNo;
   unsigned int batteryLevel;
+  unsigned char adcBits;
 } rf12_probe_update_hdr_t;
 
 typedef struct tagRf12ProbeUpdate 
 {
-  unsigned char probeIdx: 6;
-  unsigned int adcValue: 10;
+  unsigned char probeIdx;
+  unsigned int adcValue;
 } rf12_probe_update_t;
 
 static unsigned int _previousReads[RF_PINS_PER_SOURCE];
@@ -118,6 +119,7 @@ void transmitTemps(unsigned char txCount)
   hdr = (rf12_probe_update_hdr_t *)outbuf;
   hdr->seqNo = _seqNo++;
   hdr->batteryLevel = getBatteryLevel();
+  hdr->adcBits = 10;
 
   // Send all values regardless of if they've changed or not
   rf12_probe_update_t *up = (rf12_probe_update_t *)&hdr[1];
