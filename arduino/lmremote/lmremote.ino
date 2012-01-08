@@ -146,7 +146,7 @@ void transmitTemps(unsigned char txCount)
   
     // HDR=0 means to broadcast, no ACK requested
     rf12_sendStart(0, outbuf, len);
-    rf12_sendWait(2);
+    rf12_sendWait(0);
   }  /* while txCount */ 
   
   rf12_sleep(RF12_SLEEP);
@@ -175,7 +175,7 @@ void enableAdcPullups(void)
     digitalWrite(_pinProbeSupplyBase + pin, HIGH);
   }
   // takes about 15uS to stabilize and the enabling process takes 6us per pin at 16MHz
-  delayMicroseconds(10);  
+  delayMicroseconds(10);
 }
 
 void checkTemps(void)
@@ -187,13 +187,14 @@ void checkTemps(void)
   {
     if (PIN_DISABLED(pin))
       continue;
-      
+
     unsigned int newRead = analogRead(pin);
+
     //Serial.println(newRead, DEC);
     if (newRead != _previousReads[pin])
       modified = true;
     _previousReads[pin] = newRead;
-    
+
     digitalWrite(_pinProbeSupplyBase + pin, LOW);
   }
 
@@ -223,7 +224,7 @@ void setup(void)
 {
   //Serial.begin(115200);  
 
-  // Turn off the units we never use (this only affects non-sleep power
+  // Turn off the units we never use (this only affects non-sleep power)
   PRR = bit(PRUSART0) | bit(PRTWI) | bit(PRTIM1) | bit(PRTIM2);
   // Disable digital input buffers on the analog in ports
   DIDR0 = bit(ADC5D) | bit(ADC4D) | bit(ADC3D) | bit(ADC2D) | bit(ADC1D) | bit(ADC0D);
@@ -242,9 +243,28 @@ void setup(void)
   transmitTemps(2);
 }
 
+void stabilizeAdc(void)
+{
+  if (_pinBattery != 0xff)
+  {
+    unsigned int last;
+    unsigned int curr = analogRead(_pinBattery);
+    unsigned int cnt = 0;
+    // Reads the adc a bunch of times until the value settles
+    // Usually you hear "discard the first few ADC readings after sleep"
+    // but this seems a bit more scientific
+    do {
+      ++cnt;
+      last = curr;
+      curr = analogRead(_pinBattery);
+    } while ((cnt < 10) && (abs(last - curr) > 2));
+  }
+}
+
 void loop(void)
 {
   sleepSeconds(_sleepInterval);
+  stabilizeAdc();
   checkTemps();
 }
 
