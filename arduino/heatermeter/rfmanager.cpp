@@ -16,6 +16,7 @@ void RFSource::setId(unsigned char id)
 void RFSource::update(rf12_probe_update_hdr_t *hdr, unsigned char len)
 {
   _batteryLevel = hdr->batteryLevel;
+  _adcBits = hdr->adcBits;
   if (_lastReceive != 0)
   {
     // _signalLevel is just a bitfield that shifts in a 1 for every packet

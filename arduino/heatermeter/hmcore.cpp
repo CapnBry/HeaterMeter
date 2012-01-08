@@ -695,7 +695,20 @@ void rfSourceNotify(RFSource &r, RFManager::event e)
       if (e & (RFManager::Update | RFManager::Remove))
       {
         unsigned char srcPin = rfMap[i].pin;
-        pid.Probes[i]->addAdcValue(r.Values[srcPin]);
+        unsigned int val = r.Values[srcPin];
+        unsigned char adcBits = r.getAdcBits();
+        // ADC bits of 0 is direct measurement in 10ths of a degree F, i.e. 986 = 98.6F
+        if (adcBits == 0)
+          pid.Probes[i]->Temperature = val / 10.0f;
+        else
+        {
+          // If the remote is lower resolution then shift it up to our resolution
+          if (adcBits < pid.getAdcBits())
+            val <<= (pid.getAdcBits() - adcBits);
+          //else if (adcBits > pid.getAdcBits())
+          //  val >>= (adcBits - pid.getAdcBits());
+          pid.Probes[i]->addAdcValue(val);
+        }
         // Set the pin's value to 0 so when we remove the source later it 
         // adds a 0 to the adcValue, effectively clearing it
         r.Values[srcPin] = 0;

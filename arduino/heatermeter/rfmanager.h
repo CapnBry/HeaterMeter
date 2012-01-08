@@ -25,12 +25,13 @@ typedef struct tagRf12ProbeUpdateHdr
 {
   unsigned char seqNo;
   unsigned int batteryLevel;
+  unsigned char adcBits;
 } rf12_probe_update_hdr_t;
 
 typedef struct tagRf12ProbeUpdate 
 {
-  unsigned char probeIdx: 6;
-  unsigned int adcValue: 10;
+  unsigned char probeIdx;
+  unsigned int adcValue;
 } rf12_probe_update_t;
 
 class RFSource
@@ -40,6 +41,7 @@ class RFSource
   unsigned char _nextSeq;
   unsigned int _batteryLevel;
   unsigned char _signalLevel;
+  unsigned char _adcBits;
   
 public:
   RFSource(void) {};
@@ -53,6 +55,8 @@ public:
   unsigned int getBatteryLevel(void) const { return _batteryLevel; };
   // millis() of the last receive
   unsigned long getLastReceive(void) const { return _lastReceive; };
+  // Reported resolution of the client ADC
+  unsigned char getAdcBits(void) const { return _adcBits; };
 
   boolean isFree(void) const { return _id == RFSOURCEID_NONE; };
   boolean isStale(void) const { return !isFree() && ((millis() - _lastReceive) > RF_STALE_TIME); };

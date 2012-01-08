@@ -19,6 +19,9 @@
 
 #define STEINHART_COUNT 4
 
+// Use oversample/decimation to increase ADC resolution to 2^(10+n) bits n=[0..3]
+#define TEMP_OVERSAMPLE_BITS 3
+
 struct __eeprom_probe
 {
   char name[PROBE_NAME_SIZE];
@@ -155,6 +158,8 @@ public:
   // The ammount of time to turn off the blower when the lid is open 
   unsigned int getLidOpenDuration(void) const { return _lidOpenDuration; }
   void setLidOpenDuration(unsigned int value);
+  // Number of effective bits of the ADC
+  unsigned char getAdcBits(void) const { return 10 + TEMP_OVERSAMPLE_BITS; };
   // The PID constants
   float Pid[4];
   // The maximum fan speed that will be used in automatic mode
