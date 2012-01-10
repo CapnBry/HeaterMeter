@@ -26,7 +26,7 @@ static TempProbe probe3(PIN_AMB);
 GrillPid pid(PIN_BLOWER);
 
 #ifdef SHIFTREGLCD_SPI
-ShiftRegLCD lcd(PIN_LCD_DATA, 2);
+ShiftRegLCD lcd(PIN_LCD_CLK, 2);
 #else
 ShiftRegLCD lcd(PIN_LCD_DATA, PIN_LCD_CLK, TWO_WIRE, 2); 
 #endif /* SHIFTREGLCD_SPI */
