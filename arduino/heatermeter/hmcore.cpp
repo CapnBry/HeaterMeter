@@ -171,7 +171,7 @@ void storeProbeType(unsigned char probeIndex, unsigned char probeType)
 void reportRfMap(void)
 {
   print_P(PSTR("$HMRM"));
-  for (unsigned int i=0; i<TEMP_COUNT; ++i)
+  for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
     Serial_csv();
     if (rfMap[i].source != RFSOURCEID_NONE)
@@ -241,42 +241,6 @@ inline void storeProbeTypeOrMap(unsigned char probeIndex, char *vals)
     }
   }  /* if RF map */
 #endif /* HEATERMETER_RFM12 */
-}
-
-void storeProbeCoeff(unsigned char probeIndex, char *vals)
-{
-  // vals is SteinA(float),SteinB(float),SteinC(float),RKnown(float),probeType+1(int)|probeMap(char+int)
-  // If any value is 0, it won't be modified
-  unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, steinhart));
-  if (ofs == 0)
-    return;
-    
-  float fVal;
-  float *fDest = pid.Probes[probeIndex]->Steinhart;
-  for (unsigned char i=0; i<STEINHART_COUNT; ++i)
-  {
-    fVal = atof(vals);
-    while (*vals)
-    {
-      if (*vals == ',') 
-      {
-        ++vals;
-        break;
-      }
-      ++vals;
-    }  /* while vals */
-
-    if (fVal != 0.0f)
-    {
-      *fDest = fVal;
-      eeprom_write_block(&fVal, (void *)ofs, sizeof(fVal));
-    }
-
-    ofs += sizeof(float);
-    ++fDest;
-  }  /* for i */
-
-  storeProbeTypeOrMap(probeIndex, vals);
 }
 
 void storeMaxFanSpeed(unsigned char maxFanSpeed)
@@ -390,6 +354,85 @@ inline void outputCsv(void)
 }
 
 #if defined(HEATERMETER_NETWORKING) || defined(HEATERMETER_SERIAL)
+void printSciFloat(float f)
+{
+  // This function could use a rework, it is pretty expensive
+  // in terms of space and speed. 
+  char exponent = 0;
+  bool neg = f < 0.0f;
+  if (neg)
+    f *= -1.0f;
+  while (f < 1.0f)
+  {
+    --exponent;
+    f *= 10.0f;
+  }
+  while (f >= 10.0f)
+  {
+    ++exponent;
+    f /= 10.0f;
+  }
+  if (neg)
+    f *= -1.0f;
+  Serial.print(f, 7);
+  Serial_char('e');
+  Serial.print(exponent, DEC);
+}
+
+void reportProbeCoeff(unsigned char probeIdx)
+{
+  print_P(PSTR("$HMPC"));
+  Serial_csv();
+  Serial.print(probeIdx, DEC);
+  Serial_csv();
+  
+  TempProbe *p = pid.Probes[probeIdx];
+  for (unsigned char i=0; i<STEINHART_COUNT; ++i)
+  {
+    printSciFloat(p->Steinhart[i]);
+    Serial_csv();
+  }
+  Serial.print(p->getProbeType() + 1);
+  Serial_nl();
+}
+
+void storeProbeCoeff(unsigned char probeIndex, char *vals)
+{
+  // vals is SteinA(float),SteinB(float),SteinC(float),RKnown(float),probeType+1(int)|probeMap(char+int)
+  // If any value is 0, it won't be modified
+  unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, steinhart));
+  if (ofs == 0)
+    return;
+    
+  float fVal;
+  float *fDest = pid.Probes[probeIndex]->Steinhart;
+  for (unsigned char i=0; i<STEINHART_COUNT; ++i)
+  {
+    fVal = atof(vals);
+    while (*vals)
+    {
+      if (*vals == ',') 
+      {
+        ++vals;
+        break;
+      }
+      ++vals;
+    }  /* while vals */
+
+    if (fVal != 0.0f)
+    {
+      *fDest = fVal;
+      eeprom_write_block(&fVal, (void *)ofs, sizeof(fVal));
+    }
+
+    ofs += sizeof(float);
+    ++fDest;
+  }  /* for i */
+
+  storeProbeTypeOrMap(probeIndex, vals);
+  reportProbeCoeff(probeIndex);
+}
+
 inline void reboot(void)
 {
   // Once the pin goes low, the avr should reboot
@@ -415,6 +458,7 @@ void reportPidParams(void)
   for (unsigned char i=0; i<4; ++i)
   {
     Serial_csv();
+    //printSciFloat(pid.Pid[i]);
     Serial.print(pid.Pid[i], 8);
   }
   Serial_nl();
@@ -431,16 +475,6 @@ void reportProbeOffsets(void)
   Serial_nl();
 }
 
-void outputRfStatus(void)
-{
-#ifdef HEATERMETER_RFM12
-  print_P(PSTR("$HMRF")); 
-  Serial_csv();
-  rfmanager.status();
-  Serial_nl();
-#endif /* HEATERMETER_RFM12 */
-}
-
 void reportVersion(void)
 {
   print_P(PSTR("$UCID"));
@@ -451,12 +485,41 @@ void reportVersion(void)
   Serial_nl();
 }
 
-inline void reportConfig(void)
+void reportLidParameters(void)
+{
+  print_P(PSTR("$HMLD"));
+  Serial_csv();
+  Serial.print(pid.LidOpenOffset, DEC);
+  Serial_csv();
+  Serial.print(pid.getLidOpenDuration(), DEC);
+  Serial_nl();
+}
+
+void reportLcdBacklight(void)
+{
+  print_P(PSTR("$HMLB"));
+  Serial_csv();
+  // The backlight value isn't stored in SRAM so pull it from config
+  unsigned char lb = eeprom_read_byte((uint8_t *)offsetof(__eeprom_data, lcdBacklight));
+  Serial.print(lb, DEC);
+  Serial_nl();
+}
+
+void reportProbeCoeffs(void)
+{
+  for (unsigned char i=0; i<TEMP_COUNT; ++i)
+    reportProbeCoeff(i);
+}
+
+void reportConfig(void)
 {
   reportVersion();
   reportPidParams();
   reportProbeNames();
+  reportProbeCoeffs();
   reportProbeOffsets();
+  reportLidParameters();
+  reportLcdBacklight();
 #ifdef HEATERMETER_RFM12
   reportRfMap();  
 #endif /* HEATERMETER_RFM12 */
@@ -474,16 +537,19 @@ boolean handleCommandUrl(char *URL)
   if (strncmp_P(URL, PSTR("set?lb="), 7) == 0) 
   {
     storeLcdBacklight(atoi(URL + 7));
+    reportLcdBacklight();
     return true;
   }
   if (strncmp_P(URL, PSTR("set?ld="), 7) == 0) 
   {
     storeLidOpenDuration(atoi(URL + 7));
+    reportLidParameters();
     return true;
   }
   if (strncmp_P(URL, PSTR("set?lo="), 7) == 0) 
   {
     storeLidOpenOffset(atoi(URL + 7));
+    reportLidParameters();
     return true;
   }
   if (strncmp_P(URL, PSTR("set?pid"), 7) == 0 && urlLen > 9) 
@@ -525,6 +591,16 @@ boolean handleCommandUrl(char *URL)
   return false;
 }
 #endif /* defined(HEATERMETER_NETWORKING) || defined(HEATERMETER_SERIAL) */
+
+void outputRfStatus(void)
+{
+#if defined(HEATERMETER_SERIAL) && defined(HEATERMETER_RFM12)
+  print_P(PSTR("$HMRF")); 
+  Serial_csv();
+  rfmanager.status();
+  Serial_nl();
+#endif /* defined(HEATERMETER_SERIAL) && defined(HEATERMETER_RFM12) */
+}
 
 #ifdef HEATERMETER_NETWORKING
 
@@ -611,7 +687,7 @@ void outputJson(void)
     return c - 'a';
   return (undefined);
 */
-inline unsigned char hexdecode(unsigned char c)
+unsigned char hexdecode(unsigned char c)
 {
   // Convert 'a'-'f' to lowercase and '0'-'9' to 0-9
   c &= 0xcf;
