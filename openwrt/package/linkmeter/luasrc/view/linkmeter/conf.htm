@@ -1,21 +1,244 @@
+<% require "lmclient" %>
 <%+header%>
 
-<h2><a id="content" name="content">LinkMeter</a></h2>
-<h3>Configuration</h3>
-<ul>
-<li>Setpoint</li>
-<li>PID params B P I D</li>
-<li>Probe names</li>
-<li>Probe offsets</li>
-<li>Probe steinheart coefficients / resistor / rfmap / type</li>
-<li>RF status</li>
-<li>LCD backlight</li>
-<li>Utilities:</li>
-<ul>
-<li>Backup / restore</li>
-<li>Reboot AVR</li>
-</ul>
-</ul>
+<script type="text/javascript">//<![CDATA[
+var configHash = <%= LmClient():query("$LMCF") or "{}" %>;
+
+window.onload = configToForm
+
+function typeChanged(o)
+{
+  var name = o.id;
+  name = name.substring(2,3);
+  
+  var elem;
+  elem = document.getElementById("pbody" + name);
+  elem.style.display = (o.value == 1) ? "none" : "block";
+  elem = document.getElementById("prf" + name);
+  elem.style.display = (o.value == 3) ? "block" : "none";
+}
+
+function isProbeId(hay, need)
+{
+  return (hay.length == need.length + 1) && 
+    (hay.substr(0, need.length) == need);
+}
+
+function configHashToForm()
+{
+  for (var k in configHash)
+  {
+    var elem = document.getElementById(k);
+    if (elem == null)
+      continue;
+    var val = configHash[k];
+      
+    if (isProbeId(k, "pcurr"))
+    {
+      if (val != null)
+        elem.innerText = "(Current " + val + ")";
+      else
+      	elem.innerText = "";
+    } 
+    else if (k == "ucid")
+      elem.innerText = val;
+    else if (val != null)
+      elem.value = val;
+    else
+      elem.value = "";
+      
+    if (isProbeId(k, "pt"))
+      typeChanged(elem);
+    elem.addEventListener("change", updateUpdateUrl);
+  }
+}
+
+function configToForm()
+{
+  configHashToForm();
+  updateConfigUrl("fullurl", configHash);
+  updateConfigUrl("updateurl", {});
+}
+
+function updateUpdateUrl()
+{
+  updateConfigUrl("updateurl", configChangedHash());
+}
+
+function configChangedHash()
+{
+  var r = {};
+  for (var k in configHash)
+  { 
+    var elem = document.getElementById(k);
+    if (elem == null)
+      continue;
+    if (isProbeId(k, "pcurr"))
+      continue;
+    var val = elem.value;
+    if (isProbeId(k, "prfn") && val == "")
+      val = null;
+    if (val != configHash[k])
+      r[k] = val;
+  }
+  
+  return r;
+}
+
+function updateConfigUrl(divname, h)
+{
+  var aValues = new Array();
+  var aPcs = new Array();
+  var STATIC_MAP = [ "pn0", "pn1", "pn2", "pn3",  "po0", "po1", "po2", "po3",
+    "sp", "pidb", "pidp", "pidi", "pidd", "lb", "lo", "ld" ];
+  for (var k in h)
+  {
+    if (STATIC_MAP.indexOf(k) != -1)
+      aValues.push(k + "=" + encodeURIComponent(h[k]));
+    else if (isProbeId(k, "pcurr") || k == "ucid")
+      continue;
+    // Else it is one of the pc? items
+    else {
+      var i = k.substr(-1);
+      // Can't set prfp without prfn
+      if (isProbeId(k, "prfp") && 
+        document.getElementById("prfn"+i).value == "")
+        continue;
+      if (aPcs.indexOf(i) == -1)
+        aPcs.push(i);
+    }
+  }
+ 
+  // Pull together all modified pc? items 
+  for (var idx=0; idx<aPcs.length; ++idx)
+  {
+    var i = aPcs[idx];
+    var pc = "pc" + i + "=";
+    var val;
+    val = h["pca"+i];
+    if (val == null) val = "0";
+    pc += val + ",";
+    val = h["pcb"+i];
+    if (val == null) val = "0";
+    pc += val + ",";
+    val = h["pcc"+i];
+    if (val == null) val = "0";
+    pc += val + ",";
+    val = h["pcr"+i];
+    if (val == null) val = "0";
+    pc += val;
+    
+    var ptype = document.getElementById("pt"+i).value;
+    if (ptype == "3")
+    {
+      var nodeId = document.getElementById("prfn"+i).value;
+      if (nodeId != "")
+        pc += "," + nodeId + document.getElementById("prfp"+i).value;
+    }
+    else if (h["pt"+i] != null)
+      pc += "," + h["pt"+i];
+     
+    aValues.push(pc);
+  }
+ 
+  var elem = document.getElementById(divname);
+  if (aValues.length > 0) 
+  {
+    var s = aValues.join("&amp;");
+    s = '<a href="<%=luci.dispatcher.build_url("lm","set")%>?' + s + '">' + s + '</a>';
+    elem.innerHTML = s;
+  }
+  else
+    elem.innerText = "none";
+}
+
+//]]></script>
+
+<h2><a id="content" name="content">Configuration</a></h2>
+
+<form method="GET" action="">
+<fieldset class="cbi-section" id="cbi-lm-probes">
+<legend>Probe Configuration</legend>
+<style>
+  .pn { width: 7em !important; }
+  .pc { width: 7em !important; }
+  .pt { width: auto !important; }
+  .prf { width: 2em !important; }
+</style>
+
+<table style="width: 100%;"><tr>
+<% for i = 0, 3 do %>
+<td style="vertical-align: top; width: 25%;">
+<h3>Probe <%=i%> <span id="pcurr<%=i%>"></span></h3>
+Name <input type="text" maxlength="12" class="pn" id="pn<%=i%>"/><br/>
+Type
+<select class="pt" id="pt<%=i%>" onchange="typeChanged(this);">
+  <option value="1">Disabled</option>
+  <option value="2">Internal</option>
+  <option value="3">RF12 Wireless</option>
+</select> 
+<div id="pbody<%=i%>">
+Probe Coefficients<br/>
+  A=<input type="text" maxlength="13" class="pc" id="pca<%=i%>"/><br/>
+  B=<input type="text" maxlength="13" class="pc" id="pcb<%=i%>"/><br/>
+  C=<input type="text" maxlength="13" class="pc" id="pcc<%=i%>"/><br/>
+  Resist <input type="text" maxlength="6" id="pcr<%=i%>" style="width: 4em;"/><br/>
+  Offset <input type="text" maxlength="3" id="po<%=i%>" style="width: 2em;"/>
+<div id="prf<%=i%>">
+RF Node <input type="text" class="prf" maxlength="1" id="prfn<%=i%>"/> Pin
+<select class="pt" id="prfp<%=i%>">
+  <option value="0">Analog 0</option>
+  <option value="1">Analog 1</option>
+  <option value="2">Analog 2</option>
+  <option value="3">Analog 3</option>
+  <option value="4">Analog 4</option>
+  <option value="5">Analog 5</option>
+</select>
+</div>
+</div>
+</td>
+<% end %>
+</tr></table>
+</fieldset>
+
+<fieldset class="cbi-section" id="cbi-lm-pid">
+<legend>PID Tuning Parameters</legend>
+  Bias <input type="text" maxlength="12" class="pc" id="pidb"/> 
+  Proportional <input type="text" maxlength="12" class="pc" id="pidp"/> 
+  Integral <input type="text" maxlength="12" class="pc" id="pidi"/> 
+  Derivative <input type="text" maxlength="12" class="pc" id="pidd"/> 
+</fieldset>
+
+<fieldset class="cbi-section" id="cbi-lm-pid">
+<legend>LCD Backlight</legend>
+  Backlight 0-255 <input type="text" maxlength="3" class="pc" id="lb"/> 
+</fieldset>
+
+<fieldset class="cbi-section" id="cbi-lm-pid">
+<legend>Lid Open Detection</legend>
+  Activate at <input type="text" maxlength="3" class="pc" id="lo"/>% below setpoint.
+  Continue for <input type="text" maxlength="4" class="pc" id="ld"/> seconds or until temperature returns to normal.
+</fieldset>
+
+<fieldset class="cbi-section" id="cbi-lm-pid">
+<legend>Pit Target Temperature</legend>
+  Setpoint <input type="text" maxlength="3" class="pc" id="sp"/>
+</fieldset>
+
+<fieldset class="cbi-section" id="cbi-lm-pid">
+<legend>HeaterMeter Information</legend>
+Version <span id="ucid"></span>
+</fieldset>
+
+
+<input type="button" onclick="configToForm()" value="Reset to current"/>
+</form>
+
+<h3>Update URL<img src="<%=resource%>/cbi/reload.gif" onclick="updateUpdateUrl()"/></h3>
+<div id="updateurl" style="font-family: monospace"></div>
+
+<h3>Full configuration URL</h3>
+<div id="fullurl" style="font-family: monospace"></div>
 
 <h3>Raw set command</h3>
 Note you can just build your own url from the home page if you're logged in /lm/set?...
@@ -23,4 +246,12 @@ Note you can just build your own url from the home page if you're logged in /lm/
 <input name="rawset" type="text" size="64" />
 <input type="submit" value="Set" />
 </form>
+<ul>
+<li>RF status</li>
+<li>Utilities:</li>
+<ul>
+<li>Backup / restore</li>
+<li>Reboot AVR</li>
+</ul>
+</ul>
 <%+footer%>

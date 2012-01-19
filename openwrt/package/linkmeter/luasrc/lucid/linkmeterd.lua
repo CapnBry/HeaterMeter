@@ -7,7 +7,7 @@ local nixio = require "nixio"
 local uci = require "uci"
 local lucid = require "luci.lucid"
 
-local pairs, ipairs, table, pcall = pairs, ipairs, table, pcall 
+local pairs, ipairs, table, pcall, type = pairs, ipairs, table, pcall, type
 local tonumber, tostring, print = tonumber, tostring, print
 local collectgarbage,string = collectgarbage,string
 
@@ -18,7 +18,7 @@ local statusListeners = {}
 local lastHmUpdate
 local rfMap = {}
 local rfStatus = {}
-local hmVersion
+local hmConfig = {}
 
 -- forwards
 local segmentCall, broadcastStatus, stsLmStateUpdate
@@ -67,7 +67,7 @@ local function jsonWrite(vals)
     JSON_TEMPLATE[JSON_FROM_CSV[i]] = v
   end
 
-  -- add the rf status where applicable
+  -- add the rfstatus where applicable
   for i,src in ipairs(rfMap) do
     local rfval
     if src ~= "" then
@@ -104,14 +104,49 @@ local function segSplit(line)
   return retVal
 end
 
-local function segProbeNames(line)
+local function segConfig(line, names, numeric)
   local vals = segSplit(line)
-  if #vals < 4 then return end
+  if #vals < #names then return end
+  for i, v in ipairs(names) do
+    if v ~= "" then
+      if numeric then
+        hmConfig[v] = tonumber(vals[i])
+      else
+        hmConfig[v] = vals[i]
+      end
+    end
+  end
+  return vals
+end
 
+local function segProbeNames(line)
+  local vals = segConfig(line, {"pn0", "pn1", "pn2", "pn3"})
+  
   JSON_TEMPLATE[13] = vals[1]
   JSON_TEMPLATE[18] = vals[2]
   JSON_TEMPLATE[23] = vals[3]
   JSON_TEMPLATE[28] = vals[4]
+end
+
+local function segProbeOffsets(line)
+  return segConfig(line, {"po0", "po1", "po2", "po3"}, true)
+end
+
+local function segPidParams(line)
+  return segConfig(line, {"pidb", "pidp", "pidi", "pidd"}, true)
+end
+
+local function segLidParams(line)
+  return segConfig(line, {"lo", "ld"}, true)
+end
+
+local function segProbeCoeffs(line)
+  local i = line:sub(7, 7)
+  return segConfig(line, {"", "pca"..i, "pcb"..i, "pcc"..i, "pcr"..i, "pt"..i}, true)
+end
+
+local function segLcdBacklight(line)
+  return segConfig(line, {"lb"})
 end
 
 local function segRfUpdate(line)
@@ -129,18 +164,25 @@ local function segRfUpdate(line)
     idx = idx + 4
   end
 end
-                                                                      
+
 local function segRfMap(line)
   local vals = segSplit(line)
+  rfMap = {}
   for i,s in ipairs(vals) do
-    rfMap[i] = s:sub(1,1)
+    local node = s:sub(1,1)
+    local pin = s:sub(2,2)
+    if node ~= "" then
+      rfMap[i] = node
+      hmConfig["prfn"..(i-1)] = node
+      hmConfig["prfp"..(i-1)] = tonumber(pin)
+    end
   end
 end
 
 local function segUcIdentifier(line)
   local vals = segSplit(line)
   if #vals > 1 then
-    hmVersion = vals[2]
+    hmConfig.ucid = vals[2]
   end
 end
 
@@ -222,6 +264,7 @@ local function lmdStart()
   }
   
   lucid.register_pollfd(serialPolle)
+  hmConfig = {}
   serialfd:write("/config\n")
   
   return true
@@ -233,6 +276,7 @@ local function lmdStop()
   serialPolle.fd:setblocking(true)
   serialPolle.fd:close()
   serialPolle = nil
+  hmConfig = {}
   
   return true
 end
@@ -245,7 +289,7 @@ local function segLmSet(line)
 end
 
 local function segLmIdentifier(line)
-  return hmVersion
+  return hmConfig.ucid;
 end
 
 local function segLmRfStatus(line)
@@ -290,6 +334,30 @@ function stsLmStateUpdate()
   return table.concat(JSON_TEMPLATE)
 end
 
+local function segLmConfig()
+  local r = {}
+  for k,v in pairs(hmConfig) do
+    local s
+    if type(v) == "number" then
+      s = '"' .. k .. '":' .. v
+    else
+      s = ('%q:%q'):format(k,v)
+    end
+    r[#r+1] = s
+  end
+  
+  if JSON_TEMPLATE[3] ~= 0 then
+    -- Current temperatures
+    for i = 0, 3 do
+      r[#r+1] = ('"pcurr%d":%s'):format(i, JSON_TEMPLATE[15+(i*5)])
+    end
+    -- Setpoint
+    r[#r+1] = '"sp":' .. JSON_TEMPLATE[5]
+  end
+  
+  return "{" .. table.concat(r, ',') .. "}"
+end
+
 function broadcastStatus(fn)
   local o
   local i = 1
@@ -311,10 +379,15 @@ local function registerStreamingStatus(fn)
 end
 
 local segmentMap = {
-  ["$HMSU"] = segStateUpdate,
+  ["$HMLB"] = segLcdBacklight,
+  ["$HMLD"] = segLidParams,
+  ["$HMPC"] = segProbeCoeffs,
+  ["$HMPD"] = segPidParams,
   ["$HMPN"] = segProbeNames,
+  ["$HMPO"] = segProbeOffsets,
   ["$HMRF"] = segRfUpdate,
   ["$HMRM"] = segRfMap,
+  ["$HMSU"] = segStateUpdate,
   ["$UCID"] = segUcIdentifier,
   
   ["$LMST"] = segLmSet,
@@ -322,7 +395,8 @@ local segmentMap = {
   ["$LMRF"] = segLmRfStatus,
   ["$LMD1"] = segLmDaemonStart,
   ["$LMD0"] = segLmDaemonStop,
-  ["$LMID"] = segLmIdentifier
+  ["$LMID"] = segLmIdentifier,
+  ["$LMCF"] = segLmConfig
   -- $LMSS
 }
 
@@ -365,4 +439,4 @@ function prepare_daemon(config, server)
   
   return lmdStart()
 end
-        
+
