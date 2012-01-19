@@ -36,12 +36,12 @@ function configHashToForm()
     if (isProbeId(k, "pcurr"))
     {
       if (val != null)
-        elem.innerText = "(Current " + val + ")";
+        elem.innerHTML = "current temperature " + val.toFixed(1) + "&deg;";
       else
-      	elem.innerText = "";
+        elem.innerHTML = "off";
     } 
     else if (k == "ucid")
-      elem.innerText = val;
+      elem.innerHTML = val;
     else if (val != null)
       elem.value = val;
     else
@@ -149,7 +149,7 @@ function updateConfigUrl(divname, h)
     elem.innerHTML = s;
   }
   else
-    elem.innerText = "none";
+    elem.innerHTML = "none";
 }
 
 //]]></script>
@@ -160,40 +160,50 @@ function updateConfigUrl(divname, h)
 <fieldset class="cbi-section" id="cbi-lm-probes">
 <legend>Probe Configuration</legend>
 <style>
-  .pn { width: 7em !important; }
-  .pc { width: 7em !important; }
-  .pt { width: auto !important; }
+  .pn { width: 120px !important; }
+  .pt { width: 122px !important; }
+  .pc { width: 120px !important; }
   .prf { width: 2em !important; }
+  .pconfig { vertical-align: top; width: 25%; }
+  .ptitle { padding: 4px; text-align: center; font-size: large; }
+  .pcurr { text-align: center; color: #ccc; font-size: small; }
+  label { width: 4em; float: left; }
+  .pnum0 { background: #e73; }
+  .pnum1 { background: #6c3; }
+  .pnum2 { background: #297; }
+  .pnum3 { background: #789; }
 </style>
 
 <table style="width: 100%;"><tr>
 <% for i = 0, 3 do %>
-<td style="vertical-align: top; width: 25%;">
-<h3>Probe <%=i%> <span id="pcurr<%=i%>"></span></h3>
-Name <input type="text" maxlength="12" class="pn" id="pn<%=i%>"/><br/>
-Type
+<td class="pconfig">
+<div class="ptitle pnum<%=i%>">Probe <%=i%></div>
+<div class="pcurr" id="pcurr<%=i%>"></div>
+<div class="cbi-value"><label>Name</label><input type="text" maxlength="12" class="pn" id="pn<%=i%>"/></div>
+<div class="cbi-value"><label>Type</label>
 <select class="pt" id="pt<%=i%>" onchange="typeChanged(this);">
   <option value="1">Disabled</option>
   <option value="2">Internal</option>
   <option value="3">RF12 Wireless</option>
-</select> 
+</select></div>
 <div id="pbody<%=i%>">
-Probe Coefficients<br/>
-  A=<input type="text" maxlength="13" class="pc" id="pca<%=i%>"/><br/>
-  B=<input type="text" maxlength="13" class="pc" id="pcb<%=i%>"/><br/>
-  C=<input type="text" maxlength="13" class="pc" id="pcc<%=i%>"/><br/>
-  Resist <input type="text" maxlength="6" id="pcr<%=i%>" style="width: 4em;"/><br/>
-  Offset <input type="text" maxlength="3" id="po<%=i%>" style="width: 2em;"/>
+<div>Probe Coefficients</div>
+<div class="cbi-value"><label>A</label><input type="text" maxlength="13" class="pc" id="pca<%=i%>"/></div>
+<div class="cbi-value"><label>B</label><input type="text" maxlength="13" class="pc" id="pcb<%=i%>"/></div>
+<div class="cbi-value"><label>C</label><input type="text" maxlength="13" class="pc" id="pcc<%=i%>"/></div>
+<div class="cbi-value"><label>Resist</label><input type="text" maxlength="6" id="pcr<%=i%>" style="width: 4em;"/></div>
+<div class="cbi-value"><label>Offset</label><input type="text" maxlength="3" id="po<%=i%>" style="width: 2em;"/></div>
 <div id="prf<%=i%>">
-RF Node <input type="text" class="prf" maxlength="1" id="prfn<%=i%>"/> Pin
-<select class="pt" id="prfp<%=i%>">
+<div>RF12 Configuration</div>
+<div class="cbi-value"><label>Node</label><input type="text" class="prf" maxlength="1" id="prfn<%=i%>"/></div>
+<div class="cbi-value"><label>Pin</label><select class="pt" id="prfp<%=i%>">
   <option value="0">Analog 0</option>
   <option value="1">Analog 1</option>
   <option value="2">Analog 2</option>
   <option value="3">Analog 3</option>
   <option value="4">Analog 4</option>
   <option value="5">Analog 5</option>
-</select>
+</select></div>
 </div>
 </div>
 </td>
@@ -229,7 +239,6 @@ RF Node <input type="text" class="prf" maxlength="1" id="prfn<%=i%>"/> Pin
 <legend>HeaterMeter Information</legend>
 Version <span id="ucid"></span>
 </fieldset>
-
 
 <input type="button" onclick="configToForm()" value="Reset to current"/>
 </form>
