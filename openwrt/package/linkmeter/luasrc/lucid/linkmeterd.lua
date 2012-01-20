@@ -171,8 +171,8 @@ local function segRfMap(line)
   for i,s in ipairs(vals) do
     local node = s:sub(1,1)
     local pin = s:sub(2,2)
+    rfMap[i] = node
     if node ~= "" then
-      rfMap[i] = node
       hmConfig["prfn"..(i-1)] = node
       hmConfig["prfp"..(i-1)] = tonumber(pin)
     end
