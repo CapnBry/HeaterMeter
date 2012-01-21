@@ -217,12 +217,15 @@ inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
   // inside the proportional control range
   if ((error > 0 && lastFanSpeed < MaxFanSpeed) ||
       (error < 0 && lastFanSpeed > 0))
-    _pidErrorSum += (error * Pid[PIDI]);
+    _pidErrorSum += Pid[PIDI] * error;
 
-  // the B and P terms are in 0-100 scale, but the I and D terms are dependent on degrees    
+  // B = fan speed percent
+  // P = fan speed percent per degree of error
+  // I = fan speed percent per degree of accumulated error
+  // D = fan speed percent per degree of change over TEMPPROBE_AVG_SMOOTH period
   float averageTemp = controlProbe->TemperatureAvg;
   int control 
-    = Pid[PIDB] + Pid[PIDP] * (error + _pidErrorSum - (Pid[PIDD] * (currentTemp - averageTemp)));
+    = Pid[PIDB] + Pid[PIDP] * error + _pidErrorSum + (Pid[PIDD] * (averageTemp - currentTemp));
   
   if (control >= MaxFanSpeed)
     _fanSpeed = MaxFanSpeed;
