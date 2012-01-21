@@ -12,7 +12,7 @@
 // The minimum fan speed (%) that activates the "long pulse" mode
 #define MINIMUM_FAN_SPEED 10
 // 1/(Number of samples used in the exponential moving average)
-#define TEMPPROBE_AVG_SMOOTH (1.0f/15.0f)
+#define TEMPPROBE_AVG_SMOOTH (1.0f/10.0f)
 #define FANSPEED_AVG_SMOOTH (1.0f/60.0f)
 // Once entering LID OPEN mode, the minimum number of seconds to stay in
 // LID OPEN mode before autoresuming due to temperature returning to setpoint 
