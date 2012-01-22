@@ -244,12 +244,11 @@ function graphClicked(event, pos, item)
     var sInfo = "";
     var srsClosestY = -1;
     var srsClosestYIdx;
-    for (var srs=0; srs<graphData.length; ++srs)
+    // Display on tooltip as Pit, Food1, Food2, Amb, Set, Fan
+    var SERIES_DISPLAY_ORDER = [ 6, 5, 4, 3, 2, 0 ];
+    for (var idx=0; idx<SERIES_DISPLAY_ORDER.length; ++idx)
     {
-        // Skip the lid series
-        if (srs == 1)
-            continue;
-            
+        var srs = SERIES_DISPLAY_ORDER[idx];
         var val = NaN;
         var firstPastIdx = -1;
         var srsData = graphData[srs].data;
