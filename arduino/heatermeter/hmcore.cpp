@@ -325,7 +325,7 @@ void storePidParam(char which, float value)
     default:
       return;
   }
-  pid.Pid[k] = value;
+  pid.setPidConstant(k, value);
 
   unsigned char ofs = offsetof(__eeprom_data, pidConstants[0]);
   eeprom_write_block(&pid.Pid[k], (void *)(ofs + k * sizeof(float)), sizeof(value));

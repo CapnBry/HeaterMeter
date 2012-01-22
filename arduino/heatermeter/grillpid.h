@@ -141,11 +141,11 @@ private:
   // Counter used for "long PWM" mode
   unsigned char _longPwmTmr;
   unsigned int _lidOpenDuration;
+  float _pidErrorSum;
   
   void calcFanSpeed(TempProbe *controlProbe);
   void commitFanSpeed(void);
 public:
-  float _pidErrorSum;
   GrillPid(const unsigned char blowerPin);
   
   TempProbe *Probes[TEMP_COUNT];
@@ -162,6 +162,7 @@ public:
   unsigned char getAdcBits(void) const { return 10 + TEMP_OVERSAMPLE_BITS; };
   // The PID constants
   float Pid[4];
+  void setPidConstant(unsigned char idx, float value);
   // The maximum fan speed that will be used in automatic mode
   unsigned char MaxFanSpeed;
   
