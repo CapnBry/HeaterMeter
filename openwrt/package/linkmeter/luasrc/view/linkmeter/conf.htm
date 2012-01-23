@@ -187,13 +187,15 @@ function hideCoeffPopup()
 
 function coeffClick(probeId, idx)
 {
+  hideCoeffPopup();
   var pca = document.getElementById("pca" + probeId);
   if (pca != null)
   {
     pca.value = coeffPresets[idx].stein;
     configElemChange.call(pca);
   }
-  hideCoeffPopup();
+  
+  return false;
 }
 
 function showCoeffPopup(o)
@@ -205,14 +207,17 @@ function showCoeffPopup(o)
   for (var i=0; i<coeffPresets.length; ++i)
   {
     var li = document.createElement("li");
-    li.innerHTML = '<a class="nodest" href="#" onclick="coeffClick(' + probeId + ',' + i + ');">' +
-      coeffPresets[i].name + '</a><br/>' + coeffPresets[i].desc;
+    li.innerHTML = '<a class="nodest" href="#" onclick="return coeffClick(' + 
+      probeId + ',' + i + ');">' + coeffPresets[i].name + '</a><br/>' + 
+      coeffPresets[i].desc;
     list.appendChild(li);
   }
   
   pcpopup = document.getElementById("pcppopup");
   o.appendChild(pcpopup);
   pcpopup.style.display = "block";
+  
+  return false;
 }
 
 //]]></script>
@@ -267,7 +272,7 @@ You can store a configuration by bookmarking the "Full configuration" link.</p>
   <div class="cbi-value"><label>A</label><input type="text" class="pc" id="pca<%=i%>"/></div>
   <div class="cbi-value"><label>B</label><input type="text" class="pc" id="pcb<%=i%>"/></div>
   <div class="cbi-value"><label>C</label><input type="text" class="pc" id="pcc<%=i%>"/></div>
-  <div class="pcpreset" id="pcp<%=i%>"><a class="nodest" href="#" onclick="showCoeffPopup(this.parentNode);">presets</a></div>
+  <div class="pcpreset" id="pcp<%=i%>"><a class="nodest" href="#" onclick="return showCoeffPopup(this.parentNode);">presets</a></div>
   <div class="cbi-value"><label>Resist</label><input type="text" maxlength="6" id="pcr<%=i%>" style="width: 4em;"/></div>
   <div class="cbi-value"><label>Offset</label><input type="text" maxlength="3" id="po<%=i%>" style="width: 2em;"/></div>
 </div>
