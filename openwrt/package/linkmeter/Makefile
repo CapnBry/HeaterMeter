@@ -10,7 +10,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/linkmeter
 	SECTION:=utils
 	CATEGORY:=Utilities
-	DEPENDS:=+rrdtool +luci-lib-lucid-http +avrdude
+	DEPENDS:=+rrdtool +luci-lib-lucid-http
 	TITLE:=LinkMeter BBQ Controller
 	URL:=http://github.com/CapnBry/HeaterMeter
 	MAINTAINER:=Bryan Mayland <capnbry@gmail.com>
@@ -22,12 +22,13 @@ endef
 
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
+	$(CP) src/* $(PKG_BUILD_DIR)/
 	$(CP) luasrc/* $(PKG_BUILD_DIR)/
 endef
 
-define Build/Compile
+#define Build/Compile
 	# Nothing to compile
-endef
+#endef
 
 define Package/linkmeter/install
 	$(CP) ./root/* $(1)/
@@ -39,8 +40,11 @@ define Package/linkmeter/install
 
 	$(INSTALL_DIR) $(1)/usr/lib/lua
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/lmclient.lua $(1)/usr/lib/lua/
+
 	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/hmdude $(1)/usr/bin
 	$(LN) -sf ../../usr/lib/lua/lmclient.lua $(1)/usr/bin/lmclient
+
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/lucid
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/lucid/linkmeterd.lua $(1)/usr/lib/lua/luci/lucid/
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller/linkmeter
