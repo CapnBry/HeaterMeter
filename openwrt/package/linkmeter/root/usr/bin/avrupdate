@@ -5,10 +5,22 @@ if [ -n "$1" ] ; then
   HEX="$1"
 fi
 
+if [ "${HEX:0:7}" = "http://" ] ; then
+  wget -O/tmp/hm.hex $HEX 2>&1
+  if [ $? -ne 0 ] ; then
+    echo Download failed
+    exit 1
+  fi
+  HEX="/tmp/hm.hex"
+fi
+
 if [ ! -f "$HEX" ] ; then
   echo No input file $HEX
   exit 1
 fi
+
+MD5=`md5sum $HEX`
+echo "                          $MD5"
 
 echo -n "Stopping LinkMeter "
 lua /usr/lib/lua/lmclient.lua LMD0
@@ -17,10 +29,10 @@ SERIAL_DEVICE=`uci get lucid.linkmeter.serial_device`
 
 hmdude -P$SERIAL_DEVICE -b115200 -U$HEX 2>&1
 if [ $? -eq 0 ] ; then
-  echo Update Successful
+  echo Update successful
   rm $HEX
 else
-  echo Update Failed
+  echo Update failed
 fi
 
 echo -n "Starting LinkMeter "

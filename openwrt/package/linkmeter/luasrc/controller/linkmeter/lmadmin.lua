@@ -30,6 +30,12 @@ function action_fw()
   )
   local step = tonumber(luci.http.formvalue("step") or 1)
   local has_upload = luci.http.formvalue("hexfile")
+  local web_update = has_upload and has_upload:find("^http://")
+  
+  if web_update then
+    hex = has_upload
+    step = 3
+  end
   if step == 1 then
     if has_upload and nixio.fs.access(hex) then
       step = 2
@@ -41,7 +47,7 @@ function action_fw()
   if step == 3 then
     luci.http.prepare_content("text/plain")
     local pipe = require "luci.controller.admin.system".ltn12_popen(
-      "/usr/sbin/avrupdate %q" % hex)
+      "/usr/bin/avrupdate %q" % hex)
     return luci.ltn12.pump.all(pipe, luci.http.write)
   end 
 end

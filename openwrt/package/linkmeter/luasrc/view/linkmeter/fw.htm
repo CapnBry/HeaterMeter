@@ -1,19 +1,83 @@
 <%+header%>
+<script language="javascript" src="<%=resource%>/js/jquery.min.js" type="text/javascript"></script>
+<script type="text/javascript">//<![CDATA[
+  $(function() {
+    $(":input[type=radio]").click(function () {
+      var val = $(this).value;
+      if (val == 0)
+      {
+        $("#remote").hide();
+        $("#local").show();
+      } else {
+        $("#local").hide();
+        var d = $("#remote").show();
+        var url = "http://capnbry.net/linkmeter/snapshots/trunk/hm.hex";
+        d.find("#trunksrc").text(url);
+        d.find("input[name=hexfile]").val(url);
+        loadMd5();
+      }
+    });
+  });
 
-<h2><a id="content" name="content">LinkMeter</a></h2>
-<h3>AVR Firmware</h3>
+var md5loaded = false;  
+function loadMd5()
+{
+  if (md5loaded)
+    return;
+    
+  md5loaded = true;
+  
+  $.ajax({
+    type: "GET",
+    dataType: "text",
+    url: "http://capnbry.net/linkmeter/md5.php",
+    success: function (data) { 
+      $("#trunkmd5").text(data); 
+    },
+    error: function (xhr, status, err) { 
+      var s;
+      if (status)
+        s = status;
+      else
+        s = "(error)";
+      if (err)
+        s += " " + err;
+      $("#trunkmd5").text(s); 
+    }
+  });
+}
+  
+//]]></script>
+<style>
+  .md5 { font-family: monospace; color: #666; }
+</style>
+<h2>LinkMeter</h2>
+<h3>HeaterMeter Firmware</h3>
 
-  <form method="POST" action="<%=REQUEST_URI%>" enctype="multipart/form-data">
+  <div>
   <p>Upgrade the HeaterMeter firmware running on the AVR (Arduino).  Note
     this is <strong>not</strong> the router operating system, this is
-    the code for the BBQ microcontroller.
+    the code for the BBQ microcontroller.<br />
+    Select the source of the firmware HEX file<br />
+    <input type="radio" name="fwsource" value="0" checked="checked"/> From local machine<br />
+    <input type="radio" name="fwsource" value="1" /> Repository trunk snapshot<br />
   </p>
-  <div>
-    <strong>HEX file</strong> from your local machine<br />
-    <input type="file" name="hexfile" size="64" /><br />
-    <input class="cbi-button cbi-button-apply" type="submit" value="Upload and flash" />
   </div>
-  </form>
+  <div id="local">
+    <form method="POST" action="<%=REQUEST_URI%>" enctype="multipart/form-data">
+      <strong>HEX file</strong> from your local machine<br />
+      <input type="file" name="hexfile" size="64" />
+      <input class="cbi-button cbi-button-apply" type="submit" value="Upload and flash" />
+    </form>
+  </div>
+  <div id="remote" style="display: none;">
+    <form method="POST" action="<%=REQUEST_URI%>">
+      <div>Source: <span class="md5" id="trunksrc"></span></div>
+      <div>MD5 hash: <span class="md5" id="trunkmd5"></span></div>
+      <input name="hexfile" type="hidden" />
+      <input class="cbi-button cbi-button-apply" type="submit" value="Download and flash" />
+    </form>
+  </div>
 <% if step == 2 then %>
   <p>Flashing AVR firmware via avrdude. Output should appear below</p>
   <iframe src="<%=REQUEST_URI%>?step=3" style="width: 100%; height: 400px"></iframe>
