@@ -108,7 +108,6 @@ void report_progress(unsigned int progress, unsigned int max)
   static double start_time;
   char hashes[51];
   int percent;
-  int i;
   struct timeval tv;
   double t;
   
@@ -117,10 +116,9 @@ void report_progress(unsigned int progress, unsigned int max)
     return;
   last = percent;
 
-  hashes[50] = 0;
   memset(hashes, ' ', 50);
-  for (i=0; i<percent; i+=2)
-    hashes[i/2] = '#';
+  memset(hashes, '#', percent/2);
+  hashes[50] = '\0';
 
   gettimeofday(&tv, NULL);
   t = tv.tv_sec + ((double)tv.tv_usec)/1000000;
