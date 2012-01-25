@@ -3,6 +3,8 @@
 #include <RF12.h>
 #include <Ports.h>
 
+#define LMREMOTE_SERIAL 115200
+
 // Node Idenfier for the RFM12B (2-30)
 const unsigned char _rfNodeId = 2; 
 // RFM12B band RF12_433MHZ, RF12_868MHZ, RF12_915MHZ
@@ -39,10 +41,9 @@ static unsigned int _previousReads[RF_PINS_PER_SOURCE];
 static unsigned char _sameCount;
 static unsigned char _seqNo;
 
-ISR(WDT_vect) {
-  // The WDT is used solely to wake us from sleep
-  wdt_disable();
-}
+// The WDT is used solely to wake us from sleep
+ISR(WDT_vect) { wdt_disable(); }
+//ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 void sleep(uint8_t wdt_period) {
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
@@ -76,9 +77,9 @@ void sleep(uint8_t wdt_period) {
 
 void sleepSeconds(unsigned char secs)
 {
-  while (secs >= 8) { sleep(WDTO_8S);  secs -=8; }
-  if (secs >= 4) { sleep(WDTO_4S);  secs -= 4; }
-  if (secs >= 2) { sleep(WDTO_2S);  secs -= 2; }
+  while (secs >= 8) { sleep(WDTO_8S); secs -=8; }
+  if (secs >= 4) { sleep(WDTO_4S); secs -= 4; }
+  if (secs >= 2) { sleep(WDTO_2S); secs -= 2; }
   if (secs >= 1) { sleep(WDTO_1S); }
 }
 
@@ -146,9 +147,9 @@ void transmitTemps(unsigned char txCount)
   
     // HDR=0 means to broadcast, no ACK requested
     rf12_sendStart(0, outbuf, len);
-    rf12_sendWait(0);
-  }  /* while txCount */ 
-  
+    rf12_sendWait(1);
+  }  /* while txCount */
+
   rf12_sleep(RF12_SLEEP);
   if (_pinLedTx != 0xff) digitalWrite(_pinLedTx, LOW);
 }
@@ -222,13 +223,16 @@ inline void setupSupplyPins(void)
 
 void setup(void)
 {
-  //Serial.begin(115200);  
-
   // Turn off the units we never use (this only affects non-sleep power)
   PRR = bit(PRUSART0) | bit(PRTWI) | bit(PRTIM1) | bit(PRTIM2);
   // Disable digital input buffers on the analog in ports
   DIDR0 = bit(ADC5D) | bit(ADC4D) | bit(ADC3D) | bit(ADC2D) | bit(ADC1D) | bit(ADC0D);
   DIDR1 = bit(AIN1D) | bit(AIN0D);
+
+#ifdef LMREMOTE_SERIAL
+  PRR &= ~bit(PRUSART0);
+  Serial.begin(115200);  Serial.println("$UCID,lmremote");
+#endif
 
   rf12_initialize(_rfNodeId, _rfBand);
 
@@ -256,15 +260,23 @@ void stabilizeAdc(void)
     do {
       ++cnt;
       last = curr;
+#ifdef LMREMOTE_SERIAL
+      Serial.print(curr,DEC);
+      Serial.print(' ');
+#endif
       curr = analogRead(_pinBattery);
     } while ((cnt < 10) && (abs(last - curr) > 2));
   }
+#ifdef LMREMOTE_SERIAL
+  Serial.println();
+#endif
 }
 
 void loop(void)
 {
+  //Sleepy::loseSomeTime(_sleepInterval * 1000);
   sleepSeconds(_sleepInterval);
-  stabilizeAdc();
+  //stabilizeAdc();
   checkTemps();
 }
 
