@@ -112,9 +112,10 @@ void report_progress(unsigned int progress, unsigned int max)
   double t;
   
   percent = progress * 100 / max;
-  if (progress != 0 && percent == last)
+  if (progress != 0 && percent < last)
     return;
-  last = percent;
+  // only report progress every 1 or 5 percent
+  last = percent + (isatty(STDOUT_FILENO) ? 1 : 5);
 
   memset(hashes, ' ', 50);
   memset(hashes, '#', percent/2);
@@ -125,15 +126,19 @@ void report_progress(unsigned int progress, unsigned int max)
   if (progress == 0)
     start_time = t;
 
-  fprintf(stdout, "\r  %d%% |%s| %5d (%.1fs)", percent, hashes, progress, 
+  fprintf(stdout, "\r  %3d%% |%s| %5d (%.1fs)", percent, hashes, progress, 
     t - start_time);
   if (percent == 100)
     fprintf(stdout, "\n");
+  fflush(stdout);
 }
 
 #define PAGE_SIZE 128
 int upload_ihex(void)
 {
+  if (ihex_len == 0)
+    return 0;
+
   unsigned char buf[PAGE_SIZE + 8];
   unsigned int addr;
   int rc = 0;
@@ -177,7 +182,7 @@ int upload_file(void)
 
   int rc;
   int rebootcnt = 0;
-  fprintf(stdout, "Starting sync...\n");
+  fprintf(stdout, "Starting sync (release RESET now)...\n");
   reboot();
   do {
     fprintf(stdout, "Sync: ");
@@ -200,7 +205,8 @@ int upload_file(void)
   if ((rc = read_optiboot_ver()) != 0)
     goto cleanup;
   if ((rc = upload_ihex()) != 0)
-    goto cleanup;  
+    goto cleanup;
+  stk500_disable(port_fd);
 
 cleanup:
   ser_close(port_fd);

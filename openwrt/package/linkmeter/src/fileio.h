@@ -43,6 +43,7 @@ int ser_recv(int fd, unsigned char * buf, size_t buflen);
 
 #define Cmnd_STK_GET_SYNC          0x30  // '0'
 #define Cmnd_STK_GET_PARAMETER     0x41  // 'A'
+#define Cmnd_STK_LEAVE_PROGMODE    0x51  // 'Q'
 #define Cmnd_STK_LOAD_ADDRESS      0x55  // 'U'
 #define Cmnd_STK_PROG_PAGE         0x64  // 'd'
 #define Cmnd_STK_READ_SIGN         0x75  // 'u'
@@ -57,6 +58,7 @@ int ser_recv(int fd, unsigned char * buf, size_t buflen);
 int stk500_getsync(int fds);
 int stk500_getparm(int fd, unsigned char parm, unsigned char * value);
 int stk500_loadaddr(int fd, unsigned int addr);
+int stk500_disable(int fd);
 
 // Arduino
 int arduino_read_sig_bytes(int fd, unsigned int *sig);

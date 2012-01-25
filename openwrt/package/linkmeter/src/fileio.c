@@ -676,3 +676,25 @@ int stk500_loadaddr(int fd, unsigned int addr)
   return 0;
 }
 
+int stk500_disable(int fd)
+{
+  unsigned char buf[8];
+
+  buf[0] = Cmnd_STK_LEAVE_PROGMODE;
+  buf[1] = Sync_CRC_EOP;
+
+  stk500_send(fd, buf, 2);
+  if (stk500_recv(fd, buf, 2) < 0)
+    exit(1);
+  if (buf[0] != Resp_STK_INSYNC || buf[1] != Resp_STK_OK) {
+    fprintf(stderr,
+            "%s: stk500_disable(): protocol error, "
+            "expect=0x%02x%02x, resp=0x%02x%02x\n",
+            progname, Resp_STK_INSYNC, Resp_STK_OK,
+            buf[0], buf[1]);
+    return -1;
+  }
+
+  return 0;
+}
+
