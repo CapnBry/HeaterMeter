@@ -12,7 +12,7 @@
 
 #define DEGREE "\xdf" // \xdf is the degree symbol on the Hitachi HD44780
 const char LCD_LINE1_UNPLUGGED[] PROGMEM = "- No Pit Probe -";
-const char HM_VERSION[] PROGMEM = "201201180";
+const char HM_VERSION[] PROGMEM = "201201240";
 
 inline void Serial_char(char c) { Serial.write(c); }
 inline void Serial_nl(void) { Serial_char('\n'); }
