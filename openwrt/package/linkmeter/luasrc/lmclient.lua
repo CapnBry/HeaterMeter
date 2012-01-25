@@ -40,7 +40,7 @@ function LmClient.query(self, qry, keepopen)
   end
   
   local polle = { fd = self.sock, events = nixio.poll_flags("in") }
-  if nixio.poll({polle}, 1000) then
+  if nixio.poll({polle}, 1500) then
     r = self.sock:recv(1024)
   else
     r = { nil, "poll" }

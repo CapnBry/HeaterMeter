@@ -8,8 +8,8 @@ local uci = require "uci"
 local lucid = require "luci.lucid"
 
 local pairs, ipairs, table, pcall, type = pairs, ipairs, table, pcall, type
-local tonumber, tostring, print = tonumber, tostring, print
-local collectgarbage,string = collectgarbage,string
+local tonumber, tostring, print, next = tonumber, tostring, print, next
+local collectgarbage = collectgarbage
 
 module "luci.lucid.linkmeterd"
 
@@ -229,6 +229,17 @@ function segStateUpdate(line)
     end
 end
 
+local function serialHandler(polle)
+  for line in polle.lines do
+    if hmConfig == nil then 
+      hmConfig = {}
+      serialPolle.fd:write("/config\n")
+    end
+  
+    segmentCall(line)
+  end
+end
+
 local function lmdStart()
   if serialPolle then return true end
   local cfg = uci.cursor()
@@ -256,16 +267,11 @@ local function lmdStart()
     fd = serialfd,
     lines = serialfd:linesource(),
     events = nixio.poll_flags("in"),
-    handler = function (polle)
-      for line in polle.lines do
-        segmentCall(line)
-      end 
-    end
+    handler = serialHandler
   }
   
   lucid.register_pollfd(serialPolle)
-  hmConfig = {}
-  serialfd:write("/config\n")
+  hmConfig = nil
   
   return true
 end
@@ -276,7 +282,7 @@ local function lmdStop()
   serialPolle.fd:setblocking(true)
   serialPolle.fd:close()
   serialPolle = nil
-  hmConfig = {}
+  hmConfig = nil
   
   return true
 end
@@ -289,7 +295,7 @@ local function segLmSet(line)
 end
 
 local function segLmIdentifier(line)
-  return hmConfig.ucid;
+  return hmConfig and hmConfig.ucid or "Unknown";
 end
 
 local function segLmRfStatus(line)
