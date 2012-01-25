@@ -73,7 +73,7 @@ public:
   typedef void (*event_callback)(RFSource&, event);
 
   RFManager(const event_callback fn) :
-    _callback(fn), _crcOk(0xff) {};
+    _callback(fn), _crcOk(0x80) {};
   
   void init(unsigned char band);
   void freeStaleSources(void);
