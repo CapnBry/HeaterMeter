@@ -65,7 +65,7 @@ const struct __eeprom_data {
   225,  // setpoint
   6,  // lid open offset %
   240, // lid open duration
-  { 5.0f, 4.0f, 0.016f, 8.0f },  // PID constants
+  { 4.0f, 3.0f, 0.01f, 5.0f },  // PID constants
   false, // manual mode
   100,  // max fan speed
   128, // lcd backlight (50%)
