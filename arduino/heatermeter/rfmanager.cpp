@@ -5,6 +5,8 @@
 
 void RFSource::setId(unsigned char id)
 {
+  if (_id == id) return;
+
   _id = id;
   _lastReceive = 0;
   _batteryLevel = 0;
@@ -17,6 +19,7 @@ void RFSource::update(rf12_probe_update_hdr_t *hdr, unsigned char len)
 {
   _batteryLevel = hdr->batteryLevel;
   _adcBits = hdr->adcBits;
+  //Serial.print(hdr->seqNo, DEC); Serial_char(' '); Serial.print(_batteryLevel, DEC); Serial_nl();
   if (_lastReceive != 0)
   {
     // _signalLevel is just a bitfield that shifts in a 1 for every packet
@@ -154,8 +157,11 @@ boolean RFManager::doWork(void)
         }
       }  /* if broadcast */
     }  /* if crc ok */
-    else if (_crcOk > 0) 
+    else if (_crcOk > 0)
+    {
+      //print_P(PSTR("RF ERR")); Serial_nl();
       --_crcOk;
+    }
       
     retVal = true;
   }  /* while recvDone() */
