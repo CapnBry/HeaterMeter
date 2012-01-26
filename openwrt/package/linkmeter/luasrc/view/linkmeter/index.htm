@@ -426,7 +426,8 @@ function nameChanged(from, value)
 
 function tempChanged(value)
 {
-    if(((value - 0) == value && value.length > 0) && value > 0 && value < 999)
+    if((value - 0) == value && value.length > 0 && 
+      value < 999 && value >= -100)
     {
         $.get("<%=luci.dispatcher.build_url("lm", "set")%>", {sp: value});
         return value;
