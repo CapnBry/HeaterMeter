@@ -191,7 +191,9 @@ void checkTemps(void)
 
     unsigned int newRead = analogRead(pin);
 
-    //Serial.println(newRead, DEC);
+#ifdef LMREMOTE_SERIAL
+    Serial.println(newRead, DEC);
+#endif
     if (newRead != _previousReads[pin])
       modified = true;
     _previousReads[pin] = newRead;
@@ -278,6 +280,9 @@ void loop(void)
   sleepSeconds(_sleepInterval);
   //stabilizeAdc();
   checkTemps();
+#ifdef LMREMOTE_SERIAL
+  delay(1);
+#endif
 }
 
 
