@@ -438,7 +438,7 @@ function JSONQuery()
 {
     $.ajax({
         type: "GET",
-        url: "<%=luci.dispatcher.build_url("lm", "hmstatus")%>",
+        url: "<%=luci.dispatcher.build_url("lm", "qry")%>?LMSU",
         dataType: "json",
         timeout: 5000,
         success: connectionSuccess,

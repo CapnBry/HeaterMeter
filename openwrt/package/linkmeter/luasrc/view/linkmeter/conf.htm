@@ -233,7 +233,7 @@ function ifrmTarget(url)
 
 function ifrmLoaded()
 {
-  $.get("<%=luci.dispatcher.build_url("lm","conf")%>",
+  $.get("<%=luci.dispatcher.build_url("lm","qry")%>?LMCF",
     function (o) { configHash = o; configToForm(); })
     .error(function () { window.location.reload(); })
     .complete(ifrmHide);
