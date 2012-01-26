@@ -9,19 +9,20 @@ var coeffPresets = [
   {"name": "Radio Shack 10k", "desc": "271-110A", "stein": "8.98053228e-4,2.49263324e-4,2.04047542e-7"},
   {"name": "Vishay 10k", "desc": "NTCLE203E3103FB0", "stein": "1.14061e-3,2.32134e-4,9.63666e-8"}
 ];
-var pcpopup;
 
-window.onload = configToForm
-
-function typeChanged(o)
+$(function ()
 {
-  var name = o.id.substring(2);
-  
-  var elem;
-  elem = document.getElementById("pbody" + name);
-  elem.style.display = (o.value == 1) ? "none" : "block";
-  elem = document.getElementById("prf" + name);
-  elem.style.display = (o.value == 3) ? "block" : "none";
+  $(".pt").change(typeChanged);
+  $(".pcpreset a").click(showCoeffPopup);
+  configToForm();
+});
+
+
+function typeChanged()
+{
+  var name = this.id.substring(2);
+  $("#pbody" + name).css("display", (this.value == 1) ? "none" : "block");
+  $("#prf" + name).css("display", (this.value == 3) ? "block" : "none");
 }
 
 function isProbeId(hay, need)
@@ -34,7 +35,7 @@ function configHashToForm()
 {
   for (var k in configHash)
   {
-    var elem = document.getElementById(k);
+    var elem = $("#" + k);
     if (elem == null)
       continue;
     var val = configHash[k];
@@ -42,20 +43,20 @@ function configHashToForm()
     if (isProbeId(k, "pcurr"))
     {
       if (val != null)
-        elem.innerHTML = "current temperature " + val.toFixed(1) + "&deg;";
+        elem.html("current temperature " + val.toFixed(1) + "&deg;");
       else
-        elem.innerHTML = "off";
+        elem.html("off");
     } 
     else if (k == "ucid")
-      elem.innerHTML = val;
+      elem.html(val);
     else if (val != null)
-      elem.value = val;
+      elem.val(val);
     else
-      elem.value = "";
+      elem.val("");
       
     if (isProbeId(k, "pt"))
-      typeChanged(elem);
-    elem.addEventListener("change", configElemChange);
+      elem.trigger("change");
+    elem.change(configElemChange);
   }
 }
 
@@ -67,11 +68,11 @@ function configElemChange()
     var values = this.value.split(',');
     if (values.length >= 3)
     {
-      document.getElementById("pca"+name).value = values[0];
-      document.getElementById("pcb"+name).value = values[1];
-      document.getElementById("pcc"+name).value = values[2];
+      $("#pca"+name).val(values[0]);
+      $("#pcb"+name).val(values[1]);
+      $("#pcc"+name).val(values[2]);
       if (values.length >= 4)
-        document.getElementById("pcr"+name).value = values[2];
+        $("#pcr"+name).val(values[3]);
     }
   }
   updateUpdateUrl();
@@ -80,13 +81,13 @@ function configElemChange()
 function configToForm()
 {
   configHashToForm();
-  updateConfigUrl("fullurl", configHash);
-  updateConfigUrl("updateurl", {});
+  updateConfigUrl("#fullurl", configHash);
+  updateConfigUrl("#updateurl", {});
 }
 
 function updateUpdateUrl()
 {
-  updateConfigUrl("updateurl", configChangedHash());
+  updateConfigUrl("#updateurl", configChangedHash());
 }
 
 function configChangedHash()
@@ -94,12 +95,12 @@ function configChangedHash()
   var r = {};
   for (var k in configHash)
   { 
-    var elem = document.getElementById(k);
+    var elem = $("#"+k);
     if (elem == null)
       continue;
     if (isProbeId(k, "pcurr"))
       continue;
-    var val = elem.value;
+    var val = elem.val();
     if (isProbeId(k, "prfn") && val == "")
       val = null;
     if (val != configHash[k])
@@ -126,7 +127,7 @@ function updateConfigUrl(divname, h)
       var i = k.substr(-1);
       // Can't set prfp without prfn
       if (isProbeId(k, "prfp") && 
-        document.getElementById("prfn"+i).value == "")
+        $("#prfn"+i).val() == "")
         continue;
       if (aPcs.indexOf(i) == -1)
         aPcs.push(i);
@@ -152,12 +153,12 @@ function updateConfigUrl(divname, h)
     if (val == null) val = "0";
     pc += val;
     
-    var ptype = document.getElementById("pt"+i).value;
+    var ptype = $("#pt"+i).val();
     if (ptype == "3")
     {
-      var nodeId = document.getElementById("prfn"+i).value;
+      var nodeId = $("#prfn"+i).val();
       if (nodeId != "")
-        pc += "," + nodeId + document.getElementById("prfp"+i).value;
+        pc += "," + nodeId + $("#prfp"+i).val();
     }
     else if (h["pt"+i] != null)
       pc += "," + h["pt"+i];
@@ -165,58 +166,48 @@ function updateConfigUrl(divname, h)
     aValues.push(pc);
   }
  
-  var elem = document.getElementById(divname);
+  var elem = $(divname);
   if (aValues.length > 0) 
   {
-    var s = aValues.join("&amp;");
-    var url = '<%=luci.dispatcher.build_url("lm","set")%>?' + s;
-    s = '<a href="#" onclick="return ifrmTarget(\'' + url + '\');">' + s + '</a>';
-    elem.innerHTML = s;
+    var s = aValues.join(" &amp;");
+    var url = '<%=luci.dispatcher.build_url("lm","set")%>?' + aValues.join("&amp;");
+    if (divname == "#updateurl")
+      url = '#" onclick="return ifrmTarget(\'' + url + '\');';
+    s = '<a href="' + url + '">' + s + '</a>';
+    elem.html(s);
   }
   else
-    elem.innerHTML = "none";
-}
-
-function hideCoeffPopup()
-{
-  if (pcpopup != null)
-  {
-    pcpopup.style.display = "none";
-    pcpopup = null;
-  }
+    elem.html("none");
 }
 
 function coeffClick(probeId, idx)
 {
-  hideCoeffPopup();
-  var pca = document.getElementById("pca" + probeId);
-  if (pca != null)
-  {
-    pca.value = coeffPresets[idx].stein;
-    configElemChange.call(pca);
-  }
+  $("#pcppopup").hide();
+  $("#pca" + probeId)
+    .val(coeffPresets[idx].stein)
+    .trigger("change");
   
   return false;
 }
 
-function showCoeffPopup(o)
+function showCoeffPopup()
 {
+  var o = this.parentNode;
   var probeId = o.id.substring(3);
   var list = document.getElementById("pcplist");
-  while (list.hasChildNodes())
-    list.removeChild(list.firstChild);
-  for (var i=0; i<coeffPresets.length; ++i)
+  if (!list.hasChildNodes())
   {
-    var li = document.createElement("li");
-    li.innerHTML = '<a class="nodest" href="#" onclick="return coeffClick(' + 
-      probeId + ',' + i + ');">' + coeffPresets[i].name + '</a><br/>' + 
-      coeffPresets[i].desc;
-    list.appendChild(li);
+    for (var i=0; i<coeffPresets.length; ++i)
+    {
+      var li = document.createElement("li");
+      li.innerHTML = '<a class="nodest" href="#" onclick="return coeffClick(' + 
+        probeId + ',' + i + ');">' + coeffPresets[i].name + '</a><br/>' + 
+        coeffPresets[i].desc;
+      list.appendChild(li);
+    }
   }
   
-  pcpopup = document.getElementById("pcppopup");
-  o.appendChild(pcpopup);
-  pcpopup.style.display = "block";
+  $(o).append($("#pcppopup").slideDown("fast"));
   
   return false;
 }
@@ -227,7 +218,7 @@ function ifrmTarget(url)
     .load(function () { setTimeout(ifrmLoaded, 2000); })
     .attr("src", url);
   $("#dialog-overlay").show();
-  $("#dialog-container").show();
+  $("#dialog-container").show("fast");
   return false;
 }
 
@@ -241,20 +232,12 @@ function ifrmLoaded()
 
 function ifrmHide()
 {
-  $("#dialog-overlay").hide();
-  $("#dialog-container").hide();
+  $("#dialog-container").hide("fast", 
+    function () { $("#dialog-overlay").hide(); });
   $("#overlay_ifrm").unbind().attr("src", "javascript:false;");
 }
 
 //]]></script>
-<h3>HeaterMeter Configuration</h3>
-<p>Adjust the configuration of the HeaterMeter microcontroller by modifying the
-values in these fields. Save the changes by clicking the "Update URL" link.
-You can store a configuration by bookmarking the "Full configuration" link.</p>
-
-<form method="GET" action="">
-<fieldset class="cbi-section" id="cbi-lm-probes">
-<legend>Probe Setup</legend>
 <style>
   .pn { width: 120px !important; }
   .pc { width: 120px !important; }
@@ -278,14 +261,21 @@ You can store a configuration by bookmarking the "Full configuration" link.</p>
     position: fixed; z-index: 2; top: 100px; display: none;
     left: 50%; margin-left: -240px; }
 </style>
+<h3>HeaterMeter Configuration</h3>
+<p>Adjust the configuration of the HeaterMeter microcontroller by modifying the
+values in these fields. Save the changes by clicking the "Update URL" link.
+You can store a configuration by bookmarking the "Full configuration" link.</p>
+
+<form method="GET" action="">
+<fieldset class="cbi-section" id="cbi-lm-probes">
+<legend>Probe Setup</legend>
 
 <div id="pcppopup">
-  <div style="text-align: center; background: #333; color: #fff; position: relative;" onclick="hideCoeffPopup();">
+  <div style="text-align: center; background: #333; color: #fff; position: relative;" onclick="$('#pcppopup').hide();">
     Coefficient Preset
     <div style="position: absolute; top: -1px; right: 2px; display: inline;">X</div>
   </div>
-  <ul style="list-style-type: none; text-indent: -1em;" id="pcplist">
-  </ul>
+  <ul style="list-style-type: none; text-indent: -1em;" id="pcplist"></ul>
 </div>
 
 <table style="width: 100%;"><tr>
@@ -295,7 +285,7 @@ You can store a configuration by bookmarking the "Full configuration" link.</p>
 <div class="pcurr" id="pcurr<%=i%>"></div>
 <div class="cbi-value"><label>Name</label><input type="text" maxlength="12" class="pn" id="pn<%=i%>"/></div>
 <div class="cbi-value"><label>Type</label>
-<select class="pt" id="pt<%=i%>" onchange="typeChanged(this);">
+<select class="pt" id="pt<%=i%>">
   <option value="1">Disabled</option>
   <option value="2">Internal</option>
   <option value="3">RF12 Wireless</option>
@@ -305,7 +295,7 @@ You can store a configuration by bookmarking the "Full configuration" link.</p>
   <div class="cbi-value"><label>A</label><input type="text" class="pc" id="pca<%=i%>"/></div>
   <div class="cbi-value"><label>B</label><input type="text" class="pc" id="pcb<%=i%>"/></div>
   <div class="cbi-value"><label>C</label><input type="text" class="pc" id="pcc<%=i%>"/></div>
-  <div class="pcpreset" id="pcp<%=i%>"><a class="nodest" href="#" onclick="return showCoeffPopup(this.parentNode);">presets</a></div>
+  <div class="pcpreset" id="pcp<%=i%>"><a class="nodest" href="#">presets</a></div>
   <div class="cbi-value"><label>Resist</label><input type="text" maxlength="6" id="pcr<%=i%>" style="width: 4em;"/></div>
   <div class="cbi-value"><label>Offset</label><input type="text" maxlength="3" id="po<%=i%>" style="width: 2em;"/></div>
 </div>
