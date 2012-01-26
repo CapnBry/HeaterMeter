@@ -200,9 +200,9 @@ int upload_file(void)
     goto cleanup;
   fprintf(stdout, "OK\n");
 
-  if ((rc = read_device_signature()) != 0)
+  if (verbose > 0 && (rc = read_device_signature()) != 0)
     goto cleanup;
-  if ((rc = read_optiboot_ver()) != 0)
+  if (verbose > 0 && (rc = read_optiboot_ver()) != 0)
     goto cleanup;
   if ((rc = upload_ihex()) != 0)
     goto cleanup;
