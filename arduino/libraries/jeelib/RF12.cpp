@@ -12,7 +12,10 @@
 #include <Wprogram.h> // Arduino 0022
 #endif
 
-#define OPTIMIZE_SPI 1   // uncomment this to write to the RFM12B @ 8 Mhz
+#define OPTIMIZE_SPI 1  // uncomment this to write to the RFM12B @ 8 Mhz
+
+// pin change interrupts are currently only supported on ATmega328's
+// #define PINCHG_IRQ 1    // uncomment this to use pin-change interrupts
 
 // maximum transmit / receive buffer: 3 header + data + 2 crc bytes
 #define RF_MAX   (RF12_MAXDATA + 5)
@@ -21,6 +24,8 @@
 //
 //  - leave RFM_IRQ set to the pin which corresponds with INT0, because the
 //    current driver code will use attachInterrupt() to hook into that
+//  - (new) you can now change RFM_IRQ, if you also enable PINCHG_IRQ - this
+//    will switch to pin change interrupts instead of attach/detachInterrupt()
 //  - use SS_DDR, SS_PORT, and SS_BIT to define the pin you will be using as
 //    select pin for the RFM12B (you're free to set them to anything you like)
 //  - please leave SPI_SS, SPI_MOSI, SPI_MISO, and SPI_SCK as is, i.e. pointing
@@ -258,6 +263,16 @@ static void rf12_interrupt() {
     }
 }
 
+#if PINCHG_IRQ
+    #if RFM_IRQ < 8
+        ISR(PCINT2_vect) { if (!bitRead(PIND, RFM_IRQ)) rf12_interrupt(); }
+    #elif RFM_IRQ < 14
+        ISR(PCINT0_vect) { if (!bitRead(PINB, RFM_IRQ - 8)) rf12_interrupt(); }
+    #else
+        ISR(PCINT1_vect) { if (!bitRead(PINC, RFM_IRQ - 14)) rf12_interrupt(); }
+    #endif
+#endif
+
 static void rf12_recvStart () {
     rxfill = rf12_len = 0;
     rf12_crc = ~0;
@@ -386,10 +401,38 @@ uint8_t rf12_initialize (uint8_t id, uint8_t band, uint8_t g) {
     rf12_xfer(0xC049); // 1.66MHz,3.1V 
 
     rxstate = TXIDLE;
+#if PINCHG_IRQ
+    #if RFM_IRQ < 8
+        if ((nodeid & NODE_ID) != 0) {
+            bitClear(DDRD, RFM_IRQ);      // input
+            bitSet(PORTD, RFM_IRQ);       // pull-up
+            bitSet(PCMSK2, RFM_IRQ);      // pin-change
+            bitSet(PCICR, PCIE2);         // enable
+        } else
+            bitClear(PCMSK2, RFM_IRQ);
+    #elif RFM_IRQ < 14
+        if ((nodeid & NODE_ID) != 0) {
+            bitClear(DDRB, RFM_IRQ - 8);  // input
+            bitSet(PORTB, RFM_IRQ - 8);   // pull-up
+            bitSet(PCMSK0, RFM_IRQ - 8);  // pin-change
+            bitSet(PCICR, PCIE0);         // enable
+        } else
+            bitClear(PCMSK0, RFM_IRQ - 8);
+    #else
+        if ((nodeid & NODE_ID) != 0) {
+            bitClear(DDRC, RFM_IRQ - 14); // input
+            bitSet(PORTC, RFM_IRQ - 14);  // pull-up
+            bitSet(PCMSK1, RFM_IRQ - 14); // pin-change
+            bitSet(PCICR, PCIE1);         // enable
+        } else
+            bitClear(PCMSK1, RFM_IRQ - 14);
+    #endif
+#else
     if ((nodeid & NODE_ID) != 0)
         attachInterrupt(0, rf12_interrupt, LOW);
     else
         detachInterrupt(0);
+#endif
     
     return nodeid;
 }

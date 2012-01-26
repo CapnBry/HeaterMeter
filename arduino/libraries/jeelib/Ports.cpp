@@ -810,8 +810,13 @@ byte Sleepy::loseSomeTime (word msecs) {
         if (watchdogCounter == 0)
             return 0; // lost some time, but got interrupted
         // adjust the milli ticks, since we will have missed several
+#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny85__)
+        extern volatile unsigned long millis_timer_millis;
+        millis_timer_millis += 16 << wdp;
+#else
         extern volatile unsigned long timer0_millis;
         timer0_millis += 16 << wdp;
+#endif
         msecs -= 16 << wdp;
     }
     return 1; // lost some time as planned

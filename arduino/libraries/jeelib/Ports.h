@@ -136,7 +136,6 @@ public:
 
 class PortI2C : public Port {
     uint8_t uswait;
-    
 #if 0
 // speed test with fast hard-coded version for Port 1:
     inline void hold() const
@@ -149,6 +148,8 @@ class PortI2C : public Port {
         { hold(); bitWrite(PORTC, 0, 1); }
     inline void sclLo() const
         { hold(); bitWrite(PORTC, 0, 0); }
+public:
+    enum { KHZMAX, KHZ400, KHZ100, KHZ_SLOW };
 #else
     inline void hold() const
         { delayMicroseconds(uswait); }
@@ -160,9 +161,9 @@ class PortI2C : public Port {
         { hold(); digiWrite2(1); }
     inline void sclLo() const
         { hold(); digiWrite2(0); }
-#endif
 public:
-    enum { KHZMAX, KHZ400, KHZ100, KHZ_SLOW };
+    enum { KHZMAX = 1, KHZ400 = 2, KHZ100 = 9 };
+#endif
     
     PortI2C (uint8_t num, uint8_t rate =KHZMAX);
     
