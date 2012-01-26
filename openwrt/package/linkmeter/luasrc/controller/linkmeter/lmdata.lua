@@ -1,13 +1,11 @@
 module("luci.controller.linkmeter.lmdata", package.seeall)
 
 function index()
-  local page = entry({"lm", "qry"}, call("action_qry"))
-  if not page.inreq then return end
-  page.notemplate = true
-  page.leaf = true
-  
   entry({"lm", "hist"}, call("action_hist")).notemplate = true
+  entry({"lm", "hmstatus"}, call("action_hmstatus")).notemplate = true
+  entry({"lm", "rfstatus"}, call("action_rfstatus")).notemplate = true
   entry({"lm", "stream"}, call("action_stream")).notemplate = true
+  entry({"lm", "conf"}, call("action_conf")).notemplate = true
 end
 
 function lmclient_json(query)
@@ -22,13 +20,16 @@ function lmclient_json(query)
   end
 end
 
-function action_qry()
-  local qry = luci.http.getenv("QUERY_STRING")
-  if not qry or qry == "" then
-    luci.dispatcher.error500("No query specified")
-  else
-    return lmclient_json("$"..qry)
-  end
+function action_hmstatus()
+  return lmclient_json("$LMSU")
+end
+
+function action_rfstatus()
+  return lmclient_json("$LMRF")
+end
+
+function action_conf()
+  return lmclient_json("$LMCF")
 end
 
 function action_hist()
