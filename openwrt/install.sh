@@ -22,7 +22,6 @@ mkdir $LUCIP
 cp patches/200-luci-inreq-fix.patch $LUCIP
 cp patches/215-luci-adminfull-inreq.patch $LUCIP
 
-$WRT_PATH/scripts/feeds install -p linkmeter avrdude
 $WRT_PATH/scripts/feeds install -p linkmeter rrdtool
 $WRT_PATH/scripts/feeds install -p linkmeter kmod-broadcom-sdhc26
 $WRT_PATH/scripts/feeds install -p linkmeter linkmeter
