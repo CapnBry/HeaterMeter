@@ -5,6 +5,7 @@ function index()
   entry({"lm", "hmstatus"}, call("action_hmstatus")).notemplate = true
   entry({"lm", "rfstatus"}, call("action_rfstatus")).notemplate = true
   entry({"lm", "stream"}, call("action_stream")).notemplate = true
+  entry({"lm", "conf"}, call("action_conf")).notemplate = true
 end
 
 function lmclient_json(query)
@@ -25,6 +26,10 @@ end
 
 function action_rfstatus()
   return lmclient_json("$LMRF")
+end
+
+function action_conf()
+  return lmclient_json("$LMCF")
 end
 
 function action_hist()

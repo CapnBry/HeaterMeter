@@ -1,6 +1,6 @@
 <% require "lmclient" %>
 <%+header%>
-
+<script language="javascript" src="<%=resource%>/js/jquery.min.js" type="text/javascript"></script>
 <script type="text/javascript">//<![CDATA[
 var configHash = <%= LmClient():query("$LMCF") or "{}" %>;
 var coeffPresets = [
@@ -169,7 +169,8 @@ function updateConfigUrl(divname, h)
   if (aValues.length > 0) 
   {
     var s = aValues.join("&amp;");
-    s = '<a href="<%=luci.dispatcher.build_url("lm","set")%>?' + s + '">' + s + '</a>';
+    var url = '<%=luci.dispatcher.build_url("lm","set")%>?' + s;
+    s = '<a href="#" onclick="return ifrmTarget(\'' + url + '\');">' + s + '</a>';
     elem.innerHTML = s;
   }
   else
@@ -220,6 +221,31 @@ function showCoeffPopup(o)
   return false;
 }
 
+function ifrmTarget(url)
+{
+  $("#overlay_ifrm")
+    .load(function () { setTimeout(ifrmLoaded, 2000); })
+    .attr("src", url);
+  $("#dialog-overlay").show();
+  $("#dialog-container").show();
+  return false;
+}
+
+function ifrmLoaded()
+{
+  $.get("<%=luci.dispatcher.build_url("lm","conf")%>",
+    function (o) { configHash = o; configToForm(); })
+    .error(function () { window.location.reload(); })
+    .complete(ifrmHide);
+}
+
+function ifrmHide()
+{
+  $("#dialog-overlay").hide();
+  $("#dialog-container").hide();
+  $("#overlay_ifrm").unbind().attr("src", "javascript:false;");
+}
+
 //]]></script>
 <h3>HeaterMeter Configuration</h3>
 <p>Adjust the configuration of the HeaterMeter microcontroller by modifying the
@@ -244,6 +270,13 @@ You can store a configuration by bookmarking the "Full configuration" link.</p>
   .pcpreset { font-size: x-small; text-align: center; position: relative; }
   a.nodest { text-decoration: none; }
   #pcppopup { position: absolute; left: 0px; top: 0px; width: 100%; background: #f5f5f5; border: 2px solid #333; font-size: x-small; display: none; text-align: left; }
+  #dialog-overlay { width: 100%; height: 100%; position: fixed; 
+    top: 0px; left: 0px; display: none; background-color: #000; 
+    opacity: 0.6; z-index: 1; }
+  #dialog-container { background-color: #f5f5f5; width: 480px; height: 200px;
+    border: 5px solid #4A6B7C; padding: 10px; 
+    position: fixed; z-index: 2; top: 100px; display: none;
+    left: 50%; margin-left: -240px; }
 </style>
 
 <div id="pcppopup">
@@ -345,4 +378,9 @@ Note you can just build your own url from the home page if you're logged in /lm/
 <li>Reboot AVR</li>
 </ul>
 </ul>
+<div id="dialog-overlay"></div>
+<div id="dialog-container">
+  <div style="text-align: center;">Updating configuration...</div>
+  <iframe id="overlay_ifrm" style="width: 100%; height: 100%; border: 0;"></iframe>
+</div>
 <%+footer%>
