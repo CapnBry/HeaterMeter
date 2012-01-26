@@ -169,6 +169,7 @@ function updateConfigUrl(divname, h)
   var elem = $(divname);
   if (aValues.length > 0) 
   {
+    aValues.sort();
     var s = aValues.join(" &amp;");
     var url = '<%=luci.dispatcher.build_url("lm","set")%>?' + aValues.join("&amp;");
     if (divname == "#updateurl")
