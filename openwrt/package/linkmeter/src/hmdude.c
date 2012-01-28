@@ -25,21 +25,24 @@
 #include <unistd.h>
 #include <sys/time.h>
 
+#include <uci.h>
+
 #include "fileio.h"
 
 const char *progname = "hmdude";
 int verbose;
 
 static long baud;
+static long lm_baud;
 static char *file_ihex;
-static char *port = "/dev/ttyS0";
+static char *port;
 static char *reboot_cmd = "\n/reboot\n";
 
 static int port_fd;
 static unsigned char ihex[32 * 1024];
 static int ihex_len;
 
-int read_optiboot_ver(void)
+static int read_optiboot_ver(void)
 {
   unsigned char ver_maj, ver_min;
   fprintf(stdout, "Optiboot version: ");
@@ -56,7 +59,7 @@ int read_optiboot_ver(void)
   }
 }
 
-int read_device_signature(void)
+static int read_device_signature(void)
 {
   unsigned int signature;
   fprintf(stdout, "Device signature: ");
@@ -72,12 +75,14 @@ int read_device_signature(void)
   }
 }
 
-inline void reboot(void)
+static void reboot(void)
 {
+  ser_setspeed(port_fd, lm_baud, 1);
   ser_send(port_fd, (unsigned char *)reboot_cmd, strlen(reboot_cmd));
+  ser_setspeed(port_fd, baud, 1);
 }
 
-int load_ihex(void)
+static int load_ihex(void)
 {
   FILE *ifile;
   ihex_len = 0;
@@ -102,7 +107,7 @@ int load_ihex(void)
   return 0;
 }
 
-void report_progress(unsigned int progress, unsigned int max)
+static void report_progress(unsigned int progress, unsigned int max)
 {
   static int last;
   static double start_time;
@@ -134,7 +139,7 @@ void report_progress(unsigned int progress, unsigned int max)
 }
 
 #define PAGE_SIZE 128
-int upload_ihex(void)
+static int upload_ihex(void)
 {
   if (ihex_len == 0)
     return 0;
@@ -175,9 +180,14 @@ int upload_ihex(void)
   return rc;
 }
 
-int upload_file(void)
+static int upload_file(void)
 {
-  if ((port_fd = ser_open(port, (baud) ? : 115200L)) < 0)
+  if (baud == 0)
+    baud = 115200;
+  if (lm_baud == 0)
+    lm_baud = baud;
+
+  if ((port_fd = ser_open(port, lm_baud)) < 0)
     return -1;
 
   int rc;
@@ -200,9 +210,9 @@ int upload_file(void)
     goto cleanup;
   fprintf(stdout, "OK\n");
 
-  if (verbose > 0 && (rc = read_device_signature()) != 0)
+  if (verbose > 1 && (rc = read_device_signature()) != 0)
     goto cleanup;
-  if (verbose > 0 && (rc = read_optiboot_ver()) != 0)
+  if (verbose > 1 && (rc = read_optiboot_ver()) != 0)
     goto cleanup;
   if ((rc = upload_ihex()) != 0)
     goto cleanup;
@@ -213,11 +223,48 @@ cleanup:
   return rc;
 }
 
+static void set_port(char *val)
+{
+  if (port)
+    free(port);
+  if (val)
+    port = strdup(val);
+  else
+    port = NULL;
+}
+
+static void load_lm_config(void)
+{
+  char name[64];
+  struct uci_context *ctx = uci_alloc_context();
+
+  struct uci_ptr ptr;
+  strcpy(name, "lucid.linkmeter.serial_device");
+  if (uci_lookup_ptr(ctx, &ptr, name, false) == UCI_OK &&
+    (ptr.flags & UCI_LOOKUP_COMPLETE))
+  {
+    set_port(ptr.o->v.string);
+    //fprintf(stdout, "LinkMeter device: %s\n", ptr.o->v.string);
+  }
+  else printf("%x\n", ptr.flags);
+  strcpy(name, "lucid.linkmeter.serial_baud");
+  if (uci_lookup_ptr(ctx, &ptr, name, false) == UCI_OK &&
+    (ptr.flags & UCI_LOOKUP_COMPLETE))
+  {
+    lm_baud = atol(ptr.o->v.string);
+    //fprintf(stdout, "LinkMeter baud: %ld\n", lm_baud);
+  }
+
+  uci_free_context(ctx);
+}
+
 int main(int argc, char *argv[])
 {
   int c;
   fprintf(stdout, "%s: compiled on %s at %s\n",
     progname, __DATE__, __TIME__);
+
+  load_lm_config();
 
   opterr = 0;
   while ((c = getopt(argc, argv, "b:vP:U:")) != -1)
@@ -231,7 +278,7 @@ int main(int argc, char *argv[])
         ++verbose;
         break;
       case 'P':
-        port = optarg;
+        set_port(optarg);
         break;
       case 'U':
         file_ihex = optarg;
@@ -244,6 +291,11 @@ int main(int argc, char *argv[])
 
   fprintf(stdout, "Using port: %s\n", port);
   load_ihex();
-  return upload_file();
+  int rc = upload_file();
+
+  // Cleanup   
+  set_port(NULL);
+ 
+  return rc;
 }
 

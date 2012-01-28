@@ -275,7 +275,7 @@ static speed_t serial_baud_lookup(long baud)
   exit(1);
 }
 
-static int ser_setspeed(int fd, long baud)
+int ser_setspeed(int fd, long baud, int flushfirst)
 {
   int rc;
   struct termios termios;
@@ -311,7 +311,7 @@ static int ser_setspeed(int fd, long baud)
   cfsetospeed(&termios, speed);
   cfsetispeed(&termios, speed);
 
-  rc = tcsetattr(fd, TCSANOW, &termios);
+  rc = tcsetattr(fd, (flushfirst) ? TCSAFLUSH : TCSANOW, &termios);
   if (rc < 0) {
     fprintf(stderr, "%s: ser_setspeed(): tcsetattr() failed\n",
             progname);
@@ -347,7 +347,7 @@ int ser_open(char *port, long baud)
   /*
    * set serial line attributes
    */
-  rc = ser_setspeed(fd, baud);
+  rc = ser_setspeed(fd, baud, 0);
   if (rc) {
     fprintf(stderr,
             "%s: ser_open(): can't set attributes for device \"%s\": %s\n",

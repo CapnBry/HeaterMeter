@@ -10,7 +10,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/linkmeter
 	SECTION:=utils
 	CATEGORY:=Utilities
-	DEPENDS:=+rrdtool +luci-lib-lucid-http
+	DEPENDS:=+rrdtool +luci-lib-lucid-http +libuci
 	TITLE:=LinkMeter BBQ Controller
 	URL:=http://github.com/CapnBry/HeaterMeter
 	MAINTAINER:=Bryan Mayland <capnbry@gmail.com>

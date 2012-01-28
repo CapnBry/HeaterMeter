@@ -32,6 +32,7 @@ int ser_open(char *port, long baud);
 void ser_close(int fd);
 int ser_send(int fd, unsigned char * buf, size_t buflen);
 int ser_recv(int fd, unsigned char * buf, size_t buflen);
+int ser_setspeed(int fd, long baud, int flushfirst);
 
 // STK500 (Arduino/Optiboot)
 #define Resp_STK_OK                0x10  // LF
