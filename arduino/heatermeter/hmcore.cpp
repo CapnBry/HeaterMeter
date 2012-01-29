@@ -94,6 +94,14 @@ const struct  __eeprom_probe DEFAULT_PROBE_CONFIG PROGMEM = {
   }
 };
 
+#ifdef PIEZO_HZ
+// A simple beep-beep-beep-(pause) alarm
+unsigned char tone_durs[] PROGMEM = { 10, 5, 10, 5, 10, 50 };  // in 10ms units
+#define tone_cnt (sizeof(tone_durs)/sizeof(tone_durs[0]))
+unsigned char tone_idx;
+unsigned long tone_last;
+#endif /* PIZEO_HZ */
+
 inline void setLcdBacklight(unsigned char lcdBacklight)
 {
   analogWrite(PIN_LCD_BACKLGHT, lcdBacklight);
@@ -796,16 +804,54 @@ void rfSourceNotify(RFSource &r, RFManager::event e)
 }
 #endif /* HEATERMETER_RFM12 */
 
-inline void checkAlarms(void)
+void toneEnable(boolean enable)
+{
+#ifdef PIEZO_HZ
+  if (enable)
+  {
+    if (tone_idx == 0xff)
+      return;
+    tone_last = 0;
+    tone_idx = tone_cnt - 1;
+  }
+  else
+  {
+    tone_idx = 0xff;
+    noTone(PIN_ALARM);
+  }
+#endif /* PIEZO_HZ */
+}
+
+void tone_doWork(void)
+{
+#ifdef PIEZO_HZ
+  if (tone_idx == 0xff)
+    return;
+  unsigned long t = millis();
+  unsigned int dur = pgm_read_byte(&tone_durs[tone_idx]) * 10;
+  if (t - tone_last > dur)
+  {
+    tone_last = t;
+    tone_idx = (tone_idx + 1) % tone_cnt;
+    if (tone_idx % 2 == 0)
+    {
+      dur = pgm_read_byte(&tone_durs[tone_idx]) * 10;
+      tone(PIN_ALARM, PIEZO_HZ, dur);
+    }
+  }
+#endif /* PIEZO_HZ */
+}
+
+void checkAlarms(void)
 {
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
     if (pid.Probes[i]->Alarms.getActionNeeded())
     {
-      tone(PIN_ALARM, 440);  // 440Hz = A4
+      toneEnable(true);
       return;
     }
     
-  noTone(PIN_ALARM);
+  toneEnable(false);
 }
 
 void eepromLoadBaseConfig(boolean forceDefault)
@@ -1002,5 +1048,6 @@ void hmcoreLoop(void)
 
   Menus.doWork();
   if (pid.doWork())
-    newTempsAvail();    
+    newTempsAvail();
+  tone_doWork();
 }
