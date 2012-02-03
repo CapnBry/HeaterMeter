@@ -35,7 +35,7 @@ function remoteSubmit(path)
 
 function md5Success(o)
 {
-  o.sort(function (a,b) { return a.ts - b.ts; });
+  o.sort(function (a,b) { return b.ts - a.ts; });
   var r = new Array();
   var RSTYLES = [ "cbi-rowstyle-1", "cbi-rowstyle-2" ];
   for (var i=0; i<o.length; ++i)
