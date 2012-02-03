@@ -1,7 +1,6 @@
 #!/bin/sh
 
-uci -q get lucid.lmserver > /dev/null
-[ $$? -eq 0 ] && exit
+uci -q get lucid.lmserver > /dev/null && exit
 
 uci batch << EOF
 set lucid.main.threadlimit=2
