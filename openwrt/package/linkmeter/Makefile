@@ -56,7 +56,7 @@ endef
 # Include has Package/linkmeter/postinst in it
 include config/linkmeter.uci
 
-define Package/linkmeter/prerm
+define Package/linkmeter/postrm
 #!/bin/sh
 	[ -n "$${IPKG_INSTROOT}" ] && exit
 
@@ -65,11 +65,6 @@ define Package/linkmeter/prerm
 	uci del lucid.lmserver
 	uci commit lucid
 	rm -f /tmp/luci-indexcache
-endef
-
-define Package/linkmeter/postrm
-#!/bin/sh
-	[ -n "$${IPKG_INSTROOT}" ] && exit
 	/etc/init.d/lucid start
 endef
 
