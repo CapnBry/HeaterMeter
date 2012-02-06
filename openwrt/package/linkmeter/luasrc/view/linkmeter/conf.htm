@@ -195,19 +195,15 @@ function showCoeffPopup()
 {
   var o = this.parentNode;
   var probeId = o.id.substring(3);
-  var list = document.getElementById("pcplist");
-  if (!list.hasChildNodes())
-  {
-    for (var i=0; i<coeffPresets.length; ++i)
-    {
-      var li = document.createElement("li");
-      li.innerHTML = '<a class="nodest" href="#" onclick="return coeffClick(' + 
-        probeId + ',' + i + ');">' + coeffPresets[i].name + '</a><br/>' + 
-        coeffPresets[i].desc;
-      list.appendChild(li);
-    }
-  }
+  var list = $("#pcplist");
+  list.empty();
+  var items = new Array();
+  for (var i=0; i<coeffPresets.length; ++i)
+    items.push('<li><a class="nodest" href="#" onclick="return coeffClick(' +
+      probeId + ',' + i + ');">' + coeffPresets[i].name + 
+      '</a><br/>' + coeffPresets[i].desc);
   
+  list.html(items.join(''));
   $(o).append($("#pcppopup").slideDown("fast"));
   
   return false;
