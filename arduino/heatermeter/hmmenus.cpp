@@ -191,10 +191,7 @@ state_t menuHome(button_t button)
   else if (button == BUTTON_LEFT)
   {
     // Left from Home screen enables/disables the lid countdown
-    if (pid.LidOpenResumeCountdown == 0)
-      pid.resetLidOpenResumeCountdown();
-    else
-      pid.LidOpenResumeCountdown = 0;
+    storeLidParam(LIDPARAM_ACTIVE, pid.LidOpenResumeCountdown == 0);
     updateDisplay();
   }
   return ST_AUTO;
@@ -414,7 +411,7 @@ state_t menuLidOpenOff(button_t button)
   }
   else if (button == BUTTON_LEAVE)
   {
-    storeLidOpenOffset(editInt < 0 ? 0 : editInt);
+    storeLidParam(LIDPARAM_OFFSET, editInt);
   }
 
   menuNumberEdit(button, 1, PSTR("%3d%% below set"));
@@ -430,7 +427,7 @@ state_t menuLidOpenDur(button_t button)
   }
   else if (button == BUTTON_LEAVE)
   {
-    storeLidOpenDuration(editInt < 0 ? 0 : editInt);
+    storeLidParam(LIDPARAM_DURATION, editInt);
   }
 
   menuNumberEdit(button, 10, PSTR("%3d seconds"));

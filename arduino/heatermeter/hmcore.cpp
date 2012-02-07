@@ -155,7 +155,7 @@ void storeSetPoint(int sp)
   config_store_byte(manualMode, isManualMode);
 }
 
-void storeProbeOffset(unsigned char probeIndex, char offset)
+void storeProbeOffset(unsigned char probeIndex, int offset)
 {
   unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, tempOffset));
   if (ofs != 0)
@@ -217,11 +217,10 @@ inline void storeProbeTypeOrMap(unsigned char probeIndex, char *vals)
   // Or it is an RF map description indicating it is of type PROBETYPE_RF12 and
   // the map should be updated
   char probeType = *vals;
-  if (probeType >= '1' && probeType <= '9')
+  if (probeType >= '0' && probeType <= '9')
   {
-    // The probe type is an integer but is passed as actual probeType + 1
-    // because passing 0 (PROBETYPE_DISABLED) is reserved for "don't change"
-    probeType -= '1';
+    // Convert char to PROBETYPE_x
+    probeType -= '0';
     unsigned char oldProbeType = pid.Probes[probeIndex]->getProbeType();
     if (oldProbeType != probeType)
     {
@@ -339,18 +338,6 @@ void storePidParam(char which, float value)
   eeprom_write_block(&pid.Pid[k], (void *)(ofs + k * sizeof(float)), sizeof(value));
 }
 
-void storeLidOpenOffset(unsigned char value)
-{
-  pid.LidOpenOffset = value;    
-  config_store_byte(lidOpenOffset, value);
-}
-
-void storeLidOpenDuration(unsigned int value)
-{
-  pid.setLidOpenDuration(value);
-  config_store_word(lidOpenDuration, value);
-}
-
 inline void outputCsv(void)
 {
 #ifdef HEATERMETER_SERIAL
@@ -398,7 +385,7 @@ void reportProbeCoeff(unsigned char probeIdx)
     printSciFloat(p->Steinhart[i]);
     Serial_csv();
   }
-  Serial.print(p->getProbeType() + 1);
+  Serial.print(p->getProbeType(), DEC);
   Serial_nl();
 }
 
@@ -410,30 +397,27 @@ void storeProbeCoeff(unsigned char probeIndex, char *vals)
   if (ofs == 0)
     return;
     
-  float fVal;
   float *fDest = pid.Probes[probeIndex]->Steinhart;
-  for (unsigned char i=0; i<STEINHART_COUNT; ++i)
+  unsigned char idx = 0;
+  while (*vals)
   {
-    fVal = atof(vals);
-    while (*vals)
+    if (idx >= STEINHART_COUNT)
+      break;
+    if (*vals == ',')
     {
-      if (*vals == ',') 
-      {
-        ++vals;
-        break;
-      }
+      ++idx;
       ++vals;
-    }  /* while vals */
-
-    if (fVal != 0.0f)
-    {
-      *fDest = fVal;
-      eeprom_write_block(&fVal, (void *)ofs, sizeof(fVal));
+      ofs += sizeof(float);
+      ++fDest;
     }
-
-    ofs += sizeof(float);
-    ++fDest;
-  }  /* for i */
+    else
+    {
+      *fDest = atof(vals);
+      eeprom_write_block(fDest, (void *)ofs, sizeof(float));
+      while (*vals && *vals != ',')
+        ++vals;
+    }
+  }
 
   storeProbeTypeOrMap(probeIndex, vals);
   reportProbeCoeff(probeIndex);
@@ -527,6 +511,52 @@ void reportConfig(void)
 #endif /* HEATERMETER_RFM12 */
 }
 
+typedef void (*csv_int_callback_t)(unsigned char idx, int val);
+
+void csvParseI(char *vals, csv_int_callback_t c)
+{
+  unsigned char idx = 0;
+  while (*vals)
+  {
+    if (*vals == ',')
+    {
+      ++idx;
+      ++vals;
+    }
+    else
+    {
+      int val = atoi(vals);
+      c(idx, val);
+      while (*vals && *vals != ',')
+        ++vals;
+    }
+  }
+}
+
+void storeLidParam(unsigned char idx, int val)
+{
+  if (val < 0)
+    val = 0;
+
+  switch (idx)
+  {
+    case 0:
+      pid.LidOpenOffset = val;
+      config_store_byte(lidOpenOffset, val);
+      break;
+    case 1:
+      pid.setLidOpenDuration(val);
+      config_store_word(lidOpenDuration, val);
+      break;
+    case 2:
+      if (val)
+        pid.resetLidOpenResumeCountdown();
+      else
+        pid.LidOpenResumeCountdown = 0;
+      break;
+  }
+}
+
 /* handleCommandUrl returns true if it consumed the URL */
 boolean handleCommandUrl(char *URL)
 {
@@ -544,14 +574,14 @@ boolean handleCommandUrl(char *URL)
   }
   if (strncmp_P(URL, PSTR("set?ld="), 7) == 0) 
   {
-    storeLidOpenDuration(atoi(URL + 7));
+    csvParseI(URL + 7, storeLidParam);
     reportLidParameters();
     return true;
   }
-  if (strncmp_P(URL, PSTR("set?lo="), 7) == 0) 
+  if (strncmp_P(URL, PSTR("set?po="), 7) == 0)
   {
-    storeLidOpenOffset(atoi(URL + 7));
-    reportLidParameters();
+    csvParseI(URL + 7, storeProbeOffset);
+    reportProbeOffsets();
     return true;
   }
   if (strncmp_P(URL, PSTR("set?pid"), 7) == 0 && urlLen > 9) 
@@ -566,12 +596,6 @@ boolean handleCommandUrl(char *URL)
     // Store probe name will only store it if a valid probe number is passed
     storeProbeName(URL[6] - '0', URL + 8);
     reportProbeNames();
-    return true;
-  }
-  if (strncmp_P(URL, PSTR("set?po"), 6) == 0 && urlLen > 8) 
-  {
-    storeProbeOffset(URL[6] - '0', atoi(URL + 8));
-    reportProbeOffsets();
     return true;
   }
   if (strncmp_P(URL, PSTR("set?pc"), 6) == 0 && urlLen > 8) 

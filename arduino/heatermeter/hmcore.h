@@ -49,13 +49,15 @@ void eepromLoadConfig(boolean forceDefault);
 void storeSetPoint(int sp);
 void storeProbeName(unsigned char probeIndex, const char *name);
 void loadProbeName(unsigned char probeIndex);
-void storeProbeOffset(unsigned char probeIndex, char offset);
+void storeProbeOffset(unsigned char probeIndex, int offset);
 void storeProbeAlarmOn(unsigned char probeIndex, boolean isHigh, boolean value);
 void storeProbeAlarmVal(unsigned char probeIndex, boolean isHigh, int value);
-void storePidParam(char which, float value);
 void storeMaxFanSpeed(unsigned char maxFanSpeed);
-void storeLidOpenOffset(unsigned char value);
-void storeLidOpenDuration(unsigned int value);
+
+#define LIDPARAM_OFFSET 0
+#define LIDPARAM_DURATION 1
+#define LIDPARAM_ACTIVE 2
+void storeLidParam(unsigned char idx, int val);
 
 extern GrillPid pid;
 extern ShiftRegLCD lcd;
