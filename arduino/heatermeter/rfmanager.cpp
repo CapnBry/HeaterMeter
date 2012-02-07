@@ -99,10 +99,7 @@ void RFManager::status(void)
 
   // The first item in the list the manager but it has the same format as 
   // the other sources, which is: Id,Signal,TimeSinceLastReceive
-  Serial_char('A');
-  Serial_csv();
-  Serial.print((unsigned int)3300, DEC);  // battery level
-  Serial_csv();
+  print_P(PSTR("A" CSV_DELIMITER "3300" CSV_DELIMITER));
   Serial.print(_crcOk, DEC); // signal
   Serial_csv();
   Serial.print((m - getLastReceive()) / 1000, DEC);

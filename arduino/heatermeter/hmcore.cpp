@@ -354,8 +354,7 @@ void storeLidOpenDuration(unsigned int value)
 inline void outputCsv(void)
 {
 #ifdef HEATERMETER_SERIAL
-  print_P(PSTR("$HMSU"));
-  Serial_csv();
+  print_P(PSTR("$HMSU" CSV_DELIMITER));
   pid.status();
   Serial_nl();
 #endif /* HEATERMETER_SERIAL */
@@ -389,8 +388,7 @@ void printSciFloat(float f)
 
 void reportProbeCoeff(unsigned char probeIdx)
 {
-  print_P(PSTR("$HMPC"));
-  Serial_csv();
+  print_P(PSTR("$HMPC" CSV_DELIMITER));
   Serial.print(probeIdx, DEC);
   Serial_csv();
   
@@ -485,18 +483,15 @@ void reportProbeOffsets(void)
 
 void reportVersion(void)
 {
-  print_P(PSTR("$UCID"));
-  Serial_csv();
-  print_P(PSTR("HeaterMeter"));
-  Serial_csv();
+  print_P(PSTR("$UCID" CSV_DELIMITER));
+  print_P(PSTR("HeaterMeter" CSV_DELIMITER));
   print_P(HM_VERSION);
   Serial_nl();
 }
 
 void reportLidParameters(void)
 {
-  print_P(PSTR("$HMLD"));
-  Serial_csv();
+  print_P(PSTR("$HMLD" CSV_DELIMITER));
   Serial.print(pid.LidOpenOffset, DEC);
   Serial_csv();
   Serial.print(pid.getLidOpenDuration(), DEC);
@@ -505,8 +500,7 @@ void reportLidParameters(void)
 
 void reportLcdBacklight(void)
 {
-  print_P(PSTR("$HMLB"));
-  Serial_csv();
+  print_P(PSTR("$HMLB" CSV_DELIMITER));
   // The backlight value isn't stored in SRAM so pull it from config
   unsigned char lb = eeprom_read_byte((uint8_t *)offsetof(__eeprom_data, lcdBacklight));
   Serial.print(lb, DEC);
@@ -603,8 +597,7 @@ boolean handleCommandUrl(char *URL)
 void outputRfStatus(void)
 {
 #if defined(HEATERMETER_SERIAL) && defined(HEATERMETER_RFM12)
-  print_P(PSTR("$HMRF")); 
-  Serial_csv();
+  print_P(PSTR("$HMRF" CSV_DELIMITER)); 
   rfmanager.status();
   Serial_nl();
 #endif /* defined(HEATERMETER_SERIAL) && defined(HEATERMETER_RFM12) */
