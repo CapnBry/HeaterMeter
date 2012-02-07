@@ -21,8 +21,8 @@ $(function ()
 function typeChanged()
 {
   var name = this.id.substring(2);
-  $("#pbody" + name).css("display", (this.value == 1) ? "none" : "block");
-  $("#prf" + name).css("display", (this.value == 3) ? "block" : "none");
+  $("#pbody" + name).css("display", (this.value == 0) ? "none" : "block");
+  $("#prf" + name).css("display", (this.value == 2) ? "block" : "none");
 }
 
 function isProbeId(hay, need)
@@ -110,61 +110,65 @@ function configChangedHash()
   return r;
 }
 
+function csvItems(h, dest, uritarget, srcs)
+{
+  var r = uritarget + "=";
+  var cntCommas = 0;
+  var hasVal = false;
+  for (var i=0; i<srcs.length; ++i)
+  {
+    var val;
+    if (typeof(srcs[i]) == "function")
+      val = srcs[i]();
+    else 
+      val = h[srcs[i]];
+    if (val != null)
+    {
+      while (cntCommas < i)
+      {
+        r += ",";
+        ++cntCommas;
+      }
+      r += encodeURIComponent(val);
+      hasVal = true;
+    }
+  }
+
+  if (hasVal)
+    dest.push(r);  
+}
+
+function getProbeTypeForSend(h, i)
+{
+  var ptype = $("#pt"+i).val();
+  if (ptype == "2")
+  {
+    if (h["prfn"+i] == null && h["prfp"+i] == null)
+      return null;
+    var nodeId = $("#prfn"+i).val();
+    if (nodeId)
+      return nodeId + $("#prfp"+i).val();
+  }
+  else
+    return h["pt"+i];
+}
+
 function updateConfigUrl(divname, h)
 {
   var aValues = new Array();
-  var aPcs = new Array();
-  var STATIC_MAP = [ "pn0", "pn1", "pn2", "pn3",  "po0", "po1", "po2", "po3",
-    "sp", "pidb", "pidp", "pidi", "pidd", "lb", "lo", "ld" ];
+  var STATIC_MAP = [ "pn0", "pn1", "pn2", "pn3", 
+    "sp", "pidb", "pidp", "pidi", "pidd", "lb" ];
   for (var k in h)
   {
     if (STATIC_MAP.indexOf(k) != -1)
       aValues.push(k + "=" + encodeURIComponent(h[k]));
-    else if (isProbeId(k, "pcurr") || k == "ucid")
-      continue;
-    // Else it is one of the pc? items
-    else {
-      var i = k.substr(-1);
-      // Can't set prfp without prfn
-      if (isProbeId(k, "prfp") && 
-        $("#prfn"+i).val() == "")
-        continue;
-      if (aPcs.indexOf(i) == -1)
-        aPcs.push(i);
-    }
   }
- 
-  // Pull together all modified pc? items 
-  for (var idx=0; idx<aPcs.length; ++idx)
-  {
-    var i = aPcs[idx];
-    var pc = "pc" + i + "=";
-    var val;
-    val = h["pca"+i];
-    if (val == null) val = "0";
-    pc += val + ",";
-    val = h["pcb"+i];
-    if (val == null) val = "0";
-    pc += val + ",";
-    val = h["pcc"+i];
-    if (val == null) val = "0";
-    pc += val + ",";
-    val = h["pcr"+i];
-    if (val == null) val = "0";
-    pc += val;
-    
-    var ptype = $("#pt"+i).val();
-    if (ptype == "3")
-    {
-      var nodeId = $("#prfn"+i).val();
-      if (nodeId != "")
-        pc += "," + nodeId + $("#prfp"+i).val();
-    }
-    else if (h["pt"+i] != null)
-      pc += "," + h["pt"+i];
-     
-    aValues.push(pc);
-  }
+  
+  csvItems(h, aValues, "ld", ["lo", "ld"]);
+  csvItems(h, aValues, "po", ["po0", "po1", "po2", "po3"]);
+  for (var i=0; i<4; ++i)
+    csvItems(h, aValues, "pc"+i, ["pca"+i, "pcb"+i, "pcc"+i, "pcr"+i, 
+      function () { return getProbeTypeForSend(h, i); } ]);
  
   var elem = $(divname);
   if (aValues.length > 0) 
@@ -283,9 +287,9 @@ You can store a configuration by bookmarking the "Full configuration" link.</p>
 <div class="cbi-value"><label>Name</label><input type="text" maxlength="12" class="pn" id="pn<%=i%>"/></div>
 <div class="cbi-value"><label>Type</label>
 <select class="pt" id="pt<%=i%>">
-  <option value="1">Disabled</option>
-  <option value="2">Internal</option>
-  <option value="3">RF12 Wireless</option>
+  <option value="0">Disabled</option>
+  <option value="1">Internal</option>
+  <option value="2">RF12 Wireless</option>
 </select></div>
 <div id="pbody<%=i%>">
   <div>Probe Coefficients</div>
