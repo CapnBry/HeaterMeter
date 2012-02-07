@@ -17,6 +17,7 @@ var lastUpdateUtc;
 var lastPlot;
 var lastOverviewPlot;
 var lastGraphHover = 0;
+var lastLidOpen = -1;
 
 // mapJson translates the json temps array index to graphData index
 var mapJson = [6,5,4,3];
@@ -84,6 +85,12 @@ $(document).ready(function()
     $("#set").editable(function(value, settings) {
         return(tempChanged(value));
     }, {style: "display: inline"});
+    
+    $("#lid").click(function () { 
+      if (lastLidOpen == -1) return;
+      var enable = (lastLidOpen == 0) ? ",,1" : ",,0";
+      $.get("<%=luci.dispatcher.build_url("lm", "set")%>", {ld: enable});
+    });
 <% end %>
 <% if not rrd then %>
     var o = <%= LmClient():query("$LMSU") or "{}" %>;
@@ -470,6 +477,23 @@ function checkRefreshGraphOrUpdate()
         updateGraph();
 }
 
+function updateLid(val)
+{
+    var lid = $("#lid");
+    if (val == 0)
+    {
+        if (lastLidOpen != 0)
+          lid.html("Lid Closed").css("color", "#bbb");
+    }
+    else
+    {
+        if (lastLidOpen < 1)
+          lid.css("color", "#fc3");
+        lid.html("Lid Open " + formatTimer(val, true));
+    }
+    lastLidOpen = val;
+}
+
 function connectionSuccess(o)
 {
     var updateEditables = ($("form").length == 0);
@@ -532,11 +556,8 @@ function connectionSuccess(o)
     $("#fana").animate({left: o.fan.a + "%"});
     $("#fanc").animate({width: o.fan.c + "%"});
     $("#fanl").html("Blower Speed " + o.fan.c + "%");
-    if (o.lid == 0)
-        $("#lid").hide();
-    else
-        $("#lid").html("Lid Open " + formatTimer(o.lid, true)).show();
-
+    
+    updateLid(o.lid);
     updateTime(o.time);
     updateProbeEstimates();
     checkRefreshGraphOrUpdate();
@@ -633,7 +654,7 @@ div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
       <div style="font-family: Trebuchet MS; background: #000 url('<%=resource%>/fire.png') repeat-x scroll left bottom;"><div style="background: rgba(76,135,199,0.5);">
         <div style="color: #bbb; font-size: 28pt;">Current Pit</div>
         <div id="updatedtime" style="position: absolute; top: 8px; right: 13px; color: #bbb; font-size: 12pt;">00:00:00 AM</div>
-        <div id="lid" style="position: absolute; top: 8px; left: 13px; color: #fc3; font-size: 12pt;"></div>
+        <div id="lid" style="position: absolute; top: 8px; left: 13px; color: #bbb; font-size: 12pt;" title="Click to toggle lid mode"></div>
         <div style="font-size: 120pt; line-height: 100pt; color: #fff; position: relative;">
           <span id="temp0">---</span>
           <div style="font-size: 22pt; line-height: 22pt; position: absolute; bottom: 0; right:0;">Set
