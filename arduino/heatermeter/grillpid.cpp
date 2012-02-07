@@ -374,7 +374,7 @@ boolean GrillPid::doWork(void)
     }
     else if (LidOpenResumeCountdown != 0)
     {
-      LidOpenResumeCountdown = LidOpenResumeCountdown - 2;
+      LidOpenResumeCountdown = LidOpenResumeCountdown - (TEMP_MEASURE_PERIOD / 1000);
     }
     // If the pit temperature has been reached
     // and if the pit temperature is [lidOpenOffset]% less that the setpoint
