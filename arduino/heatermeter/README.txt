@@ -56,9 +56,10 @@ Both Serial and Web
 /set?sp=A - Set the setpoint to integer A
 /set?pidA=B - Tune PID parameter A to value float B.  A can be b (bias), p (proportional), i (integral), or d (derivative)
 /set?pnA=B - Set probe name A to string B.  B does not support URL encoding at this time.  Probe numbers are 0=pit 1=food1 2=food2 3=ambient
-/set?poA=B - Set probe offset A to integer B.  Probe numbers are 0=pit 1=food1 2=food2 3=ambient
-/set?pcN=A,B,C,R,TRM - Set the probe coefficients and type for probe N.  A, B, and C are the Steinhart-Hart coeffieicents and R is the fixed side of the probe voltage divider.  A, B, C and R are floating point and should be specified in scienfific noation, e.g. 0.00023067434 -> 2.3067434e-4.  TRM is either the type of probe OR an RF map specifier.  If TRM is an integer, it indicatest a probe type.  Probe types are 1=Disabled, 2=Internal, 3=RFM12B.  If the first character of TRM is a capital letter A-Z followed by a single digit number 0-5, it is considered an RF Map item <rfSource (letter)><sourcePin>.  e.g. a TRM of B0 sets this probe to use RF Source B pin 0.  If an RF map is present, the probe type is automatically switched to type RFM12B.  Any of A,B,C,R,TRM set to 0 will not be modified. Probe numbers are 0=pit 1=food1 2=food2 3=ambient
+/set?po=A,B,C,D - Set probe offsets to integers A, B, C, and D. Offsets can be omitted to retain their current values, such as po=,,,-2 to only set probe number 3's offset to -2
+/set?pcN=A,B,C,R,TRM - Set the probe coefficients and type for probe N.  A, B, and C are the Steinhart-Hart coeffieicents and R is the fixed side of the probe voltage divider.  A, B, C and R are floating point and can be specified in scienfific noation, e.g. 0.00023067434 -> 2.3067434e-4.  TRM is either the type of probe OR an RF map specifier.  If TRM is an integer, it indicatest a probe type.  Probe types are 0=Disabled, 1=Internal, 2=RFM12B.  If the first character of TRM is a capital letter A-Z followed by a single digit number 0-5, it is considered an RF Map item <rfSource (letter)><sourcePin>.  e.g. a TRM of B0 sets this probe to use RF Source B pin 0.  If an RF map is present, the probe type is automatically switched to type RFM12B.  Any of A,B,C,R,TRM set to blank will not be modified. Probe numbers are 0=pit 1=food1 2=food2 3=ambient
 /set?lb=A - Set the LCD backlight to A.  Range is 0 (off) to 255 (full)
+/set?ld=A,B - Set Lid Detect offset to A%, duration to B seconds
 /reboot - Reboots the microcontroller.  Only if wired to do so (LinkMeter)
 
 Serial-only URLs
@@ -72,7 +73,9 @@ Web-only URLs
 == CSV Format ==
 Microcontroller ID
 $UCID,HeaterMeter,VersionID
-PID coefficients
+Lid Detect Parameters
+$HMLD,Offset Percent,Lid Duration
+PID Coefficients
 $HMPD,PidB,PidP,PidI,PidD 
 Probe Names
 $HMPN,Probe0,Probe1,Probe2,Probe3
