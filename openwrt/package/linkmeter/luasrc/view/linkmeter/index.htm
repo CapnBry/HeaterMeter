@@ -87,9 +87,10 @@ $(document).ready(function()
     }, {style: "display: inline"});
     
     $("#lid").click(function () { 
-      if (lastLidOpen == -1) return;
-      var enable = (lastLidOpen == 0) ? ",,1" : ",,0";
-      $.get("<%=luci.dispatcher.build_url("lm", "set")%>", {ld: enable});
+        if (lastLidOpen == -1) return;
+        $(this).html("Toggling...");
+        var enable = (lastLidOpen == 0) ? ",,1" : ",,0";
+        $.get("<%=luci.dispatcher.build_url("lm", "set")%>", {ld: enable});
     });
 <% end %>
 <% if not rrd then %>
