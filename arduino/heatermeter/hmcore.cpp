@@ -392,12 +392,11 @@ void reportProbeCoeff(unsigned char probeIdx)
 void storeProbeCoeff(unsigned char probeIndex, char *vals)
 {
   // vals is SteinA(float),SteinB(float),SteinC(float),RKnown(float),probeType+1(int)|probeMap(char+int)
-  // If any value is 0, it won't be modified
+  // If any value is blank, it won't be modified
   unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, steinhart));
   if (ofs == 0)
     return;
     
-  float *fDest = pid.Probes[probeIndex]->Steinhart;
   unsigned char idx = 0;
   while (*vals)
   {
@@ -408,10 +407,10 @@ void storeProbeCoeff(unsigned char probeIndex, char *vals)
       ++idx;
       ++vals;
       ofs += sizeof(float);
-      ++fDest;
     }
     else
     {
+      float *fDest = &pid.Probes[probeIndex]->Steinhart[idx];
       *fDest = atof(vals);
       eeprom_write_block(fDest, (void *)ofs, sizeof(float));
       while (*vals && *vals != ',')
