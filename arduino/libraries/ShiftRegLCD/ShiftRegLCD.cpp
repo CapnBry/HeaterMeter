@@ -59,27 +59,42 @@ ShiftRegLCD::ShiftRegLCD(uint8_t srlatch, uint8_t lines)
   // the ATmega automatically switches to SPI slave mode
   pinMode(SS, OUTPUT);
   digitalWrite(SS, HIGH);
+  // SPI = clk/2
+  SPCR = _BV(SPE) | _BV(MSTR) | _BV(SPI2X);
   // SPI = clk/4
-  SPCR = _BV(SPE) | _BV(MSTR);
+  //SPCR = _BV(SPE) | _BV(MSTR);
   // SPI = clk/8
   //SPCR = _BV(SPE) | _BV(MSTR) | _BV(SPR0) | _BV(SPI2X);
   // SPI = clk/16
   //SPCR = _BV(SPE) | _BV(MSTR) | _BV(SPR0);
   // SPI = clk/128
   //SPCR = _BV(SPE) | _BV(MSTR) | _BV(SPR0) | _BV(SPR1);
-  init(srlatch, lines, 0);
+
+  _srlatch_pinmask = digitalPinToBitMask(srlatch);
+  _srlatch_portreg = portOutputRegister(digitalPinToPort(srlatch));
+  pinMode(srlatch, OUTPUT);
+
+  init(lines, 0);
 }
 
 // Write a byte out SPI and toggle the Storage Register Clock
 void ShiftRegLCD::spi_byte(uint8_t out)
 {
+  // disable interrupts during the transfer
+  unsigned char sreg = SREG;
+  cli();
+
   SPDR = out;
   while (!(SPSR & _BV(SPIF)))
       ;
   // Data needs to 40ns setup time and storage clock needs 16ns pulse
-  // time but digitalWrite is really slow so the delay is built in
-  digitalWrite(_srlatch_pin, HIGH);
-  digitalWrite(_srlatch_pin, LOW);
+  // the 1us delay here covers all that
+  *_srlatch_portreg |= _srlatch_pinmask;
+  delayMicroseconds(1);
+  *_srlatch_portreg &= ~_srlatch_pinmask;
+
+  // re-enable interupts
+  SREG = sreg;
 }
 
 void ShiftRegLCD::spi_lcd(uint8_t value)
@@ -114,11 +129,9 @@ ShiftRegLCD::ShiftRegLCD(uint8_t srdata, uint8_t srclock, uint8_t enable, uint8_
 #endif /* SHIFTREGLCD_SPI */
 
 #ifdef SHIFTREGLCD_SPI
-void ShiftRegLCD::init(uint8_t srlatch, uint8_t lines, uint8_t font)
+void ShiftRegLCD::init(uint8_t lines, uint8_t font)
 {
   // The enable line may have been left high by something so we need to clear it
-  _srlatch_pin = srlatch;
-  pinMode(_srlatch_pin, OUTPUT);
   spi_byte(0);
 #else
 void ShiftRegLCD::init(uint8_t srdata, uint8_t srclock, uint8_t enable, uint8_t lines, uint8_t font)

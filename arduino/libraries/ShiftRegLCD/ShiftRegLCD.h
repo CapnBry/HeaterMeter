@@ -102,9 +102,10 @@ private:
 #ifdef SHIFTREGLCD_SPI
   void spi_byte(uint8_t out);
   void spi_lcd(uint8_t value);
-  void init(uint8_t srlatch, uint8_t lines, uint8_t font);
+  void init(uint8_t lines, uint8_t font);
 
-  uint8_t _srlatch_pin;
+  uint8_t _srlatch_pinmask;
+  volatile uint8_t *_srlatch_portreg;
 #else
   void init(uint8_t srdata, uint8_t srclock, uint8_t enable, uint8_t lines, uint8_t font);
 
