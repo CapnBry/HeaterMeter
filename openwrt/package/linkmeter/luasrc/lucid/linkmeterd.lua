@@ -340,6 +340,8 @@ function stsLmStateUpdate()
 end
 
 local function segLmConfig()
+  if not hmConfig then return "{}" end
+
   local r = {}
   for k,v in pairs(hmConfig) do
     local s
