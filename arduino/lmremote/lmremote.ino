@@ -6,7 +6,7 @@
 #define LMREMOTE_SERIAL 115200
 
 // Node Idenfier for the RFM12B (2-30)
-const unsigned char _rfNodeId = 2; 
+const unsigned char _rfNodeId = 2;
 // RFM12B band RF12_433MHZ, RF12_868MHZ, RF12_915MHZ
 const unsigned char _rfBand = RF12_915MHZ;
 // How long to sleep between probe measurments, in seconds
@@ -20,6 +20,8 @@ const unsigned char _pinLedRx = 0xff;
 const unsigned char _pinLedTx = 9;
 // Digital pins used for sourcing power to the probe dividers
 const unsigned char _pinProbeSupplyBase = 4;
+// Number of oversampling bits when measuring temperature [0-3]
+#define TEMP_OVERSAMPLE_BITS 1
 
 #define RF_PINS_PER_SOURCE 6 
 #define PIN_DISABLED(pin) ((_enabledProbePins & (1 << pin)) == 0)
@@ -111,6 +113,9 @@ inline unsigned int getBatteryLevel(void)
 
 void transmitTemps(unsigned char txCount)
 {
+  // Enable the transmitter because it takes 1-5ms to turn on (3ms in my testing)
+  rf12_sleep(RF12_WAKEUP);
+
   char outbuf[
     sizeof(rf12_probe_update_hdr_t) + 
     RF_PINS_PER_SOURCE * sizeof(rf12_probe_update_t)
@@ -120,7 +125,10 @@ void transmitTemps(unsigned char txCount)
   hdr = (rf12_probe_update_hdr_t *)outbuf;
   hdr->seqNo = _seqNo++;
   hdr->batteryLevel = getBatteryLevel();
-  hdr->adcBits = 10;
+  hdr->adcBits = 10 + TEMP_OVERSAMPLE_BITS;
+
+  // We're done with the ADC shut it down until the next wake cycle
+  ADCSRA &= ~bit(ADEN);
 
   // Send all values regardless of if they've changed or not
   rf12_probe_update_t *up = (rf12_probe_update_t *)&hdr[1];
@@ -138,16 +146,15 @@ void transmitTemps(unsigned char txCount)
   unsigned char len = (unsigned int)up - (unsigned int)outbuf;
 
   if (_pinLedTx != 0xff) digitalWrite(_pinLedTx, HIGH);
-  rf12_sleep(RF12_WAKEUP);
   
   while (txCount--)
   {
-    while (!rf12_canSend())
-      rf12_doWork();
-  
+    // Don't check for air to be clear, we just woke from sleep and it will be milliseconds before
+    // the RFM chip is actually up and running
+
     // HDR=0 means to broadcast, no ACK requested
     rf12_sendStart(0, outbuf, len);
-    rf12_sendWait(1);
+    rf12_sendWait(2);
   }  /* while txCount */
 
   rf12_sleep(RF12_SLEEP);
@@ -181,7 +188,9 @@ void enableAdcPullups(void)
 
 void checkTemps(void)
 {
+  const unsigned char OVERSAMPLE_COUNT[] = {1, 4, 16, 64};  // 4^n
   boolean modified = false;
+  unsigned int oversampled_adc = 0;
 
   enableAdcPullups();
   for (unsigned char pin=0; pin < RF_PINS_PER_SOURCE; ++pin)
@@ -189,19 +198,29 @@ void checkTemps(void)
     if (PIN_DISABLED(pin))
       continue;
 
-    unsigned int newRead = analogRead(pin);
+    for (unsigned char o=0; o<OVERSAMPLE_COUNT[TEMP_OVERSAMPLE_BITS]; ++o)
+    {
+      unsigned int adc = analogRead(pin);
+      if (adc == 0 || adc >= 1023)
+      {
+        oversampled_adc = 0;
+        break;
+      }
+      oversampled_adc += adc;
+    }
+    oversampled_adc = oversampled_adc >> TEMP_OVERSAMPLE_BITS;
 
 #ifdef LMREMOTE_SERIAL
-    Serial.println(newRead, DEC);
+    Serial.println(oversampled_adc, DEC);
 #endif
-    if (newRead != _previousReads[pin])
+    if (oversampled_adc != _previousReads[pin])
       modified = true;
-    _previousReads[pin] = newRead;
+    _previousReads[pin] = oversampled_adc;
 
     digitalWrite(_pinProbeSupplyBase + pin, LOW);
   }
 
-  if (modified || (_sameCount > (60 / _sleepInterval)))
+  if (modified || (_sameCount > (30 / _sleepInterval)))
   {
     _sameCount = 0;
     newTempsAvailable();
