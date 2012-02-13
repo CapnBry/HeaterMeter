@@ -90,7 +90,7 @@ function action_stashdb()
   elseif restoring == "1" or resetting == "1" then
     require "lmclient"
     local lm = LmClient()
-    lm:query("$LMD0", true) -- stop serial process
+    lm:query("$LMDC,0", true) -- stop serial process
     if resetting == "1" then
       result = nixio.fs.unlink(RRD_FILE)
       http.write("Resetting "..RRD_FILE)
@@ -98,7 +98,7 @@ function action_stashdb()
       result = nixio.fs.copy(stashfile, RRD_FILE)
       http.write("Restoring "..stashfile.." to "..RRD_FILE)
     end
-    lm:query("$LMD1") -- start serial process and close connection
+    lm:query("$LMDC,1") -- start serial process and close connection
   else
     result = nixio.fs.copy(RRD_FILE, stashfile)
     http.write("Stashing "..RRD_FILE.." to "..stashfile)

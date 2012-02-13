@@ -23,7 +23,7 @@ MD5=`md5sum $HEX`
 echo "                          $MD5"
 
 echo -n "Stopping LinkMeter "
-lua /usr/lib/lua/lmclient.lua LMD0
+lua /usr/lib/lua/lmclient.lua LMDC,0
 
 hmdude -b115200 -U$HEX 2>&1
 if [ $? -eq 0 ] ; then
@@ -34,7 +34,7 @@ else
 fi
 
 echo -n "Starting LinkMeter "
-lua /usr/lib/lua/lmclient.lua LMD1
+lua /usr/lib/lua/lmclient.lua LMDC,1
 
 echo -n "Current HeaterMeter version is "
 sleep 1

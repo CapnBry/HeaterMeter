@@ -96,7 +96,9 @@ local function segSplit(line)
       end
       fieldstart = nexti + 1
     else
-      retVal[#retVal+1] = line:sub(fieldstart)
+      if fieldstart > 1 then
+        retVal[#retVal+1] = line:sub(fieldstart)
+      end
       break
     end
   end
@@ -312,13 +314,14 @@ local function segLmRfStatus(line)
   return retVal
 end
 
-local function segLmDaemonStart()
-  lmdStart()
-  return "OK"
-end
-
-local function segLmDaemonStop()
-  lmdStop()
+local function segLmDaemonControl(line)
+  local vals = segSplit(line)
+  -- Start the daemon if there is any non-zero parameter else stop it
+  if #vals > 0 and vals[1] ~= "0" then
+    lmdStart()
+  else
+    lmdStop()
+  end
   return "OK"
 end
 
@@ -400,8 +403,7 @@ local segmentMap = {
   ["$LMST"] = segLmSet,
   ["$LMSU"] = segLmStateUpdate,
   ["$LMRF"] = segLmRfStatus,
-  ["$LMD1"] = segLmDaemonStart,
-  ["$LMD0"] = segLmDaemonStop,
+  ["$LMDC"] = segLmDaemonControl,
   ["$LMID"] = segLmIdentifier,
   ["$LMCF"] = segLmConfig
   -- $LMSS
