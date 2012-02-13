@@ -9,6 +9,7 @@ function index()
   entry({"admin", "lm", "credits"}, template("linkmeter/credits"), "Credits", 50)
 
   entry({"admin", "lm", "stashdb"}, call("action_stashdb"))
+  entry({"admin", "lm", "reboot"}, call("action_reboot"))
 end
 
 function action_fw()
@@ -111,3 +112,11 @@ function action_stashdb()
   end
 end
 
+function action_reboot()
+  local http = require "luci.http"
+  http.prepare_content("text/plain")
+  
+  http.write("Rebooting AVR... ")
+  require "lmclient"
+  http.write(LmClient():query("$LMRB") or "FAILED")
+end

@@ -214,11 +214,16 @@ function showCoeffPopup()
   return false;
 }
 
-function ifrmTarget(url)
+function ifrmTarget(url,title)
 {
+  if (arguments.length < 2)
+    title = "Updating configuration...";
+    
   $("#overlay_ifrm")
     .load(function () { setTimeout(ifrmLoaded, 2000); })
     .attr("src", url);
+
+  $("#dialog-title").text(title);
   $("#dialog-overlay").show();
   $("#dialog-container").show("fast");
   return false;
@@ -347,7 +352,8 @@ You can store a configuration by bookmarking the "Full configuration" link.</p>
 Version <span id="ucid"></span>
 </fieldset>
 
-<input type="button" onclick="configToForm();" value="Reset to current"/>
+<input type="button" onclick="configToForm();" value="Reset to current"
+  class="cbi-button cbi-button-reset"/>
 </form>
 
 <h3>Update URL<img src="<%=resource%>/cbi/reload.gif" onclick="updateUpdateUrl();"/></h3>
@@ -360,19 +366,14 @@ Version <span id="ucid"></span>
 Note you can just build your own url from the home page if you're logged in /lm/set?...
 <form method="GET" action="<%=luci.dispatcher.build_url("lm","set")%>">
 <input name="rawset" type="text" size="64" />
-<input type="submit" value="Set" />
+<input type="submit" value="Set" class="cbi-button cbi-button-apply"/>
 </form>
-<ul>
-<li>RF status</li>
-<li>Utilities:</li>
-<ul>
-<li>Backup / restore</li>
-<li>Reboot AVR</li>
-</ul>
-</ul>
+<h3>Reboot AVR</h3>
+<input type="button" value="Reboot" class="cbi-button cbi-input-reload"
+  onclick="ifrmTarget('<%=luci.dispatcher.build_url("admin","lm","reboot")%>','Reboot');"/>
 <div id="dialog-overlay"></div>
 <div id="dialog-container">
-  <div style="text-align: center;">Updating configuration...</div>
+  <div id="dialog-title" style="text-align: center;"></div>
   <iframe id="overlay_ifrm" style="width: 100%; height: 100%; border: 0;"></iframe>
 </div>
 <%+footer%>

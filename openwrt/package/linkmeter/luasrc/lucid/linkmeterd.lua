@@ -295,6 +295,12 @@ local function segLmSet(line)
   return "OK"
 end
 
+local function segLmReboot(line)
+  if not serialPolle then return "ERR" end
+  serialPolle.fd:write("\n/reboot\n")
+  return "OK"
+end
+
 local function segLmIdentifier(line)
   return hmConfig and hmConfig.ucid or "Unknown";
 end
@@ -402,6 +408,7 @@ local segmentMap = {
   
   ["$LMST"] = segLmSet,
   ["$LMSU"] = segLmStateUpdate,
+  ["$LMRB"] = segLmReboot,
   ["$LMRF"] = segLmRfStatus,
   ["$LMDC"] = segLmDaemonControl,
   ["$LMID"] = segLmIdentifier,
