@@ -13,7 +13,7 @@
 #define DEGREE_SYMBOL "\xdf" // \xdf is the degree symbol on the Hitachi HD44780
 
 #define FAHRENHEIT 0
-#define CELCIUS    1
+#define CELSIUS    1
 #define DEGREE_UNITS FAHRENHEIT
 
 #if DEGREE_UNITS == FAHRENHEIT
