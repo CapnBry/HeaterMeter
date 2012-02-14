@@ -276,7 +276,7 @@ void updateDisplay(void)
   if (!pid.getManualFanMode() && pitTemp == 0)
     memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
   else if (pid.LidOpenResumeCountdown > 0)
-    snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE"F Lid%3u"), pitTemp, pid.LidOpenResumeCountdown);
+    snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE" Lid%3u"), pitTemp, pid.LidOpenResumeCountdown);
   else
   {
     char c1,c2;
@@ -290,7 +290,7 @@ void updateDisplay(void)
       c1 = '[';
       c2 = ']';
     }
-    snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE"F %c%3u%%%c"), pitTemp, c1, pid.getFanSpeed(), c2);
+    snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE" %c%3u%%%c"), pitTemp, c1, pid.getFanSpeed(), c2);
   }
   lcd.print(buffer); 
 
@@ -299,7 +299,7 @@ void updateDisplay(void)
   if (probeIndex < TEMP_COUNT)
   {
     loadProbeName(probeIndex);
-    snprintf_P(buffer, sizeof(buffer), PSTR("%-12s%3d"DEGREE), editString, (int)pid.Probes[probeIndex]->Temperature);
+    snprintf_P(buffer, sizeof(buffer), PSTR("%-12s%3d"DEGREE_SYMBOL), editString, (int)pid.Probes[probeIndex]->Temperature);
   }
   else
   {
@@ -797,7 +797,7 @@ void rfSourceNotify(RFSource &r, RFManager::event e)
         unsigned char srcPin = rfMap[i].pin;
         unsigned int val = r.Values[srcPin];
         unsigned char adcBits = r.getAdcBits();
-        // ADC bits of 0 is direct measurement in 10ths of a degree F, i.e. 986 = 98.6F
+        // ADC bits of 0 is direct measurement in 10ths of a degree, i.e. 986 = 98.6
         if (adcBits == 0)
           pid.Probes[i]->Temperature = val / 10.0f;
         else

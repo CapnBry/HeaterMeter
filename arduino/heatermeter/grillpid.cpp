@@ -166,10 +166,14 @@ void TempProbe::calcTemp(void)
     // Compute degrees K  
     T = 1.0f / ((Steinhart[2] * R * R + Steinhart[1]) * R + Steinhart[0]);
   
-    // return degrees F
-    Temperature = ((T - 273.15f) * (9.0f / 5.0f)) + 32.0f;
-    // Sanity - anything less than 0F or greater than 999F is rejected
-    if (Temperature < 0.0f || Temperature > 999.0f)
+    Temperature = T - 273.15f;
+#if DEGREE_UNITS == FAHRENHEIT
+    Temperature = (T * (9.0f / 5.0f)) + 32.0f;
+    // Sanity - anything less than 0F or greater than 1000F is rejected
+    if (Temperature < 0.0f || Temperature >= 1000.0f)
+#else
+    if (Temperature <= -20.0f || Temperature > 500.0f)
+#endif  /* DEGREE_UNITS */
       Temperature = NAN;
     
     if (!isnan(Temperature))
