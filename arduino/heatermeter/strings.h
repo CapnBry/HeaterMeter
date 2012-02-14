@@ -23,7 +23,7 @@
 #endif
 
 const char LCD_LINE1_UNPLUGGED[] PROGMEM = "- No Pit Probe -";
-const char HM_VERSION[] PROGMEM = "201202070";
+const char HM_VERSION[] PROGMEM = "201202140";
 
 inline void Serial_char(char c) { Serial.write(c); }
 inline void Serial_nl(void) { Serial_char('\n'); }
