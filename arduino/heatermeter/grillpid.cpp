@@ -168,7 +168,7 @@ void TempProbe::calcTemp(void)
   
     Temperature = T - 273.15f;
 #if DEGREE_UNITS == FAHRENHEIT
-    Temperature = (T * (9.0f / 5.0f)) + 32.0f;
+    Temperature = (Temperature * (9.0f / 5.0f)) + 32.0f;
     // Sanity - anything less than 0F or greater than 1000F is rejected
     if (Temperature < 0.0f || Temperature >= 1000.0f)
 #else
