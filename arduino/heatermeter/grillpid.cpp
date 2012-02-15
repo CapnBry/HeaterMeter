@@ -273,7 +273,7 @@ void GrillPid::resetLidOpenResumeCountdown(void)
 void GrillPid::setSetPoint(int value)
 {
   _setPoint = value;
-  _pitTemperatureReached = false;
+  resetLidOpenResumeCountdown(); // resets _pitTemperatureReached too
   _manualFanMode = false;
   _pidErrorSum = 0;
 }
