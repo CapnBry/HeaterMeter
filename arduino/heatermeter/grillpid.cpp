@@ -139,12 +139,7 @@ void TempProbe::calcTemp(void)
     unsigned int ADCval = _accumulator / _accumulatedCount;
     _accumulatedCount = 0;
   
-    if (ADCval == 0)  // Vout >= MAX is reduced in readTemp()
-    {
-      Temperature = NAN;
-      return;
-    }
-    else
+    if (ADCval != 0)  // Vout >= MAX is reduced in readTemp()
     {
       float R, T;
       // If you put the fixed resistor on the Vcc side of the thermistor, use the following
@@ -156,15 +151,14 @@ void TempProbe::calcTemp(void)
       T = 1.0f / ((Steinhart[2] * R * R + Steinhart[1]) * R + Steinhart[0]);
 
       Temperature = T - 273.15f;
-      if (pid.getUnits() == 'F')
-      {
-        Temperature = (Temperature * (9.0f / 5.0f)) + 32.0f;
-        // Sanity - anything less than 0F or greater than 1000F is rejected
-        if (Temperature < 0.0f || Temperature >= 1000.0f)
-          Temperature = NAN;
-      } else if (Temperature <= -20.0f || Temperature > 500.0f)  // C
+      // Sanity - anything less than -20C (-4F) or greater than 500C (932F) is rejected
+      if (Temperature <= -20.0f || Temperature > 500.0f)
         Temperature = NAN;
+      else if (pid.getUnits() == 'F')
+        Temperature = (Temperature * (9.0f / 5.0f)) + 32.0f;
     } /* if ADCval */
+    else
+      Temperature = NAN;
   } /* if accumulatedcount */
 
   if (hasTemperature())
