@@ -994,6 +994,10 @@ inline void newTempsAvail(void)
     
   if ((pidCycleCount % 0x10) == 0)
     outputRfStatus();
+#ifdef PID_DEBUG
+  if ((pidCycleCount % 2) == 0)
+    pid.pidStatus();
+#endif
 
   outputCsv();
 }

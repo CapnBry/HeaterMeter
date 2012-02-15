@@ -186,6 +186,7 @@ public:
   boolean doWork(void);
   void resetLidOpenResumeCountdown(void);
   void status(void) const;
+  void pidStatus(void) const;
 };
 
 #endif /* __GRILLPID_H__ */
