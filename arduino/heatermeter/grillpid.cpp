@@ -134,45 +134,45 @@ void TempProbe::readTemp(void)
 void TempProbe::calcTemp(void)
 {
   const float ADCmax = (1 << (10+TEMP_OVERSAMPLE_BITS)) - 1;
-  if (_accumulatedCount == 0)
-    return; 
-    
-  unsigned int ADCval = _accumulator / _accumulatedCount;
-  _accumulatedCount = 0;
-  
-  if (ADCval == 0)  // Vout >= MAX is reduced in readTemp()
+  if (_accumulatedCount != 0)
   {
-    Temperature = NAN;
-    return;
-  }
-  else 
-  {
-    float R, T;
-    // If you put the fixed resistor on the Vcc side of the thermistor, use the following
-    R = log(Steinhart[3] / ((ADCmax / (float)ADCval) - 1.0f));
-    // If you put the thermistor on the Vcc side of the fixed resistor use the following
-    //R = log(Steinhart[3] * ADCmax / (float)Vout - Steinhart[3]);
+    unsigned int ADCval = _accumulator / _accumulatedCount;
+    _accumulatedCount = 0;
   
-    // Compute degrees K  
-    T = 1.0f / ((Steinhart[2] * R * R + Steinhart[1]) * R + Steinhart[0]);
-  
-    Temperature = T - 273.15f;
-    if (pid.getUnits() == 'F')
+    if (ADCval == 0)  // Vout >= MAX is reduced in readTemp()
     {
-      Temperature = (Temperature * (9.0f / 5.0f)) + 32.0f;
-      // Sanity - anything less than 0F or greater than 1000F is rejected
-      if (Temperature < 0.0f || Temperature >= 1000.0f)
-        Temperature = NAN;
-    } else if (Temperature <= -20.0f || Temperature > 500.0f)  // C
       Temperature = NAN;
-    
-    if (hasTemperature())
-    {
-      Temperature += Offset;
-      calcExpMovingAverage(TEMPPROBE_AVG_SMOOTH, &TemperatureAvg, Temperature);
-      Alarms.updateStatus(Temperature);
+      return;
     }
-  } 
+    else
+    {
+      float R, T;
+      // If you put the fixed resistor on the Vcc side of the thermistor, use the following
+      R = log(Steinhart[3] / ((ADCmax / (float)ADCval) - 1.0f));
+      // If you put the thermistor on the Vcc side of the fixed resistor use the following
+      //R = log(Steinhart[3] * ADCmax / (float)Vout - Steinhart[3]);
+
+      // Compute degrees K
+      T = 1.0f / ((Steinhart[2] * R * R + Steinhart[1]) * R + Steinhart[0]);
+
+      Temperature = T - 273.15f;
+      if (pid.getUnits() == 'F')
+      {
+        Temperature = (Temperature * (9.0f / 5.0f)) + 32.0f;
+        // Sanity - anything less than 0F or greater than 1000F is rejected
+        if (Temperature < 0.0f || Temperature >= 1000.0f)
+          Temperature = NAN;
+      } else if (Temperature <= -20.0f || Temperature > 500.0f)  // C
+        Temperature = NAN;
+    } /* if ADCval */
+  } /* if accumulatedcount */
+
+  if (hasTemperature())
+  {
+    Temperature += Offset;
+    calcExpMovingAverage(TEMPPROBE_AVG_SMOOTH, &TemperatureAvg, Temperature);
+    Alarms.updateStatus(Temperature);
+  }
 }
 
 GrillPid::GrillPid(const unsigned char blowerPin) :
