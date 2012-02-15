@@ -383,11 +383,11 @@ boolean GrillPid::doWork(void)
 void GrillPid::pidStatus(void) const
 {
   print_P(PSTR("$HMPS"CSV_DELIMITER));
-  Serial.print(_pidErrorSum, 2);
-  Serial_csv();
   Serial.print(MaxFanSpeed, DEC);
   Serial_csv();
-  Serial.print(Probes[TEMP_PIT]->TemperatureAvg - Probes[TEMP_PIT]->Temperature, 2);
+  Serial.print(_pidErrorSum, 2);
+  Serial_csv();
+  Serial.print(Probes[TEMP_PIT]->Temperature - Probes[TEMP_PIT]->TemperatureAvg, 2);
   Serial_nl();
 }
 
