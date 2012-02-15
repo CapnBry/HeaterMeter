@@ -110,10 +110,10 @@ public:
   /* Runtime Data/Methods */
   // Last averaged temperature reading
   float Temperature;
-  boolean hasTemperature(void) const;
+  boolean hasTemperature(void) const { return !isnan(Temperature); };
   // Temperature moving average 
   float TemperatureAvg;
-  boolean hasTemperatureAvg(void) const;
+  boolean hasTemperatureAvg(void) const { return !isnan(TemperatureAvg); };
   // Do the duty of reading ADC
   void readTemp(void);
   // Convert ADC to Temperature
@@ -142,8 +142,9 @@ private:
   unsigned char _longPwmTmr;
   unsigned int _lidOpenDuration;
   float _pidErrorSum;
+  char _units;
   
-  void calcFanSpeed(TempProbe *controlProbe);
+  void calcFanSpeed(void);
   void commitFanSpeed(void);
 public:
   GrillPid(const unsigned char blowerPin);
@@ -153,6 +154,8 @@ public:
   /* Configuration */
   int getSetPoint(void) const { return _setPoint; };
   void setSetPoint(int value); 
+  char getUnits(void) const { return _units; };
+  void setUnits(char units) { _units = units; };
   // The number of degrees the temperature drops before automatic lidopen mode
   unsigned char LidOpenOffset;
   // The ammount of time to turn off the blower when the lid is open 

@@ -243,7 +243,7 @@ void menuNumberEdit(button_t button, unsigned char increment,
     editInt -= increment;
 
   lcd.setCursor(0, 1);
-  snprintf_P(buffer, sizeof(buffer), format, editInt);
+  snprintf_P(buffer, sizeof(buffer), format, editInt, pid.getUnits());
   lcd.print(buffer);
 }
 
@@ -347,7 +347,7 @@ state_t menuSetpoint(button_t button)
       storeSetPoint(editInt);
   }
 
-  menuNumberEdit(button, 5, PSTR("%3d"DEGREE));
+  menuNumberEdit(button, 5, PSTR("%3d"DEGREE"%c"));
   return ST_AUTO;
 }
 
@@ -385,7 +385,7 @@ state_t menuProbeOffset(button_t button)
   else if (button == BUTTON_LEAVE)
     storeProbeOffset(probeIndex, editInt);
 
-  menuNumberEdit(button, 1, PSTR("Offset %4d"DEGREE));
+  menuNumberEdit(button, 1, PSTR("Offset %4d"DEGREE"%c"));
   return ST_AUTO;
 }
 
@@ -529,7 +529,7 @@ state_t menuProbeAlarmVal(button_t button)
     editInt = (highOrLow == ST_PALARM0_H_VAL) ? alarm.getHigh() : alarm.getLow();
   }
   
-  menuNumberEdit(button, 5, (highOrLow == ST_PALARM0_H_VAL) ? PSTR("High Alrm %4d"DEGREE) : PSTR("Low Alrm %5d"DEGREE));
+  menuNumberEdit(button, 5, (highOrLow == ST_PALARM0_H_VAL) ? PSTR("High Alrm %4d"DEGREE"%c") : PSTR("Low Alrm %5d"DEGREE"%c"));
   return ST_AUTO;
 }
 

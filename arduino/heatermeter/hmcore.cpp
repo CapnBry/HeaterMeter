@@ -60,6 +60,7 @@ const struct __eeprom_data {
 #ifdef HEATERMETER_RFM12
   rf12_map_item_t rfMap[TEMP_COUNT];
 #endif
+  char pidUnits;
 } DEFAULT_CONFIG PROGMEM = { 
   EEPROM_MAGIC,  // magic
   225,  // setpoint
@@ -72,6 +73,7 @@ const struct __eeprom_data {
 #ifdef HEATERMETER_RFM12
   {{ RFSOURCEID_NONE, 0 }, { RFSOURCEID_NONE, 0 }, { RFSOURCEID_NONE, 0 }, { RFSOURCEID_NONE, 0 }},  // rfMap
 #endif
+  'F',
 };
 
 // EEPROM address of the start of the probe structs, the 2 bytes before are magic
@@ -153,6 +155,15 @@ void storeSetPoint(int sp)
   }
 
   config_store_byte(manualMode, isManualMode);
+}
+
+void storePidUnits(char units)
+{
+  if (units == 'F' || units == 'C')
+  {
+    pid.setUnits(units);
+    config_store_byte(pidUnits, units);
+  }
 }
 
 void storeProbeOffset(unsigned char probeIndex, int offset)
@@ -276,7 +287,8 @@ void updateDisplay(void)
   if (!pid.getManualFanMode() && pitTemp == 0)
     memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
   else if (pid.LidOpenResumeCountdown > 0)
-    snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE" Lid%3u"), pitTemp, pid.LidOpenResumeCountdown);
+    snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE"%c Lid%3u"),
+      pitTemp, pid.getUnits(), pid.LidOpenResumeCountdown);
   else
   {
     char c1,c2;
@@ -290,7 +302,8 @@ void updateDisplay(void)
       c1 = '[';
       c2 = ']';
     }
-    snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE" %c%3u%%%c"), pitTemp, c1, pid.getFanSpeed(), c2);
+    snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE"%c %c%3u%%%c"),
+      pitTemp, pid.getUnits(), c1, pid.getFanSpeed(), c2);
   }
   lcd.print(buffer); 
 
@@ -299,7 +312,7 @@ void updateDisplay(void)
   if (probeIndex < TEMP_COUNT)
   {
     loadProbeName(probeIndex);
-    snprintf_P(buffer, sizeof(buffer), PSTR("%-12s%3d"DEGREE_SYMBOL), editString, (int)pid.Probes[probeIndex]->Temperature);
+    snprintf_P(buffer, sizeof(buffer), PSTR("%-12s%3d"DEGREE), editString, (int)pid.Probes[probeIndex]->Temperature);
   }
   else
   {
@@ -563,6 +576,7 @@ boolean handleCommandUrl(char *URL)
   if (strncmp_P(URL, PSTR("set?sp="), 7) == 0) 
   {
     storeSetPoint(atoi(URL + 7));
+    storePidUnits(URL[urlLen-1]);
     return true;
   }
   if (strncmp_P(URL, PSTR("set?lb="), 7) == 0) 
@@ -889,6 +903,7 @@ void eepromLoadBaseConfig(boolean forceDefault)
     pid.setFanSpeed(0);
   pid.MaxFanSpeed = config.maxFanSpeed;
   setLcdBacklight(config.lcdBacklight);
+  pid.setUnits(config.pidUnits == 'C' ? 'C' : 'F');
   
 #ifdef HEATERMETER_RFM12
   memcpy(rfMap, config.rfMap, sizeof(rfMap));

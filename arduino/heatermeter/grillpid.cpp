@@ -2,7 +2,7 @@
 #include <math.h>
 #include <string.h>
 
-#include "grillpid.h"
+#include "hmcore.h"
 #include "strings.h"
 
 // The time (ms) of the measurement period
@@ -100,16 +100,6 @@ void TempProbe::setProbeType(unsigned char probeType)
   TemperatureAvg = NAN;
 }
 
-boolean TempProbe::hasTemperature(void) const
-{
-  return !isnan(Temperature);
-}
-
-boolean TempProbe::hasTemperatureAvg(void) const
-{
-  return !isnan(TemperatureAvg);
-}
-
 void TempProbe::addAdcValue(unsigned int analog_temp)
 {
   if (analog_temp == 0) // >= MAX is reduced in readTemp()
@@ -167,16 +157,16 @@ void TempProbe::calcTemp(void)
     T = 1.0f / ((Steinhart[2] * R * R + Steinhart[1]) * R + Steinhart[0]);
   
     Temperature = T - 273.15f;
-#if DEGREE_UNITS == FAHRENHEIT
-    Temperature = (Temperature * (9.0f / 5.0f)) + 32.0f;
-    // Sanity - anything less than 0F or greater than 1000F is rejected
-    if (Temperature < 0.0f || Temperature >= 1000.0f)
-#else
-    if (Temperature <= -20.0f || Temperature > 500.0f)
-#endif  /* DEGREE_UNITS */
+    if (pid.getUnits() == 'F')
+    {
+      Temperature = (Temperature * (9.0f / 5.0f)) + 32.0f;
+      // Sanity - anything less than 0F or greater than 1000F is rejected
+      if (Temperature < 0.0f || Temperature >= 1000.0f)
+        Temperature = NAN;
+    } else if (Temperature <= -20.0f || Temperature > 500.0f)  // C
       Temperature = NAN;
     
-    if (!isnan(Temperature))
+    if (hasTemperature())
     {
       Temperature += Offset;
       calcExpMovingAverage(TEMPPROBE_AVG_SMOOTH, &TemperatureAvg, Temperature);
@@ -186,7 +176,7 @@ void TempProbe::calcTemp(void)
 }
 
 GrillPid::GrillPid(const unsigned char blowerPin) :
-    _blowerPin(blowerPin), _periodCounter(0x80), FanSpeedAvg(NAN)
+    _blowerPin(blowerPin), _periodCounter(0x80), _units('F'), FanSpeedAvg(NAN)
 {
 }
 
@@ -200,16 +190,16 @@ unsigned int GrillPid::countOfType(unsigned char probeType) const
 }
 
 /* Calucluate the desired fan speed using the proportional–integral-derivative (PID) controller algorithm */
-inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
+inline void GrillPid::calcFanSpeed(void)
 {
   unsigned char lastFanSpeed = _fanSpeed;
   _fanSpeed = 0;
 
   // If the pit probe is registering 0 degrees, don't jack the fan up to MAX
-  if (!controlProbe->hasTemperature())
+  if (!Probes[TEMP_PIT]->hasTemperature())
     return;
 
-  float currentTemp = controlProbe->Temperature;
+  float currentTemp = Probes[TEMP_PIT]->Temperature;
   // If we're in lid open mode, fan should be off
   if (LidOpenResumeCountdown != 0)
     return;
@@ -227,7 +217,7 @@ inline void GrillPid::calcFanSpeed(TempProbe *controlProbe)
   // P = fan speed percent per degree of error
   // I = fan speed percent per degree of accumulated error
   // D = fan speed percent per degree of change over TEMPPROBE_AVG_SMOOTH period
-  float averageTemp = controlProbe->TemperatureAvg;
+  float averageTemp = Probes[TEMP_PIT]->TemperatureAvg;
   int control 
     = Pid[PIDB] + Pid[PIDP] * error + _pidErrorSum + (Pid[PIDD] * (averageTemp - currentTemp));
   
@@ -359,10 +349,9 @@ boolean GrillPid::doWork(void)
   {
     // Always calculate the fan speed
     // calFanSpeed() will bail if it isn't supposed to be in control
-    TempProbe *probePit = Probes[TEMP_PIT];
-    calcFanSpeed(probePit);
+    calcFanSpeed();
     
-    int pitTemp = (int)probePit->Temperature;
+    int pitTemp = (int)Probes[TEMP_PIT]->Temperature;
     if ((pitTemp >= _setPoint) &&
       (_lidOpenDuration - LidOpenResumeCountdown > LIDOPEN_MIN_AUTORESUME))
     {

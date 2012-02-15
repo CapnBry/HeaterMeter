@@ -10,17 +10,7 @@
 
 #define CSV_DELIMITER ","
 
-#define DEGREE_SYMBOL "\xdf" // \xdf is the degree symbol on the Hitachi HD44780
-
-#define FAHRENHEIT 0
-#define CELSIUS    1
-#define DEGREE_UNITS FAHRENHEIT
-
-#if DEGREE_UNITS == FAHRENHEIT
-#define DEGREE DEGREE_SYMBOL "F"
-#else
-#define DEGREE DEGREE_SYMBOL "C"
-#endif
+#define DEGREE "\xdf" // \xdf is the degree symbol on the Hitachi HD44780
 
 const char LCD_LINE1_UNPLUGGED[] PROGMEM = "- No Pit Probe -";
 const char HM_VERSION[] PROGMEM = "201202140";
