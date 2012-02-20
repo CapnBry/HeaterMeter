@@ -143,11 +143,19 @@ void TempProbe::calcTemp(void)
     {
       float R, T;
       // If you put the fixed resistor on the Vcc side of the thermistor, use the following
-      R = log(Steinhart[3] / ((ADCmax / (float)ADCval) - 1.0f));
+      R = Steinhart[3] / ((ADCmax / (float)ADCval) - 1.0f);
       // If you put the thermistor on the Vcc side of the fixed resistor use the following
-      //R = log(Steinhart[3] * ADCmax / (float)Vout - Steinhart[3]);
+      //R = Steinhart[3] * ADCmax / (float)Vout - Steinhart[3];
+
+      // Units 'R' = resistance, unless this is the pit probe (which should spit out Celsius)
+      if (pid.getUnits() == 'R' && this != pid.Probes[TEMP_PIT])
+      {
+        Temperature = R;
+        return;
+      };
 
       // Compute degrees K
+      R = log(R);
       T = 1.0f / ((Steinhart[2] * R * R + Steinhart[1]) * R + Steinhart[0]);
 
       Temperature = T - 273.15f;

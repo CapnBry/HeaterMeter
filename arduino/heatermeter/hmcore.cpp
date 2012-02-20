@@ -159,10 +159,11 @@ void storeSetPoint(int sp)
 
 void storePidUnits(char units)
 {
-  if (units == 'F' || units == 'C')
+  if (units)
   {
     pid.setUnits(units);
-    config_store_byte(pidUnits, units);
+    if (units == 'C' || units == 'F')
+      config_store_byte(pidUnits, units);
   }
 }
 
