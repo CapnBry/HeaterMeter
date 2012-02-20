@@ -9,7 +9,7 @@ local lucid = require "luci.lucid"
 
 local pairs, ipairs, table, pcall, type = pairs, ipairs, table, pcall, type
 local tonumber, tostring, print, next = tonumber, tostring, print, next
-local collectgarbage = collectgarbage
+local collectgarbage, math = collectgarbage, math
 
 module "luci.lucid.linkmeterd"
 
@@ -19,6 +19,7 @@ local lastHmUpdate
 local rfMap = {}
 local rfStatus = {}
 local hmConfig = {}
+local unkProbe
 
 -- forwards
 local segmentCall, broadcastStatus, stsLmStateUpdate
@@ -187,10 +188,18 @@ local function segUcIdentifier(line)
   end
 end
 
+local function setStateUpdateUnk(vals)
+  local t = math.floor(vals[2] * 10)
+  local r = math.floor(vals[3])
+  unkProbe[t] = r
+end
+
 function segStateUpdate(line)
     local vals = segSplit(line)
 
     if #vals == 8 then
+      if unkProbe then return setStateUpdateUnk(vals) end
+      
       -- If the time has shifted more than 24 hours since the last update
       -- the clock has probably just been set from 0 (at boot) to actual
       -- time. Recreate the rrd to prevent a 40 year long graph
@@ -374,6 +383,26 @@ local function segLmConfig()
   return "{" .. table.concat(r, ',') .. "}"
 end
 
+local function segLmUnknownProbe(line)
+  local vals = segSplit(line) 
+   if #vals > 0 and vals[1] ~= "0" then
+     unkProbe = {}
+     if serialPolle then serialPolle.fd:write("/set?sp=0R\n") end
+     return "OK"
+   elseif unkProbe then
+     local r = { "C,R" }
+     table.sort(unkProbe);
+     for k,v in pairs(unkProbe) do
+       r[#r+1] = ("%.1f,%d"):format(k/10,v)
+     end
+     unkProbe = nil
+     if serialPolle then serialPolle.fd:write("/reboot\n") end
+     return table.concat(r, '\n')
+   else
+     return "ERR"
+   end
+end
+
 function broadcastStatus(fn)
   local o
   local i = 1
@@ -412,7 +441,8 @@ local segmentMap = {
   ["$LMRF"] = segLmRfStatus,
   ["$LMDC"] = segLmDaemonControl,
   ["$LMID"] = segLmIdentifier,
-  ["$LMCF"] = segLmConfig
+  ["$LMCF"] = segLmConfig,
+  ["$LMUP"] = segLmUnknownProbe
   -- $LMSS
 }
 
