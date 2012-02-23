@@ -38,7 +38,7 @@ static boolean g_NetworkInitialized;
 static char g_SerialBuff[64]; 
 #endif /* HEATERMETER_SERIAL */
 #ifdef HEATERMETER_RFM12
-void rfSourceNotify(RFSource &r, RFManager::event e); // prototype
+static void rfSourceNotify(RFSource &r, RFManager::event e); // prototype
 static RFManager rfmanager(rfSourceNotify);
 static rf12_map_item_t rfMap[TEMP_COUNT];
 #endif /* HEATERMETER_RFM12 */
@@ -48,7 +48,7 @@ static rf12_map_item_t rfMap[TEMP_COUNT];
 
 #define EEPROM_MAGIC 0xf00d
 
-const struct __eeprom_data {
+static const struct __eeprom_data {
   unsigned int magic;
   int setPoint;
   unsigned char lidOpenOffset;
@@ -79,7 +79,7 @@ const struct __eeprom_data {
 // EEPROM address of the start of the probe structs, the 2 bytes before are magic
 #define EEPROM_PROBE_START  64
 
-const struct  __eeprom_probe DEFAULT_PROBE_CONFIG PROGMEM = {
+static const struct  __eeprom_probe DEFAULT_PROBE_CONFIG PROGMEM = {
   "Probe", // Name
   PROBETYPE_INTERNAL,  // probeType
   0,  // offset
@@ -98,19 +98,19 @@ const struct  __eeprom_probe DEFAULT_PROBE_CONFIG PROGMEM = {
 
 #ifdef PIEZO_HZ
 // A simple beep-beep-beep-(pause) alarm
-unsigned char tone_durs[] PROGMEM = { 10, 5, 10, 5, 10, 50 };  // in 10ms units
+static unsigned char tone_durs[] PROGMEM = { 10, 5, 10, 5, 10, 50 };  // in 10ms units
 #define tone_cnt (sizeof(tone_durs)/sizeof(tone_durs[0]))
-unsigned char tone_idx;
-unsigned long tone_last;
+static unsigned char tone_idx;
+static unsigned long tone_last;
 #endif /* PIZEO_HZ */
 
-inline void setLcdBacklight(unsigned char lcdBacklight)
+static void setLcdBacklight(unsigned char lcdBacklight)
 {
   analogWrite(PIN_LCD_BACKLGHT, lcdBacklight);
 }
 
 // Note the storage loaders and savers expect the entire config storage is less than 256 bytes
-unsigned char getProbeConfigOffset(unsigned char probeIndex, unsigned char off)
+static unsigned char getProbeConfigOffset(unsigned char probeIndex, unsigned char off)
 {
   if (probeIndex >= TEMP_COUNT)
     return 0;
@@ -157,7 +157,7 @@ void storeSetPoint(int sp)
   config_store_byte(manualMode, isManualMode);
 }
 
-void storePidUnits(char units)
+static void storePidUnits(char units)
 {
   if (units)
   {
@@ -177,7 +177,7 @@ void storeProbeOffset(unsigned char probeIndex, int offset)
   }  
 }
 
-void storeProbeType(unsigned char probeIndex, unsigned char probeType)
+static void storeProbeType(unsigned char probeIndex, unsigned char probeType)
 {
   unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, probeType));
   if (ofs != 0)
@@ -188,7 +188,7 @@ void storeProbeType(unsigned char probeIndex, unsigned char probeType)
 }
 
 #ifdef HEATERMETER_RFM12
-void reportRfMap(void)
+static void reportRfMap(void)
 {
   print_P(PSTR("$HMRM"));
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
@@ -203,13 +203,13 @@ void reportRfMap(void)
   Serial_nl();
 }
 
-void checkInitRfManager(void)
+static void checkInitRfManager(void)
 {
   if (pid.countOfType(PROBETYPE_RF12) != 0)
     rfmanager.init(HEATERMETER_RFM12);
 }
 
-void storeRfMap(unsigned char probeIndex, unsigned char source, unsigned char sourcePin)
+static void storeRfMap(unsigned char probeIndex, unsigned char source, unsigned char sourcePin)
 {
   rfMap[probeIndex].source = source;
   rfMap[probeIndex].pin = sourcePin;
@@ -223,7 +223,7 @@ void storeRfMap(unsigned char probeIndex, unsigned char source, unsigned char so
 }
 #endif /* HEATERMETER_RFM12 */
 
-inline void storeProbeTypeOrMap(unsigned char probeIndex, char *vals)
+static void storeProbeTypeOrMap(unsigned char probeIndex, char *vals)
 {
   // The last value can either be an integer, which indicates that it is a probetype
   // Or it is an RF map description indicating it is of type PROBETYPE_RF12 and
@@ -334,7 +334,7 @@ void lcdprint_P(const prog_char *p, const boolean doClear)
   while (unsigned char c = pgm_read_byte(p++)) lcd.write(c);
 }
 
-void storePidParam(char which, float value)
+static void storePidParam(char which, float value)
 {
   unsigned char k;
   switch (which)
@@ -352,7 +352,7 @@ void storePidParam(char which, float value)
   eeprom_write_block(&pid.Pid[k], (void *)(ofs + k * sizeof(float)), sizeof(value));
 }
 
-inline void outputCsv(void)
+static void outputCsv(void)
 {
 #ifdef HEATERMETER_SERIAL
   print_P(PSTR("$HMSU" CSV_DELIMITER));
@@ -362,7 +362,7 @@ inline void outputCsv(void)
 }
 
 #if defined(HEATERMETER_NETWORKING) || defined(HEATERMETER_SERIAL)
-void printSciFloat(float f)
+static void printSciFloat(float f)
 {
   // This function could use a rework, it is pretty expensive
   // in terms of space and speed. 
@@ -387,7 +387,7 @@ void printSciFloat(float f)
   Serial.print(exponent, DEC);
 }
 
-void reportProbeCoeff(unsigned char probeIdx)
+static void reportProbeCoeff(unsigned char probeIdx)
 {
   print_P(PSTR("$HMPC" CSV_DELIMITER));
   Serial.print(probeIdx, DEC);
@@ -403,7 +403,7 @@ void reportProbeCoeff(unsigned char probeIdx)
   Serial_nl();
 }
 
-void storeProbeCoeff(unsigned char probeIndex, char *vals)
+static void storeProbeCoeff(unsigned char probeIndex, char *vals)
 {
   // vals is SteinA(float),SteinB(float),SteinC(float),RKnown(float),probeType+1(int)|probeMap(char+int)
   // If any value is blank, it won't be modified
@@ -436,14 +436,14 @@ void storeProbeCoeff(unsigned char probeIndex, char *vals)
   reportProbeCoeff(probeIndex);
 }
 
-inline void reboot(void)
+static void reboot(void)
 {
   // Once the pin goes low, the avr should reboot
   digitalWrite(PIN_SOFTRESET, LOW);
   while (1) { };
 }
 
-void reportProbeNames(void)
+static void reportProbeNames(void)
 {
   print_P(PSTR("$HMPN"));
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
@@ -455,7 +455,7 @@ void reportProbeNames(void)
   Serial_nl();
 }
 
-void reportPidParams(void)
+static void reportPidParams(void)
 {
   print_P(PSTR("$HMPD"));
   for (unsigned char i=0; i<4; ++i)
@@ -467,7 +467,7 @@ void reportPidParams(void)
   Serial_nl();
 }
 
-void reportProbeOffsets(void)
+static void reportProbeOffsets(void)
 {
   print_P(PSTR("$HMPO"));
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
@@ -478,7 +478,7 @@ void reportProbeOffsets(void)
   Serial_nl();
 }
 
-void reportVersion(void)
+static void reportVersion(void)
 {
   print_P(PSTR("$UCID" CSV_DELIMITER));
   print_P(PSTR("HeaterMeter" CSV_DELIMITER));
@@ -486,7 +486,7 @@ void reportVersion(void)
   Serial_nl();
 }
 
-void reportLidParameters(void)
+static void reportLidParameters(void)
 {
   print_P(PSTR("$HMLD" CSV_DELIMITER));
   Serial.print(pid.LidOpenOffset, DEC);
@@ -495,7 +495,7 @@ void reportLidParameters(void)
   Serial_nl();
 }
 
-void reportLcdBacklight(void)
+static void reportLcdBacklight(void)
 {
   print_P(PSTR("$HMLB" CSV_DELIMITER));
   // The backlight value isn't stored in SRAM so pull it from config
@@ -504,13 +504,13 @@ void reportLcdBacklight(void)
   Serial_nl();
 }
 
-void reportProbeCoeffs(void)
+static void reportProbeCoeffs(void)
 {
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
     reportProbeCoeff(i);
 }
 
-void reportConfig(void)
+static void reportConfig(void)
 {
   reportVersion();
   reportPidParams();
@@ -526,7 +526,7 @@ void reportConfig(void)
 
 typedef void (*csv_int_callback_t)(unsigned char idx, int val);
 
-void csvParseI(char *vals, csv_int_callback_t c)
+static void csvParseI(char *vals, csv_int_callback_t c)
 {
   unsigned char idx = 0;
   while (*vals)
@@ -571,7 +571,7 @@ void storeLidParam(unsigned char idx, int val)
 }
 
 /* handleCommandUrl returns true if it consumed the URL */
-boolean handleCommandUrl(char *URL)
+static boolean handleCommandUrl(char *URL)
 {
   unsigned char urlLen = strlen(URL);
   if (strncmp_P(URL, PSTR("set?sp="), 7) == 0) 
@@ -632,7 +632,7 @@ boolean handleCommandUrl(char *URL)
 }
 #endif /* defined(HEATERMETER_NETWORKING) || defined(HEATERMETER_SERIAL) */
 
-void outputRfStatus(void)
+static void outputRfStatus(void)
 {
 #if defined(HEATERMETER_SERIAL) && defined(HEATERMETER_RFM12)
   print_P(PSTR("$HMRF" CSV_DELIMITER)); 
@@ -645,7 +645,7 @@ void outputRfStatus(void)
 
 #ifdef DFLASH_SERVING 
 #define HTTP_HEADER_LENGTH 19 // "HTTP/1.0 200 OK\r\n\r\n"
-inline void sendFlashFile(const struct flash_file_t *file)
+static void sendFlashFile(const struct flash_file_t *file)
 {
   // Note we mess with the underlying UIP stack to prevent reading the entire
   // file each time from flash just to discard all but 300 bytes of it
@@ -679,7 +679,7 @@ inline void sendFlashFile(const struct flash_file_t *file)
 }
 #endif  /* DFLASH_SERVING */
 
-void outputJson(void)
+static void outputJson(void)
 {
   WiServer.print_P(PSTR("{\"temps\":["));
 
@@ -726,7 +726,7 @@ void outputJson(void)
     return c - 'a';
   return (undefined);
 */
-unsigned char hexdecode(unsigned char c)
+static unsigned char hexdecode(unsigned char c)
 {
   // Convert 'a'-'f' to lowercase and '0'-'9' to 0-9
   c &= 0xcf;
@@ -736,7 +736,7 @@ unsigned char hexdecode(unsigned char c)
 }
 
 /* In-place URL decoder */
-inline void urldecode(char *URL)
+static void urldecode(char *URL)
 {
   char *dest = URL;
   while (true)
@@ -769,7 +769,7 @@ inline void urldecode(char *URL)
   }
 }
 
-boolean sendPage(char* URL)
+static boolean sendPage(char* URL)
 {
   ++URL;  // WARNING: URL no longer has leading '/'
   urldecode(URL);
@@ -802,7 +802,7 @@ boolean sendPage(char* URL)
 #endif /* HEATERMETER_NETWORKING */
 
 #ifdef HEATERMETER_RFM12
-void rfSourceNotify(RFSource &r, RFManager::event e)
+static void rfSourceNotify(RFSource &r, RFManager::event e)
 {
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
     if ((pid.Probes[i]->getProbeType() == PROBETYPE_RF12) && (rfMap[i].source == r.getId()))
@@ -835,7 +835,7 @@ void rfSourceNotify(RFSource &r, RFManager::event e)
 }
 #endif /* HEATERMETER_RFM12 */
 
-void toneEnable(boolean enable)
+static void toneEnable(boolean enable)
 {
 #ifdef PIEZO_HZ
   if (enable)
@@ -853,7 +853,7 @@ void toneEnable(boolean enable)
 #endif /* PIEZO_HZ */
 }
 
-void tone_doWork(void)
+static void tone_doWork(void)
 {
 #ifdef PIEZO_HZ
   if (tone_idx == 0xff)
@@ -873,7 +873,7 @@ void tone_doWork(void)
 #endif /* PIEZO_HZ */
 }
 
-void checkAlarms(void)
+static void checkAlarms(void)
 {
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
     if (pid.Probes[i]->Alarms.getActionNeeded())
@@ -885,7 +885,7 @@ void checkAlarms(void)
   toneEnable(false);
 }
 
-void eepromLoadBaseConfig(boolean forceDefault)
+static void eepromLoadBaseConfig(boolean forceDefault)
 {
   struct __eeprom_data config;
   eeprom_read_block(&config, 0, sizeof(config));
@@ -911,7 +911,7 @@ void eepromLoadBaseConfig(boolean forceDefault)
 #endif
 }
 
-void eepromLoadProbeConfig(boolean forceDefault)
+static void eepromLoadProbeConfig(boolean forceDefault)
 {
   unsigned int magic;
   // instead of this use below because we don't have eeprom_read_word linked yet
@@ -949,7 +949,7 @@ void eepromLoadConfig(boolean forceDefault)
   eepromLoadProbeConfig(forceDefault);
 }
 
-void blinkLed(void)
+static void blinkLed(void)
 {
 #ifndef HEATERMETER_NETWORKING  
   pinMode(PIN_WIRELESS_LED, OUTPUT);
@@ -961,7 +961,7 @@ void blinkLed(void)
 }
 
 #ifdef HEATERMETER_SERIAL
-inline void serial_doWork(void)
+static void serial_doWork(void)
 {
   unsigned char len = strlen(g_SerialBuff);
   while (Serial.available())
@@ -985,7 +985,7 @@ inline void serial_doWork(void)
 }
 #endif  /* HEATERMETER_SERIAL */
 
-inline void newTempsAvail(void)
+static void newTempsAvail(void)
 {
   static unsigned char pidCycleCount;
 
@@ -1003,7 +1003,7 @@ inline void newTempsAvail(void)
   outputCsv();
 }
 
-inline void dflashInit(void)
+static void dflashInit(void)
 {
 #ifdef DFLASH_SERVING
   // Set the WiFi Slave Select to HIGH (disable) to

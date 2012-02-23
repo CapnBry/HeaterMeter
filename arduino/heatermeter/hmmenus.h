@@ -51,25 +51,6 @@
 #define ST_PALARM3_L_VAL (ST_VMAX+38)
 #define ST_NETWORK_INFO  (ST_VMAX+39)
 
-void menuBooleanEdit(button_t button);
-void menuNumberEdit(button_t button, unsigned char increment, const prog_char *format);
-state_t menuStringEdit(button_t button, const char *line1, unsigned char maxLength);
-
-button_t readButton(void);
-
-state_t menuHome(button_t button);
-state_t menuSetpoint(button_t button);
-state_t menuProbename(button_t button);
-state_t menuProbeOffset(button_t button);
-state_t menuProbeSubmenu(button_t button);
-state_t menuLidOpenOff(button_t button);
-state_t menuLidOpenDur(button_t button);
-state_t menuManualMode(button_t button);
-state_t menuResetConfig(button_t button);
-state_t menuMaxFanSpeed(button_t button);
-state_t menuProbeAlarmOn(button_t button);
-state_t menuProbeAlarmVal(button_t button);
-
 extern MenuSystem Menus;
 extern int editInt;  
 extern char editString[];
