@@ -51,28 +51,42 @@
 #define SPI_LCD_RS 0x04
 #define SPI_LCD_E  0x08
 
-// To use ShiftRegisterLCD using SPI, define this
-//#define SHIFTREGLCD_SPI
-// This uses the SPI bus as the shift register's data and clock, and using a 
-// 75HC595 latched shift register instead
-// QA - N/C
-// QB - N/C
-// QC - RS
-// QD - E
-// QE - D4
-// QF - D5
-// QG - D6
-// QH - D7
-
-class ShiftRegLCD : public Print {
+class ShiftRegLCDWriter
+{
 public:
-#ifdef SHIFTREGLCD_SPI
-  ShiftRegLCD(uint8_t srlatch, uint8_t lines);
-#else
-  ShiftRegLCD(uint8_t srdata, uint8_t srclockd, uint8_t enable);
-  ShiftRegLCD(uint8_t srdata, uint8_t srclockd, uint8_t enable, uint8_t lines);
-  ShiftRegLCD(uint8_t srdata, uint8_t srclockd, uint8_t enable, uint8_t lines, uint8_t font);
-#endif /* SHIFTREGLCD_SPI */
+  virtual void send(uint8_t value, uint8_t mode) const = 0;
+  virtual void send4bits(uint8_t value) const = 0;
+};
+
+class ShiftRegLCDNativeWriter : public ShiftRegLCDWriter
+{
+public:
+  ShiftRegLCDNativeWriter(uint8_t srdata, uint8_t srclock, uint8_t enable);
+  virtual void send(uint8_t value, uint8_t mode) const;
+  virtual void send4bits(uint8_t value) const;
+private:
+  uint8_t _srdata_pin;
+  uint8_t _srclock_pin;
+  uint8_t _enable_pin;
+  uint8_t _two_wire;
+};
+
+class ShiftRegLCDSPIWriter : public ShiftRegLCDWriter
+{
+public:
+  ShiftRegLCDSPIWriter(uint8_t srlatch);
+  virtual void send(uint8_t, uint8_t) const;
+  virtual void send4bits(uint8_t) const;
+private:
+  void spi_byte(uint8_t out) const;
+  void spi_lcd(uint8_t value) const;
+
+  uint8_t _srlatch_pinmask;
+  volatile uint8_t *_srlatch_portreg;
+};
+
+class ShiftRegLCDBase : public Print {
+public:
   void clear();
   void home();
 
@@ -95,31 +109,48 @@ public:
   void setCursor(uint8_t, uint8_t);
   size_t write(uint8_t);
   void command(uint8_t);
+protected:
+  ShiftRegLCDBase(ShiftRegLCDWriter const &writer, uint8_t lines, uint8_t font);
+  inline void send(uint8_t value, uint8_t mode) const { _writer.send(value, mode); };
+  inline void send4bits(uint8_t value) const { _writer.send4bits(value); };
 private:
-  void send(uint8_t, uint8_t);
-  void send4bits(uint8_t);
-
-#ifdef SHIFTREGLCD_SPI
-  void spi_byte(uint8_t out);
-  void spi_lcd(uint8_t value);
-  void init(uint8_t lines, uint8_t font);
-
-  uint8_t _srlatch_pinmask;
-  volatile uint8_t *_srlatch_portreg;
-#else
-  void init(uint8_t srdata, uint8_t srclock, uint8_t enable, uint8_t lines, uint8_t font);
-
-  uint8_t _srdata_pin;
-  uint8_t _srclock_pin;
-  uint8_t _enable_pin;
-  uint8_t _two_wire;
-#endif /* SHIFTREGLCD_SPI */
-
+  ShiftRegLCDWriter const &_writer;
   uint8_t _displayfunction;
   uint8_t _displaycontrol;
   uint8_t _displaymode;
   uint8_t _numlines;
-
 };
 
-#endif
+class ShiftRegLCDNative : public ShiftRegLCDBase
+{
+public:
+  ShiftRegLCDNative(uint8_t srdata, uint8_t srclock, uint8_t enable);
+  ShiftRegLCDNative(uint8_t srdata, uint8_t srclock, uint8_t enable, uint8_t lines);
+  ShiftRegLCDNative(uint8_t srdata, uint8_t srclock, uint8_t enable, uint8_t lines, uint8_t font);
+};
+
+// This uses the SPI bus as the shift register's data and clock, and using a
+// 75HC595 latched shift register instead
+// QA - N/C
+// QB - N/C
+// QC - RS
+// QD - E
+// QE - D4
+// QF - D5
+// QG - D6
+// QH - D7
+class ShiftRegLCDSPI : public ShiftRegLCDBase
+{
+public:
+  ShiftRegLCDSPI(uint8_t srlatch, uint8_t lines)
+    : ShiftRegLCDBase(ShiftRegLCDSPIWriter(srlatch), lines, 0)
+    {};
+};
+
+#ifdef SHIFTREGLCD_SPI
+#define ShiftRegLCD ShiftRegLCDSPI
+#else
+#define ShiftRegLCD ShiftRegLCDNative
+#endif /* SHIFTREGLCD_SPI */
+
+#endif /* ShiftRegLCD_h */

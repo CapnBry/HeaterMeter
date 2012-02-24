@@ -48,8 +48,69 @@
 #include <inttypes.h>
 #include "Arduino.h"
 
-#ifdef SHIFTREGLCD_SPI
-ShiftRegLCD::ShiftRegLCD(uint8_t srlatch, uint8_t lines)
+ShiftRegLCDNativeWriter::ShiftRegLCDNativeWriter(uint8_t srdata, uint8_t srclock, uint8_t enable)
+  : _srdata_pin(srdata), _srclock_pin(srclock), _enable_pin(enable)
+{
+  _two_wire = 0;
+  if (enable == TWO_WIRE)
+  {
+    _enable_pin = _srdata_pin;
+    _two_wire = 1;
+  }
+  pinMode(_srclock_pin, OUTPUT);
+  pinMode(_srdata_pin, OUTPUT);
+  pinMode(_enable_pin, OUTPUT);
+}
+
+void ShiftRegLCDNativeWriter::send(uint8_t value, uint8_t mode) const
+{
+  uint8_t val1, val2;
+  if ( _two_wire ) shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, 0x00 ); // clear shiftregister
+  digitalWrite( _enable_pin, LOW );
+  mode = mode ? SR_RS_BIT : 0; // RS bit; LOW: command.  HIGH: character.
+  val1 = mode | SR_EN_BIT | ((value >> 1) & 0x78); // upper nibble
+  val2 = mode | SR_EN_BIT | ((value << 3) & 0x78); // lower nibble
+  shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, val1 );
+  digitalWrite( _enable_pin, HIGH );
+  delayMicroseconds(1);                 // enable pulse must be >450ns
+  digitalWrite( _enable_pin, LOW );
+  if ( _two_wire ) shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, 0x00 ); // clear shiftregister
+  shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, val2 );
+  digitalWrite( _enable_pin, HIGH );
+  delayMicroseconds(1);                 // enable pulse must be >450ns
+  digitalWrite( _enable_pin, LOW );
+  delayMicroseconds(40);               // commands need > 37us to settle
+}
+
+void ShiftRegLCDNativeWriter::send4bits(uint8_t value) const
+{
+  uint8_t val1;
+  digitalWrite( _enable_pin, LOW );
+  if ( _two_wire ) shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, 0x00 ); // clear shiftregister
+  val1 = SR_EN_BIT | ((value >> 1) & 0x78);
+  shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, val1 );
+  digitalWrite( _enable_pin, HIGH );
+  delayMicroseconds(1);                 // enable pulse must be >450ns
+  digitalWrite( _enable_pin, LOW );
+  delayMicroseconds(40);               // commands need > 37us to settle
+}
+
+// Assuming 1 line 8 pixel high font
+ShiftRegLCDNative::ShiftRegLCDNative(uint8_t srdata, uint8_t srclock, uint8_t enable) 
+  : ShiftRegLCDBase(ShiftRegLCDNativeWriter(srdata, srclock, enable), 1, 0)
+{ }
+
+// Set nr. of lines, assume 8 pixel high font
+ShiftRegLCDNative::ShiftRegLCDNative(uint8_t srdata, uint8_t srclock, uint8_t enable, uint8_t lines) 
+  : ShiftRegLCDBase(ShiftRegLCDNativeWriter(srdata, srclock, enable), lines, 0)
+{ }
+
+// Set nr. of lines and font
+ShiftRegLCDNative::ShiftRegLCDNative(uint8_t srdata, uint8_t srclock, uint8_t enable, uint8_t lines, uint8_t font)
+  : ShiftRegLCDBase(ShiftRegLCDNativeWriter(srdata, srclock, enable), lines, font)
+{ }
+
+ShiftRegLCDSPIWriter::ShiftRegLCDSPIWriter(uint8_t srlatch)
 {
   pinMode(MOSI, OUTPUT); // Shift Register (Serial Input) Data
   pinMode(SCK, OUTPUT);  // Shift Register Clock
@@ -74,11 +135,12 @@ ShiftRegLCD::ShiftRegLCD(uint8_t srlatch, uint8_t lines)
   _srlatch_portreg = portOutputRegister(digitalPinToPort(srlatch));
   pinMode(srlatch, OUTPUT);
 
-  init(lines, 0);
+  // The enable line may have been left high by something so we need to clear it
+  spi_byte(0);
 }
 
 // Write a byte out SPI and toggle the Storage Register Clock
-void ShiftRegLCD::spi_byte(uint8_t out)
+void ShiftRegLCDSPIWriter::spi_byte(uint8_t out) const
 {
   // disable interrupts during the transfer
   unsigned char sreg = SREG;
@@ -97,7 +159,7 @@ void ShiftRegLCD::spi_byte(uint8_t out)
   SREG = sreg;
 }
 
-void ShiftRegLCD::spi_lcd(uint8_t value)
+void ShiftRegLCDSPIWriter::spi_lcd(uint8_t value) const
 {
   // The datasheet says that RS needs to be set-up 60ns before E goes
   // high but in my testing this caused the display to get wrecked
@@ -112,42 +174,28 @@ void ShiftRegLCD::spi_lcd(uint8_t value)
   spi_byte(value);
 }
 
-#else /* v !SHIFTREGLCD_SPI v */
-
-// Assuming 1 line 8 pixel high font
-ShiftRegLCD::ShiftRegLCD(uint8_t srdata, uint8_t srclock, uint8_t enable) {
-	init(srdata, srclock, enable, 1, 0);
-}
-// Set nr. of lines, assume 8 pixel high font
-ShiftRegLCD::ShiftRegLCD(uint8_t srdata, uint8_t srclock, uint8_t enable, uint8_t lines) {
-	init(srdata, srclock, enable, lines, 0);
-}
-// Set nr. of lines and font
-ShiftRegLCD::ShiftRegLCD(uint8_t srdata, uint8_t srclock, uint8_t enable, uint8_t lines, uint8_t font) {
-	init(srdata, srclock, enable, lines, font);
-}
-#endif /* SHIFTREGLCD_SPI */
-
-#ifdef SHIFTREGLCD_SPI
-void ShiftRegLCD::init(uint8_t lines, uint8_t font)
+void ShiftRegLCDSPIWriter::send(uint8_t value, uint8_t mode) const
 {
-  // The enable line may have been left high by something so we need to clear it
-  spi_byte(0);
-#else
-void ShiftRegLCD::init(uint8_t srdata, uint8_t srclock, uint8_t enable, uint8_t lines, uint8_t font)
-{
-  _two_wire = 0;
-  _srdata_pin = srdata; _srclock_pin = srclock; _enable_pin = enable;
-  if (enable == TWO_WIRE)
-  {
-	_enable_pin = _srdata_pin;
-	_two_wire = 1;
-  }
-  pinMode(_srclock_pin, OUTPUT);
-  pinMode(_srdata_pin, OUTPUT);
-  pinMode(_enable_pin, OUTPUT);
-#endif /* SHIFTREGLCD_SPI */
+  uint8_t val;
+  mode = mode ? SPI_LCD_RS : 0; // RS bit; LOW: command.  HIGH: character.
 
+  val = mode | (value & 0xf0); // upper nibble
+  spi_lcd(val);
+  val = mode | (value << 4);   // lower nibble
+  spi_lcd(val);
+
+  delayMicroseconds(40);               // commands need > 37us to settle
+}
+
+void ShiftRegLCDSPIWriter::send4bits(uint8_t value) const
+{
+  spi_lcd(value & 0xf0);
+  delayMicroseconds(40);               // commands need > 37us to settle
+}
+
+ShiftRegLCDBase::ShiftRegLCDBase(ShiftRegLCDWriter const &writer, uint8_t lines, uint8_t font) 
+  : _writer(writer)
+{
   if (lines>1)
   	_numlines = LCD_2LINE;
   else
@@ -195,19 +243,19 @@ void ShiftRegLCD::init(uint8_t srdata, uint8_t srclock, uint8_t enable, uint8_t 
 }
 
 // ********** high level commands, for the user! **********
-void ShiftRegLCD::clear()
+void ShiftRegLCDBase::clear()
 {
   command(LCD_CLEARDISPLAY);  // clear display, set cursor position to zero
   delayMicroseconds(2000);    // this command takes a long time!
 }
 
-void ShiftRegLCD::home()
+void ShiftRegLCDBase::home()
 {
   command(LCD_RETURNHOME);  // set cursor position to zero
   delayMicroseconds(2000);  // this command takes a long time!
 }
 
-void ShiftRegLCD::setCursor(uint8_t col, uint8_t row)
+void ShiftRegLCDBase::setCursor(uint8_t col, uint8_t row)
 {
   const uint8_t row_offsets[] = { 0x00, 0x40, 0x14, 0x54 };
   if ( row > _numlines )
@@ -216,69 +264,69 @@ void ShiftRegLCD::setCursor(uint8_t col, uint8_t row)
 }
 
 // Turn the display on/off (quickly)
-void ShiftRegLCD::noDisplay() {
+void ShiftRegLCDBase::noDisplay() {
   _displaycontrol &= ~LCD_DISPLAYON;
   command(LCD_DISPLAYCONTROL | _displaycontrol);
 }
-void ShiftRegLCD::display() {
+void ShiftRegLCDBase::display() {
   _displaycontrol |= LCD_DISPLAYON;
   command(LCD_DISPLAYCONTROL | _displaycontrol);
 }
 
 // Turns the underline cursor on/off
-void ShiftRegLCD::noCursor() {
+void ShiftRegLCDBase::noCursor() {
   _displaycontrol &= ~LCD_CURSORON;
   command(LCD_DISPLAYCONTROL | _displaycontrol);
 }
-void ShiftRegLCD::cursor() {
+void ShiftRegLCDBase::cursor() {
   _displaycontrol |= LCD_CURSORON;
   command(LCD_DISPLAYCONTROL | _displaycontrol);
 }
 
 // Turn on and off the blinking cursor
-void ShiftRegLCD::noBlink() {
+void ShiftRegLCDBase::noBlink() {
   _displaycontrol &= ~LCD_BLINKON;
   command(LCD_DISPLAYCONTROL | _displaycontrol);
 }
-void ShiftRegLCD::blink() {
+void ShiftRegLCDBase::blink() {
   _displaycontrol |= LCD_BLINKON;
   command(LCD_DISPLAYCONTROL | _displaycontrol);
 }
 
 // These commands scroll the display without changing the RAM
-void ShiftRegLCD::scrollDisplayLeft(void) {
+void ShiftRegLCDBase::scrollDisplayLeft(void) {
   command(LCD_CURSORSHIFT | LCD_DISPLAYMOVE | LCD_MOVELEFT);
 }
-void ShiftRegLCD::scrollDisplayRight(void) {
+void ShiftRegLCDBase::scrollDisplayRight(void) {
   command(LCD_CURSORSHIFT | LCD_DISPLAYMOVE | LCD_MOVERIGHT);
 }
 
 // This is for text that flows Left to Right
-void ShiftRegLCD::shiftLeft(void) {
+void ShiftRegLCDBase::shiftLeft(void) {
   _displaymode |= LCD_ENTRYLEFT;
   command(LCD_ENTRYMODESET | _displaymode);
 }
 
 // This is for text that flows Right to Left
-void ShiftRegLCD::shiftRight(void) {
+void ShiftRegLCDBase::shiftRight(void) {
   _displaymode &= ~LCD_ENTRYLEFT;
   command(LCD_ENTRYMODESET | _displaymode);
 }
 
 // This will 'right justify' text from the cursor
-void ShiftRegLCD::shiftIncrement(void) {
+void ShiftRegLCDBase::shiftIncrement(void) {
   _displaymode |= LCD_ENTRYSHIFTINCREMENT;
   command(LCD_ENTRYMODESET | _displaymode);
 }
 
 // This will 'left justify' text from the cursor
-void ShiftRegLCD::shiftDecrement(void) {
+void ShiftRegLCDBase::shiftDecrement(void) {
   _displaymode &= ~LCD_ENTRYSHIFTINCREMENT;
   command(LCD_ENTRYMODESET | _displaymode);
 }
 
 // Allows us to fill the first 8 CGRAM locations with custom characters
-void ShiftRegLCD::createChar(uint8_t location, uint8_t charmap[]) {
+void ShiftRegLCDBase::createChar(uint8_t location, uint8_t charmap[]) {
   location &= 0x7; // we only have 8 locations 0-7
   command(LCD_SETCGRAMADDR | location << 3);
   for (int i=0; i<8; i++) {
@@ -289,61 +337,11 @@ void ShiftRegLCD::createChar(uint8_t location, uint8_t charmap[]) {
 
 // ********************
 
-void ShiftRegLCD::command(uint8_t value) {
+void ShiftRegLCDBase::command(uint8_t value) {
   send(value, LOW);
 }
 
-size_t ShiftRegLCD::write(uint8_t value) {
+size_t ShiftRegLCDBase::write(uint8_t value) {
   send(value, HIGH);
   return sizeof(value);
-}
-
-// For sending data via the shiftregister
-void ShiftRegLCD::send(uint8_t value, uint8_t mode) {
-#ifdef SHIFTREGLCD_SPI
-  uint8_t val;
-  mode = mode ? SPI_LCD_RS : 0; // RS bit; LOW: command.  HIGH: character.
-
-  val = mode | (value & 0xf0); // upper nibble
-  spi_lcd(val);
-  val = mode | (value << 4);   // lower nibble
-  spi_lcd(val);
-
-  delayMicroseconds(40);               // commands need > 37us to settle
-#else
-  uint8_t val1, val2;
-  if ( _two_wire ) shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, 0x00 ); // clear shiftregister
-  digitalWrite( _enable_pin, LOW );
-  mode = mode ? SR_RS_BIT : 0; // RS bit; LOW: command.  HIGH: character.
-  val1 = mode | SR_EN_BIT | ((value >> 1) & 0x78); // upper nibble
-  val2 = mode | SR_EN_BIT | ((value << 3) & 0x78); // lower nibble
-  shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, val1 );
-  digitalWrite( _enable_pin, HIGH );
-  delayMicroseconds(1);                 // enable pulse must be >450ns
-  digitalWrite( _enable_pin, LOW );
-  if ( _two_wire ) shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, 0x00 ); // clear shiftregister
-  shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, val2 );
-  digitalWrite( _enable_pin, HIGH );
-  delayMicroseconds(1);                 // enable pulse must be >450ns
-  digitalWrite( _enable_pin, LOW );
-  delayMicroseconds(40);               // commands need > 37us to settle
-#endif /* SHIFTREGLCD_SPI */
-}
-
-// For sending data when initializing the display to 4-bit
-void ShiftRegLCD::send4bits(uint8_t value) {
-#ifdef SHIFTREGLCD_SPI
-  spi_lcd(value & 0xf0);
-  delayMicroseconds(40);               // commands need > 37us to settle
-#else
-  uint8_t val1;
-  digitalWrite( _enable_pin, LOW );
-  if ( _two_wire ) shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, 0x00 ); // clear shiftregister
-  val1 = SR_EN_BIT | ((value >> 1) & 0x78);
-  shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, val1 );
-  digitalWrite( _enable_pin, HIGH );
-  delayMicroseconds(1);                 // enable pulse must be >450ns
-  digitalWrite( _enable_pin, LOW );
-  delayMicroseconds(40);               // commands need > 37us to settle
-#endif /* SHIFTREGLCD_SPI */
 }
