@@ -5,7 +5,7 @@
 
 static state_t menuHome(button_t button);
 static state_t menuSetpoint(button_t button);
-static state_t menuProbename(button_t button);
+//static state_t menuProbename(button_t button);
 static state_t menuProbeOffset(button_t button);
 static state_t menuProbeSubmenu(button_t button);
 static state_t menuLidOpenOff(button_t button);

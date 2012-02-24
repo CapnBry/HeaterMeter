@@ -799,6 +799,18 @@ static boolean sendPage(char* URL)
   
   return false;
 }
+
+#ifdef DFLASH_SERVING
+static void dflashInit(void)
+{
+  // Set the WiFi Slave Select to HIGH (disable) to
+  // prevent it from interferring with the dflash init
+  pinMode(PIN_SPI_SS, OUTPUT);
+  digitalWrite(PIN_SPI_SS, HIGH);
+  dflash.init(PIN_SOFTRESET);  // actually DATAFLASH_SS
+}
+#endif  /* DFLASH_SERVING */
+
 #endif /* HEATERMETER_NETWORKING */
 
 #ifdef HEATERMETER_RFM12
@@ -1001,17 +1013,6 @@ static void newTempsAvail(void)
 #endif
 
   outputCsv();
-}
-
-static void dflashInit(void)
-{
-#ifdef DFLASH_SERVING
-  // Set the WiFi Slave Select to HIGH (disable) to
-  // prevent it from interferring with the dflash init
-  pinMode(PIN_SPI_SS, OUTPUT);
-  digitalWrite(PIN_SPI_SS, HIGH);
-  dflash.init(PIN_SOFTRESET);  // actually DATAFLASH_SS
-#endif  /* DFLASH_SERVING */
 }
 
 void hmcoreSetup(void)
