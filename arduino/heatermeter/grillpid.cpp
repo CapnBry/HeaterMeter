@@ -18,7 +18,7 @@
 // LID OPEN mode before autoresuming due to temperature returning to setpoint 
 #define LIDOPEN_MIN_AUTORESUME 30
 
-void calcExpMovingAverage(const float smooth, float *currAverage, float newValue)
+static void calcExpMovingAverage(const float smooth, float *currAverage, float newValue)
 {
   if (isnan(*currAverage))
     *currAverage = newValue;
@@ -115,7 +115,7 @@ void TempProbe::readTemp(void)
 {
   const unsigned char OVERSAMPLE_COUNT[] = {1, 4, 16, 64};  // 4^n
   unsigned int oversampled_adc = 0;
-  for (unsigned char i=0; i<OVERSAMPLE_COUNT[TEMP_OVERSAMPLE_BITS]; ++i)
+  for (unsigned char i=OVERSAMPLE_COUNT[TEMP_OVERSAMPLE_BITS]; i; --i)
   {
     unsigned int adc = analogRead(_pin);
     // If we get *any* analogReads that are 0 or 1023, the measurement for 
