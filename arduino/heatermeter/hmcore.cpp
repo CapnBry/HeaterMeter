@@ -80,7 +80,7 @@ static const struct __eeprom_data {
 #define EEPROM_PROBE_START  64
 
 static const struct  __eeprom_probe DEFAULT_PROBE_CONFIG PROGMEM = {
-  "Probe", // Name
+  "Probe  ", // Name if you change this change the hardcoded number-appender in eepromLoadProbeConfig()
   PROBETYPE_INTERNAL,  // probeType
   0,  // offset
   200, // alarm high
@@ -943,6 +943,8 @@ static void eepromLoadProbeConfig(boolean forceDefault)
     if (forceDefault)
     {
       memcpy_P(&config, &DEFAULT_PROBE_CONFIG, sizeof( __eeprom_probe));
+      // Hardcoded to change the last character of the string instead of [strlen(config.name)-1]
+      config.name[6] = '0' + i;
       eeprom_write_block(&config, p, sizeof(__eeprom_probe));
     }
     else
