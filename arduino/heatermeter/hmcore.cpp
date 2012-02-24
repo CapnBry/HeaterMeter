@@ -25,11 +25,11 @@ static TempProbe probe2(PIN_FOOD2);
 static TempProbe probe3(PIN_AMB);
 GrillPid pid(PIN_BLOWER);
 
-#ifdef SHIFTREGLCD_SPI
-ShiftRegLCD lcd(PIN_LCD_CLK, 2);
-#else
+#ifdef SHIFTREGLCD_NATIVE
 ShiftRegLCD lcd(PIN_LCD_DATA, PIN_LCD_CLK, TWO_WIRE, 2); 
-#endif /* SHIFTREGLCD_SPI */
+#else
+ShiftRegLCD lcd(PIN_LCD_CLK, 2);
+#endif /* SHIFTREGLCD_NATIVE */
 
 #ifdef HEATERMETER_NETWORKING
 static boolean g_NetworkInitialized;
