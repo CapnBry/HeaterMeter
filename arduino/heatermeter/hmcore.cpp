@@ -825,7 +825,7 @@ static void rfSourceNotify(RFSource &r, RFManager::event e)
         unsigned int val = r.Values[srcPin];
         unsigned char adcBits = r.getAdcBits();
         // ADC bits of 0 is direct measurement in 10ths of a degree, i.e. 986 = 98.6
-        if (adcBits == 0)
+        if (adcBits == 0 && val != 0)
           pid.Probes[i]->Temperature = val / 10.0f;
         else
         {
@@ -842,7 +842,7 @@ static void rfSourceNotify(RFSource &r, RFManager::event e)
       }
     } /* if probe is this source */
   
-  if (e & RFManager::Add)
+  if (e & (RFManager::Add | RFManager::Remove))
     outputRfStatus();
 }
 #endif /* HEATERMETER_RFM12 */
