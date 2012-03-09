@@ -159,12 +159,9 @@ void storeSetPoint(int sp)
 
 static void storePidUnits(char units)
 {
-  if (units)
-  {
-    pid.setUnits(units);
-    if (units == 'C' || units == 'F')
-      config_store_byte(pidUnits, units);
-  }
+  pid.setUnits(units);
+  if (units == 'C' || units == 'F')
+    config_store_byte(pidUnits, units);
 }
 
 void storeProbeOffset(unsigned char probeIndex, int offset)

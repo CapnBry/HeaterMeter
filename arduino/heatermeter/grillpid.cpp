@@ -400,3 +400,15 @@ void GrillPid::pidStatus(void) const
   Serial_nl();
 }
 
+void GrillPid::setUnits(char units)
+{
+  switch (units)
+  {
+    case 'C':
+    case 'F':
+    case 'T':
+      _units = units;
+      break;
+  }
+}
+
