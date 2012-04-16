@@ -41,23 +41,25 @@ class MenuSystem
 public:
   MenuSystem(const menu_definition_t *defs, const menu_transition_t *trans,
     const buttonread_t reader);
-  state_t State;
 
   // Call in loop() to handle buttons
   void doWork(void);
   
-  unsigned long getTimeoutDuration(void) const;
-  unsigned long getElapsedDuration(void) const;
-  handler_t getHandler(void) const;
   void setState(state_t state);
+  state_t getState(void) const { return m_state; }
+  button_t getButton(void) const { return m_lastButton; }
 private:
   const menu_definition_t *m_definitions;
   const menu_transition_t *m_transitions;
   const menu_definition_t *m_currMenu;
   const buttonread_t m_readButton;
+  state_t m_state;
   button_t m_lastButton;
   unsigned long m_lastActivity;
 
+  unsigned long getTimeoutDuration(void) const;
+  unsigned long getElapsedDuration(void) const;
+  handler_t getHandler(void) const;
   state_t findTransition(button_t button) const;
 };
 

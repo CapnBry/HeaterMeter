@@ -279,13 +279,13 @@ static state_t menuHome(button_t button)
 {
   if (button == BUTTON_ENTER)
   {
-    if (Menus.State != ST_HOME_NOPROBES && !pid.isAnyFoodProbeActive())
+    if (Menus.getState() != ST_HOME_NOPROBES && !pid.isAnyFoodProbeActive())
       return ST_HOME_NOPROBES;
-    else if (Menus.State == ST_HOME_FOOD1 && !pid.Probes[TEMP_FOOD1]->hasTemperature())
+    else if (Menus.getState() == ST_HOME_FOOD1 && !pid.Probes[TEMP_FOOD1]->hasTemperature())
       return ST_HOME_FOOD2;
-    else if (Menus.State == ST_HOME_FOOD2 && !pid.Probes[TEMP_FOOD2]->hasTemperature())
+    else if (Menus.getState() == ST_HOME_FOOD2 && !pid.Probes[TEMP_FOOD2]->hasTemperature())
       return ST_HOME_AMB;
-    else if (Menus.State == ST_HOME_AMB && !pid.Probes[TEMP_AMB]->hasTemperature())
+    else if (Menus.getState() == ST_HOME_AMB && !pid.Probes[TEMP_AMB]->hasTemperature())
       return ST_HOME_FOOD1;
 
     updateDisplay();
@@ -383,7 +383,7 @@ static state_t menuProbename(button_t button)
 
 static state_t menuProbeOffset(button_t button)
 {
-  unsigned char probeIndex = Menus.State - ST_PROBEOFF0;
+  unsigned char probeIndex = Menus.getState() - ST_PROBEOFF0;
   
   if (button == BUTTON_ENTER)
   {
@@ -399,7 +399,7 @@ static state_t menuProbeOffset(button_t button)
 
 static state_t menuProbeSubmenu(button_t button)
 {
-  unsigned char probeIndex = Menus.State - ST_PROBESUB0;
+  unsigned char probeIndex = Menus.getState() - ST_PROBESUB0;
   if (button == BUTTON_ENTER)
   {
     menuProbenameLine(probeIndex);
@@ -498,12 +498,12 @@ static state_t menuProbeAlarmOn(button_t button)
 {
   // This function works for both low and high so determine which we're being called for
   unsigned char highOrLow;
-  if (Menus.State >= ST_PALARM0_H_ON && Menus.State <= ST_PALARM3_H_ON)
+  if (Menus.getState() >= ST_PALARM0_H_ON && Menus.getState() <= ST_PALARM3_H_ON)
     highOrLow = ST_PALARM0_H_ON;
   else
     highOrLow = ST_PALARM0_L_ON;
     
-  unsigned char probeIndex = Menus.State - highOrLow;
+  unsigned char probeIndex = Menus.getState() - highOrLow;
   if (button == BUTTON_ENTER)
   {
     menuProbenameLine(probeIndex);
@@ -524,12 +524,12 @@ static state_t menuProbeAlarmVal(button_t button)
 {
   // This function works for both low and high so determine which we're being called for
   unsigned char highOrLow;
-  if (Menus.State >= ST_PALARM0_H_VAL && Menus.State <= ST_PALARM3_H_VAL)
+  if (Menus.getState() >= ST_PALARM0_H_VAL && Menus.getState() <= ST_PALARM3_H_VAL)
     highOrLow = ST_PALARM0_H_VAL;
   else
     highOrLow = ST_PALARM0_L_VAL;
     
-  unsigned char probeIndex = Menus.State - highOrLow;
+  unsigned char probeIndex = Menus.getState() - highOrLow;
   if (button == BUTTON_ENTER)
   {
     menuProbenameLine(probeIndex);

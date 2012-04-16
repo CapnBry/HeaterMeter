@@ -275,7 +275,8 @@ void updateDisplay(void)
 {
   // Updates to the temperature can come at any time, only update 
   // if we're in a state that displays them
-  if (Menus.State < ST_HOME_FOOD1 || Menus.State > ST_HOME_NOPROBES)
+  state_t state = Menus.getState();
+  if (state < ST_HOME_FOOD1 || state > ST_HOME_NOPROBES)
     return;
   char buffer[17];
 
@@ -306,7 +307,7 @@ void updateDisplay(void)
   lcd.print(buffer); 
 
   // Rotating probe display
-  unsigned char probeIndex = Menus.State - ST_HOME_FOOD1 + TEMP_FOOD1;
+  unsigned char probeIndex = state - ST_HOME_FOOD1 + TEMP_FOOD1;
   if (probeIndex < TEMP_COUNT)
   {
     loadProbeName(probeIndex);

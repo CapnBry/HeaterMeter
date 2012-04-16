@@ -31,7 +31,7 @@ inline state_t MenuSystem::findTransition(button_t button) const
   state_t lookup;
   while ((lookup = pgm_read_byte(&trans->state)))
   {
-    if (lookup == State)
+    if (lookup == m_state)
     {
       button_t transButton = pgm_read_byte(&trans->button);
       if ((button & transButton) == button)
@@ -39,7 +39,7 @@ inline state_t MenuSystem::findTransition(button_t button) const
     }
     ++trans;
   }
-  return State;
+  return m_state;
 }
 
 void MenuSystem::setState(state_t state)
@@ -47,19 +47,19 @@ void MenuSystem::setState(state_t state)
   //Serial.print("Setting state: ");
   //Serial.println(state, DEC);
   
-  while (state > ST_VMAX && state != State)
+  while (state > ST_VMAX && state != m_state)
   {
     handler_t handler = getHandler();
     if (handler)
       handler(BUTTON_LEAVE);
 
-    State = state;
+    m_state = state;
     m_currMenu = m_definitions;
 
     state_t lookup;
     while ((lookup = pgm_read_byte(&m_currMenu->state)))
     {
-      if (lookup == State)
+      if (lookup == m_state)
         break;
       ++m_currMenu;
     }
