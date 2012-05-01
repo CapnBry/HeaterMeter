@@ -5,7 +5,7 @@
 #if ARDUINO>=100
 #include <Arduino.h> // Arduino 1.0
 #else
-#include <Wprogram.h> // Arduino 0022
+#include <WProgram.h> // Arduino 0022
 #endif
 
 void LiquidCrystalBase::begin(byte cols, byte lines, byte dotsize) {
@@ -183,7 +183,7 @@ inline void LiquidCrystalBase::command(byte value) {
 
 inline WRITE_RESULT LiquidCrystalBase::write(byte value) {
   send(value, HIGH);
-#if ARDUINO >= 100 && !defined(__AVR_ATtiny84__) && !defined(__AVR_ATtiny85__)
+#if ARDUINO >= 100 && !defined(__AVR_ATtiny84__) && !defined(__AVR_ATtiny85__) && !defined(__AVR_ATtiny44__)
   return 1;
 #endif
 }

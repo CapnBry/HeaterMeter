@@ -7,14 +7,14 @@
 #if ARDUINO>=100
 #include <Arduino.h> // Arduino 1.0
 #else
-#include <Wprogram.h> // Arduino 0022
+#include <WProgram.h> // Arduino 0022
 #endif
 #include <stdint.h>
 #include <avr/pgmspace.h>
 //#include <util/delay.h>
 
 // keep the ATtiny85 on the "old" conventions until arduino-tiny gets fixed
-#if ARDUINO >= 100 && !defined(__AVR_ATtiny84__) && !defined(__AVR_ATtiny85__)
+#if ARDUINO >= 100 && !defined(__AVR_ATtiny84__) && !defined(__AVR_ATtiny85__) && !defined(__AVR_ATtiny44__)
 #define WRITE_RESULT size_t
 #else
 #define WRITE_RESULT void
@@ -223,7 +223,7 @@ public:
     static void watchdogInterrupts (char mode);
     
     // enter low-power mode, wake up with watchdog, INT0/1, or pin-change
-    static void powerDown (byte prrOff =0xFF);
+    static void powerDown ();
     
     // spend some time in low-power mode, the timing is only approximate
     // returns 1 if all went normally, or 0 if some other interrupt occurred
@@ -271,6 +271,8 @@ public:
     
     void ledOn(byte mask);
     void ledOff(byte mask);
+    byte ledState() const { return leds; }
+    
     byte state();
     byte pushed(); // deprecated, don't use in combination with buttonCheck
     byte buttonCheck();
@@ -364,6 +366,13 @@ public:
         stop();
     }
     
+    void poweroff() {
+        send();
+        write(0xC0 | CONTROL);
+        write(0); // power down
+        stop();
+    }
+    
     void setGain(byte high);
     
     const word* getData();
@@ -378,6 +387,7 @@ public:
     GravityPlug (PortI2C& port) : DeviceI2C (port, 0x38) {}
     
     void begin() {}
+    void sensitivity(byte range, word bw =0); // range 2,4,8 and optional bw
     
     const int* getAxes();
 };
@@ -443,6 +453,16 @@ public:
     void heading(int& xaxis, int& yaxis);
 };
 
+// interface for the Modern Device 3-axis Compass board
+// see http://shop.moderndevice.com/products/3-axis-compass
+class CompassBoard : public DeviceI2C {
+    int read2 (byte last);
+public:
+    CompassBoard (PortI2C& port) : DeviceI2C (port, 0x1E) {}
+
+    float heading();
+};
+
 // interface for the Proximity Plug - see http://jeelabs.org/yp1
 class ProximityPlug : public DeviceI2C {
 public:
@@ -460,6 +480,30 @@ public:
     
     void setReg(byte reg, byte value) const;
     byte getReg(byte reg) const;
+};
+
+// interface for the Analog Plug - see http://jeelabs.org/ap2
+class AnalogPlug : public DeviceI2C {
+  byte config;
+public:
+  AnalogPlug (const PortI2C& port, byte addr =0x69)
+    : DeviceI2C (port, addr), config (0x1C) {}
+  
+  // default mode is channel 1, continuous, 18-bit, gain x1
+  void begin (byte mode =0x1C);
+  // select a channel (1..4), must wait to read it out (up to 270 ms for 18-bit)
+  void select (byte channel);
+  // read out 4 bytes, caller will need to shift out the irrelevant lower bits
+  long reading ();
+};
+
+// interface for the DHT11 and DHT22 sensors, does not use floating point
+class DHTxx {
+  byte pin;
+public:
+  DHTxx (byte pinNum);
+  // results are returned in tenths of a degree and percent, respectively
+  bool reading (int& temp, int &humi);
 };
 
 #ifdef Stream_h // only available in recent Arduino IDE versions

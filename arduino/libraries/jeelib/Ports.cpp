@@ -5,6 +5,16 @@
 #include <avr/sleep.h>
 #include <util/atomic.h>
 
+// #define DEBUG_DHT 1 // add code to send info over the serial port of non-zero
+
+// ATtiny84 has BODS and BODSE for ATtiny84, revision B, and newer, even though
+// the iotnx4.h header doesn't list it, so we *can* disable brown-out detection!
+// See the ATtiny24/44/84 datasheet reference, section 7.2.1, page 34.
+#if (defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny44__)) && !defined(BODSE) && !defined(BODS)
+#define BODSE 2
+#define BODS  7
+#endif
+
 // flag bits sent to the receiver
 #define MODE_CHANGE 0x80    // a pin mode was changed
 #define DIG_CHANGE  0x40    // a digital output was changed
@@ -383,7 +393,7 @@ void UartPlug::flush () {
 WRITE_RESULT UartPlug::write (byte data) {
     regSet(THR, data);
     dev.stop();
-#if ARDUINO >= 100 && !defined(__AVR_ATtiny84__) && !defined(__AVR_ATtiny85__)
+#if ARDUINO >= 100 && !defined(__AVR_ATtiny84__) && !defined(__AVR_ATtiny85__) && !defined(__AVR_ATtiny44__)
     return 1;
 #endif
 }
@@ -478,6 +488,20 @@ word LuxPlug::calcLux(byte iGain, byte tInt) const
     unsigned long temp = channel0 * b - channel1 * m;
     temp += 1 << (LUX_SCALE-1);
     return temp >> LUX_SCALE;
+}
+
+void GravityPlug::sensitivity(byte range, word bandwidth) {
+    send();
+    write(0x14);
+    byte bwcode = bandwidth <= 25 ? 0 :
+                    bandwidth <= 50 ? 1 :
+                      bandwidth <= 100 ? 2 :
+                        bandwidth <= 190 ? 3 :
+                          bandwidth <= 375 ? 4 :
+                            bandwidth <= 750 ? 5 : 6;
+    // this only works correctly if range is 2, 4, or 8
+    write(((range & 0x0C) << 1) | bwcode);
+    stop();
 }
 
 const int* GravityPlug::getAxes() {
@@ -633,6 +657,30 @@ void HeadingBoard::heading(int& xaxis, int& yaxis) {
     compass.stop();
 }
 
+int CompassBoard::read2 (byte last) {
+    byte b = read(0);
+    return (b << 8) | read(last);
+}
+
+float CompassBoard::heading () {
+    send();     
+    write(0x01); // Configuration Register B
+    write(0x40); // Reg B: +/- 1.9 Ga
+    stop();
+
+    send();
+    write(0x02); // Data Output X MSB Register
+    write(0x00); // Mode: Continuous-Measurement Mode
+    receive();
+    int x = read2(0);
+    int z = read2(0);
+    int y = read2(1);
+    stop();
+    
+    return degrees(atan2(y, x));
+}
+
+
 InfraredPlug::InfraredPlug (uint8_t num)
         : Port (num), slot (140), gap (80), fill (-1), prev (0) {
     digiWrite(0);
@@ -750,6 +798,107 @@ byte ProximityPlug::getReg(byte reg) const {
     return result;
 }
 
+void AnalogPlug::begin (byte mode) {
+  // default mode is channel 1, continuous, 18-bit, gain x1
+  config = mode;
+  select(1);
+}
+
+void AnalogPlug::select (byte channel) {
+  send();
+  write(0x80 | ((channel - 1) << 5) | (config & 0x1F));
+  stop();    
+}
+
+long AnalogPlug::reading () {
+  // read out 4 bytes, caller will need to shift out the irrelevant lower bits
+  receive();
+  long raw = read(0) << 8;
+  raw |= read(0);
+  raw = (raw << 16) | (read(0) << 8);
+  raw |= read(1);
+  stop();
+  return raw;
+}
+
+DHTxx::DHTxx (byte pinNum) : pin (pinNum) {
+  digitalWrite(pin, HIGH);
+}
+
+bool DHTxx::reading (int& temp, int &humi) {
+  pinMode(pin, OUTPUT);
+  delay(10); // wait for any previous transmission to end
+  digitalWrite(pin, LOW);
+  delay(18);
+  
+  cli();
+  
+  digitalWrite(pin, HIGH);
+  delayMicroseconds(30);
+  pinMode(pin, INPUT);
+  
+  byte data[6]; // holds a few start bits and then the 5 real payload bytes
+#if DEBUG_DHT
+  static byte times[48];
+  memset(times, 0, sizeof times);
+#endif
+
+  // each bit is a high edge followed by a var-length low edge
+  for (byte i = 7; i < 48; ++i) {
+    // wait for the high edge, then measure time until the low edge
+    byte timer;
+    for (byte j = 0; j < 2; ++j)
+      for (timer = 0; timer < 250; ++timer)
+        if (digitalRead(pin) != j)
+          break;
+#if DEBUG_DHT
+    times[i] = timer;
+#endif
+    // if no transition was seen, return 
+    if (timer >= 250) {
+      sei();
+      return false;
+    }
+    // collect each bit in the data buffer
+    byte offset = i / 8;
+    data[offset] <<= 1;
+    data[offset] |= timer > 7;
+  }
+  
+  sei();
+
+#if DEBUG_DHT
+  Serial.print("DHT");
+  for (byte i = 7; i < 48; ++i) {
+    Serial.print(' ');
+    Serial.print(times[i]);
+  }
+  Serial.println();
+  Serial.print("HEX");
+  for (byte i = 0; i < sizeof data; ++i) {
+    Serial.print(' ');
+    Serial.print(data[i], HEX);
+  }
+  Serial.print(" : ");
+  byte s = data[1] + data[2] + data[3] + data[4];
+  Serial.print(s, HEX);
+  Serial.println();
+#endif
+  
+  byte sum = data[1] + data[2] + data[3] + data[4];
+  if (sum != data[5])
+    return false;
+  
+  word h = (data[1] << 8) | data[2];
+  humi = ((h >> 3) * 5) >> 4;     // careful with overflow
+
+  int tmul = data[3] & 0x80 ? -5 : 5;
+  word t = ((data[3] & 0x7F) << 8) | data[4];
+  temp = ((t >> 3) * tmul) >> 4;  // careful with overflow
+
+  return true;
+}
+
 // ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 static volatile byte watchdogCounter;
@@ -771,55 +920,57 @@ void Sleepy::watchdogInterrupts (char mode) {
     }
 }
 
-void Sleepy::powerDown (byte prrOff) {
+void Sleepy::powerDown () {
     byte adcsraSave = ADCSRA;
     ADCSRA &= ~ bit(ADEN); // disable the ADC
-#ifdef PRR
-    byte prrSave = PRR;
-    PRR = prrOff;
-#endif
     // see http://www.nongnu.org/avr-libc/user-manual/group__avr__sleep.html
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     ATOMIC_BLOCK(ATOMIC_FORCEON) {
-    sleep_enable();
-    // sleep_bod_disable(); // can't use this - not in my avr-libc version!
+        sleep_enable();
+        // sleep_bod_disable(); // can't use this - not in my avr-libc version!
 #ifdef BODSE
-    MCUCR = MCUCR | bit(BODSE) | bit(BODS); // timed sequence
-    MCUCR = MCUCR & ~ bit(BODSE) | bit(BODS);
+        MCUCR = MCUCR | bit(BODSE) | bit(BODS); // timed sequence
+        MCUCR = MCUCR & ~ bit(BODSE) | bit(BODS);
 #endif
     }
     sleep_cpu();
     sleep_disable();
     // re-enable what we disabled
-#ifdef PRR
-    PRR = prrSave;
-#endif
     ADCSRA = adcsraSave;
 }
 
 byte Sleepy::loseSomeTime (word msecs) {
+    byte ok = 1;
+    word msleft = msecs;
     // only slow down for periods longer than the watchdog granularity
-    while (msecs >= 16) {
+    while (msleft >= 16) {
         char wdp = 0; // wdp 0..9 corresponds to roughly 16..8192 ms
-        while (msecs >= (32 << wdp) && wdp < 9)
-            ++wdp;
+        // calc wdp as log2(msleft/16), i.e. loop & inc while next value is ok
+        for (word m = msleft; m >= 32; m >>= 1)
+            if (++wdp >= 9)
+                break;
         watchdogCounter = 0;
         watchdogInterrupts(wdp);
         powerDown();
         watchdogInterrupts(-1); // off
-        if (watchdogCounter == 0)
-            return 0; // lost some time, but got interrupted
-        // adjust the milli ticks, since we will have missed several
-#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny85__)
-        extern volatile unsigned long millis_timer_millis;
-        millis_timer_millis += 16 << wdp;
-#else
-        extern volatile unsigned long timer0_millis;
-        timer0_millis += 16 << wdp;
-#endif
-        msecs -= 16 << wdp;
+        // when interrupted, our best guess is that half the time has passed
+        word halfms = 8 << wdp;
+        msleft -= halfms;
+        if (watchdogCounter == 0) {
+            ok = 0; // lost some time, but got interrupted
+            break;
+        }
+        msleft -= halfms;
     }
-    return 1; // lost some time as planned
+    // adjust the milli ticks, since we will have missed several
+#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny85__) || defined (__AVR_ATtiny44__)
+    extern volatile unsigned long millis_timer_millis;
+    millis_timer_millis += msecs - msleft;
+#else
+    extern volatile unsigned long timer0_millis;
+    timer0_millis += msecs - msleft;
+#endif
+    return ok; // true if we lost approx the time planned
 }
 
 void Sleepy::watchdogEvent() {

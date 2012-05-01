@@ -29,7 +29,7 @@ public:
 
     uint8_t measure(uint8_t type, void (*delayFun)() =0);
 
-#ifndef __AVR_ATtiny84__    
+#ifndef __AVR_ATtiny84__ || __AVR_ATtiny44__    
     void calculate(float& rh_true, float& t_C) const;
 
     static float dewpoint(float h, float t);

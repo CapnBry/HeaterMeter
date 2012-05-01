@@ -6,7 +6,7 @@
 #if ARDUINO>=100
 #include <Arduino.h> // Arduino 1.0
 #else
-#include <Wprogram.h> // Arduino 0022
+#include <WProgram.h> // Arduino 0022
 #endif
 
 #define DEBUG 0
