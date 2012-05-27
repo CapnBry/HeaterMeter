@@ -406,7 +406,7 @@ void GrillPid::setUnits(char units)
   {
     case 'C':
     case 'F':
-    case 'T':
+    case 'R':
       _units = units;
       break;
   }
