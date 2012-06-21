@@ -46,6 +46,7 @@ CONFIGURE_ARGS += \
 	--enable-shared=yes \
 	--enable-static=yes \
 	--disable-rpath \
+	--disable-pthread \
 	--with-gnu-ld \
 	--disable-mmap \
 	--disable-perl \
@@ -67,7 +68,7 @@ define Build/InstallDev
 	$(INSTALL_DIR) $(1)/usr/lib/rrdtool-1.4/include
 	$(CP) $(PKG_INSTALL_DIR)/usr/include/rrd.h $(1)/usr/lib/rrdtool-1.4/include/
 	$(INSTALL_DIR) $(1)/usr/lib/rrdtool-1.4/lib
-	$(CP) $(PKG_INSTALL_DIR)/usr/lib/librrd{,_th}.{a,so*} $(1)/usr/lib/rrdtool-1.4/lib/
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/librrd.{a,so*} $(1)/usr/lib/rrdtool-1.4/lib/
 endef
 
 define Package/librrd/install

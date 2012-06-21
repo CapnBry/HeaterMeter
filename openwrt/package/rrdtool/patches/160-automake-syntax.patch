@@ -1,0 +1,69 @@
+--- /tmp/rrdtool-1.4.5/configure.ac	2012-06-21 10:59:11.168907269 -0400
++++ rrdtool-1.4.5/configure.ac	2012-06-21 11:25:34.066320563 -0400
+@@ -415,25 +415,25 @@
+ dnl solaris has some odd defines it needs in order to propperly compile ctime_r
+ AC_MSG_CHECKING([if ctime_r need special care to act posixly correct])
+ AC_LINK_IFELSE(
+-    AC_LANG_PROGRAM(
++    [AC_LANG_PROGRAM(
+            [[#include <time.h>]],
+            [[ctime_r(NULL,NULL,0)]]
+-                   ),
++                   )],
+     [ CPPFLAGS="$CPPFLAGS -D_POSIX_PTHREAD_SEMANTICS"
+       AC_LINK_IFELSE(
+-          AC_LANG_PROGRAM(
++          [AC_LANG_PROGRAM(
+                 [[#include <time.h>]],
+                 [[ctime_r(NULL,NULL)]]
+-    	                 ),
++    	                 )],
+           [AC_MSG_RESULT([yes, this seems to be solaris style])],
+           [AC_MSG_ERROR([Can't figure how to compile ctime_r])]
+       )
+     ],  
+     [ AC_LINK_IFELSE(
+-          AC_LANG_PROGRAM(
++          [AC_LANG_PROGRAM(
+                 [[#include <time.h>]],
+                 [[ctime_r(NULL,NULL)]]
+-    	                 ),
++    	                 )],
+           [AC_MSG_RESULT(no)],
+           [AC_MSG_ERROR([Can't figure how to compile ctime_r])]
+       )
+@@ -468,17 +468,17 @@
+ dnl see if we have to include malloc/malloc.h
+ AC_MSG_CHECKING([do we need malloc/malloc.h])
+ AC_LINK_IFELSE(
+-    AC_LANG_PROGRAM(
++    [AC_LANG_PROGRAM(
+            [[#include <stdlib.h>]],
+            [[malloc(1)]]
+-                   ),
++                   )],
+     [ AC_MSG_RESULT([nope, works out of the box]) ],
+     [ AC_LINK_IFELSE(
+-          AC_LANG_PROGRAM(
++          [AC_LANG_PROGRAM(
+                 [[#include <stdlib.h>
+                   #include <malloc/malloc.h>]],
+                 [[malloc(1)]]
+-    	                 ),[
++    	                 )],[
+            AC_DEFINE([MUST_HAVE_MALLOC_MALLOC_H])
+            AC_MSG_RESULT([yes we do])],
+           [AC_MSG_ERROR([Can not figure how to compile malloc])]
+--- /tmp/rrdtool-1.4.5/bindings/tcl/Makefile.am	2008-10-01 16:01:43.000000000 -0400
++++ rrdtool-1.4.5/bindings/tcl/Makefile.am	2012-06-21 13:51:35.191642278 -0400
+@@ -27,8 +27,8 @@
+ tclpkg_DATA = pkgIndex.tcl
+ tclpkg_SCRIPTS = ifOctets.tcl
+ else
+-pkglib_DATA = pkgIndex.tcl
+-pkglib_SCRIPTS = ifOctets.tcl
++pkgdata_DATA = pkgIndex.tcl
++pkgdata_SCRIPTS = ifOctets.tcl
+ endif
+ 
+ # Automake doen't like `tclrrd$(VERSION)$(TCL_SHLIB_SUFFIX)' as
