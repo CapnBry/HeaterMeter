@@ -77,3 +77,29 @@
  #endif
      else {
          rrd_set_error("unknown function '%s'", argv[1]);
+--- /tmp/rrdtool-1.4.5/bindings/lua/rrdlua.c	2012-06-22 10:52:05.908802868 -0400
++++ rrdtool-1.4.5/bindings/lua/rrdlua.c	2012-06-22 10:53:07.317655298 -0400
+@@ -296,11 +296,13 @@
+ }
+ #endif /* HAVE_RRD_GRAPH */
+ 
++#ifdef HAVE_RRD_CACHED
+ static int
+ lua_rrd_flushcached(lua_State *L)
+ {
+   return rrd_common_call(L, "flushcached", rrd_flushcached);
+ }
++#endif /* HAVE_RRD_CACHED */
+ 
+ #if defined(DINF)
+ static int
+@@ -363,7 +365,9 @@
+ #endif
+   {"tune", lua_rrd_tune},
+   {"update", lua_rrd_update},
++#ifdef HAVE_RRD_CACHED
+   {"flushcached", lua_rrd_flushcached},
++#endif
+ #if defined(DINF)
+   {"info", lua_rrd_info},
+   {"updatev", lua_rrd_updatev},
