@@ -30,10 +30,20 @@ endef
 	# Nothing to compile
 #endef
 
+ifneq ($(CONFIG_TARGET_brcm2708),)
+	SERIAL_DEVICE:=/dev/ttyAMA0
+	LUCID_THREADS:=10
+else
+	SERIAL_DEVICE:=/dev/ttyS1
+	LUCID_THREADS:=2
+endif
+
 define Package/linkmeter/install
 	$(CP) ./root/* $(1)/
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_BIN) ./config/linkmeter.uci-defaults $(1)/etc/uci-defaults/linkmeter
+	$(SED) 's,SERIAL_DEVICE,$(SERIAL_DEVICE),g' $(1)/etc/uci-defaults/linkmeter
+	$(SED) 's,LUCID_THREADS,$(LUCID_THREADS),g' $(1)/etc/uci-defaults/linkmeter
 
 	$(INSTALL_DIR) $(1)/www
 	$(CP) htdocs/* $(1)/www/
@@ -53,8 +63,15 @@ define Package/linkmeter/install
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/view/linkmeter/* $(1)/usr/lib/lua/luci/view/linkmeter/
 endef
 
-# Include has Package/linkmeter/postinst in it
-include config/linkmeter.uci
+define Package/linkmeter/postinst
+#!/bin/sh
+	[ -n "$${IPKG_INSTROOT}" ] && exit
+	/etc/uci-defaults/linkmeter
+	rm /etc/uci-defaults/linkmeter
+	rm -f /tmp/luci-indexcache
+	/etc/init.d/lucid restart
+endef
+
 
 define Package/linkmeter/postrm
 #!/bin/sh

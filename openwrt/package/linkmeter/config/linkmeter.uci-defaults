@@ -1,18 +1,23 @@
 #!/bin/sh
 
-uci -q get lucid.lmserver > /dev/null && exit
+uci_set_nomodify() {
+  uci -q get $1 > /dev/null || uci set $1=$2
+}
 
+# Forced configuration parameters
 uci batch << EOF
-set lucid.main.threadlimit=2
+set lucid.main.threadlimit=LUCID_THREADS
 set lucid.https.enabled=0
 set lucid.lmserver=daemon
 set lucid.lmserver.enabled=1
 set lucid.lmserver.slave=linkmeter
 set lucid.linkmeter=linkmeterd
-set lucid.linkmeter.serial_device=/dev/ttyS1
-set lucid.linkmeter.serial_baud=115200
-set lucid.linkmeter.rrd_file=/tmp/hm.rrd
-set lucid.linkmeter.stashpath=/root
 EOF
 
+# Things we don't modify if they're there
+uci_set_nomodify lucid.linkmeter.serial_device SERIAL_DEVICE
+uci_set_nomodify lucid.linkmeter.serial_baud 115200
+uci_set_nomodify lucid.linkmeter.rrd_file /tmp/hm.rrd
+uci_set_nomodify lucid.linkmeter.stashpath /root
 
+uci commit lucid
