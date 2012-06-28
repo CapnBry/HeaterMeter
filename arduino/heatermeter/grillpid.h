@@ -57,6 +57,7 @@ public:
   boolean getLowRinging(void) const { return Ringing[ALARM_IDX_LOW]; };
   boolean getHighRinging(void) const { return Ringing[ALARM_IDX_HIGH]; };
   void setThreshold(unsigned char idx, int value);
+  void silenceAll(void) { Ringing[ALARM_IDX_LOW] = false; Ringing[ALARM_IDX_HIGH] = false; };
   int Thresholds[2];
   boolean Ringing[2];
 };

@@ -155,6 +155,8 @@ void TempProbe::calcTemp(void)
     calcExpMovingAverage(TEMPPROBE_AVG_SMOOTH, &TemperatureAvg, Temperature);
     Alarms.updateStatus(Temperature);
   }
+  else
+    Alarms.silenceAll();
 }
 
 GrillPid::GrillPid(const unsigned char blowerPin) :
