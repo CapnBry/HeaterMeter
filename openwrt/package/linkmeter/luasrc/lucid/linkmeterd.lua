@@ -256,7 +256,7 @@ local function lmdStart()
   local SERIAL_DEVICE = cfg:get("lucid", "linkmeter", "serial_device")
   local SERIAL_BAUD = cfg:get("lucid", "linkmeter", "serial_baud")
   
-  if os.execute("/bin/stty -F " .. SERIAL_DEVICE .. " raw " .. SERIAL_BAUD) ~= 0 then
+  if os.execute("/bin/stty -F " .. SERIAL_DEVICE .. " sane " .. SERIAL_BAUD) ~= 0 then
     return nil, -2, "Can't set serial baud"
   end
 
