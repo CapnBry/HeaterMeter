@@ -62,5 +62,6 @@ void storeLidParam(unsigned char idx, int val);
 
 extern GrillPid pid;
 extern ShiftRegLCD lcd;
+extern unsigned char g_AlarmId;
 
 #endif /* __HMCORE_H__ */

@@ -31,44 +31,27 @@ static void calcExpMovingAverage(const float smooth, float *currAverage, float n
 
 inline void ProbeAlarm::updateStatus(int value)
 {
-  if (Status & HIGH_ENABLED)
-  {
-    if (value >= _high) 
-      Status |= HIGH_RINGING;
-    else
-      Status &= ~(HIGH_RINGING | HIGH_SILENCED);
-  }
-
-  if (Status & LOW_ENABLED)
-  {
-    if (value <= _low) 
-      Status |= LOW_RINGING;
-    else
-      Status &= ~(LOW_RINGING | LOW_SILENCED);
-  }
+  if (getLowEnabled() && value <= getLow())
+    Ringing[ALARM_IDX_LOW] = true;
+  if (getHighEnabled() && value >= getHigh())
+    Ringing[ALARM_IDX_HIGH] = true;
 }
 
 void ProbeAlarm::setHigh(int value)
 {
-  _high = value;
-  Status &= ~HIGH_MASK;
-//  if (value)
-//    Status |= HIGH_ENABLED;
+  setThreshold(ALARM_IDX_HIGH, value);
 }
 
 void ProbeAlarm::setLow(int value)
 {
-  _low = value;
-  Status &= ~LOW_MASK;
-//  if (value)
-//    Status |= LOW_ENABLED;
+  setThreshold(ALARM_IDX_LOW, value);
 }
 
-boolean ProbeAlarm::getActionNeeded(void) const
+void ProbeAlarm::setThreshold(unsigned char idx, int value)
 {
-  return
-    ((Status & HIGH_MASK) == (HIGH_ENABLED | HIGH_RINGING)) ||
-    ((Status & LOW_MASK) == (LOW_ENABLED | LOW_RINGING));
+  Ringing[idx] = false;
+  if (value)
+    Thresholds[idx] = value;
 }
 
 TempProbe::TempProbe(const unsigned char pin) :
@@ -81,11 +64,8 @@ void TempProbe::loadConfig(struct __eeprom_probe *config)
   _probeType = config->probeType;
   Offset = config->tempOffset;
   memcpy(Steinhart, config->steinhart, sizeof(Steinhart));
-  Alarms.setHigh(config->alarmHigh);
   Alarms.setLow(config->alarmLow);
-  Alarms.Status =
-    (config->alHighEnabled & ProbeAlarm::HIGH_ENABLED) |
-    (config->alLowEnabled & ProbeAlarm::LOW_ENABLED);
+  Alarms.setHigh(config->alarmHigh);
   //Serial.print(" P=");Serial.print(_probeType,DEC);Serial.print(" O=");Serial.print(Offset,DEC);
   //Serial.print(" A=");Serial.print(Steinhart[0],8);Serial.print(" B=");Serial.print(Steinhart[1],8);
   //Serial.print(" C=");Serial.print(Steinhart[2],8);Serial.print(" R=");Serial.println(Steinhart[3],8);

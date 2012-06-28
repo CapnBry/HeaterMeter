@@ -15,6 +15,7 @@ static state_t menuResetConfig(button_t button);
 static state_t menuMaxFanSpeed(button_t button);
 static state_t menuProbeAlarmOn(button_t button);
 static state_t menuProbeAlarmVal(button_t button);
+static state_t menuAlarmTriggered(button_t button);
 
 #ifdef HEATERMETER_NETWORKING
 static state_t menuConnecting(button_t button);
@@ -30,6 +31,7 @@ static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_HOME_FOOD2, menuHome, 5 },
   { ST_HOME_AMB, menuHome, 5 },
   { ST_HOME_NOPROBES, menuHome, 1 },
+  { ST_HOME_ALARM, menuAlarmTriggered, 0 },
   { ST_SETPOINT, menuSetpoint, 10 },
   { ST_MANUALMODE, menuManualMode, 10 },
   { ST_PROBESUB0, menuProbeSubmenu, 10 },
@@ -507,8 +509,7 @@ static state_t menuProbeAlarmOn(button_t button)
   if (button == BUTTON_ENTER)
   {
     menuProbenameLine(probeIndex);
-    unsigned char whichMask = (highOrLow == ST_PALARM0_H_ON) ? ProbeAlarm::HIGH_ENABLED : ProbeAlarm::LOW_ENABLED;
-    editInt = pid.Probes[probeIndex]->Alarms.Status & whichMask;
+    editInt = pid.Probes[probeIndex]->Alarms.Thresholds[ST_PALARM0_H_ON - highOrLow] > 0;
   }
   else if (button == BUTTON_LEAVE)
   {
@@ -533,11 +534,26 @@ static state_t menuProbeAlarmVal(button_t button)
   if (button == BUTTON_ENTER)
   {
     menuProbenameLine(probeIndex);
-    ProbeAlarm &alarm  = pid.Probes[probeIndex]->Alarms;
-    editInt = (highOrLow == ST_PALARM0_H_VAL) ? alarm.getHigh() : alarm.getLow();
+    editInt = pid.Probes[probeIndex]->Alarms.Thresholds[ST_PALARM0_H_VAL - highOrLow] ;
   }
   
   menuNumberEdit(button, 5, (highOrLow == ST_PALARM0_H_VAL) ? PSTR("High Alrm %4d"DEGREE"%c") : PSTR("Low Alrm %5d"DEGREE"%c"));
+  return ST_AUTO;
+}
+
+static state_t menuAlarmTriggered(button_t button)
+{
+  if (button == BUTTON_ENTER)
+  {
+    updateDisplay();
+  }
+  // If any physical button is pressed, clear the alarm state and return to HOME
+  else if (button & BUTTON_ANY)
+  {
+    pid.Probes[ALARM_ID_TO_PROBE(g_AlarmId)]->Alarms.setDisabled(ALARM_ID_TO_IDX(g_AlarmId));
+    return ST_HOME_FOOD1;
+  }
+
   return ST_AUTO;
 }
 

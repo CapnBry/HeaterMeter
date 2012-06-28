@@ -27,60 +27,38 @@ struct __eeprom_probe
   char name[PROBE_NAME_SIZE];
   unsigned char probeType;
   char tempOffset;
-  int alarmHigh;
   int alarmLow;
-  boolean alHighEnabled;
-  boolean alLowEnabled;
+  int alarmHigh;
+  char unused1;
+  char unused2;
   float steinhart[STEINHART_COUNT];  // The last one is actually Rknown
 };
 
+#define ALARM_IDX_LOW  0
+#define ALARM_IDX_HIGH 1
+#define ALARM_ID_TO_PROBE(id) (id / 2)
+#define ALARM_ID_TO_IDX(id) (id % 2)
+#define MAKE_ALARM_ID(probe, idx) (probe * 2 + idx)
+
 class ProbeAlarm
 {
-private:
-  int _high;
-  int _low;
 public:
-  ProbeAlarm(void) 
-    // : _high(0), _low(0), Status(0)
-    {};
+  ProbeAlarm(void) {};
 
-  // High and Low thresholds
-  // Combination of constants below  
-  unsigned char Status;   
-  // Check value against High/Low
+  // Check value against Low/High
   void updateStatus(int value);
-  void setHigh(int value);
   void setLow(int value);
-  int getHigh(void) const { return _high; };
-  int getLow(void) const { return _low; };
-  // Any Enabled and ringing but not silenced
-  boolean getActionNeeded(void) const;
-  
-/*
-  ProbeAlarm ALARM constants used in ProbeAlarm::Status
-  ENABLED: Whether the check is enabled.  A disabled alarm
-           will not ring
-  RINGING: The alarm is "going off", in that the check has 
-           reached or passed the high/low bound
-  SILENCED: The alarm has failed the check and is ringing,
-           but the user has requested the alarm stop notifying
-  NOTIFIED: The alarm doesn't have an event that occurs the first
-           time it rings, so the application can use this bit
-           to store if that this is the first ring in this bit
-  */          
-  static const unsigned char NONE         = 0x00;
-  static const unsigned char HIGH_ENABLED = 0x01;
-  static const unsigned char LOW_ENABLED  = 0x02;
-  static const unsigned char ANY_ENABLED  = (HIGH_ENABLED | LOW_ENABLED);
-  static const unsigned char HIGH_RINGING = 0x04;
-  static const unsigned char LOW_RINGING  = 0x08;
-  static const unsigned char ANY_RINGING  = (HIGH_RINGING | LOW_RINGING);
-  static const unsigned char HIGH_SILENCED = 0x10;
-  static const unsigned char LOW_SILENCED  = 0x20;
-  static const unsigned char HIGH_NOTIFIED = 0x40;
-  static const unsigned char LOW_NOTIFIED  = 0x80;
-  static const unsigned char HIGH_MASK    = (HIGH_ENABLED | HIGH_RINGING | HIGH_SILENCED | HIGH_NOTIFIED);
-  static const unsigned char LOW_MASK     = (LOW_ENABLED | LOW_RINGING | LOW_SILENCED | LOW_NOTIFIED);
+  void setHigh(int value);
+  int getLow(void) const { return Thresholds[ALARM_IDX_LOW]; };
+  int getHigh(void) const { return Thresholds[ALARM_IDX_HIGH]; };
+  void setDisabled(unsigned char idx) { Thresholds[idx] = -abs(Thresholds[idx]); Ringing[idx] = false; };
+  boolean getLowEnabled(void) const { return Thresholds[ALARM_IDX_LOW] > 0; };
+  boolean getHighEnabled(void) const { return Thresholds[ALARM_IDX_HIGH] > 0; };
+  boolean getLowRinging(void) const { return Ringing[ALARM_IDX_LOW]; };
+  boolean getHighRinging(void) const { return Ringing[ALARM_IDX_HIGH]; };
+  void setThreshold(unsigned char idx, int value);
+  int Thresholds[2];
+  boolean Ringing[2];
 };
 
 class TempProbe

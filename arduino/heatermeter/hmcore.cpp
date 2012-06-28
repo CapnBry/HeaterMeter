@@ -43,6 +43,8 @@ static RFManager rfmanager(rfSourceNotify);
 static rf12_map_item_t rfMap[TEMP_COUNT];
 #endif /* HEATERMETER_RFM12 */
 
+unsigned char g_AlarmId; // ID of alarm going off
+
 #define config_store_byte(eeprom_field, src) { eeprom_write_byte((uint8_t *)offsetof(__eeprom_data, eeprom_field), src); }
 #define config_store_word(eeprom_field, src) { eeprom_write_word((uint16_t *)offsetof(__eeprom_data, eeprom_field), src); }
 
@@ -83,10 +85,10 @@ static const struct  __eeprom_probe DEFAULT_PROBE_CONFIG PROGMEM = {
   "Probe  ", // Name if you change this change the hardcoded number-appender in eepromLoadProbeConfig()
   PROBETYPE_INTERNAL,  // probeType
   0,  // offset
-  200, // alarm high
-  40,  // alarm low
-  false,  // high enabled
-  false,  // low enabled
+  -40,  // alarm low
+  -200, // alarm high
+  0,  // unussed1
+  0,  // unussed2
   {
     2.3067434e-4,2.3696596e-4,1.2636414e-7  // Maverick ET-72
     //5.36924e-4,1.91396e-4,6.60399e-8 // Maverick ET-732 (Honeywell R-T Curve 4)
@@ -271,43 +273,78 @@ void storeLcdBacklight(unsigned char lcdBacklight)
   config_store_byte(lcdBacklight, lcdBacklight);
 }
 
+static void toneEnable(boolean enable)
+{
+#ifdef PIEZO_HZ
+  if (enable)
+  {
+    if (tone_idx == 0xff)
+      return;
+    tone_last = 0;
+    tone_idx = tone_cnt - 1;
+  }
+  else
+  {
+    tone_idx = 0xff;
+    noTone(PIN_ALARM);
+  }
+#endif /* PIEZO_HZ */
+}
+
 void updateDisplay(void)
 {
   // Updates to the temperature can come at any time, only update 
   // if we're in a state that displays them
   state_t state = Menus.getState();
-  if (state < ST_HOME_FOOD1 || state > ST_HOME_NOPROBES)
+  if (state < ST_HOME_FOOD1 || state > ST_HOME_ALARM)
     return;
+
   char buffer[17];
+  unsigned char probeIndex;
 
   // Fixed pit area
   lcd.setCursor(0, 0);
-  int pitTemp = pid.Probes[TEMP_PIT]->Temperature;
-  if (!pid.getManualFanMode() && pitTemp == 0)
-    memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
-  else if (pid.LidOpenResumeCountdown > 0)
-    snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE"%c Lid%3u"),
-      pitTemp, pid.getUnits(), pid.LidOpenResumeCountdown);
+  if (state == ST_HOME_ALARM)
+  {
+    toneEnable(true);
+    if (ALARM_ID_TO_IDX(g_AlarmId) == ALARM_IDX_LOW)
+      lcdprint_P(PSTR("** ALARM LOW  **"), false);
+    else
+      lcdprint_P(PSTR("** ALARM HIGH **"), false);
+
+    probeIndex = ALARM_ID_TO_PROBE(g_AlarmId);
+  }  /* if ST_HOME_ALARM */
   else
   {
-    char c1,c2;
-    if (pid.getManualFanMode())
-    {
-      c1 = '^';  // LCD_ARROWUP
-      c2 = '^';  // LCD_ARROWDN
-    }
+    toneEnable(false);
+    int pitTemp = pid.Probes[TEMP_PIT]->Temperature;
+    if (!pid.getManualFanMode() && pitTemp == 0)
+      memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
+    else if (pid.LidOpenResumeCountdown > 0)
+      snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE"%c Lid%3u"),
+        pitTemp, pid.getUnits(), pid.LidOpenResumeCountdown);
     else
     {
-      c1 = '[';
-      c2 = ']';
+      char c1,c2;
+      if (pid.getManualFanMode())
+      {
+        c1 = '^';  // LCD_ARROWUP
+        c2 = '^';  // LCD_ARROWDN
+      }
+      else
+      {
+        c1 = '[';
+        c2 = ']';
+      }
+      snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE"%c %c%3u%%%c"),
+        pitTemp, pid.getUnits(), c1, pid.getFanSpeed(), c2);
     }
-    snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE"%c %c%3u%%%c"),
-      pitTemp, pid.getUnits(), c1, pid.getFanSpeed(), c2);
-  }
-  lcd.print(buffer); 
+
+    lcd.print(buffer);
+    probeIndex = state - ST_HOME_FOOD1 + TEMP_FOOD1;
+  } /* if !ST_HOME_ALARM */
 
   // Rotating probe display
-  unsigned char probeIndex = state - ST_HOME_FOOD1 + TEMP_FOOD1;
   if (probeIndex < TEMP_COUNT)
   {
     loadProbeName(probeIndex);
@@ -508,6 +545,22 @@ static void reportProbeCoeffs(void)
     reportProbeCoeff(i);
 }
 
+static void reportAlarmLimits(void)
+{
+  print_P(PSTR("$HMAL"));
+  for (unsigned char i=0; i<TEMP_COUNT; ++i)
+  {
+    ProbeAlarm &a = pid.Probes[i]->Alarms;
+    Serial_csv();
+    Serial.print(a.getLow(), DEC);
+    if (a.getLowRinging()) Serial_char('L');
+    Serial_csv();
+    Serial.print(a.getHigh(), DEC);
+    if (a.getHighRinging()) Serial_char('H');
+  }
+  Serial_nl();
+}
+
 static void reportConfig(void)
 {
   reportVersion();
@@ -517,6 +570,7 @@ static void reportConfig(void)
   reportProbeOffsets();
   reportLidParameters();
   reportLcdBacklight();
+  reportAlarmLimits();
 #ifdef HEATERMETER_RFM12
   reportRfMap();  
 #endif /* HEATERMETER_RFM12 */
@@ -568,6 +622,20 @@ void storeLidParam(unsigned char idx, int val)
   }
 }
 
+/* storeAlarmLimits: Expects pairs of data L,H,L,H,L,H,L,H one for each probe,
+   the passed index is coincidently the ALARM_ID */
+static void storeAlarmLimits(unsigned char idx, int val)
+{
+  unsigned char probeIndex = ALARM_ID_TO_PROBE(idx);
+  ProbeAlarm &a = pid.Probes[probeIndex]->Alarms;
+  a.setThreshold(ALARM_ID_TO_IDX(idx), val);
+
+  // Just write both thresholds because the code is smaller
+  unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, alarmLow));
+  if (ofs != 0)
+    eeprom_write_block(a.Thresholds, (void *)ofs, sizeof(a.Thresholds));
+}
+
 /* handleCommandUrl returns true if it consumed the URL */
 static boolean handleCommandUrl(char *URL)
 {
@@ -613,6 +681,14 @@ static boolean handleCommandUrl(char *URL)
   if (strncmp_P(URL, PSTR("set?pc"), 6) == 0 && urlLen > 8) 
   {
     storeProbeCoeff(URL[6] - '0', URL + 8);
+    return true;
+  }
+  if (strncmp_P(URL, PSTR("set?al="), 7) == 0)
+  {
+    csvParseI(URL + 7, storeAlarmLimits);
+    reportAlarmLimits();
+    if (Menus.getState() == ST_HOME_ALARM)
+      Menus.setState(ST_HOME_FOOD1);
     return true;
   }
   if (strncmp_P(URL, PSTR("config"), 6) == 0) 
@@ -845,24 +921,6 @@ static void rfSourceNotify(RFSource &r, RFManager::event e)
 }
 #endif /* HEATERMETER_RFM12 */
 
-static void toneEnable(boolean enable)
-{
-#ifdef PIEZO_HZ
-  if (enable)
-  {
-    if (tone_idx == 0xff)
-      return;
-    tone_last = 0;
-    tone_idx = tone_cnt - 1;
-  }
-  else
-  {
-    tone_idx = 0xff;
-    noTone(PIN_ALARM);
-  }
-#endif /* PIEZO_HZ */
-}
-
 static void tone_doWork(void)
 {
 #ifdef PIEZO_HZ
@@ -886,13 +944,16 @@ static void tone_doWork(void)
 static void checkAlarms(void)
 {
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
-    if (pid.Probes[i]->Alarms.getActionNeeded())
-    {
-      toneEnable(true);
-      return;
-    }
-    
-  toneEnable(false);
+    for (unsigned char j=ALARM_IDX_LOW; j<=ALARM_IDX_HIGH; ++j)
+      if (pid.Probes[i]->Alarms.Ringing[j])
+      {
+        g_AlarmId = MAKE_ALARM_ID(i, j);
+#ifdef HEATERMETER_SERIAL
+        reportAlarmLimits();
+#endif
+        Menus.setState(ST_HOME_ALARM);
+        return;
+      }
 }
 
 static void eepromLoadBaseConfig(boolean forceDefault)
@@ -1001,7 +1062,6 @@ static void newTempsAvail(void)
 {
   static unsigned char pidCycleCount;
 
-  checkAlarms();
   updateDisplay();
   ++pidCycleCount;
     
@@ -1013,6 +1073,9 @@ static void newTempsAvail(void)
 #endif
 
   outputCsv();
+  // We want to report the status before the alarm readout so
+  // receivers can tell what the value was that caused the alarm
+  checkAlarms();
 }
 
 void hmcoreSetup(void)

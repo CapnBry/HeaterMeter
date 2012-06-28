@@ -60,6 +60,7 @@ Both Serial and Web
 /set?pcN=A,B,C,R,TRM - Set the probe coefficients and type for probe N.  A, B, and C are the Steinhart-Hart coeffieicents and R is the fixed side of the probe voltage divider.  A, B, C and R are floating point and can be specified in scienfific noation, e.g. 0.00023067434 -> 2.3067434e-4.  TRM is either the type of probe OR an RF map specifier.  If TRM is an integer, it indicatest a probe type.  Probe types are 0=Disabled, 1=Internal, 2=RFM12B.  If the first character of TRM is a capital letter A-Z followed by a single digit number 0-5, it is considered an RF Map item <rfSource (letter)><sourcePin>.  e.g. a TRM of B0 sets this probe to use RF Source B pin 0.  If an RF map is present, the probe type is automatically switched to type RFM12B.  Any of A,B,C,R,TRM set to blank will not be modified. Probe numbers are 0=pit 1=food1 2=food2 3=ambient
 /set?lb=A - Set the LCD backlight to A.  Range is 0 (off) to 255 (full)
 /set?ld=A,B - Set Lid Detect offset to A%, duration to B seconds
+/set?al=L,H[,L,H...] - Set probe alarms thresholds. Setting to a negative number will disable the alarm, setting to 0 silences the alarm but leaves it enabled (it will ring again if the temperature is still outside the threshold)
 /reboot - Reboots the microcontroller.  Only if wired to do so (LinkMeter)
 
 Serial-only URLs
@@ -73,6 +74,8 @@ Web-only URLs
 == CSV Format ==
 Microcontroller ID
 $UCID,HeaterMeter,VersionID
+Alarm Indicator
+$HMAL,LowProbe0,HighProbe0[,...] (L or H suffix indicates ringing, negative values indicated disabled alarms)
 Lid Detect Parameters
 $HMLD,Offset Percent,Lid Duration
 PID Coefficients
