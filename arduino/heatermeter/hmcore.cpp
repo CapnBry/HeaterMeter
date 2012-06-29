@@ -278,7 +278,7 @@ static void toneEnable(boolean enable)
 #ifdef PIEZO_HZ
   if (enable)
   {
-    if (tone_idx == 0xff)
+    if (tone_idx != 0xff)
       return;
     tone_last = 0;
     tone_idx = tone_cnt - 1;
@@ -687,8 +687,6 @@ static boolean handleCommandUrl(char *URL)
   {
     csvParseI(URL + 7, storeAlarmLimits);
     reportAlarmLimits();
-    if (Menus.getState() == ST_HOME_ALARM)
-      Menus.setState(ST_HOME_FOOD1);
     return true;
   }
   if (strncmp_P(URL, PSTR("config"), 6) == 0) 
@@ -954,6 +952,10 @@ static void checkAlarms(void)
         Menus.setState(ST_HOME_ALARM);
         return;
       }
+
+  // No alarms ringing, return to HOME
+  if (Menus.getState() == ST_HOME_ALARM)
+    Menus.setState(ST_HOME_FOOD1);
 }
 
 static void eepromLoadBaseConfig(boolean forceDefault)
