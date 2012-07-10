@@ -1,4 +1,5 @@
-This is the source code respository for the HeaterMeter and LinkMeter BBQ grill controllers.
+This is the source code respository for the HeaterMeter and LinkMeter BBQ grill controllers. Documentation can be found in the wiki:
+https://github.com/CapnBry/HeaterMeter/wiki
 
 +-----+ +-----+ +------+
 |Probe| |Probe| |Blower|
