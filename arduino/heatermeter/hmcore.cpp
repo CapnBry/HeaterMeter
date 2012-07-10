@@ -545,17 +545,17 @@ static void reportProbeCoeffs(void)
     reportProbeCoeff(i);
 }
 
-static void reportAlarmLimits(void)
+static void reportAlarmLimits(boolean showall)
 {
   print_P(PSTR("$HMAL"));
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
     ProbeAlarm &a = pid.Probes[i]->Alarms;
     Serial_csv();
-    Serial.print(a.getLow(), DEC);
+    if (a.getLowRinging() || showall) Serial.print(a.getLow(), DEC);
     if (a.getLowRinging()) Serial_char('L');
     Serial_csv();
-    Serial.print(a.getHigh(), DEC);
+    if (a.getHighRinging() || showall) Serial.print(a.getHigh(), DEC);
     if (a.getHighRinging()) Serial_char('H');
   }
   Serial_nl();
@@ -570,7 +570,7 @@ static void reportConfig(void)
   reportProbeOffsets();
   reportLidParameters();
   reportLcdBacklight();
-  reportAlarmLimits();
+  reportAlarmLimits(true);
 #ifdef HEATERMETER_RFM12
   reportRfMap();  
 #endif /* HEATERMETER_RFM12 */
@@ -686,7 +686,7 @@ static boolean handleCommandUrl(char *URL)
   if (strncmp_P(URL, PSTR("set?al="), 7) == 0)
   {
     csvParseI(URL + 7, storeAlarmLimits);
-    reportAlarmLimits();
+    reportAlarmLimits(true);
     return true;
   }
   if (strncmp_P(URL, PSTR("config"), 6) == 0) 
@@ -947,7 +947,7 @@ static void checkAlarms(void)
       {
         g_AlarmId = MAKE_ALARM_ID(i, j);
 #ifdef HEATERMETER_SERIAL
-        reportAlarmLimits();
+        reportAlarmLimits(false);
 #endif
         Menus.setState(ST_HOME_ALARM);
         return;
