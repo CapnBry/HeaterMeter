@@ -23,7 +23,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/time.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <linux/spi/spidev.h>
 
 #include <uci.h>
 
@@ -41,6 +45,22 @@ static char *reboot_cmd = "\n/reboot\n";
 static int port_fd;
 static unsigned char ihex[32 * 1024];
 static int ihex_len;
+
+static bool do_chiperase;
+static bool do_dumpprogmem;
+
+#define msleep(x) usleep(x * 1000)
+
+#define PAGE_SIZE 128
+#define WADDR_PAGE(x) (x & 0xffffffc0)
+
+#define FUSE_LOW  0
+#define FUSE_HIGH 1
+#define FUSE_EXT  2
+#define FUSE_LOCK 3
+static char const * const FUSE_NAME[4] = { "low", "high", "extended", "lock" };
+static uint8_t write_fuse[4];
+static bool do_fuse[4];
 
 static int read_optiboot_ver(void)
 {
@@ -82,12 +102,24 @@ static void reboot(void)
   ser_setspeed(port_fd, baud, 1);
 }
 
+/* Find the first non-0xff byte in ihex */
+static unsigned int ihex_first_nondefault(void)
+{
+  unsigned int i;
+  for (i=0; i<sizeof(ihex); ++i)
+    if (ihex[i] != 0xff) 
+      return i;
+  return sizeof(ihex);
+}
+
 static int load_ihex(void)
 {
   FILE *ifile;
   ihex_len = 0;
   if (file_ihex == NULL)
     return 0;
+
+  memset(ihex, 0xff, sizeof(ihex));
 
   if ((ifile = fopen(file_ihex, "r")) == 0)
   {
@@ -138,7 +170,6 @@ static void report_progress(unsigned int progress, unsigned int max)
   fflush(stdout);
 }
 
-#define PAGE_SIZE 128
 static int upload_ihex(void)
 {
   if (ihex_len == 0)
@@ -223,6 +254,299 @@ cleanup:
   return rc;
 }
 
+
+#define MHZ_2 2097152
+
+static uint8_t spi_transaction(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint8_t ret)
+{
+  uint8_t spi_buf[4] = { a, b, c, d };
+  struct spi_ioc_transfer tr = {
+    .tx_buf = (unsigned long)spi_buf,
+    .rx_buf = (unsigned long)spi_buf,
+    .len = 4,
+    .delay_usecs = 0,
+    .speed_hz = 0,
+    .bits_per_word = 0,
+    .cs_change = 0
+  };
+
+  if (verbose > 3)
+    fprintf(stdout, "spi(%02x, %02x, %02x, %02x) = ", a, b, c, d); 
+  if (ioctl(port_fd, SPI_IOC_MESSAGE(1), &tr) < 0)
+    return 0;
+  if (verbose > 3)
+    fprintf(stdout, "%02x %02x %02x %02x\n", spi_buf[0], spi_buf[1],
+      spi_buf[2], spi_buf[3]); 
+
+  return spi_buf[ret];
+}
+
+static int spi_read_device_signature(void)
+{
+  uint8_t vendor = spi_transaction(0x30, 0x00, 0x00, 0x00, 3); 
+  uint8_t family = spi_transaction(0x30, 0x00, 0x01, 0x00, 3); 
+  uint8_t part = spi_transaction(0x30, 0x00, 0x02, 0x00, 3); 
+
+  fprintf(stdout, "Device signature: ");
+  if (vendor == 0x1e && family == 0x95)
+  {
+    if (part == 0x14)
+      fprintf(stdout, "ATmega328\n");
+    else if (part == 0x0f)
+      fprintf(stdout, "ATmega328P\n");
+    else
+      fprintf(stdout, "ATmega32x part 0x%02x\n", part);
+    return 0;
+  }
+  else
+  {
+    fprintf(stdout, "0x%02x%02x%02x\n", vendor, family, part);
+    return -1;
+  }
+}
+
+static int spi_programming_enable(void)
+{
+  uint8_t ret;
+  ret = spi_transaction(0xac, 0x53, 0x00, 0x00, 2);
+  if (ret != 0x53)
+  {
+    fprintf(stderr, "Can't set AVR programming mode (0x%02x)\n", ret);
+    return -1;
+  }
+  if (verbose > 2) fprintf(stdout, "AVR programming mode set\n");
+  return 0;
+}
+
+static void spi_wait_not_busy(uint8_t max)
+{
+  max = max / 2;
+  do {
+    usleep(200);
+  } while (--max && (spi_transaction(0xf0, 0x00, 0x00, 0x00, 3) & 0x01));
+}
+
+static int spi_chiperase(void)
+{
+  spi_transaction(0xac, 0x80, 0x00, 0x00, 0);
+  spi_wait_not_busy(90);
+  if (verbose > 2)
+    fprintf(stdout, "Chip erased\n");
+  return 0;
+}
+
+static void spi_load_progmem_page(uint8_t waddr_lsb, uint8_t low, uint8_t high)
+{
+  spi_transaction(0x40, 0x00, waddr_lsb, low, 0);
+  spi_transaction(0x48, 0x00, waddr_lsb, high, 0);
+}
+
+static void spi_write_progmem_page(uint16_t page)
+{
+  spi_transaction(0x4c, (page >> 8) & 0xff, page & 0xff, 0, 0);
+  spi_wait_not_busy(45);
+  if (verbose > 2) fprintf(stdout, "Committed page 0x%04x\n", page);
+}
+
+static int spi_upload_ihex(void)
+{
+  if (ihex_len == 0)
+    return 0;
+
+  unsigned int addr = ihex_first_nondefault() & 0xfffe;
+  unsigned int waddr = addr / 2; 
+  unsigned int page = WADDR_PAGE(waddr);
+
+  if (verbose > 2) fprintf(stdout, "Starting address: 0x%04x\n", addr);
+
+  report_progress(0, ihex_len);
+  while (addr < ihex_len) 
+  {
+    report_progress(addr, ihex_len);
+    if (page != WADDR_PAGE(waddr))
+    {
+      spi_write_progmem_page(page);
+      page = WADDR_PAGE(waddr);
+    }
+    spi_load_progmem_page(waddr & 0x3f, ihex[addr], ihex[addr+1]);
+    addr += 2;
+    ++waddr;
+
+  }
+  spi_write_progmem_page(page);
+  report_progress(ihex_len, ihex_len);
+  return 0;
+}
+
+static void spi_write_fuse(uint8_t fuse, uint8_t val)
+{
+   const uint8_t FUSE_TO_ADDR[4] = { 0xa0, 0xa8, 0xa4, 0xe0 };
+   spi_transaction(0xac, FUSE_TO_ADDR[fuse], 0x00, val, 0);
+   spi_wait_not_busy(45);
+   fprintf(stdout, "Writing %s fuse: 0x%02x\n", FUSE_NAME[fuse], val);
+}
+
+/* spi_assert_reset_gpio
+   This is pretty hacky, it requires root permission to export the gpio
+   and set the direction. 
+*/
+static int spi_assert_reset_gpio(uint8_t val)
+{
+  #define gpio_base "/sys/class/gpio/"
+  FILE *f;
+  if (val)
+  {
+    if ((f = fopen(gpio_base "gpio25/value", "w")) == 0)
+      return -3;
+    fputs("1", f);
+    fclose(f);
+  }
+  else
+  {
+    if ((f = fopen(gpio_base "export", "w")) != 0)
+    {
+      fputs("25", f);
+      fclose(f);
+    }
+
+    if ((f = fopen(gpio_base "gpio25/direction", "w")) != 0)
+    {
+      fputs("out", f);
+      fclose(f);
+    }
+
+    chmod(gpio_base "gpio25/value", 0666);
+    
+    if ((f = fopen(gpio_base "gpio25/value", "w")) == 0)
+      return -1;
+    fputs("0", f);
+    fclose(f);
+  }
+
+  return 0;
+}
+
+static uint8_t spi_read_fuse(uint8_t fuse)
+{
+  uint8_t a, b, mask;
+  switch (fuse)
+  {
+    case FUSE_LOW:
+      a = 0x50; b = 0x50; mask = 0xff; break;
+    case FUSE_HIGH:
+      a = 0x58; b = 0x08; mask = 0xff; break;
+    case FUSE_EXT:
+      a = 0x50; b = 0x08; mask = 0x07; break;
+    case FUSE_LOCK:
+      a = 0x58; b = 0x00; mask = 0x3f; break;
+    default:
+      a = b = mask = 0; break;
+  }
+  return spi_transaction(a, b, 0, 0, 3) & mask;
+}
+
+static int spi_read_fuses(void)
+{
+  fprintf(stdout, "Low: 0x%02x ", spi_read_fuse(FUSE_LOW));
+  fprintf(stdout, "High: 0x%02x ", spi_read_fuse(FUSE_HIGH));
+  fprintf(stdout, "Ext: 0x%02x ", spi_read_fuse(FUSE_EXT));
+  fprintf(stdout, "Lock: 0x%02x\n", spi_read_fuse(FUSE_LOCK));
+  return 0;
+}
+
+static void spi_dump_progmem(void)
+{
+  uint16_t waddr;
+  for (waddr=0; waddr<0x4000; ++waddr)
+  {
+    uint8_t msb = (waddr >> 8) & 0xff;
+    uint8_t lsb = waddr & 0xff;
+
+    if (waddr % 8 == 0)
+      fprintf(stdout, "%04x:", waddr * 2);
+    fprintf(stdout, "%02x ", spi_transaction(0x20, msb, lsb, 0x00, 3));
+    fprintf(stdout, "%02x ", spi_transaction(0x28, msb, lsb, 0x00, 3));
+    if (waddr % 8 == 7)
+      fprintf(stdout, "\n");
+  }
+}
+
+static int spi_upload_file(void)
+{
+  uint8_t mode;
+  uint8_t bits;
+
+  port_fd = open(port, O_RDWR);
+  if (port_fd < 0)
+    return port_fd;
+
+  int rc = 0;
+  mode = SPI_MODE_0;
+  bits = 8;
+  if (baud == 0)
+    baud = MHZ_2;
+
+  if ((rc = ioctl(port_fd, SPI_IOC_WR_MODE, &mode)) == -1)
+  {
+    fprintf(stderr, "can't set SPI mode\n");
+    goto cleanup;
+  }
+  if ((rc = ioctl(port_fd, SPI_IOC_WR_BITS_PER_WORD, &bits)) == -1)
+  {
+    fprintf(stderr, "can't set SPI bits\n");
+    goto cleanup;
+  }
+  if ((rc = ioctl(port_fd, SPI_IOC_WR_MAX_SPEED_HZ, &baud)) == -1)
+  {
+    fprintf(stderr, "can't set SPI speed\n");
+    goto cleanup;
+  }
+  if ((rc = ioctl(port_fd, SPI_IOC_RD_MAX_SPEED_HZ, &baud)) == -1)
+  {
+    fprintf(stderr, "can't get SPI speed\n");
+    goto cleanup;
+  }
+  if (verbose > 0) fprintf(stdout, "SPI max speed: %ld KHz\n", baud/1024);
+
+  if ((rc = spi_assert_reset_gpio(0)) != 0)
+  {
+    fprintf(stderr, "can't assert /RESET gpio\n");
+    goto cleanup;
+  }
+
+  // Delay a minimum of 20ms
+  msleep(20);
+
+  if ((rc = spi_programming_enable()) != 0)
+    goto spicleanup;
+  if (verbose > 1 && (rc = spi_read_device_signature()) != 0)
+    goto spicleanup;
+  if (verbose > 1 && (rc = spi_read_fuses()) != 0)
+    goto spicleanup;
+
+  if (do_chiperase)
+  { 
+    if ((rc = spi_chiperase()) != 0)
+      goto spicleanup;
+  }
+
+  rc = spi_upload_ihex();
+
+  uint8_t fuse;
+  for (fuse=0; fuse<4; ++fuse)
+    if (do_fuse[fuse])
+      spi_write_fuse(fuse, write_fuse[fuse]);
+  
+  if (do_dumpprogmem)
+    spi_dump_progmem();
+
+spicleanup:
+  spi_assert_reset_gpio(1);
+cleanup:  
+  close(port_fd);
+  return rc;
+}
+
 static void set_port(char *val)
 {
   if (port)
@@ -231,6 +555,16 @@ static void set_port(char *val)
     port = strdup(val);
   else
     port = NULL;
+}
+
+static void set_file_ihex(char *val)
+{
+  if (file_ihex)
+    free(file_ihex);
+  if (val)
+    file_ihex = strdup(val);
+  else
+    file_ihex = NULL;
 }
 
 static void load_lm_config(void)
@@ -258,8 +592,28 @@ static void load_lm_config(void)
   uci_free_context(ctx);
 }
 
+static void parse_uflag(char *arg)
+{
+  char const * const FUSE_PARAMS[] =
+    { "lfuse:w:0x", "hfuse:w:0x", "efuse:w:0x", "lock:w:0x" };
+  uint8_t fuse;
+  for (fuse=0; fuse<4; ++fuse)
+  {
+    uint8_t l = strlen(FUSE_PARAMS[fuse]);
+    if (strncmp(arg, FUSE_PARAMS[fuse], l) == 0)
+    {
+      write_fuse[fuse] = strtol(arg+l, NULL, 16) & 0xff;
+      do_fuse[fuse] = true;
+      return;
+    }
+  }
+
+  set_file_ihex(arg);
+}
+
 int main(int argc, char *argv[])
 {
+  int rc;
   int c;
   fprintf(stdout, "%s: compiled on %s at %s\n",
     progname, __DATE__, __TIME__);
@@ -267,12 +621,18 @@ int main(int argc, char *argv[])
   load_lm_config();
 
   opterr = 0;
-  while ((c = getopt(argc, argv, "b:vP:U:")) != -1)
+  while ((c = getopt(argc, argv, "b:devP:U:")) != -1)
   {
     switch (c)
     {
       case 'b':
         baud = atol(optarg);
+        break;
+      case 'd':
+        do_dumpprogmem = true;
+        break;
+      case 'e':
+        do_chiperase = true;
         break;
       case 'v':
         ++verbose;
@@ -281,7 +641,7 @@ int main(int argc, char *argv[])
         set_port(optarg);
         break;
       case 'U':
-        file_ihex = optarg;
+        parse_uflag(optarg);
         break;
       default:
         fprintf(stderr, "Unknown option '-%c'\n", optopt);
@@ -291,10 +651,16 @@ int main(int argc, char *argv[])
 
   fprintf(stdout, "Using port: %s\n", port);
   load_ihex();
-  int rc = upload_file();
+
+  // if the device is SPI this is a RaspberryPi, use SPI interface
+  if (strncmp(port, "/dev/spidev", 11) == 0)
+    rc = spi_upload_file();
+  else
+    rc = upload_file();
 
   // Cleanup   
   set_port(NULL);
+  set_file_ihex(NULL);
  
   return rc;
 }

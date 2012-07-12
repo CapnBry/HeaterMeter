@@ -378,7 +378,7 @@ void ser_close(int fd)
 
 int ser_send(int fd, unsigned char * buf, size_t buflen)
 {
-  struct timeval timeout, to2;
+  //struct timeval timeout, to2;
   int rc;
   unsigned char * p = buf;
   size_t len = buflen;
@@ -407,9 +407,9 @@ int ser_send(int fd, unsigned char * buf, size_t buflen)
       fprintf(stderr, "\n");
   }
 
-  timeout.tv_sec = 0;
-  timeout.tv_usec = 500000;
-  to2 = timeout;
+  //timeout.tv_sec = 0;
+  //timeout.tv_usec = 500000;
+  //to2 = timeout;
 
   while (len) {
     rc = write(fd, p, (len > 1024) ? 1024 : len);
