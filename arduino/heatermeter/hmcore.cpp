@@ -44,6 +44,7 @@ static rf12_map_item_t rfMap[TEMP_COUNT];
 #endif /* HEATERMETER_RFM12 */
 
 unsigned char g_AlarmId; // ID of alarm going off
+unsigned char g_LcdBacklight;
 
 #define config_store_byte(eeprom_field, src) { eeprom_write_byte((uint8_t *)offsetof(__eeprom_data, eeprom_field), src); }
 #define config_store_word(eeprom_field, src) { eeprom_write_word((uint16_t *)offsetof(__eeprom_data, eeprom_field), src); }
@@ -108,6 +109,7 @@ static unsigned long tone_last;
 
 static void setLcdBacklight(unsigned char lcdBacklight)
 {
+  g_LcdBacklight = lcdBacklight;
   analogWrite(PIN_LCD_BACKLGHT, lcdBacklight);
 }
 
@@ -287,6 +289,7 @@ static void toneEnable(boolean enable)
   {
     tone_idx = 0xff;
     noTone(PIN_ALARM);
+    analogWrite(PIN_LCD_BACKLGHT, g_LcdBacklight);
   }
 #endif /* PIEZO_HZ */
 }
@@ -533,9 +536,7 @@ static void reportLidParameters(void)
 static void reportLcdBacklight(void)
 {
   print_P(PSTR("$HMLB" CSV_DELIMITER));
-  // The backlight value isn't stored in SRAM so pull it from config
-  unsigned char lb = eeprom_read_byte((uint8_t *)offsetof(__eeprom_data, lcdBacklight));
-  Serial.print(lb, DEC);
+  Serial.print(g_LcdBacklight, DEC);
   Serial_nl();
 }
 
@@ -934,7 +935,10 @@ static void tone_doWork(void)
     {
       dur = pgm_read_byte(&tone_durs[tone_idx]) * 10;
       tone(PIN_ALARM, PIEZO_HZ, dur);
+      analogWrite(PIN_LCD_BACKLGHT, 0);
     }
+    else
+      analogWrite(PIN_LCD_BACKLGHT, g_LcdBacklight);
   }
 #endif /* PIEZO_HZ */
 }
