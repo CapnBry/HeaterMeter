@@ -243,7 +243,7 @@ local function serialHandler(polle)
   for line in polle.lines do
     if hmConfig == nil then 
       hmConfig = {}
-      serialPolle.fd:write("/config\n")
+      serialPolle.fd:write("\n/config\n")
     end
   
     segmentCall(line)
