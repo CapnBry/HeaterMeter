@@ -189,6 +189,16 @@ void ShiftRegLCDBase::createChar(uint8_t location, uint8_t charmap[]) {
   command(LCD_SETDDRAMADDR); // Reset display to display text (from pos. 0)
 }
 
+void ShiftRegLCDBase::digitalWrite(uint8_t pin, uint8_t val)
+{
+  pin = 1 << pin;
+  if (val)
+    _auxPins |= pin;
+  else
+    _auxPins &= ~pin;
+  updateAuxPins();
+}
+
 // ********************
 
 void ShiftRegLCDBase::command(uint8_t value) {
@@ -220,33 +230,39 @@ void ShiftRegLCDNative::send(uint8_t value, uint8_t mode) const
 {
   uint8_t val1, val2;
   if ( _two_wire ) shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, 0x00 ); // clear shiftregister
-  digitalWrite( _enable_pin, LOW );
+  ::digitalWrite( _enable_pin, LOW );
   mode = mode ? SR_RS_BIT : 0; // RS bit; LOW: command.  HIGH: character.
+  mode |= _auxPins;
   val1 = mode | SR_EN_BIT | ((value >> 1) & 0x78); // upper nibble
   val2 = mode | SR_EN_BIT | ((value << 3) & 0x78); // lower nibble
   shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, val1 );
-  digitalWrite( _enable_pin, HIGH );
+  ::digitalWrite( _enable_pin, HIGH );
   delayMicroseconds(1);                 // enable pulse must be >450ns
-  digitalWrite( _enable_pin, LOW );
+  ::digitalWrite( _enable_pin, LOW );
   if ( _two_wire ) shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, 0x00 ); // clear shiftregister
   shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, val2 );
-  digitalWrite( _enable_pin, HIGH );
+  ::digitalWrite( _enable_pin, HIGH );
   delayMicroseconds(1);                 // enable pulse must be >450ns
-  digitalWrite( _enable_pin, LOW );
+  ::digitalWrite( _enable_pin, LOW );
   delayMicroseconds(40);               // commands need > 37us to settle
 }
 
 void ShiftRegLCDNative::send4bits(uint8_t value) const
 {
   uint8_t val1;
-  digitalWrite( _enable_pin, LOW );
+  ::digitalWrite( _enable_pin, LOW );
   if ( _two_wire ) shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, 0x00 ); // clear shiftregister
   val1 = SR_EN_BIT | ((value >> 1) & 0x78);
   shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, val1 );
-  digitalWrite( _enable_pin, HIGH );
+  ::digitalWrite( _enable_pin, HIGH );
   delayMicroseconds(1);                 // enable pulse must be >450ns
-  digitalWrite( _enable_pin, LOW );
+  ::digitalWrite( _enable_pin, LOW );
   delayMicroseconds(40);               // commands need > 37us to settle
+}
+
+void ShiftRegLCDNative::updateAuxPins(void) const
+{
+  shiftOut( _srdata_pin, _srclock_pin, MSBFIRST, _auxPins);
 }
 
 ShiftRegLCDSPI::ShiftRegLCDSPI(uint8_t srlatch, uint8_t lines)
@@ -258,7 +274,7 @@ ShiftRegLCDSPI::ShiftRegLCDSPI(uint8_t srlatch, uint8_t lines)
   // SS must be set OUTPUT/HIGH. If it goes to INPUT/LOW,
   // the ATmega automatically switches to SPI slave mode
   pinMode(SS, OUTPUT);
-  digitalWrite(SS, HIGH);
+  ::digitalWrite(SS, HIGH);
   // SPI = clk/2
   SPCR = _BV(SPE) | _BV(MSTR) | _BV(SPI2X);
   // SPI = clk/4
@@ -319,6 +335,7 @@ void ShiftRegLCDSPI::send(uint8_t value, uint8_t mode) const
 {
   uint8_t val;
   mode = mode ? SPI_LCD_RS : 0; // RS bit; LOW: command.  HIGH: character.
+  mode |= _auxPins;
 
   val = mode | (value & 0xf0); // upper nibble
   spi_lcd(val);
@@ -332,4 +349,9 @@ void ShiftRegLCDSPI::send4bits(uint8_t value) const
 {
   spi_lcd(value & 0xf0);
   delayMicroseconds(40);               // commands need > 37us to settle
+}
+
+void ShiftRegLCDSPI::updateAuxPins(void) const
+{
+  spi_byte(_auxPins);
 }

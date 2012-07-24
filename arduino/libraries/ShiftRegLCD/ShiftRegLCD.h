@@ -71,11 +71,17 @@ public:
   void setCursor(uint8_t, uint8_t);
   size_t write(uint8_t);
   void command(uint8_t);
+  
+  // Two pins not used for the LCD but are sent to the shiftreg
+  void digitalWrite(uint8_t pin, uint8_t val);// { pin = 1 << pin; if (val) _auxPins |= pin; else _auxPins &= ~pin; updateAuxPins();};
 protected:
   void init(uint8_t lines, uint8_t font);
   virtual void send(uint8_t, uint8_t) const = 0;
   virtual void send4bits(uint8_t) const = 0;
+  virtual void updateAuxPins(void) const = 0;
   ShiftRegLCDBase(void) {};
+
+  uint8_t _auxPins;
 private:
   uint8_t _displayfunction;
   uint8_t _displaycontrol;
@@ -98,6 +104,7 @@ public:
 protected:
   virtual void send(uint8_t, uint8_t) const;
   virtual void send4bits(uint8_t) const;
+  virtual void updateAuxPins(void) const;
 private:
   void ctor(uint8_t srdata, uint8_t srclockd, uint8_t enable, uint8_t lines, uint8_t font);
   uint8_t _srdata_pin;
@@ -126,6 +133,7 @@ public:
 protected:
   virtual void send(uint8_t, uint8_t) const;
   virtual void send4bits(uint8_t) const;
+  virtual void updateAuxPins(void) const;
 private:
   void spi_byte(uint8_t out) const;
   void spi_lcd(uint8_t value) const;
