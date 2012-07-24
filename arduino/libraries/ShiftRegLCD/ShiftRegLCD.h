@@ -73,7 +73,7 @@ public:
   void command(uint8_t);
   
   // Two pins not used for the LCD but are sent to the shiftreg
-  void digitalWrite(uint8_t pin, uint8_t val);// { pin = 1 << pin; if (val) _auxPins |= pin; else _auxPins &= ~pin; updateAuxPins();};
+  void digitalWrite(uint8_t pin, uint8_t val);
 protected:
   void init(uint8_t lines, uint8_t font);
   virtual void send(uint8_t, uint8_t) const = 0;
