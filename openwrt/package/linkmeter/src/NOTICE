@@ -2,4 +2,7 @@ Code for hmdude is a repackaged light version of avrdude and is included under
 GNU General Public License v2 or greater.
 http://savannah.nongnu.org/projects/avrdude/
 
+Including GPL code from the bcm2835 GPIO library by Mike McCauley
+http://www.open.com.au/mikem/bcm2835/
+
 The HeaterMeter/LinkMeter project makes no claim of copyright on this software.

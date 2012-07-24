@@ -32,6 +32,7 @@
 #include <uci.h>
 
 #include "fileio.h"
+#include "bcm2835.h"
 
 const char *progname = "hmdude";
 int verbose;
@@ -40,14 +41,16 @@ static long baud;
 static long lm_baud;
 static char *file_ihex;
 static char *port;
-static char *reboot_cmd = "\n/reboot\n";
 
 static int port_fd;
 static unsigned char ihex[32 * 1024];
 static int ihex_len;
+static int spi_intialized;
 
 static bool do_chiperase;
+static bool do_disable_autoerace;
 static bool do_dumpprogmem;
+static bool do_verify = true;
 
 #define msleep(x) usleep(x * 1000)
 
@@ -97,6 +100,7 @@ static int read_device_signature(void)
 
 static void reboot(void)
 {
+  char *reboot_cmd = "\n/reboot\n";
   ser_setspeed(port_fd, lm_baud, 1);
   ser_send(port_fd, (unsigned char *)reboot_cmd, strlen(reboot_cmd));
   ser_setspeed(port_fd, baud, 1);
@@ -330,7 +334,7 @@ static int spi_chiperase(void)
 {
   spi_transaction(0xac, 0x80, 0x00, 0x00, 0);
   spi_wait_not_busy(90);
-  if (verbose > 2)
+  if (verbose > 0)
     fprintf(stdout, "Chip erased\n");
   return 0;
 }
@@ -378,6 +382,43 @@ static int spi_upload_ihex(void)
   return 0;
 }
 
+static int spi_verify_ihex(void)
+{
+  if (ihex_len == 0)
+    return 0;
+  
+  unsigned int addr = ihex_first_nondefault() & 0xfffe;
+  unsigned int waddr = addr / 2;
+
+  fprintf(stdout, "Verifying...\n");
+  report_progress(0, ihex_len);
+  while (addr < ihex_len)
+  {
+    uint8_t msb = (waddr >> 8) & 0xff;
+    uint8_t lsb = waddr & 0xff;
+
+    report_progress(addr, ihex_len);
+    if (spi_transaction(0x20, msb, lsb, 0x00, 3) != ihex[addr])
+      break;
+    ++addr;
+    if (spi_transaction(0x28, msb, lsb, 0x00, 3) != ihex[addr])
+      break;
+    ++addr;
+
+    ++waddr;
+  }
+  
+  if (addr < ihex_len)
+  {
+    fprintf(stdout, "\nVerify mismatch at 0x%04x\n", addr);
+    return -1;
+  }
+  
+  report_progress(ihex_len, ihex_len);
+  return 0;
+
+}
+
 static void spi_write_fuse(uint8_t fuse, uint8_t val)
 {
    const uint8_t FUSE_TO_ADDR[4] = { 0xa0, 0xa8, 0xa4, 0xe0 };
@@ -386,12 +427,43 @@ static void spi_write_fuse(uint8_t fuse, uint8_t val)
    fprintf(stdout, "Writing %s fuse: 0x%02x\n", FUSE_NAME[fuse], val);
 }
 
-/* spi_assert_reset_gpio
-   This is pretty hacky, it requires root permission to export the gpio
-   and set the direction. 
+/* 
+   This is pretty hacky, it requires root permission and we're direcrtly
+   manipulating GPIO memory and loading modules
 */
-static int spi_assert_reset_gpio(uint8_t val)
+static int spi_setup(bool val)
 {
+  if (val)
+  {
+    // init
+    spi_intialized = bcm2835_init();
+    if (spi_intialized == 0)
+      return -1;
+    // Set the SPI lines back the way the spi driver expects
+    bcm2835_gpio_fsel(9, BCM2835_GPIO_FSEL_ALT0); // MISO
+    bcm2835_gpio_fsel(10, BCM2835_GPIO_FSEL_ALT0); // MOSI
+    bcm2835_gpio_fsel(11, BCM2835_GPIO_FSEL_ALT0); // CLK
+
+    // Set the GPIO25 to output/low, which is tied to /RESET
+    bcm2835_gpio_fsel(25, BCM2835_GPIO_FSEL_OUTP);
+    bcm2835_gpio_clr(25);
+    // Delay a minimum of 20ms
+    msleep(20);
+  }
+  else if (spi_intialized != 0)
+  {
+    // Make sure the driver cleaned up its GPIOs
+    bcm2835_gpio_fsel(9, BCM2835_GPIO_FSEL_INPT); // MISO
+    bcm2835_gpio_fsel(10, BCM2835_GPIO_FSEL_INPT); // MOSI
+    bcm2835_gpio_fsel(11, BCM2835_GPIO_FSEL_INPT); // CLK
+    // Set GPIO25 back to high/input
+    bcm2835_gpio_set(25);
+    bcm2835_gpio_fsel(25, BCM2835_GPIO_FSEL_INPT);
+    // done
+    bcm2835_close();
+  }
+
+#if 0
   #define gpio_base "/sys/class/gpio/"
   FILE *f;
   if (val)
@@ -422,6 +494,7 @@ static int spi_assert_reset_gpio(uint8_t val)
     fputs("0", f);
     fclose(f);
   }
+#endif
 
   return 0;
 }
@@ -473,16 +546,21 @@ static void spi_dump_progmem(void)
 
 static int spi_upload_file(void)
 {
-  uint8_t mode;
-  uint8_t bits;
+  int rc = 0;
+  uint8_t mode = SPI_MODE_0;
+  uint8_t bits = 8;
+
+  if (spi_setup(true) != 0)
+    return -1;
 
   port_fd = open(port, O_RDWR);
   if (port_fd < 0)
-    return port_fd;
+  {
+    rc = port_fd;
+    fprintf(stderr, "can't open SPI device\n");
+    goto cleanup;
+  }
 
-  int rc = 0;
-  mode = SPI_MODE_0;
-  bits = 8;
   if (baud == 0)
     baud = MHZ_2;
 
@@ -508,29 +586,25 @@ static int spi_upload_file(void)
   }
   if (verbose > 0) fprintf(stdout, "SPI max speed: %ld KHz\n", baud/1024);
 
-  if ((rc = spi_assert_reset_gpio(0)) != 0)
-  {
-    fprintf(stderr, "can't assert /RESET gpio\n");
-    goto cleanup;
-  }
-
-  // Delay a minimum of 20ms
-  msleep(20);
-
   if ((rc = spi_programming_enable()) != 0)
-    goto spicleanup;
+    goto cleanup;
   if (verbose > 1 && (rc = spi_read_device_signature()) != 0)
-    goto spicleanup;
+    goto cleanup;
   if (verbose > 1 && (rc = spi_read_fuses()) != 0)
-    goto spicleanup;
+    goto cleanup;
 
-  if (do_chiperase)
+  if (do_chiperase || 
+    (file_ihex != NULL && do_disable_autoerace == false))
   { 
     if ((rc = spi_chiperase()) != 0)
-      goto spicleanup;
+      goto cleanup;
   }
 
-  rc = spi_upload_ihex();
+  if ((rc = spi_upload_ihex()) != 0)
+    goto cleanup;
+
+  if (do_verify)
+    rc = spi_verify_ihex();
 
   uint8_t fuse;
   for (fuse=0; fuse<4; ++fuse)
@@ -540,10 +614,11 @@ static int spi_upload_file(void)
   if (do_dumpprogmem)
     spi_dump_progmem();
 
-spicleanup:
-  spi_assert_reset_gpio(1);
 cleanup:  
-  close(port_fd);
+  if (port_fd >= 0)
+    close(port_fd);
+  spi_setup(false);
+
   return rc;
 }
 
@@ -621,7 +696,7 @@ int main(int argc, char *argv[])
   load_lm_config();
 
   opterr = 0;
-  while ((c = getopt(argc, argv, "b:devP:U:")) != -1)
+  while ((c = getopt(argc, argv, "b:devDP:U:V")) != -1)
   {
     switch (c)
     {
@@ -637,11 +712,17 @@ int main(int argc, char *argv[])
       case 'v':
         ++verbose;
         break;
+      case 'D':
+        do_disable_autoerace = true;
+        break;
       case 'P':
         set_port(optarg);
         break;
       case 'U':
         parse_uflag(optarg);
+        break;
+      case 'V':
+        do_verify = false;
         break;
       default:
         fprintf(stderr, "Unknown option '-%c'\n", optopt);
