@@ -1,0 +1,59 @@
+diff -ur /home/bmayland/src/rtl8188C_8192C_usb_linux_v3.4.3_4369.20120622/include/autoconf.h src/include/autoconf.h
+--- /home/bmayland/src/rtl8188C_8192C_usb_linux_v3.4.3_4369.20120622/include/autoconf.h	2012-06-22 10:59:51.000000000 -0400
++++ 8192cu/include/autoconf.h	2012-07-27 10:34:56.377992846 -0400
+@@ -32,7 +32,7 @@
+ #define PLATFORM_LINUX	1
+ 
+ 
+-//#define CONFIG_IOCTL_CFG80211 1
++#define CONFIG_IOCTL_CFG80211 1
+ #ifdef CONFIG_IOCTL_CFG80211
+ 	#define CONFIG_CFG80211_FORCE_COMPATIBLE_2_6_37_UNDER
+ 	//#define CONFIG_DEBUG_CFG80211 1
+diff -ur /home/bmayland/src/rtl8188C_8192C_usb_linux_v3.4.3_4369.20120622/os_dep/linux/ioctl_cfg80211.c src/os_dep/linux/ioctl_cfg80211.c
+--- /home/bmayland/src/rtl8188C_8192C_usb_linux_v3.4.3_4369.20120622/os_dep/linux/ioctl_cfg80211.c	2012-06-22 10:59:51.000000000 -0400
++++ src/os_dep/linux/ioctl_cfg80211.c	2012-07-28 12:24:54.557947485 -0400
+@@ -3000,7 +3000,11 @@
+ 	.ndo_open = rtw_cfg80211_monitor_if_open,
+        .ndo_stop = rtw_cfg80211_monitor_if_close,
+        .ndo_start_xmit = rtw_cfg80211_monitor_if_xmit_entry,
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,2,0)
++       .ndo_set_rx_mode = rtw_cfg80211_monitor_if_set_multicast_list,
++#else
+        .ndo_set_multicast_list = rtw_cfg80211_monitor_if_set_multicast_list,
++#endif
+        .ndo_set_mac_address = rtw_cfg80211_monitor_if_set_mac_address,       
+ };
+ #endif
+@@ -4519,6 +4523,7 @@
+ 	wiphy->bands[IEEE80211_BAND_2GHZ] = &rtw_band_2ghz;
+ 	wiphy->bands[IEEE80211_BAND_5GHZ] = &rtw_band_5ghz;
+ 	
++	_rtw_memcpy(wiphy->perm_addr, myid(&(padapter->eeprompriv)), ETH_ALEN);
+ }
+ 
+ int rtw_wdev_alloc(_adapter *padapter, struct device *dev)
+diff -ur /home/bmayland/src/rtl8188C_8192C_usb_linux_v3.4.3_4369.20120622/os_dep/linux/usb_intf.c src/os_dep/linux/usb_intf.c
+--- /home/bmayland/src/rtl8188C_8192C_usb_linux_v3.4.3_4369.20120622/os_dep/linux/usb_intf.c	2012-06-22 10:59:51.000000000 -0400
++++ src/os_dep/linux/usb_intf.c	2012-07-28 11:44:34.680620472 -0400
+@@ -1149,10 +1149,6 @@
+ 	pdvobjpriv->pusbintf = pusb_intf ;
+ 	pdvobjpriv->pusbdev = interface_to_usbdev(pusb_intf);
+ 
+-#ifdef CONFIG_IOCTL_CFG80211
+-	rtw_wdev_alloc(padapter, &pusb_intf->dev);
+-#endif //CONFIG_IOCTL_CFG80211
+-	
+ 
+ 	// set data
+ 	usb_set_intfdata(pusb_intf, pnetdev);
+@@ -1260,6 +1256,9 @@
+ 	_rtw_memcpy(pnetdev->dev_addr, padapter->eeprompriv.mac_addr, ETH_ALEN);
+ 	DBG_8192C("MAC Address from pnetdev->dev_addr= " MAC_FMT "\n", MAC_ARG(pnetdev->dev_addr));	
+ 
++#ifdef CONFIG_IOCTL_CFG80211
++	rtw_wdev_alloc(padapter, &pusb_intf->dev);
++#endif //CONFIG_IOCTL_CFG80211
+ 
+ 	//step 6.
+ 	/* Tell the network stack we exist */

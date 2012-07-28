@@ -1,0 +1,80 @@
+--- 8192cu.orig/os_dep/linux/ioctl_cfg80211.c	2012-07-28 17:59:53.453751791 -0400
++++ 8192cu/os_dep/linux/ioctl_cfg80211.c	2012-07-28 17:54:22.448268014 -0400
+@@ -1343,7 +1343,16 @@
+ 
+ 		sinfo->filled |= STATION_INFO_SIGNAL;
+ 		sinfo->signal = translate_percentage_to_dbm(padapter->recvpriv.signal_strength);
+-
++		sinfo->filled |= STATION_INFO_RX_PACKETS;
++		sinfo->rx_packets = padapter->recvpriv.rx_pkts;
++		sinfo->filled |= STATION_INFO_RX_BYTES;
++		sinfo->rx_bytes = padapter->recvpriv.rx_bytes;
++		sinfo->filled |= STATION_INFO_TX_PACKETS;
++		sinfo->tx_packets = padapter->xmitpriv.tx_pkts;
++		sinfo->filled |= STATION_INFO_TX_BYTES;
++		sinfo->tx_bytes = padapter->xmitpriv.tx_bytes;
++		sinfo->filled |= STATION_INFO_TX_FAILED;
++		sinfo->tx_failed = padapter->xmitpriv.tx_drop;
+ 		sinfo->filled |= STATION_INFO_TX_BITRATE;
+ 		sinfo->txrate.legacy = 10 * rtw_get_network_max_rate(padapter, &pmlmepriv->cur_network.network);
+ 	}
+@@ -1366,6 +1375,16 @@
+ 		}
+ 		
+ 		//TODO: should acquire station info...
++		sinfo->filled |= STATION_INFO_SIGNAL;
++		sinfo->signal = psta->rssi; //translate_percentage_to_dbm(rssi);?
++		sinfo->filled |= STATION_INFO_RX_BYTES;
++		sinfo->rx_bytes = psta->sta_stats.rx_bytes;
++		sinfo->filled |= STATION_INFO_TX_PACKETS;
++		sinfo->tx_packets = psta->sta_stats.tx_pkts;
++		sinfo->filled |= STATION_INFO_TX_BYTES;
++		sinfo->tx_bytes = psta->sta_stats.tx_bytes;
++		sinfo->filled |= STATION_INFO_TX_FAILED;
++		sinfo->tx_failed = psta->sta_stats.tx_drops;
+ 	}
+ 
+ 	return 0;
+@@ -3411,9 +3430,40 @@
+ static int	cfg80211_rtw_dump_station(struct wiphy *wiphy, struct net_device *dev,
+ 			       int idx, u8 *mac, struct station_info *sinfo)
+ {
+-	printk("%s\n", __func__);
++	_adapter *padapter = wiphy_to_adapter(wiphy);
++	struct mlme_priv *pmlmepriv = &padapter->mlmepriv;
++
++	//printk("%s\n", __func__);
++
++	//for infra./P2PClient mode
++	if(check_fwstate(pmlmepriv, WIFI_STATION_STATE)
++		&& check_fwstate(pmlmepriv, _FW_LINKED)
++	)
++	{
++		struct wlan_network  *cur_network = &(pmlmepriv->cur_network);
++		if (idx > 0)
++			return -ENOENT;
++		_rtw_memcpy(mac, cur_network->network.MacAddress, ETH_ALEN);
++
++		sinfo->filled |= STATION_INFO_SIGNAL;
++		sinfo->signal = translate_percentage_to_dbm(padapter->recvpriv.signal_strength);
++		sinfo->filled |= STATION_INFO_RX_PACKETS;
++		sinfo->rx_packets = padapter->recvpriv.rx_pkts;
++		sinfo->filled |= STATION_INFO_RX_BYTES;
++		sinfo->rx_bytes = padapter->recvpriv.rx_bytes;
++		sinfo->filled |= STATION_INFO_TX_PACKETS;
++		sinfo->tx_packets = padapter->xmitpriv.tx_pkts;
++		sinfo->filled |= STATION_INFO_TX_BYTES;
++		sinfo->tx_bytes = padapter->xmitpriv.tx_bytes;
++		sinfo->filled |= STATION_INFO_TX_FAILED;
++		sinfo->tx_failed = padapter->xmitpriv.tx_drop;
++		sinfo->filled |= STATION_INFO_TX_BITRATE;
++		sinfo->txrate.legacy = 10 * rtw_get_network_max_rate(padapter, &pmlmepriv->cur_network.network);
++		
++		return 0;
++	}
+ 	
+-	return 0;
++	return -ENOENT;
+ }
+ 
+ static int	cfg80211_rtw_change_bss(struct wiphy *wiphy, struct net_device *dev,
