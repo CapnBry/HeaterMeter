@@ -258,9 +258,6 @@ cleanup:
   return rc;
 }
 
-
-#define MHZ_2 2097152
-
 static uint8_t spi_transaction(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint8_t ret)
 {
   uint8_t spi_buf[4] = { a, b, c, d };
@@ -562,7 +559,8 @@ static int spi_upload_file(void)
   }
 
   if (baud == 0)
-    baud = MHZ_2;
+    baud = 2048;
+  baud *= 1024;
 
   if ((rc = ioctl(port_fd, SPI_IOC_WR_MODE, &mode)) == -1)
   {
@@ -584,15 +582,19 @@ static int spi_upload_file(void)
     fprintf(stderr, "can't get SPI speed\n");
     goto cleanup;
   }
-  if (verbose > 0) fprintf(stdout, "SPI max speed: %ld KHz\n", baud/1024);
+  if (verbose > 1) fprintf(stdout, "SPI speed: %ld KHz\n", baud/1024);
 
   if ((rc = spi_programming_enable()) != 0)
     goto cleanup;
-  if (verbose > 1 && (rc = spi_read_device_signature()) != 0)
+  if (verbose > 0 && (rc = spi_read_device_signature()) != 0)
     goto cleanup;
-  if (verbose > 1 && (rc = spi_read_fuses()) != 0)
+  if (verbose > 0 && (rc = spi_read_fuses()) != 0)
     goto cleanup;
 
+  // chiperase if user requested or we are flashing and the user didn't
+  // explicitly ask not to. ATmegas appear to only be able to un-set bits
+  // during a flash operation, so you can flash without erasing if your
+  // chip is already full of 0xff
   if (do_chiperase || 
     (file_ihex != NULL && do_disable_autoerace == false))
   { 
