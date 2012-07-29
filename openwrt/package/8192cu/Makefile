@@ -11,6 +11,8 @@ include $(INCLUDE_DIR)/kernel.mk
 PKG_NAME:=8192cu
 PKG_RELEASE:=1
 
+PKG_BUILD_PARALLEL:=1
+
 include $(INCLUDE_DIR)/package.mk
 
 define KernelPackage/8192cu

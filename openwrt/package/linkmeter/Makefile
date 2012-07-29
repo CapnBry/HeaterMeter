@@ -5,6 +5,8 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=linkmeter
 PKG_RELEASE:=2
 
+PKG_BUILD_PARALLEL:=1
+
 include $(INCLUDE_DIR)/package.mk
 
 define Package/linkmeter
