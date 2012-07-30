@@ -18,14 +18,21 @@ include $(INCLUDE_DIR)/package.mk
 define KernelPackage/8192cu
   SUBMENU:=Wireless Drivers
   TITLE:=Realtek 8192cu WiFi
-  FILES:=$(PKG_BUILD_DIR)/8192cu.ko
+  FILES:= \
+	$(LINUX_DIR)/net/wireless/cfg80211.ko \
+	$(PKG_BUILD_DIR)/8192cu.ko
   MAINTAINER:=Bryan Mayland <capnbry@gmail.com>
-  DEPENDS:=+kmod-cfg80211 +@DRIVER_11N_SUPPORT
-  AUTOLOAD:=$(call AutoLoad,50,8192cu)
+  DEPENDS:=+@DRIVER_11N_SUPPORT
+  KCONFIG:=CONFIG_CFG80211
+  AUTOLOAD:=$(call AutoLoad,50, cfg80211 8192cu)
 endef
 
 define KernelPackage/8192cu/description
   Updated blob driver for Realtek 8192cu wireless devices.
+  This driver also includes a non 'compat-wireless' built version
+  of cfg80211.ko so do not build with the kmod-cfg80211 or kmod-mac80211
+  packages built into the image (they'll still have to be compiled as
+  modules though).
 endef
 
 MAKE_OPTS:= \
