@@ -239,15 +239,37 @@ function segStateUpdate(line)
     end
 end
 
+local function segmentValidate(line)
+  -- First character always has to be $
+  if line:sub(1, 1) ~= "$" then return false end
+  
+  -- The line optionally ends with *XX hex checksum
+  local _, _, csum = line:find("*(%x%x)$", -3)
+  if csum then
+    csum = tonumber(csum, 16)
+    for i = 2, #line-3 do
+      csum = nixio.bit.bxor(csum, line:byte(i))
+    end
+   
+    if csum ~= 0 then nixio.syslog("warning", "Checksum failed: "..line) end
+    csum = csum == 0
+  end
+ 
+  -- Returns nil if no checksum or true/false if checksum checks 
+  return csum
+end
+
 local function serialHandler(polle)
   for line in polle.lines do
-    if hmConfig == nil then 
-      hmConfig = {}
-      serialPolle.fd:write("\n/config\n")
-    end
+    if segmentValidate(line) ~= false then
+      if hmConfig == nil then 
+        hmConfig = {}
+        serialPolle.fd:write("\n/config\n")
+      end
   
-    segmentCall(line)
-  end
+      segmentCall(line)
+    end -- if validate
+  end -- for line
 end
 
 local function lmdStart()
