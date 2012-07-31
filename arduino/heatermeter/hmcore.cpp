@@ -191,14 +191,14 @@ static void storeProbeType(unsigned char probeIndex, unsigned char probeType)
 #ifdef HEATERMETER_RFM12
 static void reportRfMap(void)
 {
-  print_P(PSTR("$HMRM"));
+  print_P(PSTR("HMRM"));
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
     Serial_csv();
     if (rfMap[i].source != RFSOURCEID_NONE)
     {
       Serial_char(rfMap[i].source + 'A' - 1);
-      Serial.print(rfMap[i].pin, DEC);
+      SerialX.print(rfMap[i].pin, DEC);
     }
   }
   Serial_nl();
@@ -393,7 +393,7 @@ static void storePidParam(char which, float value)
 static void outputCsv(void)
 {
 #ifdef HEATERMETER_SERIAL
-  print_P(PSTR("$HMSU" CSV_DELIMITER));
+  print_P(PSTR("HMSU" CSV_DELIMITER));
   pid.status();
   Serial_nl();
 #endif /* HEATERMETER_SERIAL */
@@ -420,15 +420,15 @@ static void printSciFloat(float f)
   }
   if (neg)
     f *= -1.0f;
-  Serial.print(f, 7);
+  SerialX.print(f, 7);
   Serial_char('e');
-  Serial.print(exponent, DEC);
+  SerialX.print(exponent, DEC);
 }
 
 static void reportProbeCoeff(unsigned char probeIdx)
 {
-  print_P(PSTR("$HMPC" CSV_DELIMITER));
-  Serial.print(probeIdx, DEC);
+  print_P(PSTR("HMPC" CSV_DELIMITER));
+  SerialX.print(probeIdx, DEC);
   Serial_csv();
   
   TempProbe *p = pid.Probes[probeIdx];
@@ -437,7 +437,7 @@ static void reportProbeCoeff(unsigned char probeIdx)
     printSciFloat(p->Steinhart[i]);
     Serial_csv();
   }
-  Serial.print(p->getProbeType(), DEC);
+  SerialX.print(p->getProbeType(), DEC);
   Serial_nl();
 }
 
@@ -483,42 +483,42 @@ static void reboot(void)
 
 static void reportProbeNames(void)
 {
-  print_P(PSTR("$HMPN"));
+  print_P(PSTR("HMPN"));
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
     loadProbeName(i);
     Serial_csv();
-    Serial.print(editString);
+    SerialX.print(editString);
   }
   Serial_nl();
 }
 
 static void reportPidParams(void)
 {
-  print_P(PSTR("$HMPD"));
+  print_P(PSTR("HMPD"));
   for (unsigned char i=0; i<4; ++i)
   {
     Serial_csv();
     //printSciFloat(pid.Pid[i]);
-    Serial.print(pid.Pid[i], 8);
+    SerialX.print(pid.Pid[i], 8);
   }
   Serial_nl();
 }
 
 static void reportProbeOffsets(void)
 {
-  print_P(PSTR("$HMPO"));
+  print_P(PSTR("HMPO"));
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
     Serial_csv();
-    Serial.print(pid.Probes[i]->Offset, DEC);
+    SerialX.print(pid.Probes[i]->Offset, DEC);
   }
   Serial_nl();
 }
 
 static void reportVersion(void)
 {
-  print_P(PSTR("$UCID" CSV_DELIMITER));
+  print_P(PSTR("UCID" CSV_DELIMITER));
   print_P(PSTR("HeaterMeter" CSV_DELIMITER));
   print_P(HM_VERSION);
   Serial_nl();
@@ -526,17 +526,17 @@ static void reportVersion(void)
 
 static void reportLidParameters(void)
 {
-  print_P(PSTR("$HMLD" CSV_DELIMITER));
-  Serial.print(pid.LidOpenOffset, DEC);
+  print_P(PSTR("HMLD" CSV_DELIMITER));
+  SerialX.print(pid.LidOpenOffset, DEC);
   Serial_csv();
-  Serial.print(pid.getLidOpenDuration(), DEC);
+  SerialX.print(pid.getLidOpenDuration(), DEC);
   Serial_nl();
 }
 
 static void reportLcdBacklight(void)
 {
-  print_P(PSTR("$HMLB" CSV_DELIMITER));
-  Serial.print(g_LcdBacklight, DEC);
+  print_P(PSTR("HMLB" CSV_DELIMITER));
+  SerialX.print(g_LcdBacklight, DEC);
   Serial_nl();
 }
 
@@ -548,15 +548,15 @@ static void reportProbeCoeffs(void)
 
 static void reportAlarmLimits(boolean showall)
 {
-  print_P(PSTR("$HMAL"));
+  print_P(PSTR("HMAL"));
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
     ProbeAlarm &a = pid.Probes[i]->Alarms;
     Serial_csv();
-    if (a.getLowRinging() || showall) Serial.print(a.getLow(), DEC);
+    if (a.getLowRinging() || showall) SerialX.print(a.getLow(), DEC);
     if (a.getLowRinging()) Serial_char('L');
     Serial_csv();
-    if (a.getHighRinging() || showall) Serial.print(a.getHigh(), DEC);
+    if (a.getHighRinging() || showall) SerialX.print(a.getHigh(), DEC);
     if (a.getHighRinging()) Serial_char('H');
   }
   Serial_nl();
@@ -708,7 +708,7 @@ static boolean handleCommandUrl(char *URL)
 static void outputRfStatus(void)
 {
 #if defined(HEATERMETER_SERIAL) && defined(HEATERMETER_RFM12)
-  print_P(PSTR("$HMRF" CSV_DELIMITER)); 
+  print_P(PSTR("HMRF" CSV_DELIMITER)); 
   rfmanager.status();
   Serial_nl();
 #endif /* defined(HEATERMETER_SERIAL) && defined(HEATERMETER_RFM12) */
@@ -1091,7 +1091,7 @@ void hmcoreSetup(void)
   
 #ifdef HEATERMETER_SERIAL
   Serial.begin(HEATERMETER_SERIAL);
-  Serial_nl();
+  Serial_char('\n');
   reportVersion();
 #endif  /* HEATERMETER_SERIAL */
 #ifdef USE_EXTERNAL_VREF  

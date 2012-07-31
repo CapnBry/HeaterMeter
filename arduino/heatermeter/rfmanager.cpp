@@ -100,9 +100,9 @@ void RFManager::status(void)
   // The first item in the list the manager but it has the same format as 
   // the other sources, which is: Id,Signal,TimeSinceLastReceive
   print_P(PSTR("A" CSV_DELIMITER "3300" CSV_DELIMITER));
-  Serial.print(_crcOk, DEC); // signal
+  SerialX.print(_crcOk, DEC); // signal
   Serial_csv();
-  Serial.print((m - getLastReceive()) / 1000, DEC);
+  SerialX.print((m - getLastReceive()) / 1000, DEC);
 
   for (unsigned char idx=0; idx<RF_SOURCE_COUNT; ++idx)
   {
@@ -111,13 +111,13 @@ void RFManager::status(void)
     Serial_csv();
     Serial_char('A' + _sources[idx].getId() - 1);
     Serial_csv();
-    Serial.print(_sources[idx].getBatteryLevel(), DEC);
+    SerialX.print(_sources[idx].getBatteryLevel(), DEC);
     Serial_csv();
-    Serial.print(_sources[idx].getSignalLevel(), DEC);
+    SerialX.print(_sources[idx].getSignalLevel(), DEC);
     Serial_csv();
     
     unsigned int since = (m - _sources[idx].getLastReceive()) / 1000;
-    Serial.print(since, DEC);
+    SerialX.print(since, DEC);
   }
 }
 

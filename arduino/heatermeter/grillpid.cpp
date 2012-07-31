@@ -66,9 +66,6 @@ void TempProbe::loadConfig(struct __eeprom_probe *config)
   memcpy(Steinhart, config->steinhart, sizeof(Steinhart));
   Alarms.setLow(config->alarmLow);
   Alarms.setHigh(config->alarmHigh);
-  //Serial.print(" P=");Serial.print(_probeType,DEC);Serial.print(" O=");Serial.print(Offset,DEC);
-  //Serial.print(" A=");Serial.print(Steinhart[0],8);Serial.print(" B=");Serial.print(Steinhart[1],8);
-  //Serial.print(" C=");Serial.print(Steinhart[2],8);Serial.print(" R=");Serial.println(Steinhart[3],8);
 }
 
 void TempProbe::setProbeType(unsigned char probeType)
@@ -289,23 +286,23 @@ void GrillPid::setPidConstant(unsigned char idx, float value)
 
 void GrillPid::status(void) const
 {
-  Serial.print(getSetPoint(), DEC);
+  SerialX.print(getSetPoint(), DEC);
   Serial_csv();
 
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
     if (Probes[i]->hasTemperature())
-      Serial.print(Probes[i]->Temperature, 1);
+      SerialX.print(Probes[i]->Temperature, 1);
     else
       Serial_char('U');
     Serial_csv();
   }
 
-  Serial.print(getFanSpeed(), DEC);
+  SerialX.print(getFanSpeed(), DEC);
   Serial_csv();
-  Serial.print((int)FanSpeedAvg, DEC);
+  SerialX.print((int)FanSpeedAvg, DEC);
   Serial_csv();
-  Serial.print(LidOpenResumeCountdown, DEC);
+  SerialX.print(LidOpenResumeCountdown, DEC);
 }
 
 boolean GrillPid::doWork(void)
@@ -373,12 +370,12 @@ boolean GrillPid::doWork(void)
 
 void GrillPid::pidStatus(void) const
 {
-  print_P(PSTR("$HMPS"CSV_DELIMITER));
-  Serial.print(MaxFanSpeed, DEC);
+  print_P(PSTR("HMPS"CSV_DELIMITER));
+  SerialX.print(MaxFanSpeed, DEC);
   Serial_csv();
-  Serial.print(_pidErrorSum, 2);
+  SerialX.print(_pidErrorSum, 2);
   Serial_csv();
-  Serial.print(Probes[TEMP_PIT]->Temperature - Probes[TEMP_PIT]->TemperatureAvg, 2);
+  SerialX.print(Probes[TEMP_PIT]->Temperature - Probes[TEMP_PIT]->TemperatureAvg, 2);
   Serial_nl();
 }
 
