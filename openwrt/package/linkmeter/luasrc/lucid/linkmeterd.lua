@@ -261,12 +261,15 @@ end
 
 local function serialHandler(polle)
   for line in polle.lines do
-    if segmentValidate(line) ~= false then
+    local csumOk = segmentValidate(line)
+    if csumOk ~= false then
       if hmConfig == nil then 
         hmConfig = {}
         serialPolle.fd:write("\n/config\n")
       end
-  
+ 
+      -- Remove the checksum of it was there
+      if csumOk == true then line = line:sub(1, -4) end 
       segmentCall(line)
     end -- if validate
   end -- for line
