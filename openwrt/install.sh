@@ -9,8 +9,8 @@ if [ -z "$WRT_PATH" ] ; then
 fi
 
 cat << EOFEEDS > $WRT_PATH/feeds.conf
-src-svn packages svn://svn.openwrt.org/openwrt/packages
-src-svn luci http://svn.luci.subsignal.org/luci/trunk/contrib/package
+src-svn packages svn://svn.openwrt.org/openwrt/packages@29665
+src-svn luci http://svn.luci.subsignal.org/luci/trunk/contrib/package@8147
 src-link linkmeter $REPO_PATH/package
 EOFEEDS
 
