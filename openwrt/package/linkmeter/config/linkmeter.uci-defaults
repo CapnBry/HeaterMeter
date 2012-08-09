@@ -4,6 +4,8 @@ uci_set_nomodify() {
   uci -q get $1 > /dev/null || uci set $1=$2
 }
 
+HARDWARE_MODEL=`echo "_, model = luci.sys.sysinfo(); print(model)" | lua -lluci.sys`
+
 # Forced configuration parameters
 uci batch << EOF
 set lucid.main.threadlimit=LUCID_THREADS
@@ -12,6 +14,7 @@ set lucid.lmserver=daemon
 set lucid.lmserver.enabled=1
 set lucid.lmserver.slave=linkmeter
 set lucid.linkmeter=linkmeterd
+set lucid.linkmeter.platform=$HARDWARE_MODEL
 EOF
 
 # Things we don't modify if they're there
@@ -21,3 +24,6 @@ uci_set_nomodify lucid.linkmeter.rrd_file /tmp/hm.rrd
 uci_set_nomodify lucid.linkmeter.stashpath /root
 
 uci commit lucid
+
+# On applicable platforms, avrupdate loads HeaterMeter onto the AVR
+avrupdate

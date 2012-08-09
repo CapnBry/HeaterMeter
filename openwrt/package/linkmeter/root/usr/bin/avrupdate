@@ -1,5 +1,54 @@
 #!/bin/sh
 
+. $IPKG_INSTROOT/lib/functions.sh
+
+platform_setup_DEFAULT() {
+  DUDE_OPTS="-b 115200"
+}
+
+platform_setup_BCM2708() {
+  if [ "$platform" = "BCM2708" ] ; then
+    insmod spidev 2> /dev/null
+    insmod spi-bcm2708 2> /dev/null
+  fi
+  
+  FUSES=`hmdude -v -b 128 -P/dev/spidev0.0 |\
+     sed -n 's/^Low: 0x\(..\) High: 0x\(..\) Ext: 0x\(..\).*/\1\2\3/p'`
+  echo -n AVR fuses $FUSES
+ 
+  case "$FUSES" in
+    62d9ff|62d907)
+      echo " blank ATmega chip detected, flashing default"
+      hmdude -v -b 128 -P/dev/spidev0.0 \
+        -U/lib/firmware/hm.hex \
+        -U lfuse:w:0xff -U hfuse:w:0xd7 -U efuse:w:0x05
+      ;;
+    ffdf*)
+      echo " Arduino fuses, switching to preserve EEPROM"
+      hmdude -P/dev/spidev0.0 \
+        -U lfuse:w:0xff -U hfuse:w:0xd7 -U efuse:w:0x05
+      ;;
+    "")
+      echo " ERROR"
+      ;;
+    *)
+      echo " OK"
+      ;;
+  esac 
+  
+  DUDE_OPTS="-P/dev/spidev0.0 -V"
+  echo
+}
+            
+platform_setup() {
+  config_load lucid
+  config_get PLATFORM linkmeter platform "DEFAULT"
+  
+  echo LinkMeter platform is $PLATFORM
+  eval "platform_setup_$PLATFORM" 2> /dev/null || \
+    eval "platform_setup_DEFAULT"
+}
+
 HEX="/tmp/hm.hex"
 if [ -n "$1" ] ; then
   HEX="$1"
@@ -14,28 +63,27 @@ if [ "${HEX:0:7}" = "http://" ] ; then
   HEX="/tmp/hm.hex"
 fi
 
-if [ ! -f "$HEX" ] ; then
-  echo No input file $HEX
-  exit 1
-fi
-
-MD5=`md5sum $HEX`
-echo "                          $MD5"
-
 echo -n "Stopping LinkMeter "
-lua /usr/lib/lua/lmclient.lua LMDC,0
+lmclient LMDC,0
+echo
 
-hmdude -b115200 -U$HEX 2>&1
-if [ $? -eq 0 ] ; then
-  echo Update successful
-  rm $HEX
+platform_setup
+
+if [ -f "$HEX" ] ; then
+  MD5=`md5sum $HEX`
+  echo "                          $MD5"
+
+  hmdude $DUDE_OPTS -U$HEX 2>&1
+  if [ $? -eq 0 ] ; then
+    echo Update successful
+    rm $HEX
+  else
+    echo Update failed
+  fi
 else
-  echo Update failed
+  echo No input file $HEX
 fi
 
 echo -n "Starting LinkMeter "
-lua /usr/lib/lua/lmclient.lua LMDC,1
+lmclient LMDC,1
 
-echo -n "Current HeaterMeter version is "
-sleep 1
-lua /usr/lib/lua/lmclient.lua LMID
