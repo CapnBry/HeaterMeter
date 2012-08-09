@@ -43,9 +43,11 @@ HEATERMETER_SERIAL (baud)- Enable per-period temperature updates to be sent out 
 HEATERMETER_RFM12 (band) - Enable the RFM12 device server.
 DFLASH_SERVING - Enable serving web pages from the dataflash chip present on the WiShield.  Requires HEATERMETER_NETWORKING.
 USE_EXTERNAL_VREF - If enabled, use the Vref pin voltage as the reference when doing ADC measurments instead of the internal 5V reference.
+PIEZO_HZ (hertz) - Peak output frequency of the piezo alarm attached to the system. If not defined, build without sound support.
+SHIFTREGLCD_NATIVE - If defined, use original ShiftRegLCD code instead of SPIShiftRegLCD. "Native" mode is needed for HeaterMeter PCB version 3.1 and below.
 
 Some configuration is via defines and constants, here are some commonly used values:
-hmcore.h/CSV_DELIMITER - The delimiter used in the CSV data sent by the /csv URL and serial updastes.
+strings.h/CSV_DELIMITER - The delimiter used in the CSV data sent by the /csv URL and serial updastes.
 
 WiShield Wireless parameters are stored in wishieldconf.h.
 
@@ -53,7 +55,7 @@ WiShield Wireless parameters are stored in wishieldconf.h.
 Note: No url can exceed a maximum length of 63 bytes
 
 Both Serial and Web
-/set?sp=A - Set the setpoint to integer A
+/set?sp=AU - Set the setpoint to integer A with optional units U. Supported Units are (F)ahrenheit , (C)elcius, and (R)esistance.
 /set?pidA=B - Tune PID parameter A to value float B.  A can be b (bias), p (proportional), i (integral), or d (derivative)
 /set?pnA=B - Set probe name A to string B.  B does not support URL encoding at this time.  Probe numbers are 0=pit 1=food1 2=food2 3=ambient
 /set?po=A,B,C,D - Set probe offsets to integers A, B, C, and D. Offsets can be omitted to retain their current values, such as po=,,,-2 to only set probe number 3's offset to -2
@@ -72,6 +74,8 @@ Web-only URLs
 /json - JSON status object.
 
 == CSV Format ==
+Format is similar to the NMEA 0183 format, starting with a dollar sign ($), talker ID (2 characters) and message ID (2 characters) and ends with an asterisk (*) and checksum. The checksum is the two digit hexadecimal representation of an XOR of all the characters between the $ and *. The sentence is ended with linefeed only (ASCII 10).
+Example: $HMXX,,,,,,*DB\n
 Microcontroller ID
 $UCID,HeaterMeter,VersionID
 Alarm Indicator
