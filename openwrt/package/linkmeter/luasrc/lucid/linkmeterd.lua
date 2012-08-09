@@ -251,8 +251,11 @@ local function segmentValidate(line)
       csum = nixio.bit.bxor(csum, line:byte(i))
     end
    
-    if csum ~= 0 then nixio.syslog("warning", "Checksum failed: "..line) end
     csum = csum == 0
+    if not csum then
+      nixio.syslog("warning", "Checksum failed: "..line)
+      if hmConfig then hmConfig.cerr = (hmConfig.cerr or 0) + 1 end
+    end
   end
  
   -- Returns nil if no checksum or true/false if checksum checks 
@@ -281,7 +284,7 @@ local function lmdStart()
   local SERIAL_DEVICE = cfg:get("lucid", "linkmeter", "serial_device")
   local SERIAL_BAUD = cfg:get("lucid", "linkmeter", "serial_baud")
   
-  if os.execute("/bin/stty -F " .. SERIAL_DEVICE .. " sane " .. SERIAL_BAUD) ~= 0 then
+  if os.execute("/bin/stty -F " .. SERIAL_DEVICE .. " raw -echo " .. SERIAL_BAUD) ~= 0 then
     return nil, -2, "Can't set serial baud"
   end
 

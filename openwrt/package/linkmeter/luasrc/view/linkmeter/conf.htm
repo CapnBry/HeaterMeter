@@ -50,6 +50,8 @@ function configHashToForm()
     } 
     else if (k == "ucid")
       elem.html(val);
+    else if (k == "cerr")
+      elem.html("Serial checksum errors: " + val);
     else if (val != null)
       elem.val(val);
     else
@@ -351,7 +353,7 @@ You can store a configuration by bookmarking the "Full configuration" link.</p>
 
 <fieldset class="cbi-section" id="cbi-lm-pid">
 <legend>HeaterMeter Information</legend>
-Version <span id="ucid"></span>
+Version <span id="ucid"></span><br/><span id="cerr" style="color: #f00;"></span>
 </fieldset>
 
 <input type="button" onclick="configToForm();" value="Reset to current"
