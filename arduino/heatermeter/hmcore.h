@@ -14,7 +14,7 @@
 #endif
 
 #include "ShiftRegLCD.h"
-#include "SerialXor.h"
+#include "serialxor.h"
 #include "grillpid.h"
 #include "hmmenus.h"
 

@@ -1,3 +1,3 @@
-#include "SerialXor.h"
+#include "serialxor.h"
 
 SerialXorChecksum SerialX;

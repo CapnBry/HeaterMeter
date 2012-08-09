@@ -2,7 +2,7 @@
 #ifndef __STRINGS_H__
 #define __STRINGS_H__
 
-#include "SerialXor.h"
+#include "serialxor.h"
 #include <avr/pgmspace.h>
 
 //const unsigned char LCD_ARROWUP[] PROGMEM = { 0x4,0xe,0x1f,0x00,0x00,0x4,0xe,0x1f };
