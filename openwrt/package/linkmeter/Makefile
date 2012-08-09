@@ -42,6 +42,10 @@ endif
 
 define Package/linkmeter/install
 	$(CP) ./root/* $(1)/
+	if [ "$(CONFIG_TARGET_brcm2708)" = "y" ] ; then \
+	  $(CP) ./targets/bcm2708/* $(1)/ ; \
+	fi
+
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_BIN) ./config/linkmeter.uci-defaults $(1)/etc/uci-defaults/linkmeter
 	$(SED) 's,SERIAL_DEVICE,$(SERIAL_DEVICE),g' $(1)/etc/uci-defaults/linkmeter
