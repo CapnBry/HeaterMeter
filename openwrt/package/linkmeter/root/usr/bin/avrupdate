@@ -7,10 +7,8 @@ platform_setup_DEFAULT() {
 }
 
 platform_setup_BCM2708() {
-  if [ "$platform" = "BCM2708" ] ; then
-    insmod spidev 2> /dev/null
-    insmod spi-bcm2708 2> /dev/null
-  fi
+  insmod spidev 2> /dev/null
+  insmod spi-bcm2708 2> /dev/null
   
   FUSES=`hmdude -v -b 128 -P/dev/spidev0.0 |\
      sed -n 's/^Low: 0x\(..\) High: 0x\(..\) Ext: 0x\(..\).*/\1\2\3/p'`
