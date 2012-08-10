@@ -1,0 +1,54 @@
+diff -ru 8192cu.orig/core/rtw_pwrctrl.c 8192cu/core/rtw_pwrctrl.c
+--- 8192cu.orig/core/rtw_pwrctrl.c	2012-06-22 10:59:51.000000000 -0400
++++ 8192cu/core/rtw_pwrctrl.c	2012-07-31 12:10:52.441212511 -0400
+@@ -379,7 +379,7 @@
+ 		if(pwdinfo->opp_ps == 0)
+ #endif //CONFIG_P2P
+ 		{
+-			DBG_8192C("rtw_set_ps_mode(): Busy Traffic , Leave 802.11 power save..\n");
++			//DBG_8192C("rtw_set_ps_mode(): Busy Traffic , Leave 802.11 power save..\n");
+ 			pwrpriv->smart_ps = smart_ps;
+ 			pwrpriv->pwr_mode = ps_mode;
+ 			rtw_set_rpwm(padapter, PS_STATE_S4);
+@@ -391,7 +391,7 @@
+ 	{
+ 		if(PS_RDY_CHECK(padapter))
+ 		{
+-			DBG_8192C("rtw_set_ps_mode(): Enter 802.11 power save mode...\n");
++			//DBG_8192C("rtw_set_ps_mode(): Enter 802.11 power save mode...\n");
+ 			pwrpriv->smart_ps = smart_ps;
+ 			pwrpriv->pwr_mode = ps_mode;
+ 			pwrpriv->bFwCurrentInPSMode = _TRUE;
+diff -ru 8192cu.orig/hal/rtl8192c/rtl8192c_cmd.c 8192cu/hal/rtl8192c/rtl8192c_cmd.c
+--- 8192cu.orig/hal/rtl8192c/rtl8192c_cmd.c	2012-06-22 10:59:51.000000000 -0400
++++ 8192cu/hal/rtl8192c/rtl8192c_cmd.c	2012-07-31 12:09:17.319828274 -0400
+@@ -532,7 +532,7 @@
+ 	
+ _func_enter_;
+ 
+-	DBG_871X("%s(): Mode = %d, SmartPS = %d\n", __FUNCTION__,Mode,pwrpriv->smart_ps);
++	//DBG_871X("%s(): Mode = %d, SmartPS = %d\n", __FUNCTION__,Mode,pwrpriv->smart_ps);
+ 
+ 	H2CSetPwrMode.Mode = Mode;
+ 
+diff -ru 8192cu.orig/hal/rtl8192c/rtl8192c_dm.c 8192cu/hal/rtl8192c/rtl8192c_dm.c
+--- 8192cu.orig/hal/rtl8192c/rtl8192c_dm.c	2012-06-22 10:59:51.000000000 -0400
++++ 8192cu/hal/rtl8192c/rtl8192c_dm.c	2012-07-31 12:12:14.142400600 -0400
+@@ -3658,7 +3658,7 @@
+ 			PHY_SetBBReg(pAdapter, 0xa74, 0xF000, 0x3); //RegA75[7:4]=0x3
+ 			PHY_SetBBReg(pAdapter, 0x818, BIT28, 0x0); //Reg818[28]=1'b0
+ 			PHY_SetBBReg(pAdapter, 0x818, BIT28, 0x1); //Reg818[28]=1'b1
+-			DBG_8192C("%s(): RF_Save\n", __FUNCTION__);
++			//DBG_8192C("%s(): RF_Save\n", __FUNCTION__);
+ 		}
+ 		else
+ 		{
+@@ -3667,7 +3667,7 @@
+ 			PHY_SetBBReg(pAdapter, rFPGA0_XCD_SwitchControl, 0xFF000000, pdmpriv->rf_saving_Reg85C);
+ 			PHY_SetBBReg(pAdapter, 0xa74, 0xF000, pdmpriv->rf_saving_RegA74);
+ 			PHY_SetBBReg(pAdapter, 0x818, BIT28, 0x0);
+-			DBG_8192C("%s(): RF_Normal\n", __FUNCTION__);
++			//DBG_8192C("%s(): RF_Normal\n", __FUNCTION__);
+ 		}
+ 		pPSTable->PreRFState = pPSTable->CurRFState;
+ 	}
