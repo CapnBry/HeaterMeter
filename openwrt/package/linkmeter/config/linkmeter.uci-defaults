@@ -11,7 +11,7 @@ if [ "$HARDWARE_MODEL" = "BCM2708" ] ; then
 else
   SERIAL_DEVICE="/dev/ttyS1"
   LUCID_THREADS=2
-end
+fi
 
 # Forced configuration parameters
 uci batch << EOF
