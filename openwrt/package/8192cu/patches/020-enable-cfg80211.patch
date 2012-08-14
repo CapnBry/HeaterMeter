@@ -47,12 +47,13 @@ diff -ur /home/bmayland/src/rtl8188C_8192C_usb_linux_v3.4.3_4369.20120622/os_dep
  
  	// set data
  	usb_set_intfdata(pusb_intf, pnetdev);
-@@ -1260,6 +1256,9 @@
+@@ -1260,6 +1256,10 @@
  	_rtw_memcpy(pnetdev->dev_addr, padapter->eeprompriv.mac_addr, ETH_ALEN);
  	DBG_8192C("MAC Address from pnetdev->dev_addr= " MAC_FMT "\n", MAC_ARG(pnetdev->dev_addr));	
  
 +#ifdef CONFIG_IOCTL_CFG80211
-+	rtw_wdev_alloc(padapter, &pusb_intf->dev);
++	if (rtw_wdev_alloc(padapter, &pusb_intf->dev) != 0)
++		goto error;
 +#endif //CONFIG_IOCTL_CFG80211
  
  	//step 6.
