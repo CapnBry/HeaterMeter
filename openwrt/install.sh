@@ -22,9 +22,10 @@ mkdir $LUCIP
 cp patches/200-luci-inreq-fix.patch $LUCIP
 cp patches/215-luci-adminfull-inreq.patch $LUCIP
 
-$WRT_PATH/scripts/feeds install -p linkmeter rrdtool
-$WRT_PATH/scripts/feeds install -p linkmeter kmod-broadcom-sdhc26
-$WRT_PATH/scripts/feeds install -p linkmeter linkmeter
+LMPACKS="rrdtool kmod-broadcom-sdhc2 linkmeter 8192cu kmod-spi-bcm2708"
+for PACK in $LMPACKS ; do
+  $WRT_PATH/scripts/feeds install -p linkmeter $PACK
+done
 
 cp .config $WRT_PATH
 
