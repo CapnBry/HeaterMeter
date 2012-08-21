@@ -28,5 +28,8 @@ define KernelPackage/spi-bcm2708/description
   on the RaspberryPi.
 endef
 
+define Build/Compile
+endef
+
 $(eval $(call KernelPackage,spi-bcm2708))
 
