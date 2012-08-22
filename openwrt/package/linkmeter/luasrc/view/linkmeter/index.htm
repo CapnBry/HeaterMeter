@@ -110,6 +110,9 @@ $(window).load(function ()
             var o = JSON.parse(e.data);
             connectionSuccess(o);
         });
+        source.addEventListener("log", function (e) {
+            console.log(e.data);
+        });
         source.addEventListener("error", connectionFailure);
     } else {
         if (!lastUpdateUtc)

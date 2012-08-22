@@ -16,13 +16,14 @@ module "luci.lucid.linkmeterd"
 local serialPolle
 local statusListeners = {}
 local lastHmUpdate
+local lastLogMessage
 local rfMap = {}
 local rfStatus = {}
 local hmConfig = {}
 local unkProbe
 
 -- forwards
-local segmentCall, broadcastStatus, stsLmStateUpdate
+local segmentCall
 
 local RRD_FILE = uci.cursor():get("lucid", "linkmeter", "rrd_file")
 
@@ -82,6 +83,22 @@ local function jsonWrite(vals)
       rfval = ''
     end
     JSON_TEMPLATE[11 + (i * 5)] = rfval
+  end
+end
+
+local function broadcastStatus(fn)
+  local o
+  local i = 1
+  while i <= #statusListeners do
+    if not o then 
+      o = fn()
+    end
+    
+    if not statusListeners[i](o) then
+      table.remove(statusListeners, i)
+    else
+      i = i + 1
+    end
   end
 end
 
@@ -192,6 +209,12 @@ local function setStateUpdateUnk(vals)
   local t = math.floor(vals[2] * 10)
   local r = math.floor(vals[3])
   unkProbe[t] = r
+end
+
+function stsLmStateUpdate()
+  JSON_TEMPLATE[1] = "event: hmstatus\ndata: "
+  JSON_TEMPLATE[33] = "\n\n"
+  return table.concat(JSON_TEMPLATE)
 end
 
 function segStateUpdate(line)
@@ -379,12 +402,6 @@ local function segLmStateUpdate()
   end
 end
 
-function stsLmStateUpdate()
-  JSON_TEMPLATE[1] = "event: hmstatus\ndata: "
-  JSON_TEMPLATE[33] = "\n\n"
-  return table.concat(JSON_TEMPLATE)
-end
-
 local function segLmConfig()
   if not hmConfig then return "{}" end
 
@@ -431,22 +448,17 @@ local function segLmUnknownProbe(line)
    end
 end
 
-function broadcastStatus(fn)
-  local o
-  local i = 1
-  while i <= #statusListeners do
-    if not o then 
-      o = fn()
-    end
-    
-    if not statusListeners[i](o) then
-      table.remove(statusListeners, i)
-    else
-      i = i + 1
-    end
-  end
+local function stsLogMessage()
+  local vals = segSplit(lastLogMessage)
+  return ('event: log\ndata: {"level": %s, "message": "%s"}\n\n')
+    :format(vals[1], vals[2])
 end
 
+local function segLogMessage(line)
+  lastLogMessage = line
+  broadcastStatus(stsLogMessage)
+end
+          
 local function registerStreamingStatus(fn)
   statusListeners[#statusListeners + 1] = fn
 end
@@ -454,6 +466,7 @@ end
 local segmentMap = {
   ["$HMLB"] = segLcdBacklight,
   ["$HMLD"] = segLidParams,
+  ["$HMLG"] = segLogMessage,
   ["$HMPC"] = segProbeCoeffs,
   ["$HMPD"] = segPidParams,
   ["$HMPN"] = segProbeNames,
