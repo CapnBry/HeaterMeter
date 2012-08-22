@@ -23,7 +23,13 @@ define KernelPackage/8192cu
 	$(PKG_BUILD_DIR)/8192cu.ko
   MAINTAINER:=Bryan Mayland <capnbry@gmail.com>
   DEPENDS:=+@DRIVER_11N_SUPPORT
-  KCONFIG:=CONFIG_CFG80211
+  KCONFIG:=CONFIG_CFG80211 \
+	CONFIG_NL80211_TESTMODE=n CONFIG_CFG80211_REG_DEBUG=n \
+	CONFIG_CFG80211_DEVELOPER_WARNINGS=n \
+	CONFIG_CFG80211_DEFAULT_PS=y \
+	CONFIG_CFG80211_DEBUGFS=n CONFIG_CFG80211_INTERNAL_REGDB=n \
+	CONFIG_CFG80211_WEXT=y \
+	CONFIG_ATH_COMMON=n CONFIG_IWM=n CONFIG_MWIFIEX=n
   AUTOLOAD:=$(call AutoLoad,50, cfg80211 8192cu)
 endef
 
@@ -49,6 +55,12 @@ endef
 
 define Build/Compile
 	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR) $(MAKE_OPTS)
+endef
+
+define KernelPackage/8192cu/install
+	mkdir -p $(1)/lib/wifi
+	# compat-wireless, I hate your bastard kernel module but I need your script
+	$(INSTALL_DATA) $(TOPDIR)/package/mac80211/files/lib/wifi/mac80211.sh $(1)/lib/wifi/.
 endef
 
 $(eval $(call KernelPackage,8192cu))
