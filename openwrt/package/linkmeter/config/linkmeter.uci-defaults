@@ -26,7 +26,7 @@ EOF
 
 # Things we don't modify if they're there
 uci_set_nomodify lucid.linkmeter.serial_device $SERIAL_DEVICE
-uci_set_nomodify lucid.linkmeter.serial_baud 115200
+uci_set_nomodify lucid.linkmeter.serial_baud 38400
 uci_set_nomodify lucid.linkmeter.rrd_file /tmp/hm.rrd
 uci_set_nomodify lucid.linkmeter.stashpath /root
 
