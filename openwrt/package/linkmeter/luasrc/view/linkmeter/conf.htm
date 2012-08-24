@@ -169,6 +169,7 @@ function updateConfigUrl(divname, h)
   
   csvItems(h, aValues, "ld", ["lo", "ld"]);
   csvItems(h, aValues, "po", ["po0", "po1", "po2", "po3"]);
+  csvItems(h, aValues, "fn", ["fmin", "fmax", "finvert"]);
   for (var i=0; i<4; ++i)
     csvItems(h, aValues, "pc"+i, ["pca"+i, "pcb"+i, "pcc"+i, "pcr"+i, 
       function () { return getProbeTypeForSend(h, i); } ]);
@@ -327,26 +328,32 @@ You can store a configuration by bookmarking the "Full configuration" link.</p>
 
 <fieldset class="cbi-section" id="cbi-lm-pid">
 <legend>PID Tuning Parameters</legend>
-  Bias <input type="text" maxlength="12" class="pc" id="pidb"/> 
-  Proportional <input type="text" maxlength="12" class="pc" id="pidp"/> 
-  Integral <input type="text" maxlength="12" class="pc" id="pidi"/> 
-  Derivative <input type="text" maxlength="12" class="pc" id="pidd"/> 
+  <div class="cbi-value">
+    Bias <input type="text" maxlength="12" id="pidb" style="width: 6em;"/>
+    Proportional <input type="text" maxlength="12" id="pidp" style="width: 6em;"/>
+    Integral <input type="text" maxlength="12" id="pidi" style="width: 6em;"/>
+    Derivative <input type="text" maxlength="12" id="pidd" style="width: 6em;"/>
+  </div>
+  <div class="cbi-value">
+    Fan speed min <input type="text" maxlength="3" id="fmin" style="width: 2em;"/>%
+    max <input type="text" maxlength="3" id="fmax" style="width: 2em;"/>%
+  </div>
 </fieldset>
 
 <fieldset class="cbi-section" id="cbi-lm-pid">
 <legend>LCD Backlight</legend>
-  Backlight 0-255 <input type="text" maxlength="3" class="pc" id="lb"/> 
+  Backlight 0-255 <input type="text" maxlength="3" id="lb" style="width: 2em;"/> 
 </fieldset>
 
 <fieldset class="cbi-section" id="cbi-lm-pid">
 <legend>Lid Open Detection</legend>
-  Activate at <input type="text" maxlength="3" class="pc" id="lo"/>% below setpoint.
-  Continue for <input type="text" maxlength="4" class="pc" id="ld"/> seconds or until temperature returns to normal.
+  Activate at <input type="text" maxlength="3" id="lo" style="width: 2em;"/>% below setpoint.
+  Continue for <input type="text" maxlength="4" id="ld" style="width: 3em;"/> seconds or until temperature returns to normal.
 </fieldset>
 
 <fieldset class="cbi-section" id="cbi-lm-pid">
 <legend>Pit Target Temperature</legend>
-  Setpoint <input type="text" maxlength="4" class="pc" id="sp"/><br/>
+  Setpoint <input type="text" maxlength="4" id="sp" style="width: 3em;"/><br/>
   Include the suffix 'F' or 'C' to change units. Changing units does not
   scale the PID parameters, which should be adjusted manually.
 </fieldset>

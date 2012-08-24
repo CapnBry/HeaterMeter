@@ -160,6 +160,10 @@ local function segLidParams(line)
   return segConfig(line, {"lo", "ld"}, true)
 end
 
+local function segFanParams(line)
+  return segConfig(line, {"fmin", "fmax", "finvert"}, true)
+end
+
 local function segProbeCoeffs(line)
   local i = line:sub(7, 7)
   return segConfig(line, {"", "pca"..i, "pcb"..i, "pcc"..i, "pcr"..i, "pt"..i}, true)
@@ -464,6 +468,7 @@ local function registerStreamingStatus(fn)
 end
 
 local segmentMap = {
+  ["$HMFN"] = segFanParams,
   ["$HMLB"] = segLcdBacklight,
   ["$HMLD"] = segLidParams,
   ["$HMLG"] = segLogMessage,
