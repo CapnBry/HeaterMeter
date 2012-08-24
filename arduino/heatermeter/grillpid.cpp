@@ -236,7 +236,7 @@ inline void GrillPid::commitFanSpeed(void)
 
   if (_invertPwm)
     output = 100 - output;
-  analogWrite(_blowerPin, output * 255 / 100);
+  analogWrite(_blowerPin, (unsigned int)output * 255 / 100);
 }
 
 boolean GrillPid::isAnyFoodProbeActive(void) const
