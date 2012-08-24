@@ -44,7 +44,7 @@ static rf12_map_item_t rfMap[TEMP_COUNT];
 #endif /* HEATERMETER_RFM12 */
 
 unsigned char g_AlarmId; // ID of alarm going off
-unsigned char g_LcdBacklight; // 0-255
+unsigned char g_LcdBacklight; // 0-100
 
 #define config_store_byte(eeprom_field, src) { eeprom_write_byte((uint8_t *)offsetof(__eeprom_data, eeprom_field), src); }
 #define config_store_word(eeprom_field, src) { eeprom_write_word((uint16_t *)offsetof(__eeprom_data, eeprom_field), src); }
@@ -58,7 +58,7 @@ static const struct __eeprom_data {
   unsigned int lidOpenDuration;
   float pidConstants[4]; // constants are stored Kb, Kp, Ki, Kd
   boolean manualMode;
-  unsigned char lcdBacklight; // in PWM (max 255)
+  unsigned char lcdBacklight; // in PWM (max 100)
 #ifdef HEATERMETER_RFM12
   rf12_map_item_t rfMap[TEMP_COUNT];
 #endif
@@ -73,7 +73,7 @@ static const struct __eeprom_data {
   240,  // lid open duration
   { 4.0f, 3.0f, 0.01f, 5.0f },  // PID constants
   false, // manual mode
-  128,   // lcd backlight (50%)
+  50,   // lcd backlight (%)
 #ifdef HEATERMETER_RFM12
   {{ RFSOURCEID_NONE, 0 }, { RFSOURCEID_NONE, 0 }, { RFSOURCEID_NONE, 0 }, { RFSOURCEID_NONE, 0 }},  // rfMap
 #endif
@@ -114,7 +114,7 @@ static unsigned long tone_last;
 void setLcdBacklight(unsigned char lcdBacklight)
 {
   g_LcdBacklight = lcdBacklight;
-  analogWrite(PIN_LCD_BACKLGHT, lcdBacklight);
+  analogWrite(PIN_LCD_BACKLGHT, (unsigned int)lcdBacklight * 255 / 100);
 }
 
 // Note the storage loaders and savers expect the entire config storage is less than 256 bytes
@@ -172,7 +172,7 @@ static void storePidUnits(char units)
     config_store_byte(pidUnits, units);
 }
 
-void storeProbeOffset(unsigned char probeIndex, int offset)
+static void storeProbeOffset(unsigned char probeIndex, int offset)
 {
   unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, tempOffset));
   if (ofs != 0)
@@ -273,7 +273,7 @@ static void storeMinFanSpeed(unsigned char minFanSpeed)
   config_store_byte(minFanSpeed, minFanSpeed);
 }
 
-void storeMaxFanSpeed(unsigned char maxFanSpeed)
+static void storeMaxFanSpeed(unsigned char maxFanSpeed)
 {
   pid.setMaxFanSpeed(maxFanSpeed);
   config_store_byte(maxFanSpeed, maxFanSpeed);
@@ -285,7 +285,7 @@ static void storeInvertPwm(unsigned char invertPwm)
   config_store_byte(invertPwm, invertPwm);
 }
 
-void storeLcdBacklight(unsigned char lcdBacklight)
+static void storeLcdBacklight(unsigned char lcdBacklight)
 {
   setLcdBacklight(lcdBacklight);
   config_store_byte(lcdBacklight, lcdBacklight);
@@ -305,7 +305,7 @@ static void toneEnable(boolean enable)
   {
     tone_idx = 0xff;
     noTone(PIN_ALARM);
-    analogWrite(PIN_LCD_BACKLGHT, g_LcdBacklight);
+    //setLcdBacklight(config_read_byte(lcdBacklight));
   }
 #endif /* PIEZO_HZ */
 }
@@ -532,6 +532,12 @@ static void reportProbeOffsets(void)
   Serial_nl();
 }
 
+void storeAndReportProbeOffset(unsigned char probeIndex, int offset)
+{
+  storeProbeOffset(probeIndex, offset);
+  reportProbeOffsets();
+}
+
 static void reportVersion(void)
 {
   print_P(PSTR("UCID" CSV_DELIMITER));
@@ -554,6 +560,12 @@ static void reportLcdBacklight(void)
   print_P(PSTR("HMLB" CSV_DELIMITER));
   SerialX.print(g_LcdBacklight, DEC);
   Serial_nl();
+}
+
+void storeAndReportLcdBacklight(unsigned char lcdBacklight)
+{
+  storeLcdBacklight(lcdBacklight);
+  reportLcdBacklight();
 }
 
 static void reportProbeCoeffs(void)
@@ -587,6 +599,12 @@ static void reportFanParams(void)
   Serial_csv();
   SerialX.print((unsigned char)pid.getInvertPwm(), DEC);
   Serial_nl();
+}
+
+void storeAndReportMaxFanSpeed(unsigned char maxFanSpeed)
+{
+  storeMaxFanSpeed(maxFanSpeed);
+  reportFanParams();
 }
 
 static void reportConfig(void)
@@ -697,8 +715,7 @@ static boolean handleCommandUrl(char *URL)
   }
   if (strncmp_P(URL, PSTR("set?lb="), 7) == 0) 
   {
-    storeLcdBacklight(atoi(URL + 7));
-    reportLcdBacklight();
+    storeAndReportLcdBacklight(atoi(URL + 7));
     return true;
   }
   if (strncmp_P(URL, PSTR("set?ld="), 7) == 0) 
@@ -989,10 +1006,10 @@ static void tone_doWork(void)
     {
       dur = pgm_read_byte(&tone_durs[tone_idx]) * 10;
       tone(PIN_ALARM, PIEZO_HZ, dur);
-      analogWrite(PIN_LCD_BACKLGHT, 0);
+      //setLcdBacklight(0);
     }
-    else
-      analogWrite(PIN_LCD_BACKLGHT, g_LcdBacklight);
+    //else
+      //setLcdBacklight(config_read_byte(lcdBacklight));
   }
 #endif /* PIEZO_HZ */
 }

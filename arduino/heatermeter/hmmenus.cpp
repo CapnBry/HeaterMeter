@@ -175,8 +175,8 @@ static void menuBooleanEdit(button_t button, const prog_char *preamble)
   lcdprint_P((editInt != 0) ? PSTR("Yes") : PSTR("No "), false);
 }
 
-static void menuNumberEdit(button_t button, unsigned char increment, 
-  const prog_char *format)
+static void menuNumberEdit(button_t button, unsigned char increment,
+  int minVal, int maxVal, const prog_char *format)
 {
   char buffer[17];
   
@@ -184,18 +184,14 @@ static void menuNumberEdit(button_t button, unsigned char increment,
     editInt += increment;
   else if (button == BUTTON_DOWN)
     editInt -= increment;
-
-  lcd.setCursor(0, 1);
-  snprintf_P(buffer, sizeof(buffer), format, editInt, pid.getUnits());
-  lcd.print(buffer);
-}
-
-static void menuNumberConstrain(int minVal, int maxVal)
-{
   if (editInt < minVal)
     editInt = minVal;
   if (editInt > maxVal)
     editInt = maxVal;
+
+  lcd.setCursor(0, 1);
+  snprintf_P(buffer, sizeof(buffer), format, editInt, pid.getUnits());
+  lcd.print(buffer);
 }
 
 /* 
@@ -370,8 +366,7 @@ static state_t menuSetpoint(button_t button)
       storeSetPoint(editInt);
   }
 
-  menuNumberEdit(button, 5, PSTR("%3d"DEGREE"%c"));
-  menuNumberConstrain(0, 1000);
+  menuNumberEdit(button, 5, 0, 1000, PSTR("%3d"DEGREE"%c"));
   return ST_AUTO;
 }
 
@@ -407,10 +402,9 @@ static state_t menuProbeOffset(button_t button)
     editInt = pid.Probes[probeIndex]->Offset;
   }
   else if (button == BUTTON_LEAVE)
-    storeProbeOffset(probeIndex, editInt);
+    storeAndReportProbeOffset(probeIndex, editInt);
 
-  menuNumberEdit(button, 1, PSTR("Offset %4d"DEGREE"%c"));
-  menuNumberConstrain(-100, 100);
+  menuNumberEdit(button, 1, -100, 100, PSTR("Offset %4d"DEGREE"%c"));
   return ST_AUTO;
 }
 
@@ -439,8 +433,7 @@ static state_t menuLidOpenOff(button_t button)
     storeLidParam(LIDPARAM_OFFSET, editInt);
   }
 
-  menuNumberEdit(button, 1, PSTR("%3d%% below set"));
-  menuNumberConstrain(0, 100);
+  menuNumberEdit(button, 1, 0, 100, PSTR("%3d%% below set"));
   return ST_AUTO;
 }
 
@@ -456,8 +449,7 @@ static state_t menuLidOpenDur(button_t button)
     storeLidParam(LIDPARAM_DURATION, editInt);
   }
 
-  menuNumberEdit(button, 10, PSTR("%3d seconds"));
-  menuNumberConstrain(0, 1000);
+  menuNumberEdit(button, 10, 0, 1000, PSTR("%3d seconds"));
   return ST_AUTO;
 }
 
@@ -506,11 +498,10 @@ static state_t menuMaxFanSpeed(button_t button)
   else if (button == BUTTON_LEAVE)
   {
     if (editInt != pid.getMaxFanSpeed())
-      storeMaxFanSpeed(editInt);
+      storeAndReportMaxFanSpeed(editInt);
   }
   
-  menuNumberEdit(button, 5, PSTR("speed %3d%%"));
-  menuNumberConstrain(0, 100);
+  menuNumberEdit(button, 5, 0, 100, PSTR("speed %3d%%"));
   return ST_AUTO;
 }
 
@@ -555,7 +546,8 @@ static state_t menuProbeAlarmVal(button_t button)
     editInt = pid.Probes[probeIndex]->Alarms.Thresholds[ST_PALARM0_H_VAL - highOrLow] ;
   }
   
-  menuNumberEdit(button, 5, (highOrLow == ST_PALARM0_H_VAL) ? PSTR("High Alrm %4d"DEGREE"%c") : PSTR("Low Alrm %5d"DEGREE"%c"));
+  menuNumberEdit(button, 5, 0, 1000, 
+    (highOrLow == ST_PALARM0_H_VAL) ? PSTR("High Alrm %4d"DEGREE"%c") : PSTR("Low Alrm %5d"DEGREE"%c"));
   return ST_AUTO;
 }
 
@@ -579,18 +571,16 @@ static state_t menuLcdBacklight(button_t button)
 {
   if (button == BUTTON_ENTER)
   {
-    lcdprint_P(PSTR("LCD brigtness"), true);
-    editInt = g_LcdBacklight * 100 / 255;
+    lcdprint_P(PSTR("LCD brightness"), true);
+    editInt = g_LcdBacklight;
   }
   else if (button == BUTTON_LEAVE)
   {
-    editInt = editInt * 255 / 100;
     if (editInt != g_LcdBacklight)
-      storeLcdBacklight(editInt);
+      storeAndReportLcdBacklight(editInt);
   }
   
-  menuNumberEdit(button, 10, PSTR("%3d%%"));
-  menuNumberConstrain(0, 100);
+  menuNumberEdit(button, 10, 0, 100, PSTR("%3d%%"));
   setLcdBacklight(editInt);
   return ST_AUTO;
 }

@@ -49,14 +49,13 @@ void lcdprint_P(const prog_char *p, const boolean doClear);
 
 void eepromLoadConfig(boolean forceDefault);
 void storeSetPoint(int sp);
-void storeProbeName(unsigned char probeIndex, const char *name);
 void loadProbeName(unsigned char probeIndex);
-void storeProbeOffset(unsigned char probeIndex, int offset);
+void storeAndReportProbeOffset(unsigned char probeIndex, int offset);
 void storeProbeAlarmOn(unsigned char probeIndex, boolean isHigh, boolean value);
 void storeProbeAlarmVal(unsigned char probeIndex, boolean isHigh, int value);
-void storeMaxFanSpeed(unsigned char maxFanSpeed);
+void storeAndReportMaxFanSpeed(unsigned char maxFanSpeed);
 void setLcdBacklight(unsigned char lcdBacklight);
-void storeLcdBacklight(unsigned char lcdBacklight);
+void storeAndReportLcdBacklight(unsigned char lcdBacklight);
 void Debug_begin(char level = '0');
 #define Debug_end Serial_nl
 
