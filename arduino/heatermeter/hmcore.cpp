@@ -1120,6 +1120,14 @@ static void serial_doWork(void)
 }
 #endif  /* HEATERMETER_SERIAL */
 
+/* Starts a debug log output message line, end with Debug_end() */
+void Debug_begin(char level)
+{
+    print_P(PSTR("HMLG" CSV_DELIMITER));
+    Serial_char(level);
+    Serial_csv();
+}
+
 static void newTempsAvail(void)
 {
   static unsigned char pidCycleCount;

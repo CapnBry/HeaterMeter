@@ -55,6 +55,8 @@ void storeProbeOffset(unsigned char probeIndex, int offset);
 void storeProbeAlarmOn(unsigned char probeIndex, boolean isHigh, boolean value);
 void storeProbeAlarmVal(unsigned char probeIndex, boolean isHigh, int value);
 void storeMaxFanSpeed(unsigned char maxFanSpeed);
+void Debug_begin(char level = '0');
+#define Debug_end Serial_nl
 
 #define LIDPARAM_OFFSET 0
 #define LIDPARAM_DURATION 1

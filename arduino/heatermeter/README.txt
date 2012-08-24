@@ -85,6 +85,8 @@ Fan Parameters
 $HMFN,Low,High,Invert (0=off 1=on)
 Lid Detect Parameters
 $HMLD,Offset Percent,Lid Duration
+Debug Log Message
+$HMLG,Level,Message
 PID Coefficients
 $HMPD,PidB,PidP,PidI,PidD 
 Probe Names

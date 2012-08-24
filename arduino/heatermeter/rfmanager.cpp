@@ -2,6 +2,9 @@
 #include "Arduino.h"
 #include "strings.h"
 #include "rfmanager.h"
+#include "hmcore.h"
+
+//#define RFMANAGER_DEBUG
 
 void RFSource::setId(unsigned char id)
 {
@@ -19,7 +22,12 @@ void RFSource::update(rf12_probe_update_hdr_t *hdr, unsigned char len)
 {
   _batteryLevel = hdr->batteryLevel;
   _adcBits = hdr->adcBits;
-  //Serial.print(hdr->seqNo, DEC); Serial_char(' '); Serial.print(_batteryLevel, DEC); Serial_nl();
+#ifdef RFMANAGER_DEBUG
+  Debug_begin(); print_P(PSTR("RFM"));
+  SerialX.print(hdr->seqNo, DEC); Serial_char(' ');
+  SerialX.print(_adcBits, DEC); Serial_char(' ');
+  SerialX.print(_batteryLevel, DEC);
+#endif
   if (_lastReceive != 0)
   {
     // _signalLevel is just a bitfield that shifts in a 1 for every packet
@@ -45,9 +53,14 @@ void RFSource::update(rf12_probe_update_hdr_t *hdr, unsigned char len)
   {
     Values[probe->probeIdx] = probe->adcValue;
     len -= sizeof(rf12_probe_update_t);
-    //print_P(PSTR("RFM ")); Serial.print(probe->probeIdx, DEC); Serial_char(' '); Serial.print(probe->adcValue, DEC); Serial_nl();
+#ifdef RFMANAGER_DEBUG
+    Serial_char(' '); SerialX.print(probe->probeIdx, DEC); Serial_char(' '); SerialX.print(probe->adcValue, DEC);
+#endif
     ++probe;
   }  /* while len */
+#ifdef RFMANAGER_DEBUG
+  Debug_end();
+#endif
 }
 
 void RFManager::init(unsigned char band)
