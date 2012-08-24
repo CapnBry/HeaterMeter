@@ -581,7 +581,7 @@ static state_t menuLcdBacklight(button_t button)
   }
   
   menuNumberEdit(button, 10, 0, 100, PSTR("%3d%%"));
-  setLcdBacklight(editInt);
+  setLcdBacklight(0x80 | editInt);
   return ST_AUTO;
 }
 
