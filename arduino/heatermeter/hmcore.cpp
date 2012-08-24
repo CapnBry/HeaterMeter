@@ -113,8 +113,11 @@ static unsigned long tone_last;
 
 void setLcdBacklight(unsigned char lcdBacklight)
 {
-  g_LcdBacklight = lcdBacklight;
-  analogWrite(PIN_LCD_BACKLGHT, (unsigned int)lcdBacklight * 255 / 100);
+  /* If the high bit is set, that means just set the output, do not store */
+  if ((0x80 & lcdBacklight) == 0)
+    g_LcdBacklight = lcdBacklight;
+  lcdBacklight &= 0x7f;
+  analogWrite(PIN_LCD_BACKLGHT, (unsigned int)(lcdBacklight) * 255 / 100);
 }
 
 // Note the storage loaders and savers expect the entire config storage is less than 256 bytes
@@ -305,7 +308,7 @@ static void toneEnable(boolean enable)
   {
     tone_idx = 0xff;
     noTone(PIN_ALARM);
-    //setLcdBacklight(config_read_byte(lcdBacklight));
+    setLcdBacklight(g_LcdBacklight);
   }
 #endif /* PIEZO_HZ */
 }
@@ -1006,10 +1009,10 @@ static void tone_doWork(void)
     {
       dur = pgm_read_byte(&tone_durs[tone_idx]) * 10;
       tone(PIN_ALARM, PIEZO_HZ, dur);
-      //setLcdBacklight(0);
+      setLcdBacklight(0x80 | 0);
     }
-    //else
-      //setLcdBacklight(config_read_byte(lcdBacklight));
+    else
+      setLcdBacklight(0x80 | g_LcdBacklight);
   }
 #endif /* PIEZO_HZ */
 }
