@@ -44,7 +44,7 @@ static rf12_map_item_t rfMap[TEMP_COUNT];
 #endif /* HEATERMETER_RFM12 */
 
 unsigned char g_AlarmId; // ID of alarm going off
-unsigned char g_LcdBacklight;
+unsigned char g_LcdBacklight; // 0-255
 
 #define config_store_byte(eeprom_field, src) { eeprom_write_byte((uint8_t *)offsetof(__eeprom_data, eeprom_field), src); }
 #define config_store_word(eeprom_field, src) { eeprom_write_word((uint16_t *)offsetof(__eeprom_data, eeprom_field), src); }
@@ -111,7 +111,7 @@ static unsigned char tone_idx;
 static unsigned long tone_last;
 #endif /* PIZEO_HZ */
 
-static void setLcdBacklight(unsigned char lcdBacklight)
+void setLcdBacklight(unsigned char lcdBacklight)
 {
   g_LcdBacklight = lcdBacklight;
   analogWrite(PIN_LCD_BACKLGHT, lcdBacklight);

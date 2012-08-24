@@ -31,6 +31,7 @@ enum HmMenuStates {
   ST_LIDOPEN_DUR,
   ST_MANUALMODE,
   ST_RESETCONFIG,
+  ST_LCDBACKLIGHT,
   ST_MAXFANSPEED,
   ST_PROBESUB0,  // ST_PROBESUBX must stay sequential and in order
   ST_PROBESUB1,

@@ -55,6 +55,8 @@ void storeProbeOffset(unsigned char probeIndex, int offset);
 void storeProbeAlarmOn(unsigned char probeIndex, boolean isHigh, boolean value);
 void storeProbeAlarmVal(unsigned char probeIndex, boolean isHigh, int value);
 void storeMaxFanSpeed(unsigned char maxFanSpeed);
+void setLcdBacklight(unsigned char lcdBacklight);
+void storeLcdBacklight(unsigned char lcdBacklight);
 void Debug_begin(char level = '0');
 #define Debug_end Serial_nl
 
@@ -66,5 +68,6 @@ void storeLidParam(unsigned char idx, int val);
 extern GrillPid pid;
 extern ShiftRegLCD lcd;
 extern unsigned char g_AlarmId;
+extern unsigned char g_LcdBacklight;
 
 #endif /* __HMCORE_H__ */

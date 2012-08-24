@@ -16,6 +16,7 @@ static state_t menuMaxFanSpeed(button_t button);
 static state_t menuProbeAlarmOn(button_t button);
 static state_t menuProbeAlarmVal(button_t button);
 static state_t menuAlarmTriggered(button_t button);
+static state_t menuLcdBacklight(button_t button);
 
 #ifdef HEATERMETER_NETWORKING
 static state_t menuConnecting(button_t button);
@@ -49,6 +50,7 @@ static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_LIDOPEN_DUR, menuLidOpenDur, 10 },
   { ST_RESETCONFIG, menuResetConfig, 10 },
   { ST_MAXFANSPEED, menuMaxFanSpeed, 10 },
+  { ST_LCDBACKLIGHT, menuLcdBacklight, 10},
   { ST_PALARM1_H_ON, menuProbeAlarmOn, 10 },
   { ST_PALARM1_H_VAL, menuProbeAlarmVal, 10 },
   { 0, 0 },
@@ -78,8 +80,11 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   { ST_SETPOINT, BUTTON_RIGHT, ST_MANUALMODE },
 
   { ST_MANUALMODE, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  { ST_MANUALMODE, BUTTON_RIGHT, ST_MAXFANSPEED },
+  { ST_MANUALMODE, BUTTON_RIGHT, ST_LCDBACKLIGHT },
   
+  { ST_LCDBACKLIGHT, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_LCDBACKLIGHT, BUTTON_RIGHT, ST_MAXFANSPEED },
+
   { ST_MAXFANSPEED, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_MAXFANSPEED, BUTTON_RIGHT, ST_PROBEOFF0 },
 
@@ -183,6 +188,14 @@ static void menuNumberEdit(button_t button, unsigned char increment,
   lcd.setCursor(0, 1);
   snprintf_P(buffer, sizeof(buffer), format, editInt, pid.getUnits());
   lcd.print(buffer);
+}
+
+static void menuNumberConstrain(int minVal, int maxVal)
+{
+  if (editInt < minVal)
+    editInt = minVal;
+  if (editInt > maxVal)
+    editInt = maxVal;
 }
 
 /* 
@@ -358,6 +371,7 @@ static state_t menuSetpoint(button_t button)
   }
 
   menuNumberEdit(button, 5, PSTR("%3d"DEGREE"%c"));
+  menuNumberConstrain(0, 1000);
   return ST_AUTO;
 }
 
@@ -396,6 +410,7 @@ static state_t menuProbeOffset(button_t button)
     storeProbeOffset(probeIndex, editInt);
 
   menuNumberEdit(button, 1, PSTR("Offset %4d"DEGREE"%c"));
+  menuNumberConstrain(-100, 100);
   return ST_AUTO;
 }
 
@@ -425,6 +440,7 @@ static state_t menuLidOpenOff(button_t button)
   }
 
   menuNumberEdit(button, 1, PSTR("%3d%% below set"));
+  menuNumberConstrain(0, 100);
   return ST_AUTO;
 }
 
@@ -441,6 +457,7 @@ static state_t menuLidOpenDur(button_t button)
   }
 
   menuNumberEdit(button, 10, PSTR("%3d seconds"));
+  menuNumberConstrain(0, 1000);
   return ST_AUTO;
 }
 
@@ -493,6 +510,7 @@ static state_t menuMaxFanSpeed(button_t button)
   }
   
   menuNumberEdit(button, 5, PSTR("speed %3d%%"));
+  menuNumberConstrain(0, 100);
   return ST_AUTO;
 }
 
@@ -554,6 +572,26 @@ static state_t menuAlarmTriggered(button_t button)
     return ST_HOME_FOOD1;
   }
 
+  return ST_AUTO;
+}
+
+static state_t menuLcdBacklight(button_t button)
+{
+  if (button == BUTTON_ENTER)
+  {
+    lcdprint_P(PSTR("LCD brigtness"), true);
+    editInt = g_LcdBacklight * 100 / 255;
+  }
+  else if (button == BUTTON_LEAVE)
+  {
+    editInt = editInt * 255 / 100;
+    if (editInt != g_LcdBacklight)
+      storeLcdBacklight(editInt);
+  }
+  
+  menuNumberEdit(button, 10, PSTR("%3d%%"));
+  menuNumberConstrain(0, 100);
+  setLcdBacklight(editInt);
   return ST_AUTO;
 }
 
