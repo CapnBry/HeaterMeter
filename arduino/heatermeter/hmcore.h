@@ -3,7 +3,7 @@
 #define __HMCORE_H__
 
 //#define HEATERMETER_NETWORKING  // enable wifi interface
-#define HEATERMETER_SERIAL 115200 // enable serial interface
+#define HEATERMETER_SERIAL 38400 // enable serial interface
 #define HEATERMETER_RFM12  RF12_915MHZ  // enable RFM12B receiving (433MHZ|868MHZ|915MHZ)
 //#define USE_EXTERNAL_VREF       // Using external 5V as reference to analog inputs
 #define PIEZO_HZ 4000             // enable piezo buzzer at this frequency
