@@ -9,8 +9,6 @@
 #define TEMP_MEASURE_PERIOD 2000
 // The temperatures are averaged over 1, 2, 4 or 8 samples per period
 #define TEMP_AVG_COUNT 8
-// The minimum fan speed (%) that activates the "long pulse" mode
-#define MINIMUM_FAN_SPEED 10
 // 1/(Number of samples used in the exponential moving average)
 #define TEMPPROBE_AVG_SMOOTH (1.0f/10.0f)
 #define FANSPEED_AVG_SMOOTH (1.0f/60.0f)
@@ -190,7 +188,7 @@ inline void GrillPid::calcFanSpeed(void)
 
   // anti-windup: Make sure we only adjust the I term while
   // inside the proportional control range
-  if ((error > 0 && lastFanSpeed < MaxFanSpeed) ||
+  if ((error > 0 && lastFanSpeed < _maxFanSpeed) ||
       (error < 0 && lastFanSpeed > 0))
     _pidErrorSum += Pid[PIDI] * error;
 
@@ -202,8 +200,8 @@ inline void GrillPid::calcFanSpeed(void)
   int control 
     = Pid[PIDB] + Pid[PIDP] * error + _pidErrorSum + (Pid[PIDD] * (averageTemp - currentTemp));
   
-  if (control >= MaxFanSpeed)
-    _fanSpeed = MaxFanSpeed;
+  if (control >= _maxFanSpeed)
+    _fanSpeed = _maxFanSpeed;
   else if (control > 0)
     _fanSpeed = control;
 }
@@ -212,27 +210,33 @@ inline void GrillPid::commitFanSpeed(void)
 {
   calcExpMovingAverage(FANSPEED_AVG_SMOOTH, &FanSpeedAvg, _fanSpeed);
 
-  /* For anything above MINIMUM_FAN_SPEED, do a nomal PWM write.
-     For below MINIMUM_FAN_SPEED we use a "long pulse PWM", where 
-     the pulse is 10 seconds in length.  For each percent we are 
+  /* For anything above _minFanSpeed, do a nomal PWM write.
+     For below _minFanSpeed we use a "long pulse PWM", where
+     the pulse is 10 seconds in length.  For each percent we are
      emulating, run the fan for one interval. */
-  if (_fanSpeed >= MINIMUM_FAN_SPEED)
+  unsigned char output;
+  if (_fanSpeed >= _minFanSpeed)
   {
-    analogWrite(_blowerPin, _fanSpeed * 255 / 100);
+    output = _fanSpeed;
     _longPwmTmr = 0;
   }
   else
   {
     // Simple PWM, ON for first [FanSpeed] intervals then OFF 
     // for the remainder of the period
-    unsigned char pwmVal;
-    pwmVal = ((_fanSpeed / (TEMP_MEASURE_PERIOD / 1000)) > _longPwmTmr) ? 255/MINIMUM_FAN_SPEED : 0;
+    if ((_fanSpeed / (TEMP_MEASURE_PERIOD / 1000)) > _longPwmTmr)
+      output = _minFanSpeed;
+    else
+      output = 0;
     
-    analogWrite(_blowerPin, pwmVal);
     // Long PWM period is 10 sec
     if (++_longPwmTmr > ((10000 / TEMP_MEASURE_PERIOD) - 1))
       _longPwmTmr = 0;
   }  /* long PWM */
+
+  if (_invertPwm)
+    output = 100 - output;
+  analogWrite(_blowerPin, output * 255 / 100);
 }
 
 boolean GrillPid::isAnyFoodProbeActive(void) const
@@ -371,8 +375,6 @@ boolean GrillPid::doWork(void)
 void GrillPid::pidStatus(void) const
 {
   print_P(PSTR("HMPS"CSV_DELIMITER));
-  SerialX.print(MaxFanSpeed, DEC);
-  Serial_csv();
   SerialX.print(_pidErrorSum, 2);
   Serial_csv();
   SerialX.print(Probes[TEMP_PIT]->Temperature - Probes[TEMP_PIT]->TemperatureAvg, 2);

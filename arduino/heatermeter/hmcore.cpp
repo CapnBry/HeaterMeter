@@ -49,7 +49,7 @@ unsigned char g_LcdBacklight;
 #define config_store_byte(eeprom_field, src) { eeprom_write_byte((uint8_t *)offsetof(__eeprom_data, eeprom_field), src); }
 #define config_store_word(eeprom_field, src) { eeprom_write_word((uint16_t *)offsetof(__eeprom_data, eeprom_field), src); }
 
-#define EEPROM_MAGIC 0xf00d
+#define EEPROM_MAGIC 0xf00e
 
 static const struct __eeprom_data {
   unsigned int magic;
@@ -58,25 +58,29 @@ static const struct __eeprom_data {
   unsigned int lidOpenDuration;
   float pidConstants[4]; // constants are stored Kb, Kp, Ki, Kd
   boolean manualMode;
-  unsigned char maxFanSpeed;  // in percent
   unsigned char lcdBacklight; // in PWM (max 255)
 #ifdef HEATERMETER_RFM12
   rf12_map_item_t rfMap[TEMP_COUNT];
 #endif
   char pidUnits;
+  unsigned char minFanSpeed;  // in percent
+  unsigned char maxFanSpeed;  // in percent
+  boolean invertPwm;
 } DEFAULT_CONFIG PROGMEM = { 
   EEPROM_MAGIC,  // magic
   225,  // setpoint
-  6,  // lid open offset %
-  240, // lid open duration
+  6,    // lid open offset %
+  240,  // lid open duration
   { 4.0f, 3.0f, 0.01f, 5.0f },  // PID constants
   false, // manual mode
-  100,  // max fan speed
-  128, // lcd backlight (50%)
+  128,   // lcd backlight (50%)
 #ifdef HEATERMETER_RFM12
   {{ RFSOURCEID_NONE, 0 }, { RFSOURCEID_NONE, 0 }, { RFSOURCEID_NONE, 0 }, { RFSOURCEID_NONE, 0 }},  // rfMap
 #endif
-  'F',
+  'F',  // Units
+  10,   // min fan speed  
+  100,  // max fan speed
+  false // invert PWM
 };
 
 // EEPROM address of the start of the probe structs, the 2 bytes before are magic
@@ -88,8 +92,8 @@ static const struct  __eeprom_probe DEFAULT_PROBE_CONFIG PROGMEM = {
   0,  // offset
   -40,  // alarm low
   -200, // alarm high
-  0,  // unussed1
-  0,  // unussed2
+  0,  // unused1
+  0,  // unused2
   {
     2.3067434e-4,2.3696596e-4,1.2636414e-7  // Maverick ET-72
     //5.36924e-4,1.91396e-4,6.60399e-8 // Maverick ET-732 (Honeywell R-T Curve 4)
@@ -263,10 +267,22 @@ static void storeProbeTypeOrMap(unsigned char probeIndex, char *vals)
 #endif /* HEATERMETER_RFM12 */
 }
 
+static void storeMinFanSpeed(unsigned char minFanSpeed)
+{
+  pid.setMinFanSpeed(minFanSpeed);
+  config_store_byte(minFanSpeed, minFanSpeed);
+}
+
 void storeMaxFanSpeed(unsigned char maxFanSpeed)
 {
-  pid.MaxFanSpeed = maxFanSpeed;
+  pid.setMaxFanSpeed(maxFanSpeed);
   config_store_byte(maxFanSpeed, maxFanSpeed);
+}
+
+static void storeInvertPwm(unsigned char invertPwm)
+{
+  pid.setInvertPwm(invertPwm);
+  config_store_byte(invertPwm, invertPwm);
 }
 
 void storeLcdBacklight(unsigned char lcdBacklight)
@@ -562,10 +578,22 @@ static void reportAlarmLimits(boolean showall)
   Serial_nl();
 }
 
+static void reportFanParams(void)
+{
+  print_P(PSTR("HMFN" CSV_DELIMITER));
+  SerialX.print(pid.getMinFanSpeed(), DEC);
+  Serial_csv();
+  SerialX.print(pid.getMaxFanSpeed(), DEC);
+  Serial_csv();
+  SerialX.print((unsigned char)pid.getInvertPwm(), DEC);
+  Serial_nl();
+}
+
 static void reportConfig(void)
 {
   reportVersion();
   reportPidParams();
+  reportFanParams();
   reportProbeNames();
   reportProbeCoeffs();
   reportProbeOffsets();
@@ -637,6 +665,26 @@ static void storeAlarmLimits(unsigned char idx, int val)
     eeprom_write_block(a.Thresholds, (void *)ofs, sizeof(a.Thresholds));
 }
 
+static void storeFanParams(unsigned char idx, int val)
+{
+  if (val < 0)
+    val = 0;
+  if (val > 100)
+    val = 100;
+  switch (idx)
+  {
+    case 0:
+      storeMinFanSpeed(val);
+      break;
+    case 1:
+      storeMaxFanSpeed(val);
+      break;
+    case 2:
+      storeInvertPwm((boolean)val);
+      break;
+  }
+}
+
 /* handleCommandUrl returns true if it consumed the URL */
 static boolean handleCommandUrl(char *URL)
 {
@@ -688,6 +736,12 @@ static boolean handleCommandUrl(char *URL)
   {
     csvParseI(URL + 7, storeAlarmLimits);
     reportAlarmLimits(true);
+    return true;
+  }
+  if (strncmp_P(URL, PSTR("set?fn="), 7) == 0)
+  {
+    csvParseI(URL + 7, storeFanParams);
+    reportFanParams();
     return true;
   }
   if (strncmp_P(URL, PSTR("config"), 6) == 0) 
@@ -979,9 +1033,11 @@ static void eepromLoadBaseConfig(boolean forceDefault)
   memcpy(pid.Pid, config.pidConstants, sizeof(config.pidConstants));
   if (config.manualMode)
     pid.setFanSpeed(0);
-  pid.MaxFanSpeed = config.maxFanSpeed;
   setLcdBacklight(config.lcdBacklight);
   pid.setUnits(config.pidUnits == 'C' ? 'C' : 'F');
+  pid.setMaxFanSpeed(config.maxFanSpeed);
+  pid.setMinFanSpeed(config.minFanSpeed);
+  pid.setInvertPwm(config.invertPwm);
   
 #ifdef HEATERMETER_RFM12
   memcpy(rfMap, config.rfMap, sizeof(rfMap));

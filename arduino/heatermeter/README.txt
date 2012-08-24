@@ -63,6 +63,7 @@ Both Serial and Web
 /set?lb=A - Set the LCD backlight to A.  Range is 0 (off) to 255 (full)
 /set?ld=A,B - Set Lid Detect offset to A%, duration to B seconds
 /set?al=L,H[,L,H...] - Set probe alarms thresholds. Setting to a negative number will disable the alarm, setting to 0 silences the alarm but leaves it enabled (it will ring again if the temperature is still outside the threshold)
+/set?fn=L,H,I - Set the fan output parameters. L = min fan speed before "long PID" mode, H = max fan speed, I = Invert PWM polarity so that 100% actually outputs 0% and 0% outputs 100%
 /reboot - Reboots the microcontroller.  Only if wired to do so (LinkMeter)
 
 Serial-only URLs
@@ -80,6 +81,8 @@ Microcontroller ID
 $UCID,HeaterMeter,VersionID
 Alarm Indicator
 $HMAL,LowProbe0,HighProbe0[,...] (L or H suffix indicates ringing, negative values indicated disabled alarms)
+Fan Parameters
+$HMFN,Low,High,Invert (0=off 1=on)
 Lid Detect Parameters
 $HMLD,Offset Percent,Lid Duration
 PID Coefficients

@@ -49,15 +49,15 @@ public:
   void updateStatus(int value);
   void setLow(int value);
   void setHigh(int value);
-  int getLow(void) const { return Thresholds[ALARM_IDX_LOW]; };
-  int getHigh(void) const { return Thresholds[ALARM_IDX_HIGH]; };
-  void setDisabled(unsigned char idx) { Thresholds[idx] = -abs(Thresholds[idx]); Ringing[idx] = false; };
-  boolean getLowEnabled(void) const { return Thresholds[ALARM_IDX_LOW] > 0; };
-  boolean getHighEnabled(void) const { return Thresholds[ALARM_IDX_HIGH] > 0; };
-  boolean getLowRinging(void) const { return Ringing[ALARM_IDX_LOW]; };
-  boolean getHighRinging(void) const { return Ringing[ALARM_IDX_HIGH]; };
+  int getLow(void) const { return Thresholds[ALARM_IDX_LOW]; }
+  int getHigh(void) const { return Thresholds[ALARM_IDX_HIGH]; }
+  void setDisabled(unsigned char idx) { Thresholds[idx] = -abs(Thresholds[idx]); Ringing[idx] = false; }
+  boolean getLowEnabled(void) const { return Thresholds[ALARM_IDX_LOW] > 0; }
+  boolean getHighEnabled(void) const { return Thresholds[ALARM_IDX_HIGH] > 0; }
+  boolean getLowRinging(void) const { return Ringing[ALARM_IDX_LOW]; }
+  boolean getHighRinging(void) const { return Ringing[ALARM_IDX_HIGH]; }
   void setThreshold(unsigned char idx, int value);
-  void silenceAll(void) { Ringing[ALARM_IDX_LOW] = false; Ringing[ALARM_IDX_HIGH] = false; };
+  void silenceAll(void) { Ringing[ALARM_IDX_LOW] = false; Ringing[ALARM_IDX_HIGH] = false; }
   int Thresholds[2];
   boolean Ringing[2];
 };
@@ -75,7 +75,7 @@ public:
 
   /* Configuration */  
   // Probe Type
-  unsigned char getProbeType(void) const { return _probeType; };
+  unsigned char getProbeType(void) const { return _probeType; }
   void setProbeType(unsigned char probeType);
   // Offset (in degrees) applied when calculating temperature
   char Offset;
@@ -89,10 +89,10 @@ public:
   /* Runtime Data/Methods */
   // Last averaged temperature reading
   float Temperature;
-  boolean hasTemperature(void) const { return !isnan(Temperature); };
+  boolean hasTemperature(void) const { return !isnan(Temperature); }
   // Temperature moving average 
   float TemperatureAvg;
-  boolean hasTemperatureAvg(void) const { return !isnan(TemperatureAvg); };
+  boolean hasTemperatureAvg(void) const { return !isnan(TemperatureAvg); }
   // Do the duty of reading ADC
   void readTemp(void);
   // Convert ADC to Temperature
@@ -122,6 +122,9 @@ private:
   unsigned int _lidOpenDuration;
   float _pidErrorSum;
   char _units;
+  unsigned char _maxFanSpeed;
+  unsigned char _minFanSpeed;
+  boolean _invertPwm;
   
   void calcFanSpeed(void);
   void commitFanSpeed(void);
@@ -131,9 +134,9 @@ public:
   TempProbe *Probes[TEMP_COUNT];
   
   /* Configuration */
-  int getSetPoint(void) const { return _setPoint; };
+  int getSetPoint(void) const { return _setPoint; }
   void setSetPoint(int value); 
-  char getUnits(void) const { return _units; };
+  char getUnits(void) const { return _units; }
   void setUnits(char units);
   // The number of degrees the temperature drops before automatic lidopen mode
   unsigned char LidOpenOffset;
@@ -141,18 +144,25 @@ public:
   unsigned int getLidOpenDuration(void) const { return _lidOpenDuration; }
   void setLidOpenDuration(unsigned int value);
   // Number of effective bits of the ADC
-  unsigned char getAdcBits(void) const { return 10 + TEMP_OVERSAMPLE_BITS; };
+  unsigned char getAdcBits(void) const { return 10 + TEMP_OVERSAMPLE_BITS; }
   // The PID constants
   float Pid[4];
   void setPidConstant(unsigned char idx, float value);
   // The maximum fan speed that will be used in automatic mode
-  unsigned char MaxFanSpeed;
+  unsigned char getMaxFanSpeed(void) const { return _maxFanSpeed; }
+  void setMaxFanSpeed(unsigned char value) { _maxFanSpeed = value; }
+  // The minimum fan speed before converting to "long PID" (SRTP) mode
+  unsigned char getMinFanSpeed(void) const { return _minFanSpeed; }
+  void setMinFanSpeed(unsigned char value) { _minFanSpeed = value; }
+  // Reverse the PWM output, i.e. 100% writes 0 to the output
+  boolean getInvertPwm(void) const { return _invertPwm; }
+  void setInvertPwm(boolean value) { _invertPwm = value; }
   
   /* Runtime Data */
   // Current fan speed in percent, setting this will put the fan into manual mode
-  unsigned char getFanSpeed() const { return _fanSpeed; };
+  unsigned char getFanSpeed() const { return _fanSpeed; }
   void setFanSpeed(int value);
-  boolean getManualFanMode(void) const { return _manualFanMode; };
+  boolean getManualFanMode(void) const { return _manualFanMode; }
   // Fan speed moving average
   float FanSpeedAvg;
   // Seconds remaining in the lid open countdown
