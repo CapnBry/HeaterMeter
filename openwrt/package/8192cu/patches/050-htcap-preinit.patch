@@ -1,0 +1,71 @@
+diff -urb 8192cu.orig/include/ioctl_cfg80211.h 8192cu/include/ioctl_cfg80211.h
+--- 8192cu.orig/include/ioctl_cfg80211.h	2012-06-22 10:59:51.000000000 -0400
++++ 8192cu/include/ioctl_cfg80211.h	2012-08-26 09:39:45.984839636 -0400
+@@ -58,8 +58,6 @@
+ int rtw_wdev_alloc(_adapter *padapter, struct device *dev);
+ void rtw_wdev_free(struct wireless_dev *wdev);
+ 
+-void rtw_cfg80211_init_wiphy(_adapter *padapter);
+-
+ void rtw_cfg80211_surveydone_event_callback(_adapter *padapter);
+ 
+ void rtw_cfg80211_indicate_connect(_adapter *padapter);
+diff -urb 8192cu.orig/os_dep/linux/ioctl_cfg80211.c 8192cu/os_dep/linux/ioctl_cfg80211.c
+--- 8192cu.orig/os_dep/linux/ioctl_cfg80211.c	2012-08-26 09:39:08.144317125 -0400
++++ 8192cu/os_dep/linux/ioctl_cfg80211.c	2012-08-26 09:39:45.984839636 -0400
+@@ -4519,27 +4519,9 @@
+ 	
+ }
+ 
+-void rtw_cfg80211_init_wiphy(_adapter *padapter)
+-{
+-	u8 rf_type;
+-	struct ieee80211_supported_band *bands;
+-	struct wireless_dev *pwdev = padapter->rtw_wdev;
+-	struct wiphy *wiphy = pwdev->wiphy;
+-	
+-	padapter->HalFunc.GetHwRegHandler(padapter, HW_VAR_RF_TYPE, (u8 *)(&rf_type));
+-
+-	printk("%s:rf_type=%d\n", __func__, rf_type);
+-
+-	bands = wiphy->bands[IEEE80211_BAND_2GHZ];
+-	rtw_cfg80211_init_ht_capab(&bands->ht_cap, IEEE80211_BAND_2GHZ, rf_type);
+-
+-
+-	bands = wiphy->bands[IEEE80211_BAND_5GHZ];
+-	rtw_cfg80211_init_ht_capab(&bands->ht_cap, IEEE80211_BAND_5GHZ, rf_type);
+-}
+-
+ static void rtw_cfg80211_preinit_wiphy(_adapter *padapter, struct wiphy *wiphy)
+ {
++	u8 rf_type;
+ 
+ 	wiphy->signal_type = CFG80211_SIGNAL_TYPE_MBM;
+ 
+@@ -4569,6 +4551,11 @@
+ 	wiphy->cipher_suites = rtw_cipher_suites;
+ 	wiphy->n_cipher_suites = ARRAY_SIZE(rtw_cipher_suites);
+ 
++	padapter->HalFunc.GetHwRegHandler(padapter, HW_VAR_RF_TYPE, (u8 *)(&rf_type));
++	printk("%s:rf_type=%d\n", __func__, rf_type);
++
++	rtw_cfg80211_init_ht_capab(&rtw_band_2ghz.ht_cap, IEEE80211_BAND_2GHZ, rf_type);
++	rtw_cfg80211_init_ht_capab(&rtw_band_5ghz.ht_cap, IEEE80211_BAND_5GHZ, rf_type);
+ 
+ 	wiphy->bands[IEEE80211_BAND_2GHZ] = &rtw_band_2ghz;
+ 	wiphy->bands[IEEE80211_BAND_5GHZ] = &rtw_band_5ghz;
+Only in 8192cu/os_dep/linux: ioctl_cfg80211.c.orig
+diff -urb 8192cu.orig/os_dep/linux/os_intfs.c 8192cu/os_dep/linux/os_intfs.c
+--- 8192cu.orig/os_dep/linux/os_intfs.c	2012-06-22 10:59:51.000000000 -0400
++++ 8192cu/os_dep/linux/os_intfs.c	2012-08-26 09:39:45.984839636 -0400
+@@ -1269,10 +1269,6 @@
+ #endif
+ #endif
+ 
+-#ifdef CONFIG_IOCTL_CFG80211
+-		rtw_cfg80211_init_wiphy(padapter);
+-#endif
+-
+ 		rtw_led_control(padapter, LED_CTL_NO_LINK);
+ 
+ 		padapter->bup = _TRUE;
