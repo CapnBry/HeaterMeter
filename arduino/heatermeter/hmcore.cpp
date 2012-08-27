@@ -43,7 +43,7 @@ static RFManager rfmanager(rfSourceNotify);
 static rf12_map_item_t rfMap[TEMP_COUNT];
 #endif /* HEATERMETER_RFM12 */
 
-unsigned char g_AlarmId; // ID of alarm going off
+static unsigned char g_AlarmId; // ID of alarm going off
 unsigned char g_LcdBacklight; // 0-100
 
 #define config_store_byte(eeprom_field, src) { eeprom_write_byte((uint8_t *)offsetof(__eeprom_data, eeprom_field), src); }
@@ -684,6 +684,12 @@ static void storeAlarmLimits(unsigned char idx, int val)
   unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, alarmLow));
   if (ofs != 0)
     eeprom_write_block(a.Thresholds, (void *)ofs, sizeof(a.Thresholds));
+}
+
+void disableRingingAlarm(void)
+{
+  storeAlarmLimits(g_AlarmId, 0);
+  reportAlarmLimits(true);
 }
 
 static void storeFanParams(unsigned char idx, int val)

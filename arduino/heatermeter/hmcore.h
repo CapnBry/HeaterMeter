@@ -58,6 +58,7 @@ void setLcdBacklight(unsigned char lcdBacklight);
 void storeAndReportLcdBacklight(unsigned char lcdBacklight);
 void Debug_begin(char level = '0');
 #define Debug_end Serial_nl
+void disableRingingAlarm(void);
 
 #define LIDPARAM_OFFSET 0
 #define LIDPARAM_DURATION 1
@@ -66,7 +67,6 @@ void storeLidParam(unsigned char idx, int val);
 
 extern GrillPid pid;
 extern ShiftRegLCD lcd;
-extern unsigned char g_AlarmId;
 extern unsigned char g_LcdBacklight;
 
 #endif /* __HMCORE_H__ */

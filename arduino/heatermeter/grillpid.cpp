@@ -48,7 +48,9 @@ void ProbeAlarm::setLow(int value)
 void ProbeAlarm::setThreshold(unsigned char idx, int value)
 {
   Ringing[idx] = false;
-  if (value)
+  if (value == 0)
+    Thresholds[idx] = -abs(value);
+  else
     Thresholds[idx] = value;
 }
 

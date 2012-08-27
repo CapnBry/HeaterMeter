@@ -560,7 +560,7 @@ static state_t menuAlarmTriggered(button_t button)
   // If any physical button is pressed, clear the alarm state and return to HOME
   else if (button & BUTTON_ANY)
   {
-    pid.Probes[ALARM_ID_TO_PROBE(g_AlarmId)]->Alarms.setDisabled(ALARM_ID_TO_IDX(g_AlarmId));
+    disableRingingAlarm();
     return ST_HOME_FOOD1;
   }
 
