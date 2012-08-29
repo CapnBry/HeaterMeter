@@ -9,7 +9,7 @@ local lucid = require "luci.lucid"
 
 local pairs, ipairs, table, pcall, type = pairs, ipairs, table, pcall, type
 local tonumber, tostring, print, next = tonumber, tostring, print, next
-local collectgarbage, math = collectgarbage, math
+local collectgarbage, math, bxor = collectgarbage, math, nixio.bit.bxor
 
 module "luci.lucid.linkmeterd"
 
@@ -221,7 +221,38 @@ function stsLmStateUpdate()
   return table.concat(JSON_TEMPLATE)
 end
 
-function segStateUpdate(line)
+local lastStateUpdate
+local spareUpdates = 0
+local skippedUpdates = 2
+local function throttleUpdate(line)
+  -- SLOW: If (line) is the same, only every third update
+  -- NORMAL: If (line) is different, only every second update
+  -- Exception: If (line) is different following a SLOW period, do not skip that line
+  -- In:  A B C D E E E E F G H
+  -- Out: A   C   E     E F   H
+  if skippedUpdates >= 2 then
+    spareUpdates = 1
+  else
+    if line == lastStateUpdate then
+      skippedUpdates = skippedUpdates + 1
+      return true
+    else
+      if skippedUpdates == 0 then
+        if spareUpdates == 0 then
+          skippedUpdates = skippedUpdates + 1
+          return true
+        else
+          spareUpdates = 0
+        end
+      end
+    end
+  end
+  lastStateUpdate = line
+  skippedUpdates = 0
+end
+
+local function segStateUpdate(line)
+    if throttleUpdate(line) then return end
     local vals = segSplit(line)
 
     if #vals == 8 then
@@ -275,7 +306,7 @@ local function segmentValidate(line)
   if csum then
     csum = tonumber(csum, 16)
     for i = 2, #line-3 do
-      csum = nixio.bit.bxor(csum, line:byte(i))
+      csum = bxor(csum, line:byte(i))
     end
    
     csum = csum == 0
