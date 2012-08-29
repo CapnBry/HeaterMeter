@@ -6,12 +6,12 @@
 #include "strings.h"
 
 // The time (ms) of the measurement period
-#define TEMP_MEASURE_PERIOD 2000
+#define TEMP_MEASURE_PERIOD 1000
 // The temperatures are averaged over 1, 2, 4 or 8 samples per period
 #define TEMP_AVG_COUNT 8
 // 1/(Number of samples used in the exponential moving average)
-#define TEMPPROBE_AVG_SMOOTH (1.0f/10.0f)
-#define FANSPEED_AVG_SMOOTH (1.0f/60.0f)
+#define TEMPPROBE_AVG_SMOOTH (1.0f/20.0f)
+#define FANSPEED_AVG_SMOOTH (1.0f/120.0f)
 // Once entering LID OPEN mode, the minimum number of seconds to stay in
 // LID OPEN mode before autoresuming due to temperature returning to setpoint 
 #define LIDOPEN_MIN_AUTORESUME 30

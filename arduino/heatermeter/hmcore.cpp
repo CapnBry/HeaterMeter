@@ -71,7 +71,7 @@ static const struct __eeprom_data {
   225,  // setpoint
   6,    // lid open offset %
   240,  // lid open duration
-  { 4.0f, 3.0f, 0.01f, 5.0f },  // PID constants
+  { 4.0f, 3.0f, 0.005f, 5.0f },  // PID constants
   false, // manual mode
   50,   // lcd backlight (%)
 #ifdef HEATERMETER_RFM12
@@ -1161,10 +1161,10 @@ static void newTempsAvail(void)
   updateDisplay();
   ++pidCycleCount;
     
-  if ((pidCycleCount % 0x10) == 0)
+  if ((pidCycleCount % 0x20) == 0)
     outputRfStatus();
 #ifdef PID_DEBUG
-  if ((pidCycleCount % 2) == 0)
+  if ((pidCycleCount % 4) == 0)
     pid.pidStatus();
 #endif
 
