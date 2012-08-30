@@ -1,0 +1,21 @@
+--- 8192cu.orig/os_dep/linux/ioctl_cfg80211.c	2012-08-30 10:23:18.527544335 -0400
++++ 8192cu/os_dep/linux/ioctl_cfg80211.c	2012-08-30 12:23:38.907615310 -0400
+@@ -3157,11 +3157,15 @@
+ 
+ 	printk("%s\n", __func__);
+ 
+-	if(dev)
++	/* Only allow the deletion of monitor interfaces because those are
++	   the only types that can be created */
++	if(dev && dev->type == ARPHRD_IEEE80211_RADIOTAP)
+ 	{
+-		unregister_netdev(dev);
++		if (dev->reg_state == NETREG_REGISTERED)
++			unregister_netdevice(dev);
+ 		
+-		free_netdev(dev);
++		if (dev->reg_state == NETREG_UNREGISTERED)
++			free_netdev(dev);
+ 
+ 		if(dev == pwdev_priv->pmon_ndev)
+ 		{
