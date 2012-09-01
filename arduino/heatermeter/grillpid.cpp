@@ -210,6 +210,10 @@ inline void GrillPid::calcFanSpeed(void)
 
 inline void GrillPid::commitFanSpeed(void)
 {
+  /* Long PWM period is 10 sec */
+  const unsigned int LONG_PWM_PERIOD = 10000;
+  const unsigned int PERIOD_SCALE = (LONG_PWM_PERIOD / TEMP_MEASURE_PERIOD);
+
   calcExpMovingAverage(FANSPEED_AVG_SMOOTH, &FanSpeedAvg, _fanSpeed);
 
   /* For anything above _minFanSpeed, do a nomal PWM write.
@@ -226,13 +230,12 @@ inline void GrillPid::commitFanSpeed(void)
   {
     // Simple PWM, ON for first [FanSpeed] intervals then OFF 
     // for the remainder of the period
-    if ((_fanSpeed / (TEMP_MEASURE_PERIOD / 1000)) > _longPwmTmr)
+    if ((PERIOD_SCALE * _fanSpeed / _minFanSpeed) > _longPwmTmr)
       output = _minFanSpeed;
     else
       output = 0;
     
-    // Long PWM period is 10 sec
-    if (++_longPwmTmr > ((10000 / TEMP_MEASURE_PERIOD) - 1))
+    if (++_longPwmTmr > (PERIOD_SCALE - 1))
       _longPwmTmr = 0;
   }  /* long PWM */
 
