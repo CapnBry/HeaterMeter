@@ -74,7 +74,7 @@ if [ -f "$HEX" ] ; then
   hmdude $DUDE_OPTS -U$HEX 2>&1
   if [ $? -eq 0 ] ; then
     echo Update successful
-    rm $HEX
+    [ "$HEX" == "/tmp/hm.hex" ] && rm $HEX
   else
     echo Update failed
   fi
