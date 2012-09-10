@@ -18,7 +18,7 @@ function action_fw()
   local file
   luci.http.setfilehandler(
     function(meta, chunk, eof)
-      if not nixio.fs.access(hex) and not file and chunk and #chunk > 0 then
+      if not file and chunk and #chunk > 0 then
         file = io.open(hex, "w")
       end
       if file and chunk then
