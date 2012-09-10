@@ -1187,7 +1187,8 @@ void hmcoreSetup(void)
   
 #ifdef HEATERMETER_SERIAL
   Serial.begin(HEATERMETER_SERIAL);
-  Serial_char('\n');
+  // don't use SerialX because we don't want any preamble
+  Serial.write('\n');
   reportVersion();
 #endif  /* HEATERMETER_SERIAL */
 #ifdef USE_EXTERNAL_VREF  
