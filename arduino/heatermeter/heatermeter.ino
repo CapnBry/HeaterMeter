@@ -16,6 +16,15 @@
 #include "JeeLib.h"
 #endif /* HEATERMETER_RFM12 */
 
+/* Disable the watchdog timer immediately after zero_reg is set */
+void clearWdt(void) __attribute__((naked)) __attribute__((section(".init3")));
+void clearWdt(void)
+{
+  MCUSR = 0;
+  WDTCSR = _BV(WDCE) | _BV(WDE);
+  WDTCSR = 0;
+}
+
 int main(void)
 {
   init();

@@ -1,6 +1,7 @@
 // HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net> 
 #include "Arduino.h"
 #include <avr/eeprom.h>
+#include <avr/wdt.h>
 
 #include "hmcore.h"
 
@@ -497,6 +498,11 @@ static void reboot(void)
 {
   // Once the pin goes low, the avr should reboot
   digitalWrite(PIN_SOFTRESET, LOW);
+  // Use the watchdog in case SOFTRESET isn't hooked up (e.g. HM4.0)
+  // If hoping to program via Optiboot, this won't work if the WDT trigers the reboot
+  cli();
+  WDTCSR = bit(WDCE) | bit(WDE);
+  WDTCSR = bit(WDE) | WDTO_30MS;
   while (1) { };
 }
 
