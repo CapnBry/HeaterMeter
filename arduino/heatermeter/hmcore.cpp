@@ -983,9 +983,9 @@ static void rfSourceNotify(RFSource &r, RFManager::event e)
         unsigned char srcPin = rfMap[i].pin;
         unsigned int val = r.Values[srcPin];
         unsigned char adcBits = r.getAdcBits();
-        // ADC bits of 0 is direct measurement in 10ths of a degree, i.e. 986 = 98.6
+        // ADC bits of 0 is direct measurement in 10ths of a degree C, i.e. 370 = 37.0
         if (adcBits == 0 && val != 0)
-          pid.Probes[i]->Temperature = val / 10.0f;
+          pid.Probes[i]->setTemperatureC(val / 10.0f);
         else
         {
           // If the remote is lower resolution then shift it up to our resolution

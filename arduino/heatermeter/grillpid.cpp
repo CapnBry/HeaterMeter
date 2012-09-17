@@ -135,12 +135,7 @@ void TempProbe::calcTemp(void)
       R = log(R);
       T = 1.0f / ((Steinhart[2] * R * R + Steinhart[1]) * R + Steinhart[0]);
 
-      Temperature = T - 273.15f;
-      // Sanity - anything less than -20C (-4F) or greater than 500C (932F) is rejected
-      if (Temperature <= -20.0f || Temperature > 500.0f)
-        Temperature = NAN;
-      else if (pid.getUnits() == 'F')
-        Temperature = (Temperature * (9.0f / 5.0f)) + 32.0f;
+      setTemperatureC(T - 273.15f);
     } /* if ADCval */
     else
       Temperature = NAN;
@@ -154,6 +149,17 @@ void TempProbe::calcTemp(void)
   }
   else
     Alarms.silenceAll();
+}
+
+void TempProbe::setTemperatureC(float T)
+{
+  // Sanity - anything less than -20C (-4F) or greater than 500C (932F) is rejected
+  if (T <= -20.0f || T > 500.0f)
+    Temperature = NAN;
+  else if (pid.getUnits() == 'F')
+    Temperature = (T * (9.0f / 5.0f)) + 32.0f;
+  else
+    Temperature = T;
 }
 
 GrillPid::GrillPid(const unsigned char blowerPin) :

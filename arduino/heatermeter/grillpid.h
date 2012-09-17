@@ -91,6 +91,7 @@ public:
   // Last averaged temperature reading
   float Temperature;
   boolean hasTemperature(void) const { return !isnan(Temperature); }
+  void setTemperatureC(float T);
   // Temperature moving average 
   float TemperatureAvg;
   boolean hasTemperatureAvg(void) const { return !isnan(TemperatureAvg); }
