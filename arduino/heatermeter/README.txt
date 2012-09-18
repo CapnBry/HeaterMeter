@@ -64,6 +64,7 @@ Both Serial and Web
 /set?ld=A,B - Set Lid Detect offset to A%, duration to B seconds
 /set?al=L,H[,L,H...] - Set probe alarms thresholds. Setting to a negative number will disable the alarm, setting to 0 will force the current set value negative (disabling the alarm but retaining the set value)
 /set?fn=L,H,I - Set the fan output parameters. L = min fan speed before "long PID" mode, H = max fan speed, I = Invert PWM polarity so that 100% actually outputs 0% and 0% outputs 100%
+/set?tt=XXX[,YYY] - Display a "toast" message on the LCD which is temporarily displayed over any other menu and is cleared either by timeout or any button press. XXX and YYY are the two lines to displau and can be up to 16 characters each.
 /reboot - Reboots the microcontroller.  Only if wired to do so (LinkMeter)
 
 Serial-only URLs

@@ -17,6 +17,7 @@ static state_t menuProbeAlarmOn(button_t button);
 static state_t menuProbeAlarmVal(button_t button);
 static state_t menuAlarmTriggered(button_t button);
 static state_t menuLcdBacklight(button_t button);
+static state_t menuToast(button_t button);
 
 #ifdef HEATERMETER_NETWORKING
 static state_t menuConnecting(button_t button);
@@ -53,6 +54,7 @@ static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_LCDBACKLIGHT, menuLcdBacklight, 10},
   { ST_PALARM1_H_ON, menuProbeAlarmOn, 10 },
   { ST_PALARM1_H_VAL, menuProbeAlarmVal, 10 },
+  { ST_TOAST, menuToast, 20 },
   { 0, 0 },
 };
 
@@ -142,6 +144,10 @@ extern "C" {
 extern char ssid[];
 }
 #endif /* HEATERMETER_NETWORKING */
+
+// scratch space for edits
+int editInt;
+char editString[17];
 
 static button_t readButton(void)
 {
@@ -585,8 +591,40 @@ static state_t menuLcdBacklight(button_t button)
   return ST_AUTO;
 }
 
-MenuSystem Menus(MENU_DEFINITIONS, MENU_TRANSITIONS, &readButton);
-// scratch space for edits
-int editInt;
-char editString[17];
+static state_t menuToast(button_t button)
+{
+  if (button == BUTTON_ENTER)
+  {
+    lcd.home();
+    lcd.write(Menus.getToastLine0(), 16);
+    lcd.setCursor(0, 1);
+    lcd.write(Menus.getToastLine1(), 16);
+    return ST_AUTO;
+  }
+  // Timeout or button press returns you to the previous menu
+  return Menus.getSavedState();
+}
+
+void HmMenuSystem::displayToast(char *msg)
+{
+  /* This function attempts to clumsily split msg into two lines for display 
+     and pads the extra space characters with space. If there is no comma in
+     msg, then just the first line is written */
+  char *pos = strchr(msg, ',');
+  memset(_toastMsg, ' ', sizeof(_toastMsg));
+  if (pos == NULL)
+  {
+    memcpy(getToastLine0(), msg, min(strlen(msg), sizeof(_toastMsg)));
+  }
+  else
+  {
+    memcpy(getToastLine0(), msg, min(msg - pos, sizeof(_toastMsg)/2));
+    memcpy(getToastLine1(), pos+1, min(strlen(pos)-1, sizeof(_toastMsg)/2));
+  }
+  if (getState() != ST_TOAST)
+    _savedState = getState();
+  setState(ST_TOAST);
+}
+
+HmMenuSystem Menus(MENU_DEFINITIONS, MENU_TRANSITIONS, &readButton);
 

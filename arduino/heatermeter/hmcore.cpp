@@ -776,6 +776,11 @@ static boolean handleCommandUrl(char *URL)
     reportFanParams();
     return true;
   }
+  if (strncmp_P(URL, PSTR("set?tt="), 7) == 0)
+  {
+    Menus.displayToast(URL+7);
+    return true;
+  }
   if (strncmp_P(URL, PSTR("config"), 6) == 0) 
   {
     reportConfig();

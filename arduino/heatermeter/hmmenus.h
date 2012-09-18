@@ -53,11 +53,27 @@ enum HmMenuStates {
   ST_PALARM1_L_VAL,
   ST_PALARM2_L_VAL,
   ST_PALARM3_L_VAL,
-  ST_NETWORK_INFO
+  ST_NETWORK_INFO,
+  ST_TOAST,
 };
 
-extern MenuSystem Menus;
-extern int editInt;  
+class HmMenuSystem : public MenuSystem
+{
+public:
+  HmMenuSystem(const menu_definition_t *defs, const menu_transition_t *trans,
+    const buttonread_t reader) : MenuSystem(defs, trans, reader)
+    {};
+
+  void displayToast(char *msg);
+  state_t getSavedState(void) const { return _savedState; }
+  unsigned char *getToastLine0(void) { return &_toastMsg[0]; }
+  unsigned char *getToastLine1(void) { return &_toastMsg[sizeof(_toastMsg)/2+1]; }
+private:
+  unsigned char _toastMsg[33];
+  state_t _savedState;
+};
+
+extern HmMenuSystem Menus;
 extern char editString[];
 
 #endif /* __HMMENUS_H__ */
