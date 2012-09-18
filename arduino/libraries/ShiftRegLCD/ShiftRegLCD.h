@@ -69,6 +69,7 @@ public:
 
   void createChar(uint8_t, uint8_t[]);
   void setCursor(uint8_t, uint8_t);
+  using Print::write;
   size_t write(uint8_t);
   void command(uint8_t);
   
