@@ -124,6 +124,17 @@ local function segSplit(line)
   return retVal
 end
 
+local function stsLogMessage()
+  local vals = segSplit(lastLogMessage)
+  return ('event: log\ndata: {"level": %s, "message": "%s"}\n\n')
+    :format(vals[1], vals[2])
+end
+
+local function segLogMessage(line)
+  lastLogMessage = line
+  broadcastStatus(stsLogMessage)
+end
+          
 local function segConfig(line, names, numeric)
   local vals = segSplit(line)
   if #vals < #names then return end
@@ -221,6 +232,24 @@ function stsLmStateUpdate()
   return table.concat(JSON_TEMPLATE)
 end
 
+local lastIpCheck = 0
+local lastIp
+local function checkIpUpdate()
+  local newIp
+  -- We can only display 1 IP address so hopefully the last "up" interface
+  -- in the interface list is the most relevant
+  for _,v in pairs(nixio.getifaddrs()) do
+    if not v.flags['loopback'] and v.flags['up'] and
+      v.family == "inet" and v.addr ~= "" then
+      newIp = v.addr end
+  end
+  
+  if newIp then
+    serialPolle.fd:write("/set?tt=Network Address,"..newIp)
+    lastIp = newIp
+  end
+end
+
 local lastStateUpdate
 local spareUpdates = 0
 local skippedUpdates = 2
@@ -294,6 +323,10 @@ local function segStateUpdate(line)
       if not status then nixio.syslog("err", "RRD error: " .. err) end
       
       broadcastStatus(stsLmStateUpdate)
+      if time - lastIpCheck > 60 then
+        checkIpUpdate()
+        lastIpCheck = time
+      end
     end
 end
 
@@ -483,17 +516,6 @@ local function segLmUnknownProbe(line)
    end
 end
 
-local function stsLogMessage()
-  local vals = segSplit(lastLogMessage)
-  return ('event: log\ndata: {"level": %s, "message": "%s"}\n\n')
-    :format(vals[1], vals[2])
-end
-
-local function segLogMessage(line)
-  lastLogMessage = line
-  broadcastStatus(stsLogMessage)
-end
-          
 local function registerStreamingStatus(fn)
   statusListeners[#statusListeners + 1] = fn
 end
