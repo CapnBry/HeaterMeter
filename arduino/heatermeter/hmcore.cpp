@@ -248,9 +248,13 @@ static void storeProbeTypeOrMap(unsigned char probeIndex, unsigned char probeTyp
   /* If probeType > 128 then it is an wireless probe and the value is 128+source ID */
   else
   {
-    if (pid.Probes[probeIndex]->getProbeType() != PROBETYPE_RF12)
+    unsigned char newSrc = probeType - 128;
+    /* Force the storage of TempProbe::setProbeType() if the src changes
+       because we need to clear Temperature and any accumulated ADC readings */
+    if (pid.Probes[probeIndex]->getProbeType() != PROBETYPE_RF12 ||
+      rfMap[probeIndex] != newSrc)
       storeProbeType(probeIndex, PROBETYPE_RF12);
-    storeRfMap(probeIndex, probeType - 128);
+    storeRfMap(probeIndex, newSrc);
   }  /* if RF map */
 #endif /* HEATERMETER_RFM12 */
 }
