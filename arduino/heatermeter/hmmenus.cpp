@@ -618,11 +618,13 @@ void HmMenuSystem::displayToast(char *msg)
   }
   else
   {
-    memcpy(getToastLine0(), msg, min(msg - pos, sizeof(_toastMsg)/2));
+    memcpy(getToastLine0(), msg, min(pos - msg, sizeof(_toastMsg)/2));
     memcpy(getToastLine1(), pos+1, min(strlen(pos)-1, sizeof(_toastMsg)/2));
   }
   if (getState() != ST_TOAST)
     _savedState = getState();
+  else
+    setState(ST_NONE); // If already in a toast force a refresh
   setState(ST_TOAST);
 }
 
