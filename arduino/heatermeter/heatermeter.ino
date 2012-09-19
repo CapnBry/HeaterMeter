@@ -13,7 +13,7 @@
 #endif /* HEATERMETER_NETWORKING */
 
 #ifdef HEATERMETER_RFM12
-#include "JeeLib.h"
+#include "rf12_itplus.h"
 #endif /* HEATERMETER_RFM12 */
 
 /* Disable the watchdog timer immediately after zero_reg is set */

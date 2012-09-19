@@ -1,73 +1,41 @@
 // HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net> 
-#include "Arduino.h"
 #include "strings.h"
 #include "rfmanager.h"
 #include "hmcore.h"
-
-//#define RFMANAGER_DEBUG
 
 void RFSource::setId(unsigned char id)
 {
   if (_id == id) return;
 
   _id = id;
-  _lastReceive = 0;
-  _batteryLevel = 0;
-  _signalLevel = 0xff;
-  //_nextSeq = 0;
-  memset(Values, 0, sizeof(Values));
+  _flags = 0;
+  Value = 0;
 }
 
-void RFSource::update(rf12_probe_update_hdr_t *hdr, unsigned char len)
+void RFSource::update(rf12_packet_t *pkt)
 {
-  _batteryLevel = hdr->batteryLevel;
-  _adcBits = hdr->adcBits;
-#ifdef RFMANAGER_DEBUG
-  Debug_begin(); print_P(PSTR("RFM"));
-  SerialX.print(hdr->seqNo, DEC); Serial_char(' ');
-  SerialX.print(_adcBits, DEC); Serial_char(' ');
-  SerialX.print(_batteryLevel, DEC);
-#endif
-  if (_lastReceive != 0)
-  {
-    // _signalLevel is just a bitfield that shifts in a 1 for every packet
-    // we get in sequence, and shifts out that 1 for every packet we miss
-    // e.g. 01111111 indicates 7 of the past 8 packets received
-    unsigned char seqDiff = hdr->seqNo - _nextSeq;
-    if (seqDiff == 0)
-    {
-      _signalLevel = (_signalLevel << 1) | 1;
-    }
-    else 
-    {
-      _signalLevel = _signalLevel >> seqDiff;
-    } 
-  }  /* if have received before */
-  
-  _nextSeq = hdr->seqNo + 1;
   _lastReceive = millis();
-  
-  rf12_probe_update_t *probe = (rf12_probe_update_t *)&hdr[1];
-  len -= sizeof(rf12_probe_update_hdr_t);
-  while (len >= sizeof(rf12_probe_update_t))
-  {
-    Values[probe->probeIdx] = probe->adcValue;
-    len -= sizeof(rf12_probe_update_t);
-#ifdef RFMANAGER_DEBUG
-    Serial_char(' '); SerialX.print(probe->probeIdx, DEC); Serial_char(' '); SerialX.print(probe->adcValue, DEC);
-#endif
-    ++probe;
-  }  /* while len */
-#ifdef RFMANAGER_DEBUG
-  Debug_end();
-#endif
+
+  _flags = 0;
+  if ((pkt->byte1 & 0x10) == 0)
+    _flags |= NativeItPlus;
+  if ((pkt->byte1 & 0x20) != 0)
+    _flags |= RecentReset;
+  if ((pkt->hygro & 0x80) != 0)
+    _flags |= LowBattery;
+  if (rf12_rssi() == 0)
+    _flags |= LowSignal;
+
+  if (isNative())
+    Value = (((pkt->byte1 & 0x0f) * 100) + ((pkt->byte2 >> 4) * 10) + (pkt->byte2 & 0x0f)) - 400;
+  else
+    Value = ((pkt->byte1 & 0x0f) << 8) | pkt->byte2;
 }
 
 void RFManager::init(unsigned char band)
 {
   if (!_initialized)
   {
-    // The master is always node 1
     rf12_initialize(1, band);
     _initialized = true;
   }
@@ -79,7 +47,7 @@ void RFManager::freeStaleSources(void)
     if (_sources[idx].isStale())
     {
       if (_callback) _callback(_sources[idx], Remove);
-      _sources[idx].setId(RFSOURCEID_NONE);
+      _sources[idx].setId(RFSOURCEID_ANY);
     }
 }
 
@@ -108,64 +76,63 @@ RFSource *RFManager::getSourceById(unsigned char srcId)
 
 void RFManager::status(void)
 {
-  unsigned long m = millis();
+  if (!_initialized)
+    return;
 
-  // The first item in the list the manager but it has the same format as 
-  // the other sources, which is: Id,Signal,TimeSinceLastReceive
-  print_P(PSTR("A" CSV_DELIMITER "3300" CSV_DELIMITER));
-  SerialX.print(_crcOk, DEC); // signal
-  Serial_csv();
-  SerialX.print((m - getLastReceive()) / 1000, DEC);
+  // The first item in the list the manager RFSOURCEID_ANY,CrcOk
+  print_P(PSTR("HMRF" CSV_DELIMITER "127" CSV_DELIMITER));
+  SerialX.print(_crcOk, DEC); // signalish
+  //Serial_csv();
+  //unsigned long m = millis();
+  //SerialX.print((m - getLastReceive()) / 1000, DEC);
 
+  // The rest of the items are Id,Flags
   for (unsigned char idx=0; idx<RF_SOURCE_COUNT; ++idx)
   {
     if (_sources[idx].isFree())
       continue;
     Serial_csv();
-    Serial_char('A' + _sources[idx].getId() - 1);
+    SerialX.print(_sources[idx].getId(),DEC);
     Serial_csv();
-    SerialX.print(_sources[idx].getBatteryLevel(), DEC);
-    Serial_csv();
-    SerialX.print(_sources[idx].getSignalLevel(), DEC);
-    Serial_csv();
-    
-    unsigned int since = (m - _sources[idx].getLastReceive()) / 1000;
-    SerialX.print(since, DEC);
+    SerialX.print(_sources[idx].getFlags(), DEC);
+    //Serial_csv();
+    //unsigned int since = (m - _sources[idx].getLastReceive()) / 1000;
+    //SerialX.print(since, DEC);
   }
+  Serial_nl();
 }
 
 boolean RFManager::doWork(void)
 {
+  if (!_initialized)
+    return false;
+
   boolean retVal = false;
   while (rf12_recvDone())
   {
     _lastReceive = millis();
     //print_P(PSTR("RF in")); Serial_nl();
-    if ((rf12_crc == 0) && (rf12_len >= sizeof(rf12_probe_update_hdr_t)))
+    if (rf12_crc == 0)
     {  
       if (_crcOk < 0xff) 
         ++_crcOk;
         
-      // If this is a broadcast it should be a probe update
-      if ((rf12_hdr & RF12_HDR_DST) == 0)
-      {
-        rf12_probe_update_hdr_t *hdr = (rf12_probe_update_hdr_t *)rf12_data;
+      rf12_packet_t *pkt = (rf12_packet_t *)rf12_buf;
 
-        event e = Update;
-        unsigned char srcId = rf12_hdr & RF12_HDR_MASK;
-        unsigned char src = findSourceIdx(srcId);
-        if (src == 0xff)
-        {
-          src = findFreeSourceIdx();
-          e = static_cast<event>(Add | Update);
-        }
-        if (src != 0xff)
-        {
-          _sources[src].setId(srcId);
-          _sources[src].update(hdr, rf12_len);
-          if (_callback) _callback(_sources[src], e);
-        }
-      }  /* if broadcast */
+      event e = Update;
+      unsigned char srcId = ((pkt->byte0 & 0x0f) << 2) | (pkt->byte1 >> 6);
+      unsigned char srcIdx = findSourceIdx(srcId);
+      if (srcIdx == 0xff)
+      {
+        srcIdx = findFreeSourceIdx();
+        e = static_cast<event>(Add | Update);
+      }
+      if (srcIdx != 0xff)
+      {
+        _sources[srcIdx].setId(srcId);
+        _sources[srcIdx].update(pkt);
+        if (_callback) _callback(_sources[srcIdx], e);
+      }
     }  /* if crc ok */
     else if (_crcOk > 0)
     {

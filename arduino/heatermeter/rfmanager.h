@@ -2,68 +2,63 @@
 #ifndef __RFMANAGER_H__
 #define __RFMANAGER_H__
 
-#include <RF12.h>
+#include <rf12_itplus.h>
 
-#define RFSOURCEID_NONE 0
+#define RFSOURCEID_ANY  0x7F
 
-#define RF_PINS_PER_SOURCE 6
 #define RF_SOURCE_COUNT 4
 
 // The count of milliseconds with no receive that the source is considered stale
-// This should be large enough to allow the remote node to sleep, but short enough
-// that the sequence number can't roll without being detected
-// i.e. this value should be under MIN_TRANSMIT_PERIOD * 255 * 1000
+// This should be large enough to allow the remote node to sleep
 #define RF_STALE_TIME (3 * 60 * 1000UL)
 
-typedef struct tagRf12MapItem 
+typedef struct tagRf12Packet
 {
-  unsigned char pin: 3;
-  unsigned char source: 5;
-} rf12_map_item_t;
-
-typedef struct tagRf12ProbeUpdateHdr 
-{
-  unsigned char seqNo;
-  unsigned int batteryLevel;
-  unsigned char adcBits;
-} rf12_probe_update_hdr_t;
-
-typedef struct tagRf12ProbeUpdate 
-{
-  unsigned char probeIdx;
-  unsigned int adcValue;
-} rf12_probe_update_t;
+  // 4 bits = "9"
+  // 6 bits of ID
+  // 1 bit Reset flag (set for first few hours after poweron)
+  // 1 bit native flag (0 for IT+ transmitterm, 1 for lmremote)
+  // 12 bits of data, either BCD (IT+) or raw analog read (lmremote)
+  // 1 bit low battery inticator
+  // 7 bits hygrometer
+  // 8 bit CRC
+  unsigned char byte0;
+  unsigned char byte1;
+  unsigned char byte2;
+  unsigned char hygro;
+  unsigned char crc;
+} rf12_packet_t;
 
 class RFSource
 {
+public:
+  enum flag { LowSignal = 0x01, LowBattery = 0x02, RecentReset = 0x03, NativeItPlus = 0x04 };
+  RFSource(void) : _id(RFSOURCEID_ANY) {};
+  
+  // The 6 bitID of the remote node (0-63)
+  unsigned char getId(void) const { return _id; }
+  void setId(unsigned char id);
+  unsigned char getFlags(void) const { return _flags; }
+  // millis() of the last receive
+  unsigned long getLastReceive(void) const { return _lastReceive; }
+
+  // true if last packet had the low signal flag
+  boolean isSignalLow(void) const { return _flags & LowSignal; }
+  // true if last packet had the low battery flag
+  boolean isBatteryLow(void) const { return _flags & LowBattery; }
+  // true if last packet indicated IT+, that value = degrees C * 10
+  boolean isNative(void) const { return _flags & NativeItPlus; }
+  boolean isFree(void) const { return _id == RFSOURCEID_ANY; }
+  boolean isStale(void) const { return !isFree() && ((millis() - _lastReceive) > RF_STALE_TIME); }
+  
+  void update(rf12_packet_t *pkt);
+
+  int Value;
+
+private:
   unsigned char _id;
   unsigned long _lastReceive;
-  unsigned char _nextSeq;
-  unsigned int _batteryLevel;
-  unsigned char _signalLevel;
-  unsigned char _adcBits;
-  
-public:
-  RFSource(void) {};
-  
-  // The ID of the remote node (2-31)
-  unsigned char getId(void) const { return _id; };
-  void setId(unsigned char id);
-  // Signal level (0-255) representing how many packets we've missed
-  unsigned char getSignalLevel(void) const { return _signalLevel; };
-  // Is the node indicating low battery?
-  unsigned int getBatteryLevel(void) const { return _batteryLevel; };
-  // millis() of the last receive
-  unsigned long getLastReceive(void) const { return _lastReceive; };
-  // Reported resolution of the client ADC
-  unsigned char getAdcBits(void) const { return _adcBits; };
-
-  boolean isFree(void) const { return _id == RFSOURCEID_NONE; };
-  boolean isStale(void) const { return !isFree() && ((millis() - _lastReceive) > RF_STALE_TIME); };
-  
-  void update(rf12_probe_update_hdr_t *hdr, unsigned char len);
-
-  unsigned int Values[RF_PINS_PER_SOURCE];
+  unsigned char _flags;
 };
 
 class RFManager
@@ -82,6 +77,7 @@ public:
   void status(void);
   boolean doWork(void);
   unsigned long getLastReceive(void) const { return _lastReceive; }
+  static unsigned char getAdcBits(void) { return 12; }
   
   RFSource *getSourceById(unsigned char srcId);
   

@@ -41,7 +41,7 @@ static char g_SerialBuff[64];
 #ifdef HEATERMETER_RFM12
 static void rfSourceNotify(RFSource &r, RFManager::event e); // prototype
 static RFManager rfmanager(rfSourceNotify);
-static rf12_map_item_t rfMap[TEMP_COUNT];
+static unsigned char rfMap[TEMP_COUNT];
 #endif /* HEATERMETER_RFM12 */
 
 static unsigned char g_AlarmId; // ID of alarm going off
@@ -61,7 +61,7 @@ static const struct __eeprom_data {
   boolean manualMode;
   unsigned char lcdBacklight; // in PWM (max 100)
 #ifdef HEATERMETER_RFM12
-  rf12_map_item_t rfMap[TEMP_COUNT];
+  unsigned char rfMap[TEMP_COUNT];
 #endif
   char pidUnits;
   unsigned char minFanSpeed;  // in percent
@@ -76,7 +76,7 @@ static const struct __eeprom_data {
   false, // manual mode
   50,   // lcd backlight (%)
 #ifdef HEATERMETER_RFM12
-  {{ RFSOURCEID_NONE, 0 }, { RFSOURCEID_NONE, 0 }, { RFSOURCEID_NONE, 0 }, { RFSOURCEID_NONE, 0 }},  // rfMap
+  { RFSOURCEID_ANY, RFSOURCEID_ANY, RFSOURCEID_ANY, RFSOURCEID_ANY },  // rfMap
 #endif
   'F',  // Units
   10,   // min fan speed  
@@ -203,11 +203,8 @@ static void reportRfMap(void)
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
     Serial_csv();
-    if (rfMap[i].source != RFSOURCEID_NONE)
-    {
-      Serial_char(rfMap[i].source + 'A' - 1);
-      SerialX.print(rfMap[i].pin, DEC);
-    }
+    if (pid.Probes[i]->getProbeType() == PROBETYPE_RF12)
+      SerialX.print(rfMap[i], DEC);
   }
   Serial_nl();
 }
@@ -218,55 +215,42 @@ static void checkInitRfManager(void)
     rfmanager.init(HEATERMETER_RFM12);
 }
 
-static void storeRfMap(unsigned char probeIndex, unsigned char source, unsigned char sourcePin)
+static void storeRfMap(unsigned char probeIndex, unsigned char source)
 {
-  rfMap[probeIndex].source = source;
-  rfMap[probeIndex].pin = sourcePin;
-      
-  rf12_map_item_t *ofs = (rf12_map_item_t *)offsetof(__eeprom_data, rfMap);
+  rfMap[probeIndex] = source;
+
+  unsigned char *ofs = (unsigned char *)offsetof(__eeprom_data, rfMap);
   ofs += probeIndex;
-  eeprom_write_block(&rfMap[probeIndex], ofs, sizeof(rf12_map_item_t));
-    
+  eeprom_write_byte(ofs, source);
+
   reportRfMap();
   checkInitRfManager();
 }
 #endif /* HEATERMETER_RFM12 */
 
-static void storeProbeTypeOrMap(unsigned char probeIndex, char *vals)
+static void storeProbeTypeOrMap(unsigned char probeIndex, unsigned char probeType)
 {
-  // The last value can either be an integer, which indicates that it is a probetype
-  // Or it is an RF map description indicating it is of type PROBETYPE_RF12 and
-  // the map should be updated
-  char probeType = *vals;
-  if (probeType >= '0' && probeType <= '9')
+  /* If probeType is < 128 it is just a probe type */
+  if (probeType < 128)
   {
-    // Convert char to PROBETYPE_x
-    probeType -= '0';
     unsigned char oldProbeType = pid.Probes[probeIndex]->getProbeType();
     if (oldProbeType != probeType)
     {
       storeProbeType(probeIndex, probeType);
 #ifdef HEATERMETER_RFM12
       if (oldProbeType == PROBETYPE_RF12)
-        storeRfMap(probeIndex, RFSOURCEID_NONE, 0);
+        storeRfMap(probeIndex, RFSOURCEID_ANY);
 #endif /* HEATERMETER_RFM12 */
     }
   }  /* if probeType */
   
 #ifdef HEATERMETER_RFM12
-  else if (probeType >= 'A' && probeType <= 'Z')
+  /* If probeType > 128 then it is an wireless probe and the value is 128+source ID */
+  else
   {
-    // If probeType is an RF source identifier, it is an RF map item consisting of
-    // a one-character source identifier A-Z and a one-character pin identifier 0-9
-    unsigned char source = probeType - 'A' + 1;
-    vals++;
-    unsigned char sourcePin = *vals - '0';
-    if (sourcePin >= 0 && sourcePin < RF_PINS_PER_SOURCE)
-    {
-      if (pid.Probes[probeIndex]->getProbeType() != PROBETYPE_RF12)
-        storeProbeType(probeIndex, PROBETYPE_RF12);
-      storeRfMap(probeIndex, source, sourcePin);
-    }
+    if (pid.Probes[probeIndex]->getProbeType() != PROBETYPE_RF12)
+      storeProbeType(probeIndex, PROBETYPE_RF12);
+    storeRfMap(probeIndex, probeType - 128);
   }  /* if RF map */
 #endif /* HEATERMETER_RFM12 */
 }
@@ -490,7 +474,8 @@ static void storeProbeCoeff(unsigned char probeIndex, char *vals)
     }
   }
 
-  storeProbeTypeOrMap(probeIndex, vals);
+  if (*vals)
+    storeProbeTypeOrMap(probeIndex, atoi(vals));
   reportProbeCoeff(probeIndex);
 }
 
@@ -799,9 +784,7 @@ static boolean handleCommandUrl(char *URL)
 static void outputRfStatus(void)
 {
 #if defined(HEATERMETER_SERIAL) && defined(HEATERMETER_RFM12)
-  print_P(PSTR("HMRF" CSV_DELIMITER)); 
   rfmanager.status();
-  Serial_nl();
 #endif /* defined(HEATERMETER_SERIAL) && defined(HEATERMETER_RFM12) */
 }
 
@@ -981,31 +964,30 @@ static void dflashInit(void)
 static void rfSourceNotify(RFSource &r, RFManager::event e)
 {
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
-    if ((pid.Probes[i]->getProbeType() == PROBETYPE_RF12) && (rfMap[i].source == r.getId()))
+    if ((pid.Probes[i]->getProbeType() == PROBETYPE_RF12) &&
+    ((rfMap[i] == RFSOURCEID_ANY) || (rfMap[i] == r.getId()))
+    )
     {
       if (e & (RFManager::Update | RFManager::Remove))
       {
-        unsigned char srcPin = rfMap[i].pin;
-        unsigned int val = r.Values[srcPin];
-        unsigned char adcBits = r.getAdcBits();
-        // ADC bits of 0 is direct measurement in 10ths of a degree C, i.e. 370 = 37.0
-        if (adcBits == 0 && val != 0)
+        unsigned int val = r.Value;
+        if (r.isNative() && val != 0)
           pid.Probes[i]->setTemperatureC(val / 10.0f);
         else
         {
+          unsigned char adcBits = rfmanager.getAdcBits();
           // If the remote is lower resolution then shift it up to our resolution
           if (adcBits < pid.getAdcBits())
             val <<= (pid.getAdcBits() - adcBits);
-          //else if (adcBits > pid.getAdcBits())
-          //  val >>= (adcBits - pid.getAdcBits());
           pid.Probes[i]->addAdcValue(val);
         }
-        // Set the pin's value to 0 so when we remove the source later it 
-        // adds a 0 to the adcValue, effectively clearing it
-        r.Values[srcPin] = 0;
       }
     } /* if probe is this source */
-  
+
+  // Set the value to 0 so when we remove the source later it
+  // adds a 0 to the adcValue, effectively clearing it
+  r.Value = 0;
+
   if (e & (RFManager::Add | RFManager::Remove))
     outputRfStatus();
 }
