@@ -16,11 +16,11 @@ module "luci.lucid.linkmeterd"
 local serialPolle
 local statusListeners = {}
 local lastHmUpdate
-local lastLogMessage
+local unkProbe
+
 local rfMap = {}
 local rfStatus = {}
-local hmConfig = {}
-local unkProbe
+local hmConfig
 
 -- forwards
 local segmentCall
@@ -124,6 +124,7 @@ local function segSplit(line)
   return retVal
 end
 
+local lastLogMessage
 local function stsLogMessage()
   local vals = segSplit(lastLogMessage)
   return ('event: log\ndata: {"level": %s, "message": "%s"}\n\n')
@@ -232,7 +233,7 @@ function stsLmStateUpdate()
   return table.concat(JSON_TEMPLATE)
 end
 
-local lastIpCheck = 0
+local lastIpCheck
 local lastIp
 local function checkIpUpdate()
   local newIp
@@ -244,8 +245,8 @@ local function checkIpUpdate()
       newIp = v.addr end
   end
   
-  if newIp then
-    serialPolle.fd:write("/set?tt=Network Address,"..newIp)
+  if newIp and newIp ~= lastIp then
+    serialPolle.fd:write("/set?tt=Network Address,"..newIp.."\n")
     lastIp = newIp
   end
 end
@@ -323,7 +324,7 @@ local function segStateUpdate(line)
       if not status then nixio.syslog("err", "RRD error: " .. err) end
       
       broadcastStatus(stsLmStateUpdate)
-      if time - lastIpCheck > 60 then
+      if lastIp == nil or time - lastIpCheck > 60 then
         checkIpUpdate()
         lastIpCheck = time
       end
@@ -400,7 +401,10 @@ local function lmdStart()
   }
   
   lucid.register_pollfd(serialPolle)
+  
   hmConfig = nil
+  lastIp = nil
+  lastIpCheck = 0
   
   return true
 end
