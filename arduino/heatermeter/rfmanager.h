@@ -4,7 +4,8 @@
 
 #include <rf12_itplus.h>
 
-#define RFSOURCEID_ANY  0x7F
+#define RFSOURCEID_ANY  0x7f
+#define RFSOURCEID_NONE 0xff
 
 #define RF_SOURCE_COUNT 4
 
@@ -33,7 +34,7 @@ class RFSource
 {
 public:
   enum flag { LowSignal = 0x01, LowBattery = 0x02, RecentReset = 0x03, NativeItPlus = 0x04 };
-  RFSource(void) : _id(RFSOURCEID_ANY) {};
+  RFSource(void) : _id(RFSOURCEID_NONE) {};
   
   // The 6 bitID of the remote node (0-63)
   unsigned char getId(void) const { return _id; }
@@ -48,9 +49,9 @@ public:
   boolean isBatteryLow(void) const { return _flags & LowBattery; }
   // true if last packet indicated IT+, that value = degrees C * 10
   boolean isNative(void) const { return _flags & NativeItPlus; }
-  boolean isFree(void) const { return _id == RFSOURCEID_ANY; }
+  boolean isFree(void) const { return _id == RFSOURCEID_NONE; }
   boolean isStale(void) const { return !isFree() && ((millis() - _lastReceive) > RF_STALE_TIME); }
-  
+
   void update(rf12_packet_t *pkt);
 
   int Value;

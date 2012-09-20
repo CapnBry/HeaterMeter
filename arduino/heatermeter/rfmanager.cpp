@@ -8,7 +8,6 @@ void RFSource::setId(unsigned char id)
   if (_id == id) return;
 
   _id = id;
-  _flags = 0;
   Value = 0;
 }
 
@@ -16,15 +15,16 @@ void RFSource::update(rf12_packet_t *pkt)
 {
   _lastReceive = millis();
 
-  _flags = 0;
+  unsigned char newFlags = 0;
   if ((pkt->byte1 & 0x10) == 0)
-    _flags |= NativeItPlus;
+    newFlags |= NativeItPlus;
   if ((pkt->byte1 & 0x20) != 0)
-    _flags |= RecentReset;
+    newFlags |= RecentReset;
   if ((pkt->hygro & 0x80) != 0)
-    _flags |= LowBattery;
+    newFlags |= LowBattery;
   if (rf12_rssi() == 0)
-    _flags |= LowSignal;
+    newFlags |= LowSignal;
+  _flags = newFlags;
 
   if (isNative())
     Value = (((pkt->byte1 & 0x0f) * 100) + ((pkt->byte2 >> 4) * 10) + (pkt->byte2 & 0x0f)) - 400;
@@ -79,8 +79,8 @@ void RFManager::status(void)
   if (!_initialized)
     return;
 
-  // The first item in the list the manager RFSOURCEID_ANY,CrcOk
-  print_P(PSTR("HMRF" CSV_DELIMITER "127" CSV_DELIMITER));
+  // The first item in the list the manager RFSOURCEID_NONE,CrcOk
+  print_P(PSTR("HMRF" CSV_DELIMITER "255" CSV_DELIMITER));
   SerialX.print(_crcOk, DEC); // signalish
   //Serial_csv();
   //unsigned long m = millis();
