@@ -382,7 +382,7 @@ uint8_t rf12_initialize (uint8_t id, uint8_t band) {
     }
     //rf12_xfer(0xC606); // approx 49.2 Kbps, i.e. 10000/29/(1+6) Kbps
     rf12_xfer(0xC613); // DATA RATE 17.241 kbps
-    rf12_xfer(0x94A3); // VDI,FAST,134kHz,0dBm,-91dBm 
+    rf12_xfer(0x94A0 | RSSI_91); // VDI,FAST,134kHz,0dBm,-XXdBm
     rf12_xfer(0xC2AC); // AL,!ml,DIG,DQD4 
     rf12_xfer(0xCA83); // FIFO8,2-SYNC,!ff,DR 
     rf12_xfer(0xCE00 | TX29_GROUP); // SYNC=2DXX； 
