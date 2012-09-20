@@ -75,7 +75,7 @@ local function jsonWrite(vals)
     if src ~= "" then
       local sts = rfStatus[src]
       if sts then
-        rfval = (',"rf":{"s":%s,"b":%s}'):format(sts.rssi,sts.batt)
+        rfval = (',"rf":{"s":%d,"b":%d}'):format(sts.rssi,sts.lobatt)
       else
         rfval = ',"rf":null'
       end
@@ -189,15 +189,27 @@ local function segRfUpdate(line)
   local vals = segSplit(line)
   rfStatus = {}  -- clear the table to remove stales
   local idx = 1
-  local now = os.time()
+  --local now = os.time()
+  local band = nixio.bit.band
   while (idx < #vals) do
     local nodeId = vals[idx]
+    local flags = tonumber(vals[idx+1])
     rfStatus[nodeId] = {
-      batt = vals[idx+1],
-      rssi = vals[idx+2],
-      last = now - tonumber(vals[idx+3])
+      rssi = band(flags, 0x01) == 0 and 255 or 0;
+      lobatt = band(flags, 0x02) == 0 and 0 or 1;
+      reset = band(flags, 0x03) == 0 and 0 or 1;
+      native = band(flags, 0x04) == 0 and 0 or 1;
+      --batt = vals[idx+1],
+      --rssi = vals[idx+2],
+      --last = now - tonumber(vals[idx+3])
     }
-    idx = idx + 4
+    
+    -- If this isn't the NONE source, save the stats as the ANY source
+    if nodeId ~= "255" then
+      rfStatus["127"] = rfStatus[nodeId]
+    end
+    
+    idx = idx + 2
   end
 end
 
@@ -205,12 +217,8 @@ local function segRfMap(line)
   local vals = segSplit(line)
   rfMap = {}
   for i,s in ipairs(vals) do
-    local node = s:sub(1,1)
-    local pin = s:sub(2,2)
-    rfMap[i] = node
-    
-    hmConfig["prfn"..(i-1)] = node
-    hmConfig["prfp"..(i-1)] = tonumber(pin) or 0
+    rfMap[i] = s
+    hmConfig["prfn"..(i-1)] = s
   end
 end
 
@@ -368,6 +376,15 @@ local function serialHandler(polle)
       segmentCall(line)
     end -- if validate
   end -- for line
+
+end
+
+local function initHmVars()
+  hmConfig = nil
+  lastIp = nil
+  lastIpCheck = 0
+  rfMap = {}
+  rfStatus = {}
 end
 
 local function lmdStart()
@@ -400,11 +417,8 @@ local function lmdStart()
     handler = serialHandler
   }
   
+  initHmVars() 
   lucid.register_pollfd(serialPolle)
-  
-  hmConfig = nil
-  lastIp = nil
-  lastIpCheck = 0
   
   return true
 end
@@ -415,7 +429,7 @@ local function lmdStop()
   serialPolle.fd:setblocking(true)
   serialPolle.fd:close()
   serialPolle = nil
-  hmConfig = nil
+  initHmVars()
   
   return true
 end
@@ -444,8 +458,9 @@ local function segLmRfStatus(line)
       retVal = retVal .. ","
     end
     
-    retVal = retVal .. ('{"id":"%s","batt":%s,"rssi":%s,"last":%u}'):format(
-      id, item.batt, item.rssi, item.last)
+    retVal = retVal ..
+      ('{"id":%s,"lobatt":%d,"rssi":%d,"reset":%d,"native":%d}'):format(
+      id, item.lobatt, item.rssi, item.reset, item.native)
   end
   retVal = "[" .. retVal .. "]"
   

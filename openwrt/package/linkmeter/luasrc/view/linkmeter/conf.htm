@@ -21,7 +21,7 @@ $(function ()
 
 function typeChanged()
 {
-  var name = this.id.substring(2);
+  var name = this.id.substr(2);
   $("#pbody" + name).css("display", (this.value == 0) ? "none" : "block");
   $("#prf" + name).css("display", (this.value == 2) ? "block" : "none");
 }
@@ -59,15 +59,20 @@ function configHashToForm()
       
     if (isProbeId(k, "pt"))
       elem.trigger("change");
+    else if (isProbeId(k, "prfn"))
+      $("#prfa" + k.substr(4))
+        .change(configElemChange)
+        .attr("checked", val == 127);
     elem.change(configElemChange);
   }
 }
 
 function configElemChange()
 {
+  var name = this.id;
   if (this.className == "pc")
   {
-    var name = this.id.substring(3);
+    name = name.substr(3);
     var values = this.value.split(',');
     if (values.length >= 3)
     {
@@ -77,6 +82,21 @@ function configElemChange()
       if (values.length >= 4)
         $("#pcr"+name).val(values[3]);
     }
+  }
+  else if (isProbeId(name, "prfa"))
+  {
+    name = "prfn" + name.substr(4);
+    var value;
+    if ($(this).is(":checked"))
+      value = "127";
+    else
+      value = configHash[name];
+    $("#" + name).val(value);
+  }
+  else if (isProbeId(name, "prfn"))
+  {
+    name = "#prfa" + name.substr(4);
+    $(name).attr("checked", $(this).val() == "127");
   }
   updateUpdateUrl();
 }
@@ -146,11 +166,11 @@ function getProbeTypeForSend(h, i)
   var ptype = $("#pt"+i).val();
   if (ptype == "2")
   {
-    if (h["prfn"+i] == null && h["prfp"+i] == null)
+    if (h["prfn"+i] == null)
       return null;
     var nodeId = $("#prfn"+i).val();
     if (nodeId)
-      return nodeId + $("#prfp"+i).val();
+      return parseInt(nodeId) + 128;
   }
   else
     return h["pt"+i];
@@ -202,7 +222,7 @@ function coeffClick(probeId, idx)
 function showCoeffPopup()
 {
   var o = this.parentNode;
-  var probeId = o.id.substring(3);
+  var probeId = o.id.substr(3);
   var list = $("#pcplist");
   list.empty();
   var items = new Array();
@@ -311,15 +331,10 @@ You can store a configuration by bookmarking the "Full configuration" link.</p>
 </div>
 <div id="prf<%=i%>" style="display: none;">
   <div>RF12 Configuration</div>
-  <div class="cbi-value"><label>Node</label><input type="text" maxlength="1" id="prfn<%=i%>" style="width: 2em;"/></div>
-  <div class="cbi-value"><label>Pin</label><select class="pt" id="prfp<%=i%>">
-    <option value="0">Analog 0</option>
-    <option value="1">Analog 1</option>
-    <option value="2">Analog 2</option>
-    <option value="3">Analog 3</option>
-    <option value="4">Analog 4</option>
-    <option value="5">Analog 5</option>
-  </select></div>
+  <div class="cbi-value"><label>Node</label>
+    <input type="text" maxlength="3" id="prfn<%=i%>" style="width: 2em;"/>
+    <input type="checkbox" id="prfa<%=i%>" class="prfa"> Any</input>
+  </div>
 </div>
 </td>
 <% end %>

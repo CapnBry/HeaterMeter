@@ -546,8 +546,12 @@ function connectionSuccess(o)
                     img = "rf2.png";
                 else
                     img = "rf1.png";
-                details = (rf.s/2.55).toFixed(0) + "% ";
-                details += (rf.b / 1000.0).toFixed(2) + "V"
+                if (rf.s > 0)
+                  details = "Signal OK";
+                else
+                  details = "Low Signal";
+                if (rf.b > 0)
+                  details += " Low Battery";
             }
 
              $(rfsDiv).html('<img src="<%=resource%>/' + img + '" title="' + 
