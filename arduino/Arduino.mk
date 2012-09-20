@@ -680,7 +680,7 @@ depends:	$(DEPS)
 		$(CAT) $(DEPS) > $(DEP_FILE)
 
 size:		$(OBJDIR) $(TARGET_HEX)
-		$(SIZE) $(TARGET_HEX)
+		$(SIZE) $(TARGET_ELF)
 
 show_boards:	
 		$(PARSE_BOARD_CMD) --boards
