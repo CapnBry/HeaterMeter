@@ -1,4 +1,4 @@
-ARDUINO_LIBS := ShiftRegLCD jeelib
+ARDUINO_LIBS := ShiftRegLCD rf12_itplus
 MCU := atmega328p
 VARIANT := standard
 F_CPU := 16000000
