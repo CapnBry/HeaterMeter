@@ -195,6 +195,7 @@ local function segRfUpdate(line)
     local nodeId = vals[idx]
     local flags = tonumber(vals[idx+1])
     rfStatus[nodeId] = {
+      flags = flags;
       rssi = band(flags, 0x01) == 0 and 255 or 0;
       lobatt = band(flags, 0x02) == 0 and 0 or 1;
       reset = band(flags, 0x03) == 0 and 0 or 1;
@@ -459,8 +460,8 @@ local function segLmRfStatus(line)
     end
     
     retVal = retVal ..
-      ('{"id":%s,"lobatt":%d,"rssi":%d,"reset":%d,"native":%d}'):format(
-      id, item.lobatt, item.rssi, item.reset, item.native)
+      ('{"id":%s,"flags":%d,"lobatt":%d,"rssi":%d,"reset":%d,"native":%d}'):format(
+      id, item.flags, item.lobatt, item.rssi, item.reset, item.native)
   end
   retVal = "[" .. retVal .. "]"
   
