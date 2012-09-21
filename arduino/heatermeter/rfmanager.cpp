@@ -47,7 +47,7 @@ void RFManager::freeStaleSources(void)
     if (_sources[idx].isStale())
     {
       if (_callback) _callback(_sources[idx], Remove);
-      _sources[idx].setId(RFSOURCEID_ANY);
+      _sources[idx].setId(RFSOURCEID_NONE);
     }
 }
 
