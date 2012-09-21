@@ -247,7 +247,7 @@ function updateConfigUrl(divname, h)
     "sp", "pidb", "pidp", "pidi", "pidd", "lb" ];
   for (var k in h)
   {
-    if (STATIC_MAP.indexOf(k) != -1)
+    if ($.inArray(k, STATIC_MAP) != -1)
       aValues.push(k + "=" + encodeURIComponent(h[k]));
   }
   
