@@ -33,7 +33,7 @@ typedef struct tagRf12Packet
 class RFSource
 {
 public:
-  enum flag { LowSignal = 0x01, LowBattery = 0x02, RecentReset = 0x03, NativeItPlus = 0x04 };
+  enum flag { LowSignal = bit(0), LowBattery = bit(1), RecentReset = bit(2), NativeItPlus = bit(3) };
   RFSource(void) : _id(RFSOURCEID_NONE) {};
   
   // The 6 bitID of the remote node (0-63)
