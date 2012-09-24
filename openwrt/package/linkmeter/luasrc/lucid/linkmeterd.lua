@@ -198,8 +198,8 @@ local function segRfUpdate(line)
       flags = flags;
       rssi = band(flags, 0x01) == 0 and 255 or 0;
       lobatt = band(flags, 0x02) == 0 and 0 or 1;
-      reset = band(flags, 0x03) == 0 and 0 or 1;
-      native = band(flags, 0x04) == 0 and 0 or 1;
+      reset = band(flags, 0x04) == 0 and 0 or 1;
+      native = band(flags, 0x08) == 0 and 0 or 1;
       --batt = vals[idx+1],
       --rssi = vals[idx+2],
       --last = now - tonumber(vals[idx+3])

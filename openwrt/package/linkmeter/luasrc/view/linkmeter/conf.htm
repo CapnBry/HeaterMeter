@@ -73,7 +73,7 @@ function refreshRfNodes(o)
     else
     {
       name = "Node " + o[i].id;
-      desc = "Batt:" + (o[i].lowbatt ? '<span class="bad">LOW</span>' :
+      desc = "Batt:" + (o[i].lobatt ? '<span class="bad">Low</span>' :
         '<span class="good">Ok</span>') + " New:" + 
         (o[i].reset ? '<span class="good">Yes</span>' : 'No');
       if (o[i].rssi > 0)
