@@ -223,7 +223,7 @@ uint16_t rf12_control(uint16_t cmd) {
 }
 
 #define CRC_POLY 0x31
-static uint8_t _crc8_update(uint8_t crc, uint8_t data)
+uint8_t itplus_crc_update(uint8_t crc, uint8_t data)
 {
   crc ^= data;
   for (uint8_t i=0; i<8; ++i)
@@ -255,7 +255,7 @@ static void rf12_interrupt() {
         }
 
         rf12_buf[rxfill++] = in;
-        rf12_crc = _crc8_update(rf12_crc, in);
+        rf12_crc = itplus_crc_update(rf12_crc, in);
 
         if (rxfill == rf12_len)
             rf12_xfer(RF_IDLE_MODE);
@@ -265,7 +265,7 @@ static void rf12_interrupt() {
         if (rxstate < 0) {
             uint8_t pos = rf12_len + rxstate++;
             out = rf12_buf[pos];
-            rf12_crc = _crc8_update(rf12_crc, out);
+            rf12_crc = itplus_crc_update(rf12_crc, out);
         } else
             switch (rxstate++) {
                 case TXSYN1: out = 0x2D; break;

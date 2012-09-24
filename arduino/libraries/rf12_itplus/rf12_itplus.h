@@ -60,6 +60,8 @@ char rf12_rssi(void);
 // http://tools.jeelabs.org/rfm12b is useful for calculating these
 uint16_t rf12_control(uint16_t cmd);
 
+uint8_t itplus_crc_update(uint8_t crc, uint8_t data);
+
 enum rf12RssiThreshold {
   RSSI_103 = 0x00,
   RSSI_97 = 0x01,
