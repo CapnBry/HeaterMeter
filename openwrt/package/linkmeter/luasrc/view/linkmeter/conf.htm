@@ -45,6 +45,13 @@ function refreshRfNodes(o)
   var container = $("#rfnodes");
   container.empty();
   var hasNodes = false;
+  // Put the receiver first and all others in numeric order
+  o.sort(function (a,b) { 
+    if (a.id == 255)
+      return -1;
+    else
+      return a.id - b.id; 
+  });
   for (var i=0; i<o.length; ++i)
   {
     var name
