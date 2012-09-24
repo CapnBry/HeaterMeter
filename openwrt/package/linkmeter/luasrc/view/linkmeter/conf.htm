@@ -18,12 +18,13 @@ $(function ()
   $(".pcpreset a").click(showCoeffPopup);
   configToForm();
 });
+$(window).load(windowLoaded);
 
-$(window).load(function ()
+function windowLoaded()
 {
   rfInterval = window.setInterval(queryRfNodes, 10000);
   queryRfNodes();
-});
+}
 
 function queryRfNodes()
 {
@@ -48,7 +49,9 @@ function refreshRfNodes(o)
   // Put the receiver first and all others in numeric order
   o.sort(function (a,b) { 
     if (a.id == 255)
-      return -1;
+      return -256;
+    else if (b.id == 255)
+      return 256;
     else
       return a.id - b.id; 
   });
@@ -76,7 +79,7 @@ function refreshRfNodes(o)
       if (o[i].rssi > 0)
         img = "rf3.png";
       else
-        img = "rf0.png";
+        img = "rf1.png";
     }
     
     container.append(
@@ -327,7 +330,7 @@ function ifrmTarget(url,title)
 function ifrmLoaded()
 {
   $.get("<%=luci.dispatcher.build_url("lm","conf")%>",
-    function (o) { configHash = o; configToForm(); })
+    function (o) { configHash = o; configToForm(); windowLoaded(); })
     .error(function () { window.location.reload(); })
     .complete(ifrmHide);
 }
