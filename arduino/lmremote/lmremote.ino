@@ -1,12 +1,13 @@
 #include <avr/wdt.h>
 #include <avr/sleep.h>
-#include <RF12.h>
-#include <Ports.h>
+#include <rf12_itplus.h>
 
-#define LMREMOTE_SERIAL 115200
+// Enabling LMREMOTE_SERIAL also disables several power saving features
+//#define LMREMOTE_SERIAL 38400
 
-// Node Idenfier for the RFM12B (2-30)
-const unsigned char _rfNodeId = 2;
+// Base Idenfier for the RFM12B (0-63)
+// The transmitted ID is this ID plus the pin number
+const char _rfNodeBaseId = 0;
 // RFM12B band RF12_433MHZ, RF12_868MHZ, RF12_915MHZ
 const unsigned char _rfBand = RF12_915MHZ;
 // How long to sleep between probe measurments, in seconds
@@ -17,41 +18,50 @@ const unsigned char _enabledProbePins = 0x01;
 const unsigned char _pinBattery = 1;
 // Digital pins for LEDs, 0xff to disable
 const unsigned char _pinLedRx = 0xff;
-const unsigned char _pinLedTx = 9;
+const unsigned char _pinLedTx = 0xff; //9
 // Digital pins used for sourcing power to the probe dividers
 const unsigned char _pinProbeSupplyBase = 4;
-// Number of oversampling bits when measuring temperature [0-3]
+// Percentage (integer) of VCC where the battery is considered low (33% = 1.1V)
+#define BATTERY_LOW_PCT 33
+// Number of seconds to keep the "recent/new" bit set
+#define RECENT_EXPIRE_SECS 1800
+// Number of oversampling bits when measuring temperature [0-2]
 #define TEMP_OVERSAMPLE_BITS 1
 
 #define RF_PINS_PER_SOURCE 6 
 #define PIN_DISABLED(pin) ((_enabledProbePins & (1 << pin)) == 0)
 
-typedef struct tagRf12ProbeUpdateHdr 
-{
-  unsigned char seqNo;
-  unsigned int batteryLevel;
-  unsigned char adcBits;
-} rf12_probe_update_hdr_t;
+// Bits used in output packet
+// byte1
+#define BYTE1_LMREMOTE_KEY 0x10
+#define BYTE1_RECENT_BOOT  0x20
+// hygro byte
+#define HYGRO_BATTERY_LOW  0x80
+#define HYGRO_BATTERY_OK   0x00
+#define HYGRO_NO_HYGRO     0x6A
 
-typedef struct tagRf12ProbeUpdate 
-{
-  unsigned char probeIdx;
-  unsigned int adcValue;
-} rf12_probe_update_t;
+#ifdef LMREMOTE_SERIAL
+  #define SLEEPMODE_TX    1
+#else
+  #define SLEEPMODE_TX    2
+#endif
 
 static unsigned int _previousReads[RF_PINS_PER_SOURCE];
+static unsigned int _loopCnt;
 static unsigned char _sameCount;
-static unsigned char _seqNo;
+static unsigned char _isRecent = BYTE1_RECENT_BOOT;
+static unsigned char _isBattLow;
+static unsigned char _hygroVal;
 
 // The WDT is used solely to wake us from sleep
 ISR(WDT_vect) { wdt_disable(); }
-//ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
-void sleep(uint8_t wdt_period) {
+static void sleep(uint8_t wdt_period, boolean include_adc) {
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 
   // Disable ADC
-  ADCSRA &= ~bit(ADEN);
+  if (include_adc)
+    ADCSRA &= ~bit(ADEN);
 
   // TODO: Figure out what else I can safely disable
   // Disable analog comparator to
@@ -67,25 +77,26 @@ void sleep(uint8_t wdt_period) {
   // sleep must be entered within 3 cycles of BODS being set
   sleep_enable();
   MCUCR = MCUCR | bit(BODSE) | bit(BODS);
-  MCUCR = MCUCR & ~bit(BODSE) | bit(BODS);
+  MCUCR = (MCUCR & ~bit(BODSE)) | bit(BODS);
   
   // Sleep
   sleep_cpu();
   
   // Back from sleep
   sleep_disable();
-  ADCSRA |= bit(ADEN);
+  if (include_adc)
+    ADCSRA |= bit(ADEN);
 }
 
-void sleepSeconds(unsigned char secs)
+static void sleepSeconds(unsigned char secs)
 {
-  while (secs >= 8) { sleep(WDTO_8S); secs -=8; }
-  if (secs >= 4) { sleep(WDTO_4S); secs -= 4; }
-  if (secs >= 2) { sleep(WDTO_2S); secs -= 2; }
-  if (secs >= 1) { sleep(WDTO_1S); }
+  while (secs >= 8) { sleep(WDTO_8S, true); secs -=8; }
+  if (secs >= 4) { sleep(WDTO_4S, true); secs -= 4; }
+  if (secs >= 2) { sleep(WDTO_2S, true); secs -= 2; }
+  if (secs >= 1) { sleep(WDTO_1S, true); }
 }
 
-void rf12_doWork(void)
+static void rf12_doWork(void)
 {
   if (rf12_recvDone() && rf12_crc == 0)
   {
@@ -95,78 +106,82 @@ void rf12_doWork(void)
   if (_pinLedRx != 0xff) digitalWrite(_pinLedRx, LOW);
 }
 
-inline unsigned int getBatteryLevel(void)
+static void updateBatteryLow(void)
 {
   const unsigned char BATREAD_COUNT = 4;
   
+  _isBattLow = HYGRO_BATTERY_OK;
   if (_pinBattery != 0xff)
   {
-    unsigned int retVal = 0;
+    unsigned int adcSum = 0;
+    unsigned char battPct;
     for (unsigned char i=0; i<BATREAD_COUNT; ++i)
-      retVal += analogRead(_pinBattery);
-    retVal /= BATREAD_COUNT;
-    return (unsigned long)retVal * 3300UL / 1023;
+      adcSum += analogRead(_pinBattery);
+    // Send level as percent of VCC
+    battPct = (adcSum * 100UL) / (1024 * BATREAD_COUNT);
+
+#ifdef LMREMOTE_SERIAL
+    Serial.print("Battery level: "); Serial.print(retVal, DEC); Serial.print('\n');
+#endif
+
+    if (battPct < BATTERY_LOW_PCT)
+      _isBattLow = HYGRO_BATTERY_LOW;
+    _hygroVal = battPct;
   }
-  else
-    return 3300;  
 }
 
-void transmitTemps(unsigned char txCount)
+static void transmitTemp(unsigned char pin)
+{
+  unsigned char outbuf[4];
+  unsigned char nodeId = _rfNodeBaseId + pin;
+  unsigned int val = _previousReads[pin];
+  val <<= (12 - (10 + TEMP_OVERSAMPLE_BITS));
+  outbuf[0] = 0x90 | ((nodeId & 0x3f) >> 2);
+  outbuf[1] = ((nodeId & 0x3f) << 6) | _isRecent | BYTE1_LMREMOTE_KEY | (val >> 8);
+  outbuf[2] = (val & 0xff);
+  outbuf[3] = _isBattLow | _hygroVal;
+  //Serial.println(outbuf[3], HEX);
+
+  // Don't check for air to be clear, we just woke from sleep and it will be milliseconds before
+  // the RFM chip is actually up and running
+  rf12_sendStart(outbuf, sizeof(outbuf));
+  rf12_sendWait(SLEEPMODE_TX);
+}
+
+static void newTempsAvailable(void)
 {
   // Enable the transmitter because it takes 1-5ms to turn on (3ms in my testing)
   rf12_sleep(RF12_WAKEUP);
 
-  char outbuf[
-    sizeof(rf12_probe_update_hdr_t) + 
-    RF_PINS_PER_SOURCE * sizeof(rf12_probe_update_t)
-  ];
-  rf12_probe_update_hdr_t *hdr;
-
-  hdr = (rf12_probe_update_hdr_t *)outbuf;
-  hdr->seqNo = _seqNo++;
-  hdr->batteryLevel = getBatteryLevel();
-  hdr->adcBits = 10 + TEMP_OVERSAMPLE_BITS;
-
+  updateBatteryLow();
   // We're done with the ADC shut it down until the next wake cycle
   ADCSRA &= ~bit(ADEN);
+  if (_isRecent && (_loopCnt > (RECENT_EXPIRE_SECS/_sleepInterval)))
+  {
+    //Serial.print("No longer recent\n");
+    _isRecent = 0;
+  }
 
-  // Send all values regardless of if they've changed or not
-  rf12_probe_update_t *up = (rf12_probe_update_t *)&hdr[1];
+  boolean hasTransmitted = false;
   for (unsigned char pin=0; pin < RF_PINS_PER_SOURCE; ++pin)
   {
     if (PIN_DISABLED(pin))
       continue;
-    up->probeIdx = pin;
-    up->adcValue = _previousReads[pin];
-    ++up;
+    if (hasTransmitted) sleep(WDTO_15MS, false);
+    transmitTemp(pin);
+    hasTransmitted = true;
   }
-
-  // Hacky way to determine how much to send is see where our buffer pointer 
-  // compared to from the start of the buffer
-  unsigned char len = (unsigned int)up - (unsigned int)outbuf;
-
-  if (_pinLedTx != 0xff) digitalWrite(_pinLedTx, HIGH);
   
-  while (txCount--)
-  {
-    // Don't check for air to be clear, we just woke from sleep and it will be milliseconds before
-    // the RFM chip is actually up and running
-
-    // HDR=0 means to broadcast, no ACK requested
-    rf12_sendStart(0, outbuf, len);
-    rf12_sendWait(2);
-  }  /* while txCount */
-
   rf12_sleep(RF12_SLEEP);
-  if (_pinLedTx != 0xff) digitalWrite(_pinLedTx, LOW);
+  if (_pinLedTx != 0xff)
+  {
+    digitalWrite(_pinLedTx, HIGH);
+    sleep(WDTO_15MS, false);
+    digitalWrite(_pinLedTx, LOW);
+  }
 }
 
-inline void newTempsAvailable(void)
-{
-  transmitTemps(1);
-}
-
-void enableAdcPullups(void)
+static void enableAdcPullups(void)
 {
   for (unsigned char pin=0; pin < RF_PINS_PER_SOURCE; ++pin)
   {
@@ -186,11 +201,16 @@ void enableAdcPullups(void)
   delayMicroseconds(10);
 }
 
-void checkTemps(void)
+static void checkTemps(void)
 {
   const unsigned char OVERSAMPLE_COUNT[] = {1, 4, 16, 64};  // 4^n
   boolean modified = false;
   unsigned int oversampled_adc = 0;
+
+#ifdef LMREMOTE_SERIAL
+  Serial.print(millis(), DEC);
+  Serial.print(" Checking temps: ");
+#endif
 
   enableAdcPullups();
   for (unsigned char pin=0; pin < RF_PINS_PER_SOURCE; ++pin)
@@ -211,7 +231,7 @@ void checkTemps(void)
     oversampled_adc = oversampled_adc >> TEMP_OVERSAMPLE_BITS;
 
 #ifdef LMREMOTE_SERIAL
-    Serial.println(oversampled_adc, DEC);
+    Serial.print(oversampled_adc, DEC); Serial.print(' ');
 #endif
     if (oversampled_adc != _previousReads[pin])
       modified = true;
@@ -219,6 +239,10 @@ void checkTemps(void)
 
     digitalWrite(_pinProbeSupplyBase + pin, LOW);
   }
+
+#ifdef LMREMOTE_SERIAL
+  Serial.print('\n');
+#endif
 
   if (modified || (_sameCount > (30 / _sleepInterval)))
   {
@@ -229,7 +253,7 @@ void checkTemps(void)
     ++_sameCount;
 }
 
-inline void setupSupplyPins(void)
+static void setupSupplyPins(void)
 {
   // Analog pullup supply pins don't need DIR set
   if (_pinProbeSupplyBase >= A0)
@@ -242,35 +266,7 @@ inline void setupSupplyPins(void)
   }
 }
 
-void setup(void)
-{
-  // Turn off the units we never use (this only affects non-sleep power)
-  PRR = bit(PRUSART0) | bit(PRTWI) | bit(PRTIM1) | bit(PRTIM2);
-  // Disable digital input buffers on the analog in ports
-  DIDR0 = bit(ADC5D) | bit(ADC4D) | bit(ADC3D) | bit(ADC2D) | bit(ADC1D) | bit(ADC0D);
-  DIDR1 = bit(AIN1D) | bit(AIN0D);
-
-#ifdef LMREMOTE_SERIAL
-  PRR &= ~bit(PRUSART0);
-  Serial.begin(115200);  Serial.println("$UCID,lmremote");
-#endif
-
-  rf12_initialize(_rfNodeId, _rfBand);
-  // Crystal 1.66MHz Low Battery Detect 2.2V
-  rf12_control(0xC040);
-
-  if (_pinLedRx != 0xff) pinMode(_pinLedRx, OUTPUT);
-  if (_pinLedTx != 0xff) pinMode(_pinLedTx, OUTPUT);
-  
-  setupSupplyPins();
-
-  // Force a reading and transmit multiple times so the master can sync its seqno
-  memset(_previousReads, 0xff, sizeof(_previousReads));
-  checkTemps();
-  transmitTemps(2);
-}
-
-void stabilizeAdc(void)
+static void stabilizeAdc(void)
 {
   if (_pinBattery != 0xff)
   {
@@ -279,7 +275,7 @@ void stabilizeAdc(void)
     unsigned int cnt = 0;
     // Reads the adc a bunch of times until the value settles
     // Usually you hear "discard the first few ADC readings after sleep"
-    // but this seems a bit more scientific
+    // but this seems a bit more scientific as we wait for the AREF cap to charge
     do {
       ++cnt;
       last = curr;
@@ -291,19 +287,47 @@ void stabilizeAdc(void)
     } while ((cnt < 10) && (abs(last - curr) > 2));
   }
 #ifdef LMREMOTE_SERIAL
-  Serial.println();
+  Serial.print('\n'); delay(10);
 #endif
+}
+
+void setup(void)
+{
+  stabilizeAdc();
+
+  // Turn off the units we never use (this only affects non-sleep power)
+  PRR = bit(PRUSART0) | bit(PRTWI) | bit(PRTIM1) | bit(PRTIM2);
+  // Disable digital input buffers on the analog in ports
+  DIDR0 = bit(ADC5D) | bit(ADC4D) | bit(ADC3D) | bit(ADC2D) | bit(ADC1D) | bit(ADC0D);
+  DIDR1 = bit(AIN1D) | bit(AIN0D);
+
+#ifdef LMREMOTE_SERIAL
+  PRR &= ~bit(PRUSART0);
+  Serial.begin(LMREMOTE_SERIAL); Serial.println("$UCID,lmremote"); delay(10);
+#endif
+
+  rf12_initialize(1, _rfBand);
+  // Crystal 1.66MHz Low Battery Detect 2.2V
+  rf12_control(0xC040);
+
+  if (_pinLedRx != 0xff) pinMode(_pinLedRx, OUTPUT);
+  if (_pinLedTx != 0xff) pinMode(_pinLedTx, OUTPUT);
+
+  setupSupplyPins();
+
+  // Force a transmit on next read
+  memset(_previousReads, 0xff, sizeof(_previousReads));
 }
 
 void loop(void)
 {
-  //Sleepy::loseSomeTime(_sleepInterval * 1000);
-  sleepSeconds(_sleepInterval);
   //stabilizeAdc();
   checkTemps();
 #ifdef LMREMOTE_SERIAL
-  delay(1);
+  delay(10);
 #endif
+  sleepSeconds(_sleepInterval);
+  ++_loopCnt;
 }
 
 
