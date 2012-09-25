@@ -126,6 +126,8 @@ volatile uint8_t rf12_buf[RF_MAX];  // recv/xmit buf, including hdr & crc bytes
 volatile uint8_t rf12_len;
 volatile uint8_t rf12_status;
 
+itplus_initial_t itplus_initial_cb;
+
 void rf12_spiInit () {
     bitSet(SS_PORT, SS_BIT);
     bitSet(SS_DDR, SS_BIT);
@@ -252,6 +254,8 @@ static void rf12_interrupt() {
             rf12_len = ((in >> 4) + 2) * 4 / 8;
             if (rf12_len < 1 || rf12_len > RF_MAX)
               rf12_len = 1;
+            if (itplus_initial_cb)
+                itplus_initial_cb();
         }
 
         rf12_buf[rxfill++] = in;

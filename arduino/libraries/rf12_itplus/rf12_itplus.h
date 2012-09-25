@@ -62,6 +62,12 @@ uint16_t rf12_control(uint16_t cmd);
 
 uint8_t itplus_crc_update(uint8_t crc, uint8_t data);
 
+// Callback type used from the interrupt handler to indicate the first byte
+// of a packet has been received. Called with interrupts disabled so be
+// quick about it
+typedef void (*itplus_initial_t)(void);
+extern itplus_initial_t itplus_initial_cb;
+
 enum rf12RssiThreshold {
   RSSI_103 = 0x00,
   RSSI_97 = 0x01,
