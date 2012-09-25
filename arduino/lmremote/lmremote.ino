@@ -42,8 +42,10 @@ const unsigned char _pinProbeSupplyBase = 4;
 
 #ifdef LMREMOTE_SERIAL
   #define SLEEPMODE_TX    1
+  #define SLEEPMODE_ADC   SLEEP_MODE_IDLE
 #else
   #define SLEEPMODE_TX    2
+  #define SLEEPMODE_ADC   SLEEP_MODE_ADC
 #endif
 
 static unsigned int _previousReads[RF_PINS_PER_SOURCE];
@@ -52,11 +54,25 @@ static unsigned char _sameCount;
 static unsigned char _isRecent = BYTE1_RECENT_BOOT;
 static unsigned char _isBattLow;
 static unsigned char _hygroVal;
+static volatile unsigned char _adcBusy;
 
 // The WDT is used solely to wake us from sleep
 ISR(WDT_vect) { wdt_disable(); }
+ISR(ADC_vect) { _adcBusy = 0; }
 
-static void sleep(uint8_t wdt_period, boolean include_adc) {
+static unsigned int analogReadSleep(unsigned char pin)
+{
+  _adcBusy = 1;
+  ADMUX = (DEFAULT << 6) | pin;
+  bitSet(ADCSRA, ADIE);
+  set_sleep_mode(SLEEPMODE_ADC);
+  while (_adcBusy)
+    sleep_mode();
+  return ADC;
+}
+
+static void sleep(uint8_t wdt_period, boolean include_adc)
+{
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 
   // Disable ADC
@@ -116,12 +132,12 @@ static void updateBatteryLow(void)
     unsigned int adcSum = 0;
     unsigned char battPct;
     for (unsigned char i=0; i<BATREAD_COUNT; ++i)
-      adcSum += analogRead(_pinBattery);
+      adcSum += analogReadSleep(_pinBattery);
     // Send level as percent of VCC
     battPct = (adcSum * 100UL) / (1024 * BATREAD_COUNT);
 
 #ifdef LMREMOTE_SERIAL
-    Serial.print("Battery level: "); Serial.print(retVal, DEC); Serial.print('\n');
+    Serial.print("Battery %: "); Serial.print(battPct, DEC); Serial.print('\n');
 #endif
 
     if (battPct < BATTERY_LOW_PCT)
@@ -197,8 +213,31 @@ static void enableAdcPullups(void)
     // If using digital lines you will supply your own resistor for the fixed half.
     digitalWrite(_pinProbeSupplyBase + pin, HIGH);
   }
-  // takes about 15uS to stabilize and the enabling process takes 6us per pin at 16MHz
-  delayMicroseconds(10);
+}
+
+static void stabilizeAdc(void)
+{
+  const unsigned char INTERNAL_REF = 0b1110;
+  unsigned int last;
+  unsigned int totalCnt = 0;
+  unsigned int sameCnt = 0;
+  unsigned int curr = analogReadSleep(INTERNAL_REF);
+  // Reads the adc a bunch of times until the value settles
+  // Usually you hear "discard the first few ADC readings after sleep"
+  // but this seems a bit more scientific as we wait for the AREF cap to charge
+  do {
+    ++totalCnt;
+#ifdef LMREMOTE_SERIAL
+    Serial.print(curr, DEC);
+    Serial.print(' ');
+#endif
+    last = curr;
+    curr = analogReadSleep(INTERNAL_REF);
+    if (last == curr)
+      ++sameCnt;
+    else
+      sameCnt = 0;
+  } while ((totalCnt < 64) && (sameCnt < 4));
 }
 
 static void checkTemps(void)
@@ -213,6 +252,7 @@ static void checkTemps(void)
 #endif
 
   enableAdcPullups();
+  stabilizeAdc();
   for (unsigned char pin=0; pin < RF_PINS_PER_SOURCE; ++pin)
   {
     if (PIN_DISABLED(pin))
@@ -220,7 +260,7 @@ static void checkTemps(void)
 
     for (unsigned char o=0; o<OVERSAMPLE_COUNT[TEMP_OVERSAMPLE_BITS]; ++o)
     {
-      unsigned int adc = analogRead(pin);
+      unsigned int adc = analogReadSleep(pin);
       if (adc == 0 || adc >= 1023)
       {
         oversampled_adc = 0;
@@ -266,35 +306,8 @@ static void setupSupplyPins(void)
   }
 }
 
-static void stabilizeAdc(void)
-{
-  if (_pinBattery != 0xff)
-  {
-    unsigned int last;
-    unsigned int curr = analogRead(_pinBattery);
-    unsigned int cnt = 0;
-    // Reads the adc a bunch of times until the value settles
-    // Usually you hear "discard the first few ADC readings after sleep"
-    // but this seems a bit more scientific as we wait for the AREF cap to charge
-    do {
-      ++cnt;
-      last = curr;
-#ifdef LMREMOTE_SERIAL
-      Serial.print(curr,DEC);
-      Serial.print(' ');
-#endif
-      curr = analogRead(_pinBattery);
-    } while ((cnt < 10) && (abs(last - curr) > 2));
-  }
-#ifdef LMREMOTE_SERIAL
-  Serial.print('\n'); delay(10);
-#endif
-}
-
 void setup(void)
 {
-  stabilizeAdc();
-
   // Turn off the units we never use (this only affects non-sleep power)
   PRR = bit(PRUSART0) | bit(PRTWI) | bit(PRTIM1) | bit(PRTIM2);
   // Disable digital input buffers on the analog in ports
@@ -321,10 +334,9 @@ void setup(void)
 
 void loop(void)
 {
-  //stabilizeAdc();
   checkTemps();
 #ifdef LMREMOTE_SERIAL
-  delay(10);
+  Serial.flush(); delay(2);
 #endif
   sleepSeconds(_sleepInterval);
   ++_loopCnt;
