@@ -137,6 +137,8 @@ function configHashToForm()
       $("#prfa" + k.substr(4))
         .change(configElemChange)
         .attr("checked", val == 127);
+    else if (k == "finv")
+      elem.attr("checked", val != 0);
     elem.change(configElemChange);
   }
 }
@@ -200,6 +202,8 @@ function configChangedHash()
     var val = elem.val();
     if (isProbeId(k, "prfn") && val == "")
       val = null;
+    else if (k == "finv")
+      val = elem.is(":checked") ? 1 : 0;
     if (val != configHash[k])
       r[k] = val;
   }
@@ -263,7 +267,7 @@ function updateConfigUrl(divname, h)
   
   csvItems(h, aValues, "ld", ["lo", "ld"]);
   csvItems(h, aValues, "po", ["po0", "po1", "po2", "po3"]);
-  csvItems(h, aValues, "fn", ["fmin", "fmax", "finvert"]);
+  csvItems(h, aValues, "fn", ["fmin", "fmax", "finv"]);
   for (var i=0; i<4; ++i)
     csvItems(h, aValues, "pc"+i, ["pca"+i, "pcb"+i, "pcc"+i, "pcr"+i, 
       function () { return getProbeTypeForSend(h, i); } ]);
@@ -352,7 +356,7 @@ function ifrmHide()
   .pconfig { vertical-align: top; width: 25%; }
   .ptitle { padding: 4px; text-align: center; font-size: large; }
   .pcurr { text-align: center; color: #ccc; font-size: small; }
-  label { width: 4em; float: left; }
+  td.pconfig label { width: 4em; float: left; }
   .pnum0 { background: #e73; }
   .pnum1 { background: #6c3; }
   .pnum2 { background: #297; }
@@ -442,6 +446,7 @@ time they are restared.</div>
   <div class="cbi-value">
     Fan speed min <input type="text" maxlength="3" id="fmin" style="width: 2em;"/>%
     max <input type="text" maxlength="3" id="fmax" style="width: 2em;"/>%
+    <input type="checkbox" id="finv"/><label for="finv"> Invert output</label>
   </div>
 </fieldset>
 
