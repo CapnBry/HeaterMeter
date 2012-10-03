@@ -27,7 +27,7 @@ static void calcExpMovingAverage(const float smooth, float *currAverage, float n
   }
 }
 
-inline void ProbeAlarm::updateStatus(int value)
+void ProbeAlarm::updateStatus(int value)
 {
   if (getLowEnabled() && value <= getLow())
     Ringing[ALARM_IDX_LOW] = true;
@@ -48,10 +48,16 @@ void ProbeAlarm::setLow(int value)
 void ProbeAlarm::setThreshold(unsigned char idx, int value)
 {
   Ringing[idx] = false;
+  /* 0 is a special value meaning disable the alarm, i.e. set the threshold negative */
   if (value == 0)
-    Thresholds[idx] = -abs(value);
-  else
-    Thresholds[idx] = value;
+  {
+    int oldval = Thresholds[idx];
+    if (oldval < 0)
+      return;
+    else
+      value = -oldval;
+  }
+  Thresholds[idx] = value;
 }
 
 TempProbe::TempProbe(const unsigned char pin) :
@@ -188,7 +194,7 @@ inline void GrillPid::calcFanSpeed(void)
 
   float currentTemp = Probes[TEMP_PIT]->Temperature;
   // If we're in lid open mode, fan should be off
-  if (LidOpenResumeCountdown != 0)
+  if (isLidOpen())
     return;
 
   float error;

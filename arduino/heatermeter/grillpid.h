@@ -169,6 +169,7 @@ public:
   float FanSpeedAvg;
   // Seconds remaining in the lid open countdown
   unsigned int LidOpenResumeCountdown;
+  boolean isLidOpen(void) const { return LidOpenResumeCountdown != 0; }
   // true if any probe has a non-zero temperature
   boolean isAnyFoodProbeActive(void) const;
   unsigned int countOfType(unsigned char probeType) const;

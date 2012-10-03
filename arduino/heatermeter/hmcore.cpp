@@ -572,17 +572,17 @@ static void reportProbeCoeffs(void)
     reportProbeCoeff(i);
 }
 
-static void reportAlarmLimits(boolean showall)
+static void reportAlarmLimits(void)
 {
   print_P(PSTR("HMAL"));
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
     ProbeAlarm &a = pid.Probes[i]->Alarms;
     Serial_csv();
-    if (a.getLowRinging() || showall) SerialX.print(a.getLow(), DEC);
+    SerialX.print(a.getLow(), DEC);
     if (a.getLowRinging()) Serial_char('L');
     Serial_csv();
-    if (a.getHighRinging() || showall) SerialX.print(a.getHigh(), DEC);
+    SerialX.print(a.getHigh(), DEC);
     if (a.getHighRinging()) Serial_char('H');
   }
   Serial_nl();
@@ -615,7 +615,7 @@ static void reportConfig(void)
   reportProbeOffsets();
   reportLidParameters();
   reportLcdBacklight();
-  reportAlarmLimits(true);
+  reportAlarmLimits();
 #ifdef HEATERMETER_RFM12
   reportRfMap();  
 #endif /* HEATERMETER_RFM12 */
@@ -673,18 +673,23 @@ static void storeAlarmLimits(unsigned char idx, int val)
 {
   unsigned char probeIndex = ALARM_ID_TO_PROBE(idx);
   ProbeAlarm &a = pid.Probes[probeIndex]->Alarms;
-  a.setThreshold(ALARM_ID_TO_IDX(idx), val);
+  unsigned char alarmIndex = ALARM_ID_TO_IDX(idx);
+  a.setThreshold(alarmIndex, val);
 
-  // Just write both thresholds because the code is smaller
   unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, alarmLow));
   if (ofs != 0)
-    eeprom_write_block(a.Thresholds, (void *)ofs, sizeof(a.Thresholds));
+  {
+    /* Read the value back because we might have just set it to 'disabled' */
+    int newVal = a.getThreshold(alarmIndex);
+    ofs += alarmIndex * sizeof(newVal);
+    eeprom_write_block(&newVal, (void *)ofs, sizeof(newVal));
+  }
 }
 
 void disableRingingAlarm(void)
 {
   storeAlarmLimits(g_AlarmId, 0);
-  reportAlarmLimits(true);
+  reportAlarmLimits();
 }
 
 static void storeFanParams(unsigned char idx, int val)
@@ -756,7 +761,7 @@ static boolean handleCommandUrl(char *URL)
   if (strncmp_P(URL, PSTR("set?al="), 7) == 0)
   {
     csvParseI(URL + 7, storeAlarmLimits);
-    reportAlarmLimits(true);
+    reportAlarmLimits();
     return true;
   }
   if (strncmp_P(URL, PSTR("set?fn="), 7) == 0)
@@ -1024,11 +1029,11 @@ static void checkAlarms(void)
 {
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
     for (unsigned char j=ALARM_IDX_LOW; j<=ALARM_IDX_HIGH; ++j)
-      if (pid.Probes[i]->Alarms.Ringing[j])
+      if (!pid.isLidOpen() && pid.Probes[i]->Alarms.Ringing[j])
       {
         g_AlarmId = MAKE_ALARM_ID(i, j);
 #ifdef HEATERMETER_SERIAL
-        reportAlarmLimits(false);
+        reportAlarmLimits();
 #endif
         Menus.setState(ST_HOME_ALARM);
         return;
