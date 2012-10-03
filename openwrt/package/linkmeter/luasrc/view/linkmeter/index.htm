@@ -113,6 +113,10 @@ $(window).load(function ()
         source.addEventListener("log", function (e) {
             console.log(e.data);
         });
+        source.addEventListener("alarm", function (e) {
+            var o = JSON.parse(e.data);
+            alarmEvent(o);
+        });
         source.addEventListener("error", connectionFailure);
     } else {
         if (!lastUpdateUtc)
@@ -122,6 +126,23 @@ $(window).load(function ()
 <% end %>
     refreshGraphData();
 });
+
+function alarmEvent(o)
+{
+  if (o.atype)
+  {
+    $("#dialog-overlay").show();
+    $("#alarm h2").text(o.pn);
+    $("#alarm p").html('Alarm (' + o.atype + ') trigged at ' +
+      o.c + '&deg; exceeds threshold ' + o.t + '&deg;');
+    $("#alarm").show("fast");
+  }
+  else
+  {
+    $("#alarm").hide("fast");
+    $("#dialog-overlay").hide();
+  }
+}
 
 function legendClicked()
 {
@@ -515,13 +536,21 @@ function connectionSuccess(o)
     {
         if (updateEditables) $("#pn" + i).text(o.temps[i].n);
         var val = o.temps[i].c;
+        var tempElem = $("#temp" + i);
         if (val === null)
         {
             val = NaN;
-            $("#temp" + i).text("off");
+            tempElem.text("off");
         }
         else
-            $("#temp" + i).html(val.toFixed(1) + "&deg;");
+            tempElem.html(val.toFixed(1) + "&deg;");
+            
+        if (o.temps[i].ar == 'H')
+            tempElem.removeClass("alarmLow").addClass("alarmHigh");
+        else if (o.temps[i].ar == 'L')
+            tempElem.removeClass("alarmHigh").addClass("alarmLow");
+        else
+            tempElem.removeClass("alarmLow alarmHigh");
         
         var dataIdx = mapJson[i];
         graphData[dataIdx].label = o.temps[i].n;
@@ -647,8 +676,17 @@ div.legfill { width: 14px; height: 14px; }
 div.dph { color: #003; font-size: 10pt; text-align: right; position: absolute; right: 0; bottom: 0; }
 div.pname { color: #003; font-size: 18pt; line-height: 16pt; display: inline-block; }
 div.ptemp { font-size: 32pt; line-height: 26pt; color: #fff; }
+.alarmHigh { color: #c00 !important; }
+.alarmLow { color: #33f !important; }
 div#graphtt { display: none; position: absolute; border: 1px solid #89c; background: #eef; opacity: 0.9; padding: 2px; color: #003; }
 div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357; }
+#dialog-overlay { width: 100%; height: 100%; position: fixed;
+    top: 0px; left: 0px; display: none; background-color: #000;
+    opacity: 0.6; z-index: 2; }
+#alarm { background-color: #600; width: 480px; height: 200px;
+    border: 5px solid #fff; padding: 10px; color: #fff;
+    position: fixed; z-index: 3; top: 100px; display: none;
+    left: 50%; margin-left: -240px; }
 div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
 </style>
 </head>
@@ -728,6 +766,11 @@ div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
     <div id="graphtt_title"></div>
     <div id="graphtt_content"></div>
     <img id="graphtt_arrow" src="<%=resource%>/ttarrow.png" style="position: absolute; left: 0; top: 0;">
+</div>
+<div id="dialog-overlay"></div>
+<div id="alarm">
+    <h2></h2>
+    <p></p>
 </div>
 <% 
 if luci.dispatcher.context.authuser ~= "root" then 
