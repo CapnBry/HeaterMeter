@@ -92,6 +92,12 @@ $(document).ready(function()
         var enable = (lastLidOpen == 0) ? ",,1" : ",,0";
         $.get("<%=luci.dispatcher.build_url("lm", "set")%>", {ld: enable});
     });
+    
+    $("#alarmclear").click(function () {
+        $(this).html("Disabling...");
+        $.get("<%=luci.dispatcher.build_url("lm", "set")%>", {al: "0,0,0,0,0,0,0,0"});
+    }).show();
+        
 <% end %>
 <% if not rrd then %>
     var o = <%= LmClient():query("$LMSU") or "{}" %>;
@@ -683,10 +689,11 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
 #dialog-overlay { width: 100%; height: 100%; position: fixed;
     top: 0px; left: 0px; display: none; background-color: #000;
     opacity: 0.6; z-index: 2; }
-#alarm { background-color: #600; width: 480px; height: 200px;
+#alarm { background-color: #600; width: 340px; height: 150px;
     border: 5px solid #fff; padding: 10px; color: #fff;
     position: fixed; z-index: 3; top: 100px; display: none;
     left: 50%; margin-left: -240px; }
+#alarmclear { display: none; position: absolute; bottom: 4px; right: 4px; color: #ccc; }
 div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
 </style>
 </head>
@@ -771,6 +778,7 @@ div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
 <div id="alarm">
     <h2></h2>
     <p></p>
+    <div id="alarmclear">Disable</div>
 </div>
 <% 
 if luci.dispatcher.context.authuser ~= "root" then 
