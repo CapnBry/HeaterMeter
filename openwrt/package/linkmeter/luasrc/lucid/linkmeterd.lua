@@ -20,6 +20,7 @@ local unkProbe
 
 local rfMap = {}
 local rfStatus = {}
+local hmAlarms = {}
 local hmConfig
 
 -- forwards
@@ -53,14 +54,14 @@ local JSON_TEMPLATE = {
   ',"set":', 0,
   ',"lid":', 0,
   ',"fan":{"c":', 0, ',"a":', 0,
-  '},"temps":[{"n":"', 'Pit', '","c":', 0, '', -- probe1
-  '},{"n":"', 'Food Probe1', '","c":', 0, '', -- probe2
-  '},{"n":"', 'Food Probe2', '","c":', 0, '', -- probe3
-  '},{"n":"', 'Ambient', '","c":', 0, '', -- probe4
+  '},"temps":[{"n":"', 'Pit', '","c":', 0, ',"ar":', 'null', '', -- probe1
+  '},{"n":"', 'Food Probe1', '","c":', 0, ',"ar":', 'null', '', -- probe2
+  '},{"n":"', 'Food Probe2', '","c":', 0, ',"ar":', 'null', '', -- probe3
+  '},{"n":"', 'Ambient', '","c":', 0, ',"ar":', 'null', '', -- probe4
   '}]}',
   ''
 }
-local JSON_FROM_CSV = {3, 5, 15, 20, 25, 30, 9, 11, 7 }
+local JSON_FROM_CSV = {3, 5, 15, 22, 29, 36, 9, 11, 7 }
 
 local function jsonWrite(vals)
   local i,v
@@ -82,7 +83,7 @@ local function jsonWrite(vals)
     else
       rfval = ''
     end
-    JSON_TEMPLATE[11 + (i * 5)] = rfval
+    JSON_TEMPLATE[11+(i*7)] = rfval
   end
 end
 
@@ -155,9 +156,9 @@ local function segProbeNames(line)
   local vals = segConfig(line, {"pn0", "pn1", "pn2", "pn3"})
   
   JSON_TEMPLATE[13] = vals[1]
-  JSON_TEMPLATE[18] = vals[2]
-  JSON_TEMPLATE[23] = vals[3]
-  JSON_TEMPLATE[28] = vals[4]
+  JSON_TEMPLATE[20] = vals[2]
+  JSON_TEMPLATE[27] = vals[3]
+  JSON_TEMPLATE[34] = vals[4]
 end
 
 local function segProbeOffsets(line)
@@ -238,7 +239,7 @@ end
 
 function stsLmStateUpdate()
   JSON_TEMPLATE[1] = "event: hmstatus\ndata: "
-  JSON_TEMPLATE[33] = "\n\n"
+  JSON_TEMPLATE[41] = "\n\n"
   return table.concat(JSON_TEMPLATE)
 end
 
@@ -340,6 +341,49 @@ local function segStateUpdate(line)
     end
 end
 
+local function broadcastAlarm(probeIdx, alarmType, thresh)
+  local curTemp = JSON_TEMPLATE[15+(probeIdx*7)]
+  local pname = JSON_TEMPLATE[13+(probeIdx*7)]
+  
+  if tonumber(thresh) > 0 then
+    nixio.syslog("notice", "Alarm "..probeIdx..alarmType.." started ringing")
+  else
+    nixio.syslog("notice", "Alarm stopped")
+  end
+  
+  skippedUpdates = 99 -- force the next update    
+  JSON_TEMPLATE[17+(probeIdx*7)] = alarmType
+  broadcastStatus(function ()
+    return ('event: alarm\ndata: {"atype":%s,"p":%d,"pn":"%s","c":%s,"t":%s}\n\n'):format(
+      alarmType, probeIdx, pname, curTemp, thresh)
+    end)
+end
+
+local function segAlarmLimits(line)
+  local vals = segSplit(line)
+  
+  for i,v in ipairs(vals) do
+    -- make indexes 0-based
+    local alarmId = i - 1
+    local ringing = v:sub(-1)
+    ringing = ringing == "H" or ringing == "L"
+    if ringing then v = v:sub(1, -2) end
+  
+    local curr = hmAlarms[i] or {}
+    local probeIdx = math.floor(alarmId/2)
+    if ringing and not curr.ringing then
+      curr.ringing = os.time()
+      broadcastAlarm(probeIdx, (alarmId % 2 == 0) and '"L"' or '"H"', v)
+    elseif not ringing and curr.ringing then
+      curr.ringing = nil
+      broadcastAlarm(probeIdx, 'null', v)
+    end
+    curr.t = v
+    
+    hmAlarms[i] = curr
+  end
+end
+
 local function segmentValidate(line)
   -- First character always has to be $
   if line:sub(1, 1) ~= "$" then return false end
@@ -386,6 +430,7 @@ local function initHmVars()
   lastIpCheck = 0
   rfMap = {}
   rfStatus = {}
+  hmAlarms = {}
 end
 
 local function lmdStart()
@@ -481,7 +526,7 @@ end
 
 local function segLmStateUpdate()
   JSON_TEMPLATE[1] = ""
-  JSON_TEMPLATE[33] = ""
+  JSON_TEMPLATE[41] = ""
   -- If the "time" field is still 0, we haven't gotten an update
   if JSON_TEMPLATE[3] == 0 then
     return "{}"
@@ -507,10 +552,17 @@ local function segLmConfig()
   if JSON_TEMPLATE[3] ~= 0 then
     -- Current temperatures
     for i = 0, 3 do
-      r[#r+1] = ('"pcurr%d":%s'):format(i, JSON_TEMPLATE[15+(i*5)])
+      r[#r+1] = ('"pcurr%d":%s'):format(i, JSON_TEMPLATE[15+(i*7)])
     end
     -- Setpoint
     r[#r+1] = '"sp":' .. JSON_TEMPLATE[5]
+  end
+ 
+  for i,v in ipairs(hmAlarms) do
+    i = i - 1
+    local idx = math.floor(i/2)
+    local aType = (i % 2 == 0) and "l" or "h"
+    r[#r+1] = ('"pal%s%d":%s'):format(aType, idx, v.t)
   end
   
   return "{" .. table.concat(r, ',') .. "}"
@@ -541,6 +593,7 @@ local function registerStreamingStatus(fn)
 end
 
 local segmentMap = {
+  ["$HMAL"] = segAlarmLimits,
   ["$HMFN"] = segFanParams,
   ["$HMLB"] = segLcdBacklight,
   ["$HMLD"] = segLidParams,
