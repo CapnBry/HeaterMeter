@@ -252,8 +252,8 @@ static void rf12_interrupt() {
             // the data that follows in quartets (4 bitses)
             // Round up to the nearest byte
             rf12_len = ((in >> 4) + 2) * 4 / 8;
-            if (rf12_len < 1 || rf12_len > RF_MAX)
-              rf12_len = 1;
+            if (rf12_len < 2 || rf12_len > RF_MAX)
+              rf12_len = 2;
             if (itplus_initial_cb)
                 itplus_initial_cb();
         }

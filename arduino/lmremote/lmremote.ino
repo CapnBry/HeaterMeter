@@ -33,12 +33,14 @@ const unsigned char _pinProbeSupplyBase = 4;
 
 // Bits used in output packet
 // byte1
-#define BYTE1_LMREMOTE_KEY 0x10
+#define BYTE1_DUAL_PROBE   0x10
 #define BYTE1_RECENT_BOOT  0x20
 // hygro byte
-#define HYGRO_BATTERY_LOW  0x80
 #define HYGRO_BATTERY_OK   0x00
+#define HYGRO_BATTERY_LOW  0x80
 #define HYGRO_NO_HYGRO     0x6A
+#define HYGRO_SECOND_PROBE 0x7D
+#define HYGRO_LMREMOTE_KEY 0x7F
 
 #ifdef LMREMOTE_SERIAL
   #define SLEEPMODE_TX    1
@@ -53,7 +55,6 @@ static unsigned int _loopCnt;
 static unsigned char _sameCount;
 static unsigned char _isRecent = BYTE1_RECENT_BOOT;
 static unsigned char _isBattLow;
-static unsigned char _hygroVal;
 static volatile unsigned char _adcBusy;
 
 // The WDT is used solely to wake us from sleep
@@ -133,7 +134,7 @@ static void updateBatteryLow(void)
     unsigned char battPct;
     for (unsigned char i=0; i<BATREAD_COUNT; ++i)
       adcSum += analogReadSleep(_pinBattery);
-    // Send level as percent of VCC
+    // Percent of VCC
     battPct = (adcSum * 100UL) / (1024 * BATREAD_COUNT);
 
 #ifdef LMREMOTE_SERIAL
@@ -142,7 +143,6 @@ static void updateBatteryLow(void)
 
     if (battPct < BATTERY_LOW_PCT)
       _isBattLow = HYGRO_BATTERY_LOW;
-    _hygroVal = battPct;
   }
 }
 
@@ -153,9 +153,9 @@ static void transmitTemp(unsigned char pin)
   unsigned int val = _previousReads[pin];
   val <<= (12 - (10 + TEMP_OVERSAMPLE_BITS));
   outbuf[0] = 0x90 | ((nodeId & 0x3f) >> 2);
-  outbuf[1] = ((nodeId & 0x3f) << 6) | _isRecent | BYTE1_LMREMOTE_KEY | (val >> 8);
+  outbuf[1] = ((nodeId & 0x3f) << 6) | _isRecent | (val >> 8);
   outbuf[2] = (val & 0xff);
-  outbuf[3] = _isBattLow | _hygroVal;
+  outbuf[3] = _isBattLow;
   //Serial.println(outbuf[3], HEX);
 
   // Don't check for air to be clear, we just woke from sleep and it will be milliseconds before

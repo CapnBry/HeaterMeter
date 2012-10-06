@@ -52,7 +52,7 @@ public:
   boolean isFree(void) const { return _id == RFSOURCEID_NONE; }
   boolean isStale(void) const { return !isFree() && ((millis() - _lastReceive) > RF_STALE_TIME); }
 
-  void update(rf12_packet_t *pkt);
+  boolean update(rf12_packet_t *pkt);
 
   int Value;
 

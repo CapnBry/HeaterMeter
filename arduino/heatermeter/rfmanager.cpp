@@ -11,25 +11,36 @@ void RFSource::setId(unsigned char id)
   Value = 0;
 }
 
-void RFSource::update(rf12_packet_t *pkt)
+boolean RFSource::update(rf12_packet_t *pkt)
 {
   _lastReceive = millis();
 
   unsigned char newFlags = 0;
-  if ((pkt->byte1 & 0x10) == 0)
-    newFlags |= NativeItPlus;
   if ((pkt->byte1 & 0x20) != 0)
     newFlags |= RecentReset;
   if ((pkt->hygro & 0x80) != 0)
     newFlags |= LowBattery;
+   /* Hygro value of 6A=NoHygro 7D=Secondary Unit?(TX25U) 7F=lmremote */
+  if ((pkt->hygro & 0x7f) < 0x7f)
+    newFlags |= NativeItPlus;
   if (rf12_rssi() == 0)
     newFlags |= LowSignal;
   _flags = newFlags;
 
   if (isNative())
+  {
+    /* When there is nothing connected it sends AAA for the 3 nibbles */
+    /* TX25U secondary: 95 9A AA 7D */
+    if (pkt->byte2 == 0xAA)
+      return false;
+    /* Otherwise the value degrees C in BCD (10x)(1x)(0.1x) with a 40.0 degree offset */
+    /* TX25U primary:   95 96 20 6A */
     Value = (((pkt->byte1 & 0x0f) * 100) + ((pkt->byte2 >> 4) * 10) + (pkt->byte2 & 0x0f)) - 400;
+  }
   else
     Value = ((pkt->byte1 & 0x0f) << 8) | pkt->byte2;
+  //Debug_begin(); SerialX.print("Value="); SerialX.print(Value, DEC); Serial_nl();
+  return true;
 }
 
 void RFManager::init(unsigned char band)
@@ -111,7 +122,14 @@ boolean RFManager::doWork(void)
   while (rf12_recvDone())
   {
     _lastReceive = millis();
-    //print_P(PSTR("RF in")); Serial_nl();
+    /*
+    Debug_begin(); print_P(PSTR("RF in"));
+    SerialX.print(rf12_buf[0], HEX); SerialX.print(' ');
+    SerialX.print(rf12_buf[1], HEX); SerialX.print(' ');
+    SerialX.print(rf12_buf[2], HEX); SerialX.print(' ');
+    SerialX.print(rf12_buf[3], HEX); SerialX.print(' ');
+    Serial_nl();
+    */
     if (rf12_crc == 0)
     {  
       if (_crcOk < 0xff) 
@@ -130,13 +148,13 @@ boolean RFManager::doWork(void)
       if (srcIdx != 0xff)
       {
         _sources[srcIdx].setId(srcId);
-        _sources[srcIdx].update(pkt);
-        if (_callback) _callback(_sources[srcIdx], e);
+        if (_sources[srcIdx].update(pkt))
+          if (_callback) _callback(_sources[srcIdx], e);
       }
     }  /* if crc ok */
     else if (_crcOk > 0)
     {
-      //print_P(PSTR("RF ERR")); Serial_nl();
+      //Debug_begin(); print_P(PSTR("RF ERR")); Serial_nl();
       --_crcOk;
     }
       
