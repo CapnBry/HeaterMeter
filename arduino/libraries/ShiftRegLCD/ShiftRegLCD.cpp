@@ -183,9 +183,14 @@ void ShiftRegLCDBase::shiftDecrement(void) {
 void ShiftRegLCDBase::createChar(uint8_t location, uint8_t charmap[]) {
   location &= 0x7; // we only have 8 locations 0-7
   command(LCD_SETCGRAMADDR | location << 3);
-  for (int i=0; i<8; i++) {
-    write(charmap[i]);
-  }
+  write(charmap, 8);
+  command(LCD_SETDDRAMADDR); // Reset display to display text (from pos. 0)
+}
+
+void ShiftRegLCDBase::createChar_P(uint8_t location, const prog_char *p) {
+  location &= 0x7; // we only have 8 locations 0-7
+  command(LCD_SETCGRAMADDR | location << 3);
+  write_P(p, 8);
   command(LCD_SETDDRAMADDR); // Reset display to display text (from pos. 0)
 }
 
@@ -197,6 +202,12 @@ void ShiftRegLCDBase::digitalWrite(uint8_t pin, uint8_t val)
   else
     _auxPins &= ~pin;
   updateAuxPins();
+}
+
+void ShiftRegLCDBase::write_P(const prog_char *p, uint8_t len)
+{
+  while (len--)
+    write(pgm_read_byte(p++));
 }
 
 // ********************
