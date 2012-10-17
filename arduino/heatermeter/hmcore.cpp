@@ -19,6 +19,7 @@
 #endif
 
 #include "strings.h"
+#include "bigchars.h"
 
 static TempProbe probe0(PIN_PIT);
 static TempProbe probe1(PIN_FOOD1);
@@ -45,6 +46,7 @@ static unsigned char rfMap[TEMP_COUNT];
 #endif /* HEATERMETER_RFM12 */
 
 static unsigned char g_AlarmId; // ID of alarm going off
+static unsigned char g_homeBigProbe;
 unsigned char g_LcdBacklight; // 0-100
 
 #define config_store_byte(eeprom_field, src) { eeprom_write_byte((uint8_t *)offsetof(__eeprom_data, eeprom_field), src); }
@@ -67,6 +69,7 @@ static const struct __eeprom_data {
   unsigned char minFanSpeed;  // in percent
   unsigned char maxFanSpeed;  // in percent
   boolean invertPwm;
+  unsigned char homeBigProbe;
 } DEFAULT_CONFIG PROGMEM = { 
   EEPROM_MAGIC,  // magic
   225,  // setpoint
@@ -81,7 +84,8 @@ static const struct __eeprom_data {
   'F',  // Units
   10,   // min fan speed  
   100,  // max fan speed
-  false // invert PWM
+  false, // invert PWM
+  0xff   // No bignum home
 };
 
 // EEPROM address of the start of the probe structs, the 2 bytes before are magic
@@ -277,7 +281,7 @@ static void storeInvertPwm(unsigned char invertPwm)
   config_store_byte(invertPwm, invertPwm);
 }
 
-static void storeLcdBacklight(unsigned char lcdBacklight)
+void storeLcdBacklight(unsigned char lcdBacklight)
 {
   setLcdBacklight(lcdBacklight);
   config_store_byte(lcdBacklight, lcdBacklight);
@@ -300,6 +304,56 @@ static void toneEnable(boolean enable)
     setLcdBacklight(g_LcdBacklight);
   }
 #endif /* PIEZO_HZ */
+}
+
+static void lcdPrintBigNum(float val)
+{
+  // good up to 3276.8
+  int16_t ival = val * 10;
+  uint16_t uval;
+  boolean isNeg;
+  if (ival < 0)
+  {
+    isNeg = true;
+    uval = -ival;
+  }
+  else
+  {
+    isNeg = false;
+    uval = ival;
+  }
+
+  int8_t x = 16;
+  do
+  {
+    if (uval != 0 || x >= 9)
+    {
+      const prog_char *numData = NUMS + ((uval % 10) * 6);
+
+      x -= C_WIDTH;
+      lcd.setCursor(x, 0);
+      lcd.write_P(numData, C_WIDTH);
+      numData += C_WIDTH;
+
+      lcd.setCursor(x, 1);
+      lcd.write_P(numData, C_WIDTH);
+
+      uval /= 10;
+    }  /* if val */
+    --x;
+    lcd.setCursor(x, 0);
+    lcd.write(C_BLK);
+    lcd.setCursor(x, 1);
+    if (x == 12)
+      lcd.write('.');
+    else if (uval == 0 && x < 9 && isNeg)
+    {
+      lcd.write(C_CT);
+      isNeg = false;
+    }
+    else
+      lcd.write(C_BLK);
+  } while (x != 0);
 }
 
 void updateDisplay(void)
@@ -328,6 +382,19 @@ void updateDisplay(void)
   else
   {
     toneEnable(false);
+
+    /* Big Number probes overwrite the whole display if it has a temperature */
+    if (g_homeBigProbe != 0xff)
+    {
+      TempProbe *probe = pid.Probes[g_homeBigProbe];
+      if (probe->hasTemperature())
+      {
+        lcdPrintBigNum(probe->Temperature);
+        return;
+      }
+    }
+
+    /* Default Pit / Fan Speed first line */
     int pitTemp = pid.Probes[TEMP_PIT]->Temperature;
     if (!pid.getManualFanMode() && pitTemp == 0)
       memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
@@ -553,17 +620,27 @@ static void reportLidParameters(void)
   Serial_nl();
 }
 
-static void reportLcdBacklight(void)
+void reportLcdParameters(void)
 {
   print_P(PSTR("HMLB" CSV_DELIMITER));
   SerialX.print(g_LcdBacklight, DEC);
+  Serial_csv();
+  SerialX.print(g_homeBigProbe, DEC);
   Serial_nl();
 }
 
-void storeAndReportLcdBacklight(unsigned char lcdBacklight)
+void storeLcdParam(unsigned char idx, int val)
 {
-  storeLcdBacklight(lcdBacklight);
-  reportLcdBacklight();
+  switch (idx)
+  {
+    case 0:
+      storeLcdBacklight(val);
+      break;
+    case 1:
+      g_homeBigProbe = val;
+      config_store_byte(homeBigProbe, g_homeBigProbe);
+      break;
+  }
 }
 
 static void reportProbeCoeffs(void)
@@ -614,7 +691,7 @@ static void reportConfig(void)
   reportProbeCoeffs();
   reportProbeOffsets();
   reportLidParameters();
-  reportLcdBacklight();
+  reportLcdParameters();
   reportAlarmLimits();
 #ifdef HEATERMETER_RFM12
   reportRfMap();  
@@ -724,7 +801,8 @@ static boolean handleCommandUrl(char *URL)
   }
   if (strncmp_P(URL, PSTR("set?lb="), 7) == 0) 
   {
-    storeAndReportLcdBacklight(atoi(URL + 7));
+    csvParseI(URL + 7, storeLcdParam);
+    reportLcdParameters();
     return true;
   }
   if (strncmp_P(URL, PSTR("set?ld="), 7) == 0) 
@@ -1066,6 +1144,7 @@ static void eepromLoadBaseConfig(boolean forceDefault)
   pid.setMaxFanSpeed(config.maxFanSpeed);
   pid.setMinFanSpeed(config.minFanSpeed);
   pid.setInvertPwm(config.invertPwm);
+  g_homeBigProbe = config.homeBigProbe;
   
 #ifdef HEATERMETER_RFM12
   memcpy(rfMap, config.rfMap, sizeof(rfMap));
@@ -1176,6 +1255,12 @@ static void newTempsAvail(void)
   checkAlarms();
 }
 
+static void lcdDefineChars(void)
+{
+  for (uint8_t i=0; i<8; ++i)
+    lcd.createChar_P(i, BIG_CHAR_PARTS + (i * 8));
+}
+
 void hmcoreSetup(void)
 {
   // BLINK 1: Booted
@@ -1204,6 +1289,7 @@ void hmcoreSetup(void)
   pid.Probes[TEMP_AMB] = &probe3;
 
   eepromLoadConfig(false);
+  lcdDefineChars();
 #ifdef HEATERMETER_RFM12
   checkInitRfManager();
 #endif

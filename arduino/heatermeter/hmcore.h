@@ -55,7 +55,8 @@ void storeProbeAlarmOn(unsigned char probeIndex, boolean isHigh, boolean value);
 void storeProbeAlarmVal(unsigned char probeIndex, boolean isHigh, int value);
 void storeAndReportMaxFanSpeed(unsigned char maxFanSpeed);
 void setLcdBacklight(unsigned char lcdBacklight);
-void storeAndReportLcdBacklight(unsigned char lcdBacklight);
+void storeLcdBacklight(unsigned char lcdBacklight);
+void reportLcdParameters(void);
 void Debug_begin(char level = '0');
 #define Debug_end Serial_nl
 void disableRingingAlarm(void);

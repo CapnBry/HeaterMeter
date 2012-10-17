@@ -583,7 +583,10 @@ static state_t menuLcdBacklight(button_t button)
   else if (button == BUTTON_LEAVE)
   {
     if (editInt != g_LcdBacklight)
-      storeAndReportLcdBacklight(editInt);
+    {
+      storeLcdBacklight(editInt);
+      reportLcdParameters();
+    }
   }
   
   menuNumberEdit(button, 10, 0, 100, PSTR("%3d%%"));
