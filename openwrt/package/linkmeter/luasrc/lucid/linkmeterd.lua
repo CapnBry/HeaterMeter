@@ -103,6 +103,33 @@ local function broadcastStatus(fn)
   end
 end
 
+local function buildConfigMap()
+  if not hmConfig then return end
+
+  local r = {}
+  for k,v in pairs(hmConfig) do
+    r[k] = v
+  end
+  
+  if JSON_TEMPLATE[3] ~= 0 then
+    -- Current temperatures
+    for i = 0, 3 do
+      r["pcurr"..i] = tonumber(JSON_TEMPLATE[15+(i*7)])
+    end
+    -- Setpoint
+    r["sp"] = JSON_TEMPLATE[5]
+  end
+ 
+  for i,v in ipairs(hmAlarms) do
+    i = i - 1
+    local idx = math.floor(i/2)
+    local aType = (i % 2 == 0) and "l" or "h"
+    r["pal"..aType..i] = tonumber(v.t)
+  end
+  
+  return r
+end
+
 local function segSplit(line)
   local retVal = {}
   local fieldstart = 1
@@ -347,6 +374,14 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
   
   if tonumber(thresh) > 0 then
     nixio.syslog("notice", "Alarm "..probeIdx..alarmType.." started ringing")
+    if nixio.fork() == 0 then
+      local cm = buildConfigMap()
+      cm["al_probe"] = probeIdx
+      cm["al_type"] = alarmType
+      cm["al_thresh"] = thresh
+      nixio.exece("/usr/share/linkmeter/alarm", {}, cm)
+    end
+    alarmType = '"'..alarmType..'"'
   else
     nixio.syslog("notice", "Alarm stopped")
   end
@@ -371,9 +406,10 @@ local function segAlarmLimits(line)
   
     local curr = hmAlarms[i] or {}
     local probeIdx = math.floor(alarmId/2)
-    if ringing and not curr.ringing then
+    -- Wait until we at least have some config before broadcasting
+    if (ringing and not curr.ringing) and (hmConfig and hmConfig.ucid) then
       curr.ringing = os.time()
-      broadcastAlarm(probeIdx, (alarmId % 2 == 0) and '"L"' or '"H"', v)
+      broadcastAlarm(probeIdx, (alarmId % 2 == 0) and "L" or "H", v)
     elseif not ringing and curr.ringing then
       curr.ringing = nil
       broadcastAlarm(probeIdx, 'null', v)
@@ -536,33 +572,16 @@ local function segLmStateUpdate()
 end
 
 local function segLmConfig()
-  if not hmConfig then return "{}" end
-
+  local cm = buildConfigMap()
   local r = {}
-  for k,v in pairs(hmConfig) do
+  for k,v in pairs(cm) do
     local s
     if type(v) == "number" then
-      s = '"' .. k .. '":' .. v
+      s = '%q:%s'
     else
-      s = ('%q:%q'):format(k,v)
+      s = '%q:%q'
     end
-    r[#r+1] = s
-  end
-  
-  if JSON_TEMPLATE[3] ~= 0 then
-    -- Current temperatures
-    for i = 0, 3 do
-      r[#r+1] = ('"pcurr%d":%s'):format(i, JSON_TEMPLATE[15+(i*7)])
-    end
-    -- Setpoint
-    r[#r+1] = '"sp":' .. JSON_TEMPLATE[5]
-  end
- 
-  for i,v in ipairs(hmAlarms) do
-    i = i - 1
-    local idx = math.floor(i/2)
-    local aType = (i % 2 == 0) and "l" or "h"
-    r[#r+1] = ('"pal%s%d":%s'):format(aType, idx, v.t)
+    r[#r+1] = s:format(k,v)
   end
   
   return "{" .. table.concat(r, ',') .. "}"

@@ -1,0 +1,10 @@
+#!/bin/sh
+
+PARTS=/usr/share/linkmeter/alarm${al_probe}${al_type}
+if [ -f "$PARTS" ] ; then
+  . $PARTS
+  exit
+fi
+
+set > /tmp/alarm
+
