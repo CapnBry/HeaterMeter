@@ -138,6 +138,7 @@ function alarmEvent(o)
   if (o.atype)
   {
     $("#dialog-overlay").show();
+    $("#alarmclear").html("Disable");
     $("#alarm h2").text(o.pn);
     $("#alarm p").html('Alarm (' + o.atype + ') trigged at ' +
       o.c + '&deg; exceeds threshold ' + o.t + '&deg;');
@@ -778,7 +779,7 @@ div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
 <div id="alarm">
     <h2></h2>
     <p></p>
-    <div id="alarmclear">Disable</div>
+    <div id="alarmclear"></div>
 </div>
 <% 
 if luci.dispatcher.context.authuser ~= "root" then 
