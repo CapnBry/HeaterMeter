@@ -259,6 +259,7 @@ local function segUcIdentifier(line)
 end
 
 local function setStateUpdateUnk(vals)
+  if vals[2] == 'U' or vals[3] == 'U' then return end
   local t = math.floor(vals[2] * 10)
   local r = math.floor(vals[3])
   unkProbe[t] = r
