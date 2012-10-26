@@ -372,7 +372,7 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
   local curTemp = JSON_TEMPLATE[15+(probeIdx*7)]
   local pname = JSON_TEMPLATE[13+(probeIdx*7)]
   
-  if tonumber(thresh) > 0 then
+  if alarmType then
     nixio.syslog("notice", "Alarm "..probeIdx..alarmType.." started ringing")
     if nixio.fork() == 0 then
       local cm = buildConfigMap()
@@ -384,6 +384,7 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
     alarmType = '"'..alarmType..'"'
   else
     nixio.syslog("notice", "Alarm stopped")
+    alarmType = "null"
   end
   
   skippedUpdates = 99 -- force the next update    
@@ -412,7 +413,7 @@ local function segAlarmLimits(line)
       broadcastAlarm(probeIdx, (alarmId % 2 == 0) and "L" or "H", v)
     elseif not ringing and curr.ringing then
       curr.ringing = nil
-      broadcastAlarm(probeIdx, 'null', v)
+      broadcastAlarm(probeIdx, nil, v)
     end
     curr.t = v
     
