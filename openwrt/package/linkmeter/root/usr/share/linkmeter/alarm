@@ -1,8 +1,8 @@
 #!/bin/sh
 
 for SCR in "alarm-${al_probe}${al_type}" "alarm-all" ; do
-  if [ -f "$SCR" ] ; then
-    . $SCR
+  if [ -x "$SCR" ] ; then
+    ./$SCR
     exit
   fi
 done
