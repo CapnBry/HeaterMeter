@@ -374,7 +374,7 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
   local pname = JSON_TEMPLATE[13+(probeIdx*7)]
   
   if alarmType then
-    nixio.syslog("notice", "Alarm "..probeIdx..alarmType.." started ringing")
+    nixio.syslog("warning", "Alarm "..probeIdx..alarmType.." started ringing")
     if nixio.fork() == 0 then
       local cm = buildConfigMap()
       cm["al_probe"] = probeIdx
@@ -384,7 +384,7 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
     end
     alarmType = '"'..alarmType..'"'
   else
-    nixio.syslog("notice", "Alarm stopped")
+    nixio.syslog("warning", "Alarm stopped")
     alarmType = "null"
   end
   

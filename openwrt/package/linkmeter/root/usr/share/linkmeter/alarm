@@ -1,5 +1,6 @@
 #!/bin/sh
 
+cd `dirname $0`
 for SCR in "alarm-${al_probe}${al_type}" "alarm-all" ; do
   if [ -x "$SCR" ] ; then
     ./$SCR
