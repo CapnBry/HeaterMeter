@@ -258,13 +258,14 @@ function updateConfigUrl(divname, h)
 {
   var aValues = new Array();
   var STATIC_MAP = [ "pn0", "pn1", "pn2", "pn3", 
-    "sp", "pidb", "pidp", "pidi", "pidd", "lb" ];
+    "sp", "pidb", "pidp", "pidi", "pidd" ];
   for (var k in h)
   {
     if ($.inArray(k, STATIC_MAP) != -1)
       aValues.push(k + "=" + encodeURIComponent(h[k]));
   }
   
+  csvItems(h, aValues, "lb", ["lb", "lbn"]);
   csvItems(h, aValues, "ld", ["lo", "ld"]);
   csvItems(h, aValues, "po", ["po0", "po1", "po2", "po3"]);
   csvItems(h, aValues, "fn", ["fmin", "fmax", "finv"]);
@@ -451,8 +452,15 @@ time they are restared.</div>
 </fieldset>
 
 <fieldset class="cbi-section" id="cbi-lm-pid">
-<legend>LCD Backlight</legend>
+<legend>LCD Display</legend>
   Backlight <input type="text" maxlength="3" id="lb" style="width: 2em;"/>%
+  <select id="lbn" style="width: 13em;">
+    <option value="255">2-line Home</option>
+    <option value="0">Large Home: Probe 0</option>
+    <option value="1">Large Home: Probe 1</option>
+    <option value="2">Large Home: Probe 2</option>
+    <option value="3">Large Home: Probe 3</option>
+  </select>
 </fieldset>
 
 <fieldset class="cbi-section" id="cbi-lm-pid">
