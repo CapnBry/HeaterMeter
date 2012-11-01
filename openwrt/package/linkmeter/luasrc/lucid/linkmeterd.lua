@@ -124,7 +124,7 @@ local function buildConfigMap()
     i = i - 1
     local idx = math.floor(i/2)
     local aType = (i % 2 == 0) and "l" or "h"
-    r["pal"..aType..i] = tonumber(v.t)
+    r["pal"..aType..idx] = tonumber(v.t)
   end
   
   return r
