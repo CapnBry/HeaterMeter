@@ -31,24 +31,24 @@ function action_fw()
   )
   local step = tonumber(luci.http.formvalue("step") or 1)
   local has_upload = luci.http.formvalue("hexfile")
-  local web_update = has_upload and has_upload:find("^http://")
+  local hexpath = luci.http.formvalue("hexpath")
+  local web_update = hexpath and hexpath:find("^http://")
   
-  if web_update then
-    hex = has_upload
-    step = 3
-  end
   if step == 1 then
     if has_upload and nixio.fs.access(hex) then
       step = 2
+    elseif hexpath and (web_update or nixio.fs.access(hexpath)) then
+      step = 2
+      hex = hexpath
     else
       nixio.fs.unlink(hex)
     end
-    return luci.template.render("linkmeter/fw", { step=step })
+    return luci.template.render("linkmeter/fw", {step=step, hex=hex})
   end
   if step == 3 then
     luci.http.prepare_content("text/plain")
     local pipe = require "luci.controller.admin.system".ltn12_popen(
-      "/usr/bin/avrupdate %q" % hex)
+      "/usr/bin/avrupdate %q" % luci.http.formvalue("hex"))
     return luci.ltn12.pump.all(pipe, luci.http.write)
   end 
 end

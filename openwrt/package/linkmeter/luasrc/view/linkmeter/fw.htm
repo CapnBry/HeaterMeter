@@ -1,53 +1,101 @@
 <%+header%>
 <script language="javascript" src="<%=resource%>/js/jquery.min.js" type="text/javascript"></script>
 <script type="text/javascript">//<![CDATA[
+  var RSTYLES = [ "cbi-rowstyle-1", "cbi-rowstyle-2" ];
   var REMOTE_BASE = 'http://capnbry.net/linkmeter/';
+  var BUNDLED_FILES = [
+<%
+  for f in nixio.fs.glob("/lib/firmware/*.hex") do
+    local s = nixio.fs.stat(f)
+    write(('{"name":%q,"path":%q,"size":%d,"ts":%d,"md5":""},\n'):format(
+      nixio.fs.basename(f), f, s.size, s.mtime))
+  end 
+%> {} ];
   
   $(document).ready(function() {
+    loadBundledFiles();
     $("input[type=radio]").click(uploadTypeToggle);
   });
   
   $(window).load(function() {
     $("input[type=radio]:checked").trigger("click");
   });
+  
+function loadBundledFiles()
+{
+  if (BUNDLED_FILES.length == 1)
+  {
+    $("#fw2").attr("disabled", "disabled");
+    return;
+  }
+  var r = new Array();
+  for (var i=0; i<BUNDLED_FILES.length-1; ++i)
+  {
+    var item = BUNDLED_FILES[i];
+    var mtime = new Date(item.ts * 1000);
+    r.push('<tr class="cbi-section-table-row ' + RSTYLES[i % 2] + '"><td>' +
+      '<input type="button" class="cbi-button cbi-button-apply" value="Flash" ' +
+        'onclick="pathSubmit(false, \'' + item.path + '\')" />' +
+      '</td><td>' + item.name +
+      '</td><td>' + item.size +
+      '</td><td>' + mtime.toString() +
+      //'</td><td class="md5">' + item.md5 + 
+      '</td></tr>');
+  }
+    
+  $("#bundledfiles").html(r.join(''));   
+}
 
 function uploadTypeToggle()
 {
   var val = $(this).val();
+  var show;
   if (val == "0")
   {
-    $("#remote").hide('fast', function () {
-      $("#local").slideDown();
-    });
-  } else {
+    show = $("#local");
+  } 
+  else if (val == "1")
+  {
     loadMd5();
-    $("#local").hide('fast', function () {
-      $("#remote").slideDown();
-    });
+    show = $("#remote");
   }
+  else
+  {
+    show = $("#bundled");
+  }
+
+  var hide =  $("fieldset:visible");
+  if (hide.length == 0)
+    show.slideDown();
+  else
+    hide.hide('fast', function () {
+      show.slideDown();
+    });
 }
 
-function remoteSubmit(path)
+function pathSubmit(isremote, path)
 {
-  document.forms["remotehex"].hexfile.value = REMOTE_BASE + path;
+  if (isremote)
+    path = REMOTE_BASE + path;
+  document.forms["remotehex"].hexpath.value = path;
   document.forms["remotehex"].submit();
-}  
+} 
 
 function md5Success(o)
 {
   o.sort(function (a,b) { return b.ts - a.ts; });
   var r = new Array();
-  var RSTYLES = [ "cbi-rowstyle-1", "cbi-rowstyle-2" ];
   for (var i=0; i<o.length; ++i)
   {
     var item = o[i];
     var mtime = new Date(item.ts);
     r.push('<tr class="cbi-section-table-row ' + RSTYLES[i % 2] + '"><td>' + 
-      '<input type="button" class="cbi-button cbi-button-apply" value="Flash" ' + 
-      'onclick="remoteSubmit(\'' + item.path + '\')" />' + 
+      '<input type="button" class="cbi-button cbi-button-apply" value="Flash" ' +
+        'onclick="pathSubmit(true, \'' + item.path + '\')" />' +
       '</td><td>' + item.desc + '</td><td>' + item.path + 
       '</td><td>' + mtime.toString() +
-      '</td><td class="md5">' + item.md5 + '</td></tr>');
+      '</td><td class="md5">' + item.md5 + 
+      '</td></tr>');
   }
   $("#remotefiles").html(r.join(''));
 }
@@ -89,22 +137,25 @@ function loadMd5()
   <p>
     Select the source of the firmware HEX file<br />
     <input type="radio" name="fwsource" value="0" id="fw0" checked="checked"/>
-      <label for="fw0">From local machine</label><br />
+      <label for="fw0">Local machine</label><br />
     <input type="radio" name="fwsource" value="1" id="fw1"/>
-      <label for="fw1">From online repository</label><br />
+      <label for="fw1">Online repository</label><br />
+    <input type="radio" name="fwsource" value="2" id="fw2"/>
+      <label for="fw2">Bundled firmware in /lib/firmware</label><br />
   </p>
   </div>
-  <div id="local">
+  <div id="sourcedetail">
+  <fieldset id="local" class="cbi-section" style="display: none;">
+    <legend>Upload Firmware</legend>
     <form method="POST" action="<%=REQUEST_URI%>" enctype="multipart/form-data">
       <strong>HEX file</strong> from your local machine<br />
       <input type="file" name="hexfile" size="64" />
       <input class="cbi-button cbi-button-apply" type="submit" value="Upload and flash" />
     </form>
-  </div>
+  </fieldset>
   <fieldset id="remote" class="cbi-section" style="display: none;">
     <legend>Remote Firmwares</legend>
-    <form method="POST" action="<%=REQUEST_URI%>" id="remotehex">
-      <table class="cbi-section-table">
+    <table class="cbi-section-table">
       <tr class="cbi-section-table-titles">
         <th class="cbi-section-table-cell"></th>
         <th class="cbi-section-table-cell">Target</th>
@@ -113,12 +164,31 @@ function loadMd5()
         <th class="cbi-section-table-cell">MD5</th>
       </tr>
       <tbody id="remotefiles"></tbody>
-      </table>
-      <input name="hexfile" type="hidden" />
-    </form>
+    </table>
   </fieldset>
+  <fieldset id="bundled" class="cbi-section" style="display: none;">
+    <legend>Bundled Firmwares</legend>
+    <table class="cbi-section-table">
+      <tr class="cbi-section-table-titles">
+        <th class="cbi-section-table-cell"></th>
+        <th class="cbi-section-table-cell">Filename</th>
+        <th class="cbi-section-table-cell">Size</th>
+        <th class="cbi-section-table-cell">Date</th>
+      </tr>
+      <tbody id="bundledfiles"></tbody>
+    </table>
+  </fieldset>
+  <form method="POST" action="<%=REQUEST_URI%>" id="remotehex">
+    <input name="hexpath" type="hidden" />
+  </form>
+  </div>
 <% if step == 2 then %>
   <p>Flashing AVR firmware via avrdude. Output should appear below</p>
-  <iframe src="<%=REQUEST_URI%>?step=3" style="width: 100%; height: 400px"></iframe>
+  <form id="avrform" target="avroutput" method="POST" action="<%=REQUEST_URI%>">
+    <input type="hidden" name="step" value="3" />
+    <input type="hidden" name="hex" value="<%=hex%>" />
+  </form>
+  <iframe id="avroutput" name="avroutput" src="" style="width: 100%; height: 400px"></iframe>
+  <script type="text/javascript">$("#avrform").submit();</script>
 <% end %>
 <%+footer%>
