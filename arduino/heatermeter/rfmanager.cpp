@@ -23,9 +23,8 @@ boolean RFSource::update(rf12_packet_t *pkt)
    /* Hygro value of 6A=NoHygro 7D=Secondary Unit?(TX25U) 7F=lmremote */
   if ((pkt->hygro & 0x7f) < 0x7f)
     newFlags |= NativeItPlus;
-  if (rf12_rssi() == 0)
-    newFlags |= LowSignal;
   _flags = newFlags;
+  _rssi = rf12_rssi();
 
   if (isNative())
   {
@@ -36,6 +35,7 @@ boolean RFSource::update(rf12_packet_t *pkt)
     /* Otherwise the value degrees C in BCD (10x)(1x)(0.1x) with a 40.0 degree offset */
     /* TX25U primary:   95 96 20 6A */
     Value = (((pkt->byte1 & 0x0f) * 100) + ((pkt->byte2 >> 4) * 10) + (pkt->byte2 & 0x0f)) - 400;
+    //Debug_begin(); SerialX.print(F("RF in ")); SerialX.print(Value, DEC); Debug_end();
   }
   else
     Value = ((pkt->byte1 & 0x0f) << 8) | pkt->byte2;
@@ -91,7 +91,7 @@ void RFManager::status(void)
     return;
 
   // The first item in the list the manager RFSOURCEID_NONE,CrcOk
-  print_P(PSTR("HMRF" CSV_DELIMITER "255" CSV_DELIMITER));
+  print_P(PSTR("HMRF" CSV_DELIMITER "255" CSV_DELIMITER "0" CSV_DELIMITER));
   SerialX.print(_crcOk, DEC); // signalish
   //Serial_csv();
   //unsigned long m = millis();
@@ -106,6 +106,8 @@ void RFManager::status(void)
     SerialX.print(_sources[idx].getId(),DEC);
     Serial_csv();
     SerialX.print(_sources[idx].getFlags(), DEC);
+    Serial_csv();
+    SerialX.print(_sources[idx].getRssi(),DEC);
     //Serial_csv();
     //unsigned int since = (m - _sources[idx].getLastReceive()) / 1000;
     //SerialX.print(since, DEC);
@@ -154,7 +156,7 @@ boolean RFManager::doWork(void)
     }  /* if crc ok */
     else if (_crcOk > 0)
     {
-      //Debug_begin(); print_P(PSTR("RF ERR")); Serial_nl();
+      //Debug_begin(); print_P(PSTR("RF ERR")); Debug_end();
       --_crcOk;
     }
       

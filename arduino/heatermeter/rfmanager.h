@@ -33,7 +33,7 @@ typedef struct tagRf12Packet
 class RFSource
 {
 public:
-  enum flag { LowSignal = bit(0), LowBattery = bit(1), RecentReset = bit(2), NativeItPlus = bit(3) };
+  enum flag { LowBattery = bit(0), RecentReset = bit(1), NativeItPlus = bit(2) };
   RFSource(void) : _id(RFSOURCEID_NONE) {};
   
   // The 6 bitID of the remote node (0-63)
@@ -42,9 +42,9 @@ public:
   unsigned char getFlags(void) const { return _flags; }
   // millis() of the last receive
   unsigned long getLastReceive(void) const { return _lastReceive; }
+  // Returns 0 (weakest) to 3 (strongest) signal
+  unsigned char getRssi(void) const { return _rssi; }
 
-  // true if last packet had the low signal flag
-  boolean isSignalLow(void) const { return _flags & LowSignal; }
   // true if last packet had the low battery flag
   boolean isBatteryLow(void) const { return _flags & LowBattery; }
   // true if last packet indicated IT+, that value = degrees C * 10
@@ -60,6 +60,7 @@ private:
   unsigned char _id;
   unsigned long _lastReceive;
   unsigned char _flags;
+  unsigned char _rssi;
 };
 
 class RFManager

@@ -97,6 +97,6 @@ $HMPO,Probe0,Probe1,Probe2,Probe3
 PID State Update
 $HMSU,SetPoint,Pit,Food1,Food2,Ambient,Fan,FanMovAvg,LidOpenCountdown
 RF Status
-$HMRF,127,CrcStatus[,NodeId,Flags,...]
+$HMRF,255,0,CrcStatus[,NodeId,Flags,Rssi...]
 RF Mapping
 $HMRM,SourceId,SourceId,SourceId,SourceId
