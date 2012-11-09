@@ -60,6 +60,7 @@ function refreshRfNodes(o)
     var name
     var desc;
     var img;
+    var ititle;
     if (o[i].id == 127)
       continue;
     else if (o[i].id == 255)
@@ -69,6 +70,7 @@ function refreshRfNodes(o)
       desc = 'Qual:<span class="' + ((noise < 0) ? 'bad">' : 'good">+') + 
         noise + '</span>';
       img = "rf4.png";
+      ititle = "Base";
     }
     else
     {
@@ -77,10 +79,11 @@ function refreshRfNodes(o)
         '<span class="good">Ok</span>') + " New:" + 
         (o[i].reset ? '<span class="good">Yes</span>' : 'No');
       img = "rf" + (o[i].rssi + 1) + ".png";
+      ititle = "Signal " + o[i].rssi;
     }
     
     container.append(
-      '<li><img src="<%=resource%>/' + img + '" style="float:left"><div style="float:right"><h3>' + 
+      '<li><img src="<%=resource%>/' + img + '" title="' + ititle + '" style="float:left"><div style="float:right"><h3>' + 
       name +
       '</h3>' + desc + '</div></li>');
       
