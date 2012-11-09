@@ -1059,7 +1059,7 @@ static void rfSourceNotify(RFSource &r, RFManager::event e)
       {
         unsigned int val = r.Value;
         if (r.isNative() && val != 0)
-          pid.Probes[i]->setTemperatureC(val / 10.0f);
+          pid.Probes[i]->setTemperatureC((int)val / 10.0f);
         else
         {
           unsigned char adcBits = rfmanager.getAdcBits();
