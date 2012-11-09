@@ -53,7 +53,7 @@ void rf12_sleep(char n);
 // returns nonzero if the supply voltage is below 3.1V
 char rf12_lowbat(void);
 
-// returns nonzero if the last receive was above RSSI threshold
+// returns signal level 0 (weakest) to 3 (strongest)
 char rf12_rssi(void);
 
 // low-level control of the RFM12B via direct register access
@@ -67,17 +67,6 @@ uint8_t itplus_crc_update(uint8_t crc, uint8_t data);
 // quick about it
 typedef void (*itplus_initial_t)(void);
 extern itplus_initial_t itplus_initial_cb;
-
-enum rf12RssiThreshold {
-  RSSI_103 = 0x00,
-  RSSI_97 = 0x01,
-  RSSI_91 = 0x02,
-  RSSI_85 = 0x03,
-  RSSI_79 = 0x04,
-  RSSI_73 = 0x05
-};
-
-void rf12_rssi_threshold(rf12RssiThreshold val);
 
 // See http://blog.strobotics.com.au/2009/07/27/rfm12-tutorial-part-3a/
 // Transmissions are packetized, don't assume you can sustain these speeds! 

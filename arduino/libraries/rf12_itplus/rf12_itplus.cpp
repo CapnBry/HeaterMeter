@@ -124,9 +124,21 @@ static volatile int8_t rxstate;     // current transceiver state
 volatile uint8_t rf12_crc;         // running crc value
 volatile uint8_t rf12_buf[RF_MAX];  // recv/xmit buf, including hdr & crc bytes
 volatile uint8_t rf12_len;
-volatile uint8_t rf12_status;
+static uint8_t rf12_status;
+static uint8_t drssi;
 
 itplus_initial_t itplus_initial_cb;
+
+const uint8_t drssi_dec_tree[][2] = {
+/* Final states are 0, 2, 4, 6 */
+ /* down, up */
+    { 0, 0 },  // 0
+    { 0, 2 },  // 1
+    { 2, 2 },  // 2
+    { 1, 5 },  // start value, 3
+    { 4, 4 },  // 4
+    { 4, 6 },  // 5
+};
 
 void rf12_spiInit () {
     bitSet(SS_PORT, SS_BIT);
@@ -198,12 +210,13 @@ static uint16_t rf12_xferSlow (uint16_t cmd) {
 }
 
 #if OPTIMIZE_SPI
-static void rf12_xfer (uint16_t cmd) {
+static uint16_t rf12_xfer (uint16_t cmd) {
     // writing can take place at full speed, even 8 MHz works
     bitClear(SS_PORT, SS_BIT);
-    rf12_byte(cmd >> 8) << 8;
-    rf12_byte(cmd);
+    uint16_t reply = rf12_byte(cmd >> 8) << 8;
+    reply |= rf12_byte(cmd);
     bitSet(SS_PORT, SS_BIT);
+    return reply;
 }
 #else
 #define rf12_xfer rf12_xferSlow
@@ -238,13 +251,29 @@ uint8_t itplus_crc_update(uint8_t crc, uint8_t data)
   return crc;
 }
 
+static void rf12_setDrssi(uint8_t d)
+{
+    drssi = d;
+    rf12_xfer(0x94A0 | drssi);
+}
+
 static void rf12_interrupt() {
     // a transfer of 2x 16 bits @ 2 MHz over SPI takes 2x 8 us inside this ISR
     // correction: now takes 2 + 8 µs, since sending can be done at 8 MHz
-    rf12_status = rf12_xferSlow(0x0000) >> 8;
+    rf12_status = rf12_xfer(0x0000) >> 8;
     
     if (rxstate == TXRECV) {
         uint8_t in = rf12_xferSlow(RF_RX_FIFO_READ);
+
+        /*** DRSSI has a relatively long response time:
+           0: The RSSI has been set for a while so trust this reading and adjust
+              DRSSI either up or down toward the result
+           3: By the third byte the DRSSI set from T0 should have taken effect
+              Use this result as the RSSI. We set the threshold again but never
+              get that result
+        ***/
+        if (rxfill % 3 == 0)
+            rf12_setDrssi(drssi_dec_tree[drssi][rf12_status & (RF_RSSI_BIT >> 8)]);
 
         if (rxfill == 0)
         {
@@ -253,7 +282,7 @@ static void rf12_interrupt() {
             // Round up to the nearest byte
             rf12_len = ((in >> 4) + 2) * 4 / 8;
             if (rf12_len < 2 || rf12_len > RF_MAX)
-              rf12_len = 2;
+                rf12_len = 2;
             if (itplus_initial_cb)
                 itplus_initial_cb();
         }
@@ -306,7 +335,8 @@ static void rf12_recvStart () {
     rxfill = 0;
     rf12_crc = 0;
     rf12_len = 0xff;
-    rxstate = TXRECV;    
+    rxstate = TXRECV;
+    rf12_setDrssi(3);
     rf12_xfer(RF_RECEIVER_ON);
 }
 
@@ -386,7 +416,7 @@ uint8_t rf12_initialize (uint8_t id, uint8_t band) {
     }
     //rf12_xfer(0xC606); // approx 49.2 Kbps, i.e. 10000/29/(1+6) Kbps
     rf12_xfer(0xC613); // DATA RATE 17.241 kbps
-    rf12_xfer(0x94A0 | RSSI_91); // VDI,FAST,134kHz,0dBm,-XXdBm
+    rf12_xfer(0x94A2); // VDI,FAST,134kHz,0dBm,-91dBm
     rf12_xfer(0xC2AC); // AL,!ml,DIG,DQD4 
     rf12_xfer(0xCA83); // FIFO8,2-SYNC,!ff,DR 
     rf12_xfer(0xCE00 | TX29_GROUP); // SYNC=2DXX； 
@@ -451,9 +481,6 @@ char rf12_lowbat () {
 }
 
 char rf12_rssi () {
-    return rf12_status & (RF_RSSI_BIT >> 8);
-}
-
-void rf12_rssi_threshold (rf12RssiThreshold val) {
-    rf12_control(0x94A0 | val);
+    //const int8_t table[] = {-109, -103, -97, -91, -85, -79, -73};
+    return drssi / 2;
 }
