@@ -64,11 +64,11 @@ function refreshRfNodes(o)
       continue;
     else if (o[i].id == 255)
     {
-      var noise = o[i].flags - 128;
+      var noise = o[i].rssi - 128;
       name = "Receiver";
       desc = 'Qual:<span class="' + ((noise < 0) ? 'bad">' : 'good">+') + 
         noise + '</span>';
-      img = "rf3.png";
+      img = "rf4.png";
     }
     else
     {
@@ -76,10 +76,7 @@ function refreshRfNodes(o)
       desc = "Batt:" + (o[i].lobatt ? '<span class="bad">Low</span>' :
         '<span class="good">Ok</span>') + " New:" + 
         (o[i].reset ? '<span class="good">Yes</span>' : 'No');
-      if (o[i].rssi > 0)
-        img = "rf3.png";
-      else
-        img = "rf1.png";
+      img = "rf" + (o[i].rssi + 1) + ".png";
     }
     
     container.append(

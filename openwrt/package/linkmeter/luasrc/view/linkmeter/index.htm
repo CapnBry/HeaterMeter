@@ -576,12 +576,7 @@ function connectionSuccess(o)
             }
             else 
             {
-                if (rf.s == 255)
-                    img = "rf3.png";
-                else if (rf.s >= 127)
-                    img = "rf2.png";
-                else
-                    img = "rf1.png";
+                img = "rf" + (rf.s + 1) + ".png";
                 if (rf.s > 0)
                   details = "Signal OK";
                 else

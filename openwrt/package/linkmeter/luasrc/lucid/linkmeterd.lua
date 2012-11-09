@@ -223,14 +223,10 @@ local function segRfUpdate(line)
     local nodeId = vals[idx]
     local flags = tonumber(vals[idx+1])
     rfStatus[nodeId] = {
-      flags = flags;
-      rssi = band(flags, 0x01) == 0 and 255 or 0;
-      lobatt = band(flags, 0x02) == 0 and 0 or 1;
-      reset = band(flags, 0x04) == 0 and 0 or 1;
-      native = band(flags, 0x08) == 0 and 0 or 1;
-      --batt = vals[idx+1],
-      --rssi = vals[idx+2],
-      --last = now - tonumber(vals[idx+3])
+      lobatt = band(flags, 0x01) == 0 and 0 or 1,
+      reset = band(flags, 0x02) == 0 and 0 or 1,
+      native = band(flags, 0x04) == 0 and 0 or 1,
+      rssi = vals[idx+2]
     }
     
     -- If this isn't the NONE source, save the stats as the ANY source
@@ -238,7 +234,7 @@ local function segRfUpdate(line)
       rfStatus["127"] = rfStatus[nodeId]
     end
     
-    idx = idx + 2
+    idx = idx + 3
   end
 end
 
@@ -543,8 +539,8 @@ local function segLmRfStatus(line)
     end
     
     retVal = retVal ..
-      ('{"id":%s,"flags":%d,"lobatt":%d,"rssi":%d,"reset":%d,"native":%d}'):format(
-      id, item.flags, item.lobatt, item.rssi, item.reset, item.native)
+      ('{"id":%s,"lobatt":%d,"rssi":%d,"reset":%d,"native":%d}'):format(
+      id, item.lobatt, item.rssi, item.reset, item.native)
   end
   retVal = "[" .. retVal .. "]"
   
