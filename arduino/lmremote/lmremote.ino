@@ -155,7 +155,7 @@ static void transmitTemp(unsigned char pin)
   outbuf[0] = 0x90 | ((nodeId & 0x3f) >> 2);
   outbuf[1] = ((nodeId & 0x3f) << 6) | _isRecent | (val >> 8);
   outbuf[2] = (val & 0xff);
-  outbuf[3] = _isBattLow;
+  outbuf[3] = HYGRO_LMREMOTE_KEY | _isBattLow;
   //Serial.println(outbuf[3], HEX);
 
   // Don't check for air to be clear, we just woke from sleep and it will be milliseconds before
