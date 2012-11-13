@@ -18,7 +18,6 @@
 #include "flashfiles.h"
 #endif
 
-#include "strings.h"
 #include "bigchars.h"
 
 static TempProbe probe0(PIN_PIT);
@@ -605,9 +604,8 @@ void storeAndReportProbeOffset(unsigned char probeIndex, int offset)
 
 static void reportVersion(void)
 {
-  print_P(PSTR("UCID" CSV_DELIMITER));
-  print_P(PSTR("HeaterMeter" CSV_DELIMITER));
-  print_P(HM_VERSION);
+  print_P(PSTR("UCID" CSV_DELIMITER "HeaterMeter" CSV_DELIMITER HM_VERSION));
+  SerialX.print(HM_BOARD_REV);
   Serial_nl();
 }
 

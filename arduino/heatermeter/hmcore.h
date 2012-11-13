@@ -2,21 +2,24 @@
 #ifndef __HMCORE_H__
 #define __HMCORE_H__
 
+#include "ShiftRegLCD.h"
+#include "serialxor.h"
+#include "grillpid.h"
+#include "hmmenus.h"
+#include "strings.h"
+
 //#define HEATERMETER_NETWORKING  // enable wifi interface
 #define HEATERMETER_SERIAL 38400 // enable serial interface
 #define HEATERMETER_RFM12  RF12_915MHZ  // enable RFM12B receiving (433MHZ|868MHZ|915MHZ)
 //#define USE_EXTERNAL_VREF       // Using external 5V as reference to analog inputs
 #define PIEZO_HZ 4000             // enable piezo buzzer at this frequency
-//#define SHIFTREGLCD_NATIVE        // Use the native shift register instead of SPI (HM PCB <v3.2)
+#if HM_BOARD_REV == 'A'
+#define SHIFTREGLCD_NATIVE        // Use the native shift register instead of SPI (HM PCB <v3.2)
+#endif
 
 #ifdef HEATERMETER_NETWORKING
 #define DFLASH_SERVING          // Serve web pages out of dflash
 #endif
-
-#include "ShiftRegLCD.h"
-#include "serialxor.h"
-#include "grillpid.h"
-#include "hmmenus.h"
 
 // Analog Pins
 // Number in the comment is physical pin on ATMega328

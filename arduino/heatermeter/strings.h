@@ -10,10 +10,14 @@
 
 #define CSV_DELIMITER ","
 
+#ifndef HM_BOARD_REV
+#define HM_BOARD_REV 'B'
+#endif
+
 #define DEGREE "\xdf" // \xdf is the degree symbol on the Hitachi HD44780
+#define HM_VERSION "20121113"
 
 const char LCD_LINE1_UNPLUGGED[] PROGMEM = "- No Pit Probe -";
-const char HM_VERSION[] PROGMEM = "20121029B";
 
 inline void Serial_char(char c) { SerialX.write(c); }
 inline void Serial_nl(void) { SerialX.nl(); }
