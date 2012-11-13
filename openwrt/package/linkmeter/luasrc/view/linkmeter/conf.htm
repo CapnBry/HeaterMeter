@@ -60,7 +60,7 @@ function refreshRfNodes(o)
     var name
     var desc;
     var img;
-    var ititle;
+    var title;
     if (o[i].id == 127)
       continue;
     else if (o[i].id == 255)
@@ -69,8 +69,8 @@ function refreshRfNodes(o)
       name = "Receiver";
       desc = 'Qual:<span class="' + ((noise < 0) ? 'bad">' : 'good">+') + 
         noise + '</span>';
-      img = "rf4.png";
-      ititle = "Base";
+      img = 4;
+      title = "Base";
     }
     else
     {
@@ -78,13 +78,14 @@ function refreshRfNodes(o)
       desc = "Batt:" + (o[i].lobatt ? '<span class="bad">Low</span>' :
         '<span class="good">Ok</span>') + " New:" + 
         (o[i].reset ? '<span class="good">Yes</span>' : 'No');
-      img = "rf" + (o[i].rssi + 1) + ".png";
-      ititle = "Signal " + o[i].rssi;
+      img = o[i].rssi + 1;
+      title = "Signal " + o[i].rssi + "/3";
     }
     
     container.append(
-      '<li><img src="<%=resource%>/' + img + '" title="' + ititle + '" style="float:left"><div style="float:right"><h3>' + 
-      name +
+      '<li><div class="rfstatus" title="' + title +
+      '" style="background-position: ' + (img * -16) +
+      'px" /><div style="float:right"><h3>' + name +
       '</h3>' + desc + '</div></li>');
       
     hasNodes = true;
@@ -394,6 +395,8 @@ function ifrmHide()
   .pnum2 { background: #297; }
   .pnum3 { background: #789; }
   .pcpreset { font-size: x-small; text-align: center; position: relative; }
+  .rfstatus { float: left; width: 16px; height: 16px; 
+    background-image: url('<%=resource%>/rf.png'); }
   a.nodest { text-decoration: none; }
   ul#rfnodes { list-style-type: none; margin-left: 0 !important; }
   ul#rfnodes li { float: left; border: 1px dotted #bbb;

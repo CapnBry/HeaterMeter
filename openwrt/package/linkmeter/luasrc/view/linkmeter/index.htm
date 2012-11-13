@@ -571,23 +571,21 @@ function connectionSuccess(o)
             var img, detals;
             if (rf == null)
             {
-              img = "rf0.png";
+              img = 0;
               details = "offline";
             }
             else 
             {
-                img = "rf" + (rf.s + 1) + ".png";
-                if (rf.s > 0)
-                  details = "Signal OK";
-                else
-                  details = "Low Signal";
+                img = rf.s + 1;
+                details = "Signal " + rf.s + "/3";
                 if (rf.b > 0)
                   details += " Low Battery";
             }
 
-             $(rfsDiv).html('<img src="<%=resource%>/' + img + '" title="' + 
-               details + '">')
-               .show();
+	    img = (img * -16) + "px";
+            $(rfsDiv).css('background-position', img)
+                .attr('title', details)
+                .show();
         }
         else
           $(rfsDiv).hide();
@@ -690,7 +688,8 @@ div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357;
     position: fixed; z-index: 3; top: 100px; display: none;
     left: 50%; margin-left: -240px; }
 #alarmclear { display: none; position: absolute; bottom: 4px; right: 4px; color: #ccc; }
-div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; }
+div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; 
+    width: 16px; height: 16px; background-image: url('<%=resource%>/rf.png'); }
 </style>
 </head>
 
