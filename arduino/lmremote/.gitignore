@@ -1,0 +1,8 @@
+build-cli
+ipch
+Visual Micro
+Debug
+*.sdf
+*.suo
+*.user
+*.opensdf
