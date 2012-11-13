@@ -1,0 +1,15 @@
+--- libiwinfo/iwinfo_nl80211.c.orig	2012-11-13 09:13:34.691729653 -0500
++++ libiwinfo/iwinfo_nl80211.c	2012-11-13 09:15:56.697788249 -0500
+@@ -1766,7 +1766,12 @@
+ 				goto out;
+ 
+ 			if (!iwinfo_ifmac(res))
++			{
++				/* 8192cu: If virtual interfaces are not supported
++				 * run the scan on the main interface */
++				nl80211_get_scanlist_nl(ifname, buf, len);
+ 				goto out;
++			}
+ 
+ 			/* if we can take the new interface up, the driver supports an
+ 			 * additional interface and there's no need to tear down the ap */
