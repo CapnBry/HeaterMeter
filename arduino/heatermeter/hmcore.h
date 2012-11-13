@@ -2,10 +2,6 @@
 #ifndef __HMCORE_H__
 #define __HMCORE_H__
 
-#include "ShiftRegLCD.h"
-#include "serialxor.h"
-#include "grillpid.h"
-#include "hmmenus.h"
 #include "strings.h"
 
 //#define HEATERMETER_NETWORKING  // enable wifi interface
@@ -16,6 +12,11 @@
 #if HM_BOARD_REV == 'A'
 #define SHIFTREGLCD_NATIVE        // Use the native shift register instead of SPI (HM PCB <v3.2)
 #endif
+
+#include "ShiftRegLCD.h"
+#include "serialxor.h"
+#include "grillpid.h"
+#include "hmmenus.h"
 
 #ifdef HEATERMETER_NETWORKING
 #define DFLASH_SERVING          // Serve web pages out of dflash
