@@ -1,18 +1,32 @@
 #!/bin/sh
 
 REPO_PATH=$(pwd)
-WRT_PATH="$1"
+TARGET="$1"
+WRT_PATH="$2"
 
 if [ -z "$WRT_PATH" ] ; then
-  echo "Usage: ./install.sh <wrt path>"
+  echo "Usage: ./install.sh <target> <wrt path>"
+  echo "    Target: BCM47XX or BCM2708 (case sensitive)"
+  echo "BCM47XX - svn://svn.openwrt.org/openwrt/trunk@29665"
+  echo "BCM2708 - svn://svn.openwrt.org/openwrt/branches/attitude_adjustment"
   exit 1
 fi
 
-cat << EOFEEDS > $WRT_PATH/feeds.conf
+if [ "$TARGET" == "BCM47XX" ] ; then
+  cat << EOFEEDS > $WRT_PATH/feeds.conf
 src-svn packages svn://svn.openwrt.org/openwrt/packages@29665
 src-svn luci http://svn.luci.subsignal.org/luci/trunk/contrib/package@8147
 src-link linkmeter $REPO_PATH/package
 EOFEEDS
+fi
+
+if [ "$TARGET" == "BCM2708" ] ; then
+  cat << EOFEEDS > $WRT_PATH/feeds.conf
+src-svn packages svn://svn.openwrt.org/openwrt/packages
+src-svn luci http://svn.luci.subsignal.org/luci/trunk/contrib/package
+src-link linkmeter $REPO_PATH/package
+EOFEEDS
+fi
 
 $WRT_PATH/scripts/feeds update
 
@@ -27,6 +41,14 @@ for PACK in $LMPACKS ; do
   $WRT_PATH/scripts/feeds install -p linkmeter $PACK
 done
 
-cp .config $WRT_PATH
+if [ "$TARGET" == "BCM47XX" ] ; then
+  patch -N -p0 -d $WRT_PATH/package < patches/100-dhcp_add_hostname.patch
+  cp .config $WRT_PATH/.config
+fi
 
-patch -N -p0 -d $WRT_PATH/package < patches/100-dhcp_add_hostname.patch
+if [ "$TARGET" == "BCM2708" ] ; then
+  patch -N -p0 -d $WRT_PATH < patches/220-iwinfo-nl80211-over-wext.patch
+  patch -N -p0 -d $WRT_PATH < patches/225-iwinfo-scan-wo-vintf.patch
+  cp .config.BCM2708 $WRT_PATH/.config
+fi
+

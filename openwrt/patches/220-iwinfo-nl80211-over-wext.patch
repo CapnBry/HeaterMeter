@@ -1,26 +1,7 @@
-Index: package/network/utils/iwinfo/src/iwinfo_wext.c
+Index: package/iwinfo/src/iwinfo_nl80211.c
 ===================================================================
---- package/network/utils/iwinfo/src/iwinfo_wext.c	(revision 34031)
-+++ package/network/utils/iwinfo/src/iwinfo_wext.c	(working copy)
-@@ -241,6 +241,14 @@
- 		return 0;
- 	}
- 
-+	/* nl80211 wext compat requires the query specify dBm */
-+	wrq.u.txpower.flags = IW_TXPOW_DBM;
-+	if(wext_ioctl(ifname, SIOCGIWTXPOW, &wrq) >= 0)
-+	{
-+		*buf = wrq.u.txpower.value;
-+		return 0;
-+	}
-+
- 	return -1;
- }
- 
-Index: package/network/utils/iwinfo/src/iwinfo_nl80211.c
-===================================================================
---- package/network/utils/iwinfo/src/iwinfo_nl80211.c	(revision 34031)
-+++ package/network/utils/iwinfo/src/iwinfo_nl80211.c	(working copy)
+--- package/iwinfo/src/iwinfo_nl80211.c	(revision 34185)
++++ package/iwinfo/src/iwinfo_nl80211.c	(working copy)
 @@ -725,16 +725,15 @@
  {
  	char *ssid;
@@ -163,3 +144,22 @@ Index: package/network/utils/iwinfo/src/iwinfo_nl80211.c
  }
  
  int nl80211_get_quality_max(const char *ifname, int *buf)
+Index: package/iwinfo/src/iwinfo_wext.c
+===================================================================
+--- package/iwinfo/src/iwinfo_wext.c	(revision 34185)
++++ package/iwinfo/src/iwinfo_wext.c	(working copy)
+@@ -241,6 +241,14 @@
+ 		return 0;
+ 	}
+ 
++	/* nl80211 wext compat requires the query specify dBm */
++	wrq.u.txpower.flags = IW_TXPOW_DBM;
++	if(wext_ioctl(ifname, SIOCGIWTXPOW, &wrq) >= 0)
++	{
++		*buf = wrq.u.txpower.value;
++		return 0;
++	}
++
+ 	return -1;
+ }
+ 

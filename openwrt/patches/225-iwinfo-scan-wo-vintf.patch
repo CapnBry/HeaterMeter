@@ -1,12 +1,13 @@
---- libiwinfo/iwinfo_nl80211.c.orig	2012-11-13 09:13:34.691729653 -0500
-+++ libiwinfo/iwinfo_nl80211.c	2012-11-13 09:15:56.697788249 -0500
-@@ -1766,7 +1766,12 @@
+--- package/iwinfo.orig/src/iwinfo_nl80211.c	2012-11-14 14:51:59.279459532 -0500
++++ package/iwinfo/src/iwinfo_nl80211.c	2012-11-14 14:59:18.129642576 -0500
+@@ -1766,7 +1766,13 @@
  				goto out;
  
  			if (!iwinfo_ifmac(res))
 +			{
 +				/* 8192cu: If virtual interfaces are not supported
 +				 * run the scan on the main interface */
++				iwinfo_ifup(ifname);
 +				nl80211_get_scanlist_nl(ifname, buf, len);
  				goto out;
 +			}
