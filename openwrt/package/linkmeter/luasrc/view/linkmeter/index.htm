@@ -69,6 +69,7 @@ $(document).ready(function()
     $("#rangeselect").change(refreshGraphData);
     $("#graph").bind("plotclick", graphClicked);
     $("#graph").bind("plothover", graphHover);
+    $("#graph").mouseout(function () { $("#graphtt").fadeOut(); });
     $("div.legfill").click(legendClicked);
 
     // Set colors of probe readings to match the graph colors
@@ -678,8 +679,9 @@ div.pname { color: #003; font-size: 18pt; line-height: 16pt; display: inline-blo
 div.ptemp { font-size: 32pt; line-height: 26pt; color: #fff; }
 .alarmHigh { color: #c00 !important; }
 .alarmLow { color: #33f !important; }
-div#graphtt { display: none; position: absolute; border: 1px solid #89c; background: #eef; opacity: 0.9; padding: 2px; color: #003; }
-div#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357; }
+#graphtt { display: none; position: absolute; border: 1px solid #89c; background: #eef;
+    opacity: 0.9; padding: 2px; color: #003; pointer-events: none; }
+#graphtt_title { color: #fff; border: 1px solid #008; background-color: #357; }
 #dialog-overlay { width: 100%; height: 100%; position: fixed;
     top: 0px; left: 0px; display: none; background-color: #000;
     opacity: 0.6; z-index: 2; }
