@@ -32,5 +32,12 @@ uci_set_nomodify lucid.linkmeter.stashpath /root
 
 uci commit lucid
 
+# Change the session timeout from 1hr to 24hrs
+SA=`uci get luci.sauth.sessiontime`
+if [ "$SA" -eq 3600 ] ; then
+  uci set luci.sauth.sessiontime=86400
+  uci commit luci
+fi
+
 # On applicable platforms, avrupdate loads HeaterMeter onto the AVR
 avrupdate
