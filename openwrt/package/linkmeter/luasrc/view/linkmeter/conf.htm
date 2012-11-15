@@ -312,7 +312,14 @@ function updateConfigUrl(divname, h)
     var s = aValues.join(" &amp;");
     var url = '<%=luci.dispatcher.build_url("admin/lm/set")%>?' + aValues.join("&amp;");
     if (divname == "#updateurl")
+    {
+      $("input:button[name=cbi.apply]").click(
+        (function (urlval) {
+          return function () { return ifrmTarget(urlval); }
+        })(url)
+      );
       url = '#" onclick="return ifrmTarget(\'' + url + '\');';
+    }
     s = '<a href="' + url + '">' + s + '</a>';
     elem.html(s);
   }
@@ -527,8 +534,14 @@ time they are restared.</div>
 Version <span id="ucid"></span><br/><span id="cerr" style="color: #f00;"></span>
 </fieldset>
 
+<div class="cbi-page-actions">
+<input type="button" name="cbi.apply" value="Save &amp; Apply"
+  class="cbi-button cbi-button-apply"/>
 <input type="button" onclick="configToForm();" value="Reset to current"
   class="cbi-button cbi-button-reset"/>
+<input type="button" value="Reboot AVR" class="cbi-button cbi-input-reload"
+  onclick="ifrmTarget('<%=luci.dispatcher.build_url("admin/lm/reboot")%>','Reboot');"/>
+</div>
 </form>
 
 <h3>Update URL<img src="<%=resource%>/cbi/reload.gif" onclick="updateUpdateUrl();"/></h3>
@@ -538,15 +551,13 @@ Version <span id="ucid"></span><br/><span id="cerr" style="color: #f00;"></span>
 <div id="fullurl" style="font-family: monospace"></div>
 
 <h3>Raw set command</h3>
-Note you can just build your own url from the home page if you're logged in /lm/set?...
+Pass a direct 'set' command to linkmeterd for sending to HeaterMeter (e.g.
+set the LCD backlight to 50% by entering lb=50 here).
 <form method="GET" action="<%=luci.dispatcher.build_url("admin/lm/set")%>">
 <input name="rawset" type="text" size="64" />
 <input type="submit" value="Set" class="cbi-button cbi-button-apply"/>
 </form>
 
-<h3>Reboot AVR</h3>
-<input type="button" value="Reboot" class="cbi-button cbi-input-reload"
-  onclick="ifrmTarget('<%=luci.dispatcher.build_url("admin/lm/reboot")%>','Reboot');"/>
 <div id="dialog-overlay"></div>
 <div id="dialog-container">
   <div id="dialog-title" style="text-align: center;"></div>
