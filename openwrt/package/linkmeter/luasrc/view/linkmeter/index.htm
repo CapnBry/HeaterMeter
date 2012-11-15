@@ -78,7 +78,7 @@ $(document).ready(function()
     for (var srs=1; srs<4; ++srs)
         $("#pl" + srs).css("background", graphData[mapJson[srs]].color);
 
-<% if luci.dispatcher.context.authuser == "root" then %>
+<% if context.authuser == "root" then %>
     $(".pname").editable(function(value, settings) {
         return(nameChanged(this.id, value));
     }, {maxlength: 13});
@@ -91,12 +91,12 @@ $(document).ready(function()
         if (lastLidOpen == -1) return;
         $(this).html("Toggling...");
         var enable = (lastLidOpen == 0) ? ",,1" : ",,0";
-        $.get("<%=luci.dispatcher.build_url("admin/lm/set")%>", {ld: enable});
+        $.get("<%=build_url("admin/lm/set")%>", {ld: enable});
     });
     
     $("#alarmclear").click(function () {
         $(this).html("Disabling...");
-        $.get("<%=luci.dispatcher.build_url("admin/lm/set")%>", {al: "0,0,0,0,0,0,0,0"});
+        $.get("<%=build_url("admin/lm/set")%>", {al: "0,0,0,0,0,0,0,0"});
     }).show();
         
 <% end %>
@@ -112,7 +112,7 @@ $(window).load(function ()
 {
 <% if not rrd then %>
     if (!!window.EventSource) {
-        var source = new EventSource("<%=luci.dispatcher.build_url("lm/stream")%>");
+        var source = new EventSource("<%=build_url("lm/stream")%>");
         source.addEventListener("hmstatus", function(e) {
             var o = JSON.parse(e.data);
             connectionSuccess(o);
@@ -178,7 +178,7 @@ function refreshGraphData()
     <% if rrd then write("params.rrd = '"..rrd.."';") end %>
     $.ajax({
         type: "GET",
-        url: "<%=luci.dispatcher.build_url("lm/hist")%>",
+        url: "<%=build_url("lm/hist")%>",
         data: params,
         dataType: "text",
         success: tstatSuccess,
@@ -460,7 +460,7 @@ function tstatSuccess(csv)
 function nameChanged(from, value)
 {
     var params = {}; params[from] = value;
-    $.get("<%=luci.dispatcher.build_url("admin/lm/set")%>", params);
+    $.get("<%=build_url("admin/lm/set")%>", params);
     return value;
 }
 
@@ -469,7 +469,7 @@ function tempChanged(value)
     if((value - 0) == value && value.length > 0 && 
       value < 999 && value >= -100)
     {
-        $.get("<%=luci.dispatcher.build_url("admin/lm/set")%>", {sp: value});
+        $.get("<%=build_url("admin/lm/set")%>", {sp: value});
         return value;
     }
     else return "err";
@@ -479,7 +479,7 @@ function JSONQuery()
 {
     $.ajax({
         type: "GET",
-        url: "<%=luci.dispatcher.build_url("lm/hmstatus")%>",
+        url: "<%=build_url("lm/hmstatus")%>",
         dataType: "json",
         timeout: 5000,
         success: connectionSuccess,
@@ -778,10 +778,10 @@ div.rfstatus { display: none; position: absolute; left: 0; bottom: 0;
     <div id="alarmclear"></div>
 </div>
 <% 
-if luci.dispatcher.context.authuser ~= "root" then 
-  write("<a href=%q>Login</a> " % luci.dispatcher.build_url("admin/lm/home"))
+if context.authuser ~= "root" then 
+  write("<a href=%q>Login</a> " % build_url("admin/lm/home"))
 end
-write("<a href=%q>Configuration</a>" % luci.dispatcher.build_url("admin/lm"))
+write("<a href=%q>Configuration</a>" % build_url("admin/lm"))
 %>
 </body>
 
