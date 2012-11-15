@@ -32,7 +32,8 @@ store a handful of logs before running out of space.</p>
     end
   end
 %>
-  <h3>Stored in <%=fsInfo%></h3>
+  <fieldset class="cbi-section">
+  <legend>Stored in <%=fsInfo%></legend>
   
   <table style="border-spacing: 40px 4px;">
     <tr><th style="border: 1px solid #ddd;">View</th>
@@ -80,6 +81,15 @@ for _,f in ipairs(files) do
     <tr><td colspan="3" style="background: #ccc; height: 2px;"></td></tr>
 <% end %>
   </table>
+ 
+<% if #files > 0 then %>
+  <div class="cbi-section-node">
+    <div class="cbi-value cbi-value-last">
+      <a href="<%=luci.dispatcher.build_url("admin/lm/stashdb")%>?backup=1">Download all</a> as tar archive
+    </div>
+  </div>
+<% end %>
+  </fieldset>
   
   <h3>Reset current database</h3>
   <p>This will clear all data in the current running database and start a

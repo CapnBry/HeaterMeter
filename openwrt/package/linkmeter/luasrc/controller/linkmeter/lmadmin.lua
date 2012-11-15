@@ -61,6 +61,7 @@ function action_stashdb()
   local RRD_FILE = uci:get("lucid", "linkmeter", "rrd_file")
   local STASH_PATH = uci:get("lucid", "linkmeter", "stashpath") or "/root"
   local restoring = http.formvalue("restore")
+  local backup = http.formvalue("backup")
   local resetting = http.formvalue("reset")
   local deleting = http.formvalue("delete")
   local stashfile = http.formvalue("rrd") or "hm.rrd"
@@ -78,6 +79,16 @@ function action_stashdb()
   if stashfile:sub(-4) ~= ".rrd" then stashfile = stashfile..".rrd" end
 
   stashfile = STASH_PATH..stashfile
+  
+  if backup == "1" then
+    local backup_cmd = "cd %q && tar cz *.rrd" % STASH_PATH
+    local reader = require "luci.controller.admin.system".ltn12_popen(backup_cmd)
+    http.header("Content-Disposition",
+      'attachment; filename="lmstash-%s-%s.tar.gz"' % {
+      luci.sys.hostname(), os.date("%Y-%m-%d")})
+    http.prepare_content("application/x-targz")
+    return luci.ltn12.pump.all(reader, luci.http.write)
+  end
 
   local result
   http.prepare_content("text/plain")
