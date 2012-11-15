@@ -9,7 +9,7 @@ it is stashed.</p>
 additional storage available (via SD card) there should be enough space to
 store a handful of logs before running out of space.</p>
 <p>Reload this page after stashing to see the file in the stored list.</p>
-<form method="GET" action="<%=luci.dispatcher.build_url("admin","lm","stashdb")%>">
+<form method="GET" action="<%=luci.dispatcher.build_url("admin/lm/stashdb")%>">
   Filename: <input name="rrd" type="text" value="<%=os.date("%Y-%m-%d")%>" />
   <input type="submit" value="Stash" />
 </form>
@@ -57,10 +57,10 @@ end
 table.sort(files, function(a,b) return a.stat.mtime < b.stat.mtime end )
 
 for _,f in ipairs(files) do
-    local urlView = luci.dispatcher.build_url("lm").."?rrd="..f.path
-    local urlCsv = luci.dispatcher.build_url("lm","hist").."?rrd="..f.path
-    local urlDelete = luci.dispatcher.build_url("admin","lm","stashdb").."?delete=1&amp;rrd="..f.name
-    local urlActivate = luci.dispatcher.build_url("admin","lm","stashdb").."?restore=1&amp;rrd="..f.name
+    local urlView = luci.dispatcher.build_url("admin/lm/home").."?rrd="..f.path
+    local urlCsv = luci.dispatcher.build_url("lm/hist").."?rrd="..f.path
+    local urlDelete = luci.dispatcher.build_url("admin/lm/stashdb").."?delete=1&amp;rrd="..f.name
+    local urlActivate = luci.dispatcher.build_url("admin/lm/stashdb").."?restore=1&amp;rrd="..f.name
 %>
     <tr>
       <td>
@@ -85,7 +85,7 @@ for _,f in ipairs(files) do
   <p>This will clear all data in the current running database and start a
   new one.<br/>
   <img src="<%=resource%>/database_delete.png" />
-  <a href="<%=luci.dispatcher.build_url("admin","lm","stashdb").."?reset=1"%>">Reset
+  <a href="<%=luci.dispatcher.build_url("admin/lm/stashdb").."?reset=1"%>">Reset
   Database</a></p>
 <%+footer%>
 

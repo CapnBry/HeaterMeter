@@ -34,7 +34,7 @@ function queryRfNodes()
     
   $.ajax({
     type: "GET",
-    url: "<%=luci.dispatcher.build_url("lm", "rfstatus")%>",
+    url: "<%=luci.dispatcher.build_url("lm/rfstatus")%>",
     dataType: "json",
     timeout: 8000,
     success: refreshRfNodes
@@ -310,7 +310,7 @@ function updateConfigUrl(divname, h)
   {
     aValues.sort();
     var s = aValues.join(" &amp;");
-    var url = '<%=luci.dispatcher.build_url("lm","set")%>?' + aValues.join("&amp;");
+    var url = '<%=luci.dispatcher.build_url("admin/lm/set")%>?' + aValues.join("&amp;");
     if (divname == "#updateurl")
       url = '#" onclick="return ifrmTarget(\'' + url + '\');';
     s = '<a href="' + url + '">' + s + '</a>';
@@ -366,7 +366,7 @@ function ifrmTarget(url,title)
 
 function ifrmLoaded()
 {
-  $.get("<%=luci.dispatcher.build_url("lm","conf")%>",
+  $.get("<%=luci.dispatcher.build_url("lm/conf")%>",
     function (o) { configHash = o; configToForm(); windowLoaded(); })
     .error(function () { window.location.reload(); })
     .complete(ifrmHide);
@@ -539,14 +539,14 @@ Version <span id="ucid"></span><br/><span id="cerr" style="color: #f00;"></span>
 
 <h3>Raw set command</h3>
 Note you can just build your own url from the home page if you're logged in /lm/set?...
-<form method="GET" action="<%=luci.dispatcher.build_url("lm","set")%>">
+<form method="GET" action="<%=luci.dispatcher.build_url("admin/lm/set")%>">
 <input name="rawset" type="text" size="64" />
 <input type="submit" value="Set" class="cbi-button cbi-button-apply"/>
 </form>
 
 <h3>Reboot AVR</h3>
 <input type="button" value="Reboot" class="cbi-button cbi-input-reload"
-  onclick="ifrmTarget('<%=luci.dispatcher.build_url("admin","lm","reboot")%>','Reboot');"/>
+  onclick="ifrmTarget('<%=luci.dispatcher.build_url("admin/lm/reboot")%>','Reboot');"/>
 <div id="dialog-overlay"></div>
 <div id="dialog-container">
   <div id="dialog-title" style="text-align: center;"></div>
@@ -563,7 +563,7 @@ Note you can just build your own url from the home page if you're logged in /lm/
     <ul>
       <li>No HeaterMeter board attached</li>
       <li>No HeaterMeter (AVR) firmware installed. See
-        <a href="<%=luci.dispatcher.build_url("admin","lm","fw")%>">AVR Firmware</a></li>
+        <a href="<%=luci.dispatcher.build_url("admin/lm/fw")%>">AVR Firmware</a></li>
       <li>Incorrect baud rate in /etc/config/lucid</li>
       <li>Hardware malfunction</li>
     </ul>

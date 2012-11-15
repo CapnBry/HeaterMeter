@@ -2,7 +2,7 @@ module("luci.controller.linkmeter.lmadmin", package.seeall)
 
 function index()
   entry({"admin", "lm"}, alias("admin", "lm", "conf"), "LinkMeter",60).index = true
-  entry({"admin", "lm", "home"}, alias("lm", "login"), "Home", 10)
+  entry({"admin", "lm", "home"}, template("linkmeter/index"), "Home", 10)
   entry({"admin", "lm", "conf"}, template("linkmeter/conf"), "Configuration", 20)
   entry({"admin", "lm", "archive"}, template("linkmeter/archive"), "Archive", 30)
   entry({"admin", "lm", "fw"}, call("action_fw"), "AVR Firmware", 40)
@@ -10,6 +10,7 @@ function index()
 
   entry({"admin", "lm", "stashdb"}, call("action_stashdb"))
   entry({"admin", "lm", "reboot"}, call("action_reboot"))
+  entry({"admin", "lm", "set"}, call("action_set"))
 end
 
 function action_fw()
@@ -119,4 +120,55 @@ function action_reboot()
   http.write("Rebooting AVR... ")
   require "lmclient"
   http.write(LmClient():query("$LMRB") or "FAILED")
+end
+
+function action_set()
+  local dsp = require "luci.dispatcher"
+  local http = require "luci.http"
+  
+  local vals = http.formvalue()
+  
+  -- If there's a rawset, explode the rawset into individual items
+  local rawset = vals.rawset
+  if rawset then
+    -- remove /set? or set? if supplied
+    rawset = rawset:gsub("^/?set%?","")
+    vals = {}
+    for pair in rawset:gmatch( "[^&;]+" ) do
+      local key = pair:match("^([^=]+)")
+      local val = pair:match("^[^=]+=(.+)$")
+      if key and val then
+        vals[key] = val
+      end
+    end
+  end
+
+  -- Make sure the user passed some values to set
+  local cnt = 0
+  -- Can't use #vals because the table is actually a metatable with an indexer
+  for _ in pairs(vals) do cnt = cnt + 1 end
+  if cnt == 0 then
+    return dsp.error500("No values specified")
+  end
+
+  require("lmclient")
+  local lm = LmClient()
+
+  http.prepare_content("text/plain")
+  http.write("User %s setting %d values...\n" % {dsp.context.authuser, cnt})
+  local firstTime = true
+  for k,v in pairs(vals) do
+    -- Pause 100ms between commands to allow HeaterMeter to work
+    if firstTime then
+      firstTime = nil
+    else
+      nixio.nanosleep(0, 100000000)
+    end
+
+    local result, err = lm:query("$LMST,%s,%s" % {k,v}, true)
+    http.write("%s to %s = %s\n" % {k,v, result or err})
+    if err then break end
+  end
+  lm:close()
+  http.write("Done!")
 end
