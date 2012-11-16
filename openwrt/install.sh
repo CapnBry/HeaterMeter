@@ -35,6 +35,7 @@ rm -fR $LUCIP
 mkdir $LUCIP
 cp patches/200-luci-inreq-fix.patch $LUCIP
 cp patches/215-luci-adminfull-inreq.patch $LUCIP
+cp patches/217-luci-login-urltok.patch $LUCIP
 
 LMPACKS="rrdtool kmod-broadcom-sdhc2 linkmeter 8192cu kmod-spi-bcm2708"
 for PACK in $LMPACKS ; do
