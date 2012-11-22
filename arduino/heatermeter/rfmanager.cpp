@@ -117,6 +117,42 @@ void RFManager::status(void)
   Serial_nl();
 }
 
+void RFManager::sendUpdate(unsigned char val)
+{
+  if (!_initialized)
+    return;
+
+  //while (!rf12_canSend())
+  //  rf12_recvDone();
+#define NODEID_MASTER      0x3F
+
+#define HYGRO_BATTERY_OK   0x00
+#define HYGRO_BATTERY_LOW  0x80
+#define HYGRO_NO_HYGRO     0x6A
+#define HYGRO_SECOND_PROBE 0x7D
+#define HYGRO_LMREMOTE_KEY 0x7F
+
+  unsigned char outbuf[4];
+  const unsigned char nodeId = NODEID_MASTER;
+  const unsigned char _isRecent = 0;
+
+  outbuf[0] = 0x90 | ((nodeId & 0x3f) >> 2);
+  outbuf[1] = ((nodeId & 0x3f) << 6) | _isRecent | (val >> 8);
+  outbuf[2] = (val & 0xff);
+  outbuf[3] = HYGRO_LMREMOTE_KEY | HYGRO_BATTERY_OK;
+
+#if 0
+  unsigned char v1 = val % 10;
+  unsigned char v10 = (val / 10) % 10;
+  unsigned char v100 = ((val / 100) % 10) + 4;
+  outbuf[1] = ((nodeId & 0x3f) << 6) | _isRecent | v100;
+  outbuf[2] = v10 << 4 | v1;
+  outbuf[3] = HYGRO_NO_HYGRO | HYGRO_BATTERY_OK;
+#endif
+
+  rf12_sendStart(outbuf, sizeof(outbuf));
+}
+
 boolean RFManager::doWork(void)
 {
   if (!_initialized)

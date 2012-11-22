@@ -1251,6 +1251,10 @@ static void newTempsAvail(void)
   // We want to report the status before the alarm readout so
   // receivers can tell what the value was that caused the alarm
   checkAlarms();
+
+#ifdef HEATERMETER_RFM12
+  rfmanager.sendUpdate(pid.getFanSpeed());
+#endif
 }
 
 static void lcdDefineChars(void)

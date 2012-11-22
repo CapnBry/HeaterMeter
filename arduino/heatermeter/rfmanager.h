@@ -80,7 +80,8 @@ public:
   boolean doWork(void);
   unsigned long getLastReceive(void) const { return _lastReceive; }
   static unsigned char getAdcBits(void) { return 12; }
-  
+  void sendUpdate(unsigned char val);
+
   RFSource *getSourceById(unsigned char srcId);
   
 private:
