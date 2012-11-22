@@ -3,7 +3,8 @@
 #include <rf12_itplus.h>
 
 // Enabling LMREMOTE_SERIAL also disables several power saving features
-//#define LMREMOTE_SERIAL 38400
+#define LMREMOTE_SERIAL 38400
+#define RECEIVE_TEST 1
 
 // Base Idenfier for the RFM12B (0-63)
 // The transmitted ID is this ID plus the pin number
@@ -32,6 +33,8 @@ const unsigned char _pinProbeSupplyBase = 4;
 #define PIN_DISABLED(pin) ((_enabledProbePins & (1 << pin)) == 0)
 
 // Bits used in output packet
+// byte0/1 reserved Node IDs
+#define NODEID_MASTER      0x3F
 // byte1
 #define BYTE1_DUAL_PROBE   0x10
 #define BYTE1_RECENT_BOOT  0x20
@@ -60,6 +63,34 @@ static volatile unsigned char _adcBusy;
 // The WDT is used solely to wake us from sleep
 ISR(WDT_vect) { wdt_disable(); }
 ISR(ADC_vect) { _adcBusy = 0; }
+
+static void packetReceived(unsigned char nodeId, unsigned int val)
+{
+#ifdef LMREMOTE_SERIAL
+  Serial.print(F("IN("));
+  Serial.print(nodeId);
+  Serial.print(F(")="));
+  Serial.print(val);
+  Serial.print('\n');
+#endif
+
+  if (nodeId != NODEID_MASTER)
+    return;
+  // val contains requested fan speed percent
+}
+
+static void rf12_doWork(void)
+{
+  if (rf12_recvDone() && rf12_crc == 0)
+  {
+    if (_pinLedRx != 0xff) digitalWrite(_pinLedRx, HIGH);
+
+    unsigned char nodeId = ((rf12_buf[0] & 0x0f) << 2) | (rf12_buf[1] >> 6);
+    unsigned int val = (rf12_buf[1] & 0x0f) << 8 | rf12_buf[2];
+    packetReceived(nodeId, val);
+  }
+  if (_pinLedRx != 0xff) digitalWrite(_pinLedRx, LOW);
+}
 
 static unsigned int analogReadSleep(unsigned char pin)
 {
@@ -107,20 +138,17 @@ static void sleep(uint8_t wdt_period, boolean include_adc)
 
 static void sleepSeconds(unsigned char secs)
 {
+#if RECEIVE_TEST
+  unsigned long start = millis();
+  while (millis() - start < (secs * 1000U))
+    rf12_doWork();
+  ADCSRA |= bit(ADEN);
+#else
   while (secs >= 8) { sleep(WDTO_8S, true); secs -=8; }
   if (secs >= 4) { sleep(WDTO_4S, true); secs -= 4; }
   if (secs >= 2) { sleep(WDTO_2S, true); secs -= 2; }
   if (secs >= 1) { sleep(WDTO_1S, true); }
-}
-
-static void rf12_doWork(void)
-{
-  if (rf12_recvDone() && rf12_crc == 0)
-  {
-    if (_pinLedRx != 0xff) digitalWrite(_pinLedRx, HIGH);
-    // (currently have nothing to receive)
-  }
-  if (_pinLedRx != 0xff) digitalWrite(_pinLedRx, LOW);
+#endif
 }
 
 static void updateBatteryLow(void)
@@ -188,7 +216,9 @@ static void newTempsAvailable(void)
     hasTransmitted = true;
   }
   
+#if RECEIVE_TEST == 0
   rf12_sleep(RF12_SLEEP);
+#endif
   if (_pinLedTx != 0xff)
   {
     digitalWrite(_pinLedTx, HIGH);
