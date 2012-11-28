@@ -4,14 +4,13 @@
 
 // Enabling LMREMOTE_SERIAL also disables several power saving features
 #define LMREMOTE_SERIAL 38400
-#define RECEIVE_TEST 1
 
 // Base Idenfier for the RFM12B (0-63)
 // The transmitted ID is this ID plus the pin number
 const char _rfNodeBaseId = 0;
 // RFM12B band RF12_433MHZ, RF12_868MHZ, RF12_915MHZ
 const unsigned char _rfBand = RF12_915MHZ;
-// How long to sleep between probe measurments, in seconds
+// How many seconds to delay between measurements
 const unsigned char _sleepInterval = 2;
 // Analog pins to read. This is a bitfield, LSB is analog 0
 const unsigned char _enabledProbePins = 0x01;  
@@ -53,20 +52,32 @@ const unsigned char _pinProbeSupplyBase = 4;
   #define SLEEPMODE_ADC   SLEEP_MODE_ADC
 #endif
 
+#define RECV_CYCLE_TIME  1000    // expected receive cycle, millisecond
+#define MIN_RECV_WIN     8       // minimum window size, power of 2
+#define MAX_RECV_WIN     512     // maximum window size, power of 2
+
 static unsigned int _previousReads[RF_PINS_PER_SOURCE];
+static unsigned long _tempReadLast;
 static unsigned int _loopCnt;
 static unsigned char _sameCount;
 static unsigned char _isRecent = BYTE1_RECENT_BOOT;
 static unsigned char _isBattLow;
-static volatile unsigned char _adcBusy;
+
+static unsigned int _recvCycleAct;
+static unsigned int _recvWindow;
+static unsigned long _recvLast;
+static bool _recvSynced;
+
+static volatile bool _adcBusy;
+static volatile bool _watchdogWaiting;
 
 // The WDT is used solely to wake us from sleep
-ISR(WDT_vect) { wdt_disable(); }
-ISR(ADC_vect) { _adcBusy = 0; }
+ISR(WDT_vect) { _watchdogWaiting = false; }
+ISR(ADC_vect) { _adcBusy = false; }
 
-static void packetReceived(unsigned char nodeId, unsigned int val)
+static bool packetReceived(unsigned char nodeId, unsigned int val)
 {
-#ifdef LMREMOTE_SERIAL
+#if LMREMOTE_SERIAL
   Serial.print(F("IN("));
   Serial.print(nodeId);
   Serial.print(F(")="));
@@ -75,11 +86,12 @@ static void packetReceived(unsigned char nodeId, unsigned int val)
 #endif
 
   if (nodeId != NODEID_MASTER)
-    return;
+    return false;
   // val contains requested fan speed percent
+  return true;
 }
 
-static void rf12_doWork(void)
+static bool rf12_doWork(void)
 {
   if (rf12_recvDone() && rf12_crc == 0)
   {
@@ -87,14 +99,15 @@ static void rf12_doWork(void)
 
     unsigned char nodeId = ((rf12_buf[0] & 0x0f) << 2) | (rf12_buf[1] >> 6);
     unsigned int val = (rf12_buf[1] & 0x0f) << 8 | rf12_buf[2];
-    packetReceived(nodeId, val);
+    return packetReceived(nodeId, val);
   }
   if (_pinLedRx != 0xff) digitalWrite(_pinLedRx, LOW);
+  return false;
 }
 
 static unsigned int analogReadSleep(unsigned char pin)
 {
-  _adcBusy = 1;
+  _adcBusy = true;
   ADMUX = (DEFAULT << 6) | pin;
   bitSet(ADCSRA, ADIE);
   set_sleep_mode(SLEEPMODE_ADC);
@@ -103,20 +116,10 @@ static unsigned int analogReadSleep(unsigned char pin)
   return ADC;
 }
 
-static void sleep(uint8_t wdt_period, boolean include_adc)
+static void sleepPeriod(uint8_t wdt_period)
 {
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 
-  // Disable ADC
-  if (include_adc)
-    ADCSRA &= ~bit(ADEN);
-
-  // TODO: Figure out what else I can safely disable
-  // Disable analog comparator to
-  // Internal Voltage Reference? 
-  //   When turned on again, the user must allow the reference to start up before the output is used. 
-  //   these should be disabled at all times, not just sleep
-  
   // Set the watchdog to wake us up and turn on its interrupt
   wdt_enable(wdt_period);
   WDTCSR |= bit(WDIE);
@@ -131,24 +134,124 @@ static void sleep(uint8_t wdt_period, boolean include_adc)
   sleep_cpu();
   
   // Back from sleep
+  wdt_disable();
   sleep_disable();
-  if (include_adc)
-    ADCSRA |= bit(ADEN);
 }
 
-static void sleepSeconds(unsigned char secs)
+static void sleep(unsigned int msec)
+// Code copied from Sleepy::loseSomeSleep(), jeelib
 {
-#if RECEIVE_TEST
-  unsigned long start = millis();
-  while (millis() - start < (secs * 1000U))
-    rf12_doWork();
-  ADCSRA |= bit(ADEN);
+  unsigned int msleft = msec;
+  while (msleft >= 16)
+  {
+    char wdp = 0; // wdp 0..9 corresponds to roughly 16..8192 ms
+    // calc wdp as log2(msleft/16), i.e. loop & inc while next value is ok
+    for (unsigned int m = msleft; m >= 32; m >>= 1)
+      if (++wdp >= 9)
+        break;
+    _watchdogWaiting = true;
+    sleepPeriod(wdp);
+    unsigned int halfms = 8 << wdp;
+    msleft -= halfms;
+    if (_watchdogWaiting)
+      continue;
+    msleft -= halfms;
+  }
+
+  // adjust the milli ticks, since we will have missed several
+#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny85__) || defined (__AVR_ATtiny44__)
+    extern volatile unsigned long millis_timer_millis;
+    millis_timer_millis += msecs - msleft;
 #else
-  while (secs >= 8) { sleep(WDTO_8S, true); secs -=8; }
-  if (secs >= 4) { sleep(WDTO_4S, true); secs -= 4; }
-  if (secs >= 2) { sleep(WDTO_2S, true); secs -= 2; }
-  if (secs >= 1) { sleep(WDTO_1S, true); }
+    extern volatile unsigned long timer0_millis;
+    timer0_millis += msec - msleft;
 #endif
+}
+
+static void radioSleep(unsigned int ms)
+{
+  rf12_sleep(RF12_SLEEP);
+  sleep(ms);
+  rf12_sleep(RF12_WAKEUP);
+}
+
+static void resetEstimate(void)
+{
+#if _DEBUG
+  Serial.print(F("Resetting Estimate\n"));
+#endif
+  _recvCycleAct = RECV_CYCLE_TIME;
+  _recvWindow = MAX_RECV_WIN;
+  _recvSynced = false;
+
+  unsigned long start = millis();
+  while (!rf12_doWork())
+    if (millis() - start > RECV_CYCLE_TIME)
+      return;
+  _recvLast = millis();
+}
+
+static bool optimalSleep(void)
+// Code adapted from jeelib/examples/syncRecv optimalSleep()
+{
+  unsigned char lost = (millis() - _recvLast + _recvCycleAct / 2) / _recvCycleAct;
+  if (lost > 10)
+  {
+    resetEstimate();
+    return false;
+  }
+
+  // double the window every N packets lost
+  if (lost > 0 && lost % 2 == 0 && _recvWindow < MAX_RECV_WIN)
+    _recvWindow *= 2;
+
+  unsigned long predict = _recvLast + (lost + 1) * _recvCycleAct;
+  unsigned int sleep =  predict - millis() - _recvWindow;
+  radioSleep(sleep);
+
+  unsigned long recvTime;
+  unsigned long startTime = millis();
+  do {
+    recvTime = millis();
+    if (recvTime > predict + _recvWindow)
+    {
+#if _DEBUG
+      Serial.print(" f "); Serial.print(lost);
+      Serial.print(" s "); Serial.print(sleep);
+      Serial.print(" e "); Serial.print(_recvCycleAct);
+      Serial.print(" w "); Serial.print(_recvWindow);
+      Serial.print(" s "); Serial.print(startTime);
+      Serial.print(" p "); Serial.print(predict);
+      Serial.print(" r "); Serial.println(recvTime);
+      Serial.flush();
+#endif
+      return false;
+    }
+  } while (!rf12_doWork());
+
+  unsigned int newEst = (recvTime - _recvLast) / (lost + 1);
+  if (_recvSynced)
+    _recvCycleAct = (4 * _recvCycleAct + newEst + 3) / 5; // 5-fold smoothing
+  else
+    _recvCycleAct = newEst;
+  _recvLast = recvTime;
+
+#if _DEBUG
+  Serial.print(" n "); Serial.print(lost);
+  Serial.print(" e "); Serial.print(_recvCycleAct);
+  Serial.print(" E "); Serial.print(newEst);
+  Serial.print(" w "); Serial.print(_recvWindow);
+  Serial.print(" s "); Serial.print(startTime);
+  Serial.print(" p "); Serial.print(predict);
+  Serial.print(" r "); Serial.println(recvTime);
+#endif
+
+  if (_recvWindow > MIN_RECV_WIN)
+    _recvWindow /= 2;
+  else
+    _recvSynced = true;
+
+  return true;
 }
 
 static void updateBatteryLow(void)
@@ -200,7 +303,7 @@ static void newTempsAvailable(void)
   updateBatteryLow();
   // We're done with the ADC shut it down until the next wake cycle
   ADCSRA &= ~bit(ADEN);
-  if (_isRecent && (_loopCnt > (RECENT_EXPIRE_SECS/_sleepInterval)))
+  if (_isRecent && (millis() > RECENT_EXPIRE_SECS))
   {
     //Serial.print("No longer recent\n");
     _isRecent = 0;
@@ -211,18 +314,16 @@ static void newTempsAvailable(void)
   {
     if (PIN_DISABLED(pin))
       continue;
-    if (hasTransmitted) sleep(WDTO_15MS, false);
+    if (hasTransmitted) sleep(16);
     transmitTemp(pin);
     hasTransmitted = true;
   }
   
-#if RECEIVE_TEST == 0
   rf12_sleep(RF12_SLEEP);
-#endif
   if (_pinLedTx != 0xff)
   {
     digitalWrite(_pinLedTx, HIGH);
-    sleep(WDTO_15MS, false);
+    sleep(16);
     digitalWrite(_pinLedTx, LOW);
   }
 }
@@ -281,6 +382,8 @@ static void checkTemps(void)
   Serial.print(" Checking temps: ");
 #endif
 
+  // Enable the ADC
+  ADCSRA |= bit(ADEN);
   enableAdcPullups();
   stabilizeAdc();
   for (unsigned char pin=0; pin < RF_PINS_PER_SOURCE; ++pin)
@@ -321,6 +424,10 @@ static void checkTemps(void)
   }
   else
     ++_sameCount;
+  // Disable the ADC
+  ADCSRA &= ~bit(ADEN);
+
+  _tempReadLast = millis();
 }
 
 static void setupSupplyPins(void)
@@ -364,11 +471,17 @@ void setup(void)
 
 void loop(void)
 {
-  checkTemps();
+  if (_loopCnt % 2 == 0)
+    checkTemps();
+
 #ifdef LMREMOTE_SERIAL
   Serial.flush(); delay(2);
 #endif
-  sleepSeconds(_sleepInterval);
+
+  if (_recvLast == 0)
+    resetEstimate();
+  else
+    optimalSleep();
   ++_loopCnt;
 }
 
