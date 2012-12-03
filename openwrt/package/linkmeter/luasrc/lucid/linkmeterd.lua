@@ -104,7 +104,7 @@ local function broadcastStatus(fn)
 end
 
 local function buildConfigMap()
-  if not hmConfig then return end
+  if not hmConfig then return {} end
 
   local r = {}
   for k,v in pairs(hmConfig) do
