@@ -524,6 +524,8 @@ end
 local function segLmReboot(line)
   if not serialPolle then return "ERR" end
   serialPolle.fd:write("\n/reboot\n")
+  -- Clear our cached config to request it again when reboot is complete
+  initHmVars()
   return "OK"
 end
 
