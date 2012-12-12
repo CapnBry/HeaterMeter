@@ -19,8 +19,8 @@ const unsigned char _pinBattery = 1;
 // Digital pins for LEDs, 0xff to disable
 const unsigned char _pinLedRx = 0xff;
 const unsigned char _pinLedTx = 0xff; //9
-// Digital pins used for sourcing power to the probe dividers
-const unsigned char _pinProbeSupplyBase = 4;
+// Digital pin used for sourcing power to the probe dividers
+const unsigned char _pinProbeSupply = 4;
 // Percentage (integer) of VCC where the battery is considered low (33% = 1.1V)
 #define BATTERY_LOW_PCT 33
 // Number of seconds to keep the "recent/new" bit set
@@ -322,30 +322,12 @@ static void newTempsAvailable(void)
   }
 }
 
-static void enableAdcPullups(void)
-{
-  for (unsigned char pin=0; pin < RF_PINS_PER_SOURCE; ++pin)
-  {
-    if (PIN_DISABLED(pin))
-      continue;
-
-    // The probe themistor voltage dividers are normally powered down
-    // to save power, using digital lines to supply Vcc to them.
-    // Lines are used sequentially starting from _pinProbeSupplyBase
-    // Note you can use the analog internal pullups as the fixed half of
-    // the divider by setting this value to A0 (or higher).
-    // The analog pullups are 20k-40kOhms, about 36k on my handful of chips.
-    // If using digital lines you will supply your own resistor for the fixed half.
-    digitalWrite(_pinProbeSupplyBase + pin, HIGH);
-  }
-}
-
 static void stabilizeAdc(void)
 {
   const unsigned char INTERNAL_REF = 0b1110;
   unsigned int last;
-  unsigned int totalCnt = 0;
-  unsigned int sameCnt = 0;
+  unsigned char totalCnt = 0;
+  unsigned char sameCnt = 0;
   unsigned int curr = analogReadSleep(INTERNAL_REF);
   // Reads the adc a bunch of times until the value settles
   // Usually you hear "discard the first few ADC readings after sleep"
@@ -378,8 +360,12 @@ static void checkTemps(void)
 
   // Enable the ADC
   ADCSRA |= bit(ADEN);
-  enableAdcPullups();
+  // The probe themistor voltage dividers are normally powered down
+  // to save power, using digital lines to supply Vcc to them.
+  digitalWrite(_pinProbeSupply, HIGH);
+  // Wait for AREF capacitor to charge
   stabilizeAdc();
+
   for (unsigned char pin=0; pin < RF_PINS_PER_SOURCE; ++pin)
   {
     if (PIN_DISABLED(pin))
@@ -403,9 +389,8 @@ static void checkTemps(void)
     if (oversampled_adc != _previousReads[pin])
       modified = true;
     _previousReads[pin] = oversampled_adc;
-
-    digitalWrite(_pinProbeSupplyBase + pin, LOW);
   }
+  digitalWrite(_pinProbeSupply, LOW);
 
 #ifdef LMREMOTE_SERIAL
   Serial.print('\n');
@@ -422,19 +407,6 @@ static void checkTemps(void)
   ADCSRA &= ~bit(ADEN);
 
   _tempReadLast = millis();
-}
-
-static void setupSupplyPins(void)
-{
-  // Analog pullup supply pins don't need DIR set
-  if (_pinProbeSupplyBase >= A0)
-    return;
-  for (unsigned char pin=0; pin < RF_PINS_PER_SOURCE; ++pin)
-  {
-    if (PIN_DISABLED(pin))
-      continue;
-    pinMode(_pinProbeSupplyBase + pin, OUTPUT);
-  }
 }
 
 void setup(void)
@@ -457,7 +429,7 @@ void setup(void)
   if (_pinLedRx != 0xff) pinMode(_pinLedRx, OUTPUT);
   if (_pinLedTx != 0xff) pinMode(_pinLedTx, OUTPUT);
 
-  setupSupplyPins();
+  pinMode(_pinProbeSupply, OUTPUT);
 
   // Force a transmit on next read
   memset(_previousReads, 0xff, sizeof(_previousReads));
