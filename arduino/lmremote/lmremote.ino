@@ -13,7 +13,7 @@ const unsigned char _rfBand = RF12_915MHZ;
 // How many seconds to delay between measurements
 const unsigned char _sleepInterval = 2;
 // Analog pins to read. This is a bitfield, LSB is analog 0
-const unsigned char _enabledProbePins = 0x01;  
+const unsigned char _enabledProbePins = 0x01;
 // Analog pin connected to source power.  Set to 0xff to disable sampling
 const unsigned char _pinBattery = 1;
 // Digital pins for LEDs, 0xff to disable
@@ -52,7 +52,7 @@ const unsigned char _pinProbeSupplyBase = 4;
   #define SLEEPMODE_ADC   SLEEP_MODE_ADC
 #endif
 
-#define RECV_CYCLE_TIME  1000    // expected receive cycle, millisecond
+#define RECV_CYCLE_TIME  5000    // expected receive cycle, millisecond
 #define MIN_RECV_WIN     8       // minimum window size, power of 2
 #define MAX_RECV_WIN     512     // maximum window size, power of 2
 
@@ -80,6 +80,8 @@ static bool packetReceived(unsigned char nodeId, unsigned int val)
 #if LMREMOTE_SERIAL
   Serial.print(F("IN("));
   Serial.print(nodeId);
+  Serial.print(',');
+  Serial.print(rf12_rssi(), DEC);
   Serial.print(F(")="));
   Serial.print(val);
   Serial.print('\n');
@@ -168,13 +170,6 @@ static void sleep(unsigned int msec)
 #endif
 }
 
-static void radioSleep(unsigned int ms)
-{
-  rf12_sleep(RF12_SLEEP);
-  sleep(ms);
-  rf12_sleep(RF12_WAKEUP);
-}
-
 static void resetEstimate(void)
 {
 #if _DEBUG
@@ -206,21 +201,21 @@ static bool optimalSleep(void)
     _recvWindow *= 2;
 
   unsigned long predict = _recvLast + (lost + 1) * _recvCycleAct;
-  unsigned int sleep =  predict - millis() - _recvWindow;
-  radioSleep(sleep);
+  unsigned int sleepDur =  predict - _recvWindow - millis();
+  sleep(sleepDur);
+  rf12_sleep(RF12_WAKEUP);
 
   unsigned long recvTime;
-  unsigned long startTime = millis();
+  unsigned long timeout = predict + _recvWindow;
   do {
     recvTime = millis();
-    if (recvTime > predict + _recvWindow)
+    if ((long)(recvTime - timeout) >= 0)
     {
 #if _DEBUG
       Serial.print(" f "); Serial.print(lost);
-      Serial.print(" s "); Serial.print(sleep);
+      Serial.print(" s "); Serial.print(sleepDur);
       Serial.print(" e "); Serial.print(_recvCycleAct);
       Serial.print(" w "); Serial.print(_recvWindow);
-      Serial.print(" s "); Serial.print(startTime);
       Serial.print(" p "); Serial.print(predict);
       Serial.print(" r "); Serial.println(recvTime);
       Serial.flush();
@@ -241,7 +236,6 @@ static bool optimalSleep(void)
   Serial.print(" e "); Serial.print(_recvCycleAct);
   Serial.print(" E "); Serial.print(newEst);
   Serial.print(" w "); Serial.print(_recvWindow);
-  Serial.print(" s "); Serial.print(startTime);
   Serial.print(" p "); Serial.print(predict);
   Serial.print(" r "); Serial.println(recvTime);
 #endif
@@ -482,6 +476,8 @@ void loop(void)
     resetEstimate();
   else
     optimalSleep();
+  rf12_sleep(RF12_SLEEP);
+
   ++_loopCnt;
 }
 
