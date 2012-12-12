@@ -4,10 +4,13 @@
 
 #include <rf12_itplus.h>
 
-#define RFSOURCEID_ANY  0x7f
-#define RFSOURCEID_NONE 0xff
+#define RFSOURCEID_ANY    0x7f
+#define RFSOURCEID_NONE   0xff
 
-#define RF_SOURCE_COUNT 4
+#define RF_SOURCE_COUNT   4
+// Actually transmit the fan speed every RF_SEND_INTERVAL sendUpdate() calls
+// Undefine or set to 0 to disable transmission
+#define RF_SEND_INTERVAL  5
 
 // The count of milliseconds with no receive that the source is considered stale
 // This should be large enough to allow the remote node to sleep
@@ -90,6 +93,7 @@ private:
   const event_callback _callback;
   unsigned char _crcOk;
   RFSource _sources[RF_SOURCE_COUNT];
+  unsigned char _txCounter;
 };
 
 #endif /* __RFMANAGER_H__ */
