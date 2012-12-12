@@ -255,7 +255,7 @@ inline void GrillPid::commitFanSpeed(void)
   }  /* long PWM */
 
   if (_invertPwm)
-    output = 100 - output;
+    output = _maxFanSpeed - output;
   analogWrite(_blowerPin, (unsigned int)output * 255 / 100);
 }
 
