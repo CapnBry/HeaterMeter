@@ -1252,6 +1252,9 @@ static void newTempsAvail(void)
   // receivers can tell what the value was that caused the alarm
   checkAlarms();
 
+  lcd.digitalWrite(0, pid.LidOpenResumeCountdown != 0);
+  lcd.digitalWrite(1, pid.getFanSpeed() != 0);
+
 #ifdef HEATERMETER_RFM12
   rfmanager.sendUpdate(pid.getFanSpeed());
 #endif
