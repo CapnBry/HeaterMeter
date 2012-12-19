@@ -8,9 +8,11 @@ HARDWARE_MODEL=`echo "_, model = luci.sys.sysinfo(); print(model)" | lua -lluci.
 if [ "$HARDWARE_MODEL" = "BCM2708" ] ; then
   SERIAL_DEVICE="/dev/ttyAMA0"
   LUCID_THREADS=10
+  LUCI_CCACHE=1
 else
   SERIAL_DEVICE="/dev/ttyS1"
   LUCID_THREADS=2
+  LUCI_CCACHE=0
 fi
 
 # Forced configuration parameters
@@ -36,8 +38,10 @@ uci commit lucid
 SA=`uci get luci.sauth.sessiontime`
 if [ "$SA" -eq 3600 ] ; then
   uci set luci.sauth.sessiontime=86400
-  uci commit luci
 fi
+
+uci set luci.ccache.enable=$LUCI_CCACHE
+uci commit luci
 
 # On applicable platforms, avrupdate loads HeaterMeter onto the AVR
 avrupdate
