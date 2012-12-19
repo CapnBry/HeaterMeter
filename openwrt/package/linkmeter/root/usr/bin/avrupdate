@@ -47,10 +47,7 @@ platform_setup() {
     eval "platform_setup_DEFAULT"
 }
 
-HEX="/tmp/hm.hex"
-if [ -n "$1" ] ; then
-  HEX="$1"
-fi
+HEX="$1"
 
 if [ "${HEX:0:7}" = "http://" ] ; then
   wget -O/tmp/hm.hex $HEX 2>&1
@@ -79,7 +76,7 @@ if [ -f "$HEX" ] ; then
     echo Update failed
   fi
 else
-  echo No input file $HEX
+  [ -n "$HEX" ] && echo No input file $HEX
 fi
 
 echo -n "Starting LinkMeter "
