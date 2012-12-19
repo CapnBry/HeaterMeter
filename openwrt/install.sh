@@ -23,7 +23,7 @@ fi
 if [ "$TARGET" == "BCM2708" ] ; then
   cat << EOFEEDS > $WRT_PATH/feeds.conf
 src-svn packages svn://svn.openwrt.org/openwrt/packages
-src-svn luci http://svn.luci.subsignal.org/luci/trunk/contrib/package
+src-svn luci http://svn.luci.subsignal.org/luci/branches/luci-0.11/contrib/package
 src-link linkmeter $REPO_PATH/package
 EOFEEDS
 fi
@@ -36,6 +36,7 @@ mkdir $LUCIP
 cp patches/200-luci-inreq-fix.patch $LUCIP
 cp patches/215-luci-adminfull-inreq.patch $LUCIP
 cp patches/217-luci-login-urltok.patch $LUCIP
+cp patches/218-lucid-cacheloader.patch $LUCIP
 
 LMPACKS="rrdtool kmod-broadcom-sdhc2 linkmeter 8192cu kmod-spi-bcm2708"
 for PACK in $LMPACKS ; do

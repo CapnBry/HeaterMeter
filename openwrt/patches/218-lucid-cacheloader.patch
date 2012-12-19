@@ -1,0 +1,10 @@
+--- luci-0.11+svn9561/libs/lucid/luasrc/lucid.lua.orig	2012-12-19 11:52:49.915113617 -0500
++++ luci-0.11+svn9561/libs/lucid/luasrc/lucid.lua	2012-12-19 11:53:20.599545858 -0500
+@@ -12,6 +12,7 @@
+ $Id$
+ ]]
+ 
++require "luci.cacheloader"
+ local nixio = require "nixio"
+ local table = require "table"
+ local uci = require "luci.model.uci"
