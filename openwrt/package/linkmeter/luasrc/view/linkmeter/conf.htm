@@ -99,6 +99,9 @@ function typeChanged()
   var name = this.id.substr(2);
   $("#pbody" + name).css("display", (this.value == 0) ? "none" : "block");
   $("#prf" + name).css("display", (this.value == 2) ? "block" : "none");
+  // If switching to 'RF' and no node number is filled in, default to 'any'
+  if (this.value == 2 && $("#prfn" + name).val() == "")
+    $("#prfa" + name).attr("checked", true).trigger("change");
 }
 
 function isProbeId(hay, need)
