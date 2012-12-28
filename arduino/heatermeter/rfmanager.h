@@ -10,7 +10,7 @@
 #define RF_SOURCE_COUNT   4
 // Actually transmit the fan speed every RF_SEND_INTERVAL sendUpdate() calls
 // Undefine or set to 0 to disable transmission
-#define RF_SEND_INTERVAL  5
+//#define RF_SEND_INTERVAL  5
 
 // The count of milliseconds with no receive that the source is considered stale
 // This should be large enough to allow the remote node to sleep
