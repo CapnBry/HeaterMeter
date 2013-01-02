@@ -15,7 +15,7 @@ fi
 if [ "$TARGET" == "BCM47XX" ] ; then
   cat << EOFEEDS > $WRT_PATH/feeds.conf
 src-svn packages svn://svn.openwrt.org/openwrt/packages@29665
-src-svn luci http://svn.luci.subsignal.org/luci/trunk/contrib/package@8147
+src-svn luci http://svn.luci.subsignal.org/luci/trunk/contrib/package@8686
 src-link linkmeter $REPO_PATH/package
 EOFEEDS
 fi
@@ -43,14 +43,15 @@ for PACK in $LMPACKS ; do
   $WRT_PATH/scripts/feeds install -p linkmeter $PACK
 done
 
+cp config.$TARGET $WRT_PATH/.config
+
 if [ "$TARGET" == "BCM47XX" ] ; then
   patch -N -p0 -d $WRT_PATH/package < patches/100-dhcp_add_hostname.patch
-  cp .config $WRT_PATH/.config
 fi
 
 if [ "$TARGET" == "BCM2708" ] ; then
+  patch -N -p0 -d $WRT_PATH < patches/110-default-netaddress-brcm2708.patch
   patch -N -p0 -d $WRT_PATH < patches/220-iwinfo-nl80211-over-wext.patch
   patch -N -p0 -d $WRT_PATH < patches/225-iwinfo-scan-wo-vintf.patch
-  cp .config.BCM2708 $WRT_PATH/.config
 fi
 

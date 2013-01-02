@@ -1,0 +1,11 @@
+Index: target/linux/brcm2708/base-files/etc/config/network
+===================================================================
+--- target/linux/brcm2708/base-files/etc/config/network	(revision 34778)
++++ target/linux/brcm2708/base-files/etc/config/network	(working copy)
+@@ -9,5 +9,5 @@
+ config interface lan
+ 	option ifname	eth0
+ 	option proto	static
+-	option ipaddr	192.168.1.1
++	option ipaddr	192.168.200.1
+ 	option netmask	255.255.255.0
