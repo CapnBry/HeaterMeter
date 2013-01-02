@@ -1,0 +1,14 @@
+--- 8192cu/include/autoconf.h.orig	2012-12-27 15:42:26.265902118 -0500
++++ 8192cu/include/autoconf.h	2012-12-27 15:43:09.750503696 -0500
+@@ -253,9 +253,9 @@
+ //#define CONFIG_DEBUG_RTL871X
+ 
+ #define DBG	0
+-#define CONFIG_DEBUG_RTL819X
++//#define CONFIG_DEBUG_RTL819X
+ 
+-#define CONFIG_PROC_DEBUG	1
++//#define CONFIG_PROC_DEBUG	1
+ 
+ //#define DBG_IO
+ //#define DBG_DELAY_OS
