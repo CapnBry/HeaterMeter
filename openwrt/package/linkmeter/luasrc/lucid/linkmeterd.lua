@@ -376,6 +376,8 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
       cm["al_probe"] = probeIdx
       cm["al_type"] = alarmType
       cm["al_thresh"] = thresh
+      cm["pn"] = cm["pn"..probeIdx]
+      cm["pcurr"] = cm["pcurr"..probeIdx]
       nixio.exece("/usr/share/linkmeter/alarm", {}, cm)
     end
     alarmType = '"'..alarmType..'"'
