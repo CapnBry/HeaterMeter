@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
-# OpenWrt version: Attitude Adjustment (r34879)
-# Wed Jan  2 11:05:10 2013
+# OpenWrt version: Attitude Adjustment (r35384)
+# Tue Jan 29 11:42:18 2013
 #
 CONFIG_HAVE_DOT_CONFIG=y
 # CONFIG_TARGET_ppc40x is not set
@@ -1286,7 +1286,7 @@ CONFIG_PACKAGE_libgcc=y
 CONFIG_PACKAGE_libpthread=y
 CONFIG_PACKAGE_librt=y
 # CONFIG_PACKAGE_libstdcpp is not set
-CONFIG_PACKAGE_mtd=y
+# CONFIG_PACKAGE_mtd is not set
 CONFIG_PACKAGE_netifd=y
 # CONFIG_PACKAGE_om-watchdog is not set
 CONFIG_PACKAGE_opkg=y
@@ -1309,15 +1309,16 @@ CONFIG_PACKAGE_libext2fs=y
 # CONFIG_PACKAGE_libfuse is not set
 # CONFIG_PACKAGE_libow is not set
 # CONFIG_PACKAGE_libow-capi is not set
+# CONFIG_PACKAGE_libsysfs is not set
 
 #
 # Firewall
 #
-CONFIG_PACKAGE_libip4tc=y
+# CONFIG_PACKAGE_libip4tc is not set
 # CONFIG_PACKAGE_libip6tc is not set
 # CONFIG_PACKAGE_libipq is not set
 # CONFIG_PACKAGE_libiptc is not set
-CONFIG_PACKAGE_libxtables=y
+# CONFIG_PACKAGE_libxtables is not set
 
 #
 # SSL
@@ -1346,13 +1347,18 @@ CONFIG_PACKAGE_libavahi=y
 CONFIG_PACKAGE_libblkid=y
 CONFIG_PACKAGE_libblobmsg-json=y
 # CONFIG_PACKAGE_libbz2 is not set
+# CONFIG_PACKAGE_libcharset is not set
 # CONFIG_PACKAGE_libcurl is not set
 CONFIG_PACKAGE_libdaemon=y
 # CONFIG_PACKAGE_libdb47 is not set
-# CONFIG_PACKAGE_libdb47xx is not set
 # CONFIG_PACKAGE_libdbi is not set
-CONFIG_PACKAGE_libdbus=y
+# CONFIG_PACKAGE_libdbus is not set
 # CONFIG_PACKAGE_libelf is not set
+# CONFIG_PACKAGE_libevent2 is not set
+# CONFIG_PACKAGE_libevent2-core is not set
+# CONFIG_PACKAGE_libevent2-extra is not set
+# CONFIG_PACKAGE_libevent2-openssl is not set
+# CONFIG_PACKAGE_libevent2-pthreads is not set
 # CONFIG_PACKAGE_libexif is not set
 CONFIG_PACKAGE_libexpat=y
 # CONFIG_PACKAGE_libffmpeg-custom is not set
@@ -1363,8 +1369,12 @@ CONFIG_PACKAGE_libexpat=y
 # CONFIG_PACKAGE_libgd is not set
 CONFIG_PACKAGE_libgdbm=y
 # CONFIG_PACKAGE_libgpg-error is not set
+# CONFIG_PACKAGE_libiconv is not set
+# CONFIG_PACKAGE_libiconv-full is not set
 # CONFIG_PACKAGE_libid3tag is not set
 # CONFIG_PACKAGE_libiksemel is not set
+# CONFIG_PACKAGE_libintl is not set
+# CONFIG_PACKAGE_libintl-full is not set
 # CONFIG_PACKAGE_libiw is not set
 CONFIG_PACKAGE_libiwinfo=y
 # CONFIG_PACKAGE_libjpeg is not set
@@ -1387,6 +1397,7 @@ CONFIG_PACKAGE_libnl-tiny=y
 # CONFIG_PACKAGE_liboping is not set
 # CONFIG_PACKAGE_libpcap is not set
 # CONFIG_PACKAGE_libpng is not set
+# CONFIG_PACKAGE_libpopt is not set
 # CONFIG_PACKAGE_libreadline is not set
 # CONFIG_PACKAGE_librpc is not set
 CONFIG_PACKAGE_librrd=y
@@ -1408,7 +1419,7 @@ CONFIG_PACKAGE_libuuid=y
 # CONFIG_PACKAGE_libxml2 is not set
 # CONFIG_PACKAGE_linux-atm is not set
 # CONFIG_PACKAGE_terminfo is not set
-CONFIG_PACKAGE_uclibcxx=m
+# CONFIG_PACKAGE_uclibcxx is not set
 CONFIG_PACKAGE_zlib=y
 
 #
@@ -1461,7 +1472,7 @@ CONFIG_PACKAGE_avahi-daemon=y
 #
 # SSH
 #
-CONFIG_PACKAGE_openssh-client=m
+# CONFIG_PACKAGE_openssh-client is not set
 # CONFIG_PACKAGE_openssh-client-utils is not set
 # CONFIG_PACKAGE_openssh-keygen is not set
 # CONFIG_PACKAGE_openssh-moduli is not set
@@ -1491,11 +1502,8 @@ CONFIG_PACKAGE_openssh-client=m
 #
 # CONFIG_PACKAGE_polipo is not set
 # CONFIG_PACKAGE_tinyproxy is not set
-CONFIG_PACKAGE_uhttpd=m
+# CONFIG_PACKAGE_uhttpd is not set
 # CONFIG_PACKAGE_uhttpd_debug is not set
-# CONFIG_PACKAGE_uhttpd-mod-lua is not set
-# CONFIG_PACKAGE_uhttpd-mod-tls is not set
-# CONFIG_PACKAGE_uhttpd-mod-ubus is not set
 # CONFIG_PACKAGE_crda is not set
 # CONFIG_PACKAGE_etherwake is not set
 # CONFIG_PACKAGE_genl is not set
@@ -1505,9 +1513,10 @@ CONFIG_PACKAGE_hostapd=y
 # CONFIG_PACKAGE_httping is not set
 # CONFIG_PACKAGE_httping-nossl is not set
 # CONFIG_PACKAGE_ifenslave is not set
+# CONFIG_PACKAGE_iperf is not set
+# CONFIG_PACKAGE_iperf-mt is not set
 CONFIG_PACKAGE_iw=y
 # CONFIG_PACKAGE_mac-to-devinfo is not set
-CONFIG_PACKAGE_minissdpd=m
 # CONFIG_PACKAGE_multiwan is not set
 # CONFIG_PACKAGE_netdiscover is not set
 # CONFIG_PACKAGE_noping is not set
@@ -1516,6 +1525,8 @@ CONFIG_PACKAGE_minissdpd=m
 # CONFIG_PACKAGE_ppp is not set
 # CONFIG_PACKAGE_ppp-multilink is not set
 # CONFIG_PACKAGE_rssileds is not set
+# CONFIG_PACKAGE_samba36-client is not set
+# CONFIG_PACKAGE_samba36-server is not set
 # CONFIG_PACKAGE_snmp-utils is not set
 # CONFIG_PACKAGE_snmpd is not set
 # CONFIG_PACKAGE_snmpd-static is not set
@@ -1581,6 +1592,7 @@ CONFIG_PACKAGE_luci-mod-admin-full=y
 # CONFIG_PACKAGE_luci-app-diag-core is not set
 # CONFIG_PACKAGE_luci-app-diag-devinfo is not set
 # CONFIG_PACKAGE_luci-app-firewall is not set
+# CONFIG_PACKAGE_luci-app-freifunk-diagnostics is not set
 # CONFIG_PACKAGE_luci-app-freifunk-policyrouting is not set
 # CONFIG_PACKAGE_luci-app-freifunk-widgets is not set
 # CONFIG_PACKAGE_luci-app-hd-idle is not set
@@ -1694,7 +1706,6 @@ CONFIG_PACKAGE_luci-lib-web=y
 #
 # CONFIG_PACKAGE_kmod-aoe is not set
 # CONFIG_PACKAGE_kmod-block2mtd is not set
-# CONFIG_PACKAGE_kmod-broadcom-sdhc26 is not set
 # CONFIG_PACKAGE_kmod-dm is not set
 # CONFIG_PACKAGE_kmod-libsas is not set
 # CONFIG_PACKAGE_kmod-loop is not set
@@ -1707,11 +1718,11 @@ CONFIG_PACKAGE_luci-lib-web=y
 #
 # Cryptographic API modules
 #
-CONFIG_PACKAGE_kmod-crypto-core=m
 CONFIG_PACKAGE_kmod-crypto-aes=m
 CONFIG_PACKAGE_kmod-crypto-arc4=m
 # CONFIG_PACKAGE_kmod-crypto-authenc is not set
 # CONFIG_PACKAGE_kmod-crypto-cbc is not set
+CONFIG_PACKAGE_kmod-crypto-core=m
 # CONFIG_PACKAGE_kmod-crypto-crc32c is not set
 # CONFIG_PACKAGE_kmod-crypto-deflate is not set
 # CONFIG_PACKAGE_kmod-crypto-des is not set
@@ -2066,6 +2077,7 @@ CONFIG_PACKAGE_e2fsprogs=y
 # CONFIG_PACKAGE_owfs is not set
 # CONFIG_PACKAGE_owshell is not set
 CONFIG_PACKAGE_resize2fs=y
+# CONFIG_PACKAGE_sysfsutils is not set
 # CONFIG_PACKAGE_tune2fs is not set
 
 #
@@ -2118,6 +2130,7 @@ CONFIG_PACKAGE_resize2fs=y
 # CONFIG_PACKAGE_getopt is not set
 # CONFIG_PACKAGE_gpioctl is not set
 # CONFIG_PACKAGE_hwclock is not set
+# CONFIG_PACKAGE_iconv is not set
 # CONFIG_PACKAGE_iwcap is not set
 CONFIG_PACKAGE_iwinfo=y
 # CONFIG_PACKAGE_jpeg-tools is not set
@@ -2136,7 +2149,6 @@ CONFIG_PACKAGE_linkmeter=y
 # CONFIG_PACKAGE_mount-utils is not set
 # CONFIG_PACKAGE_mountd is not set
 # CONFIG_PACKAGE_namei is not set
-CONFIG_PACKAGE_nbench-byte=m
 # CONFIG_PACKAGE_ocf-crypto-headers is not set
 # CONFIG_PACKAGE_openssl-util is not set
 # CONFIG_PACKAGE_owipcalc is not set
