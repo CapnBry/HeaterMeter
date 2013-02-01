@@ -9,7 +9,6 @@ local function isexec_cfgvalue(self)
 end
 
 local function isexec_write(self, section, value)
-  print("Write " .. self.fname .. " " .. value)
   local curmode = luci.fs.stat(SCRIPT_PATH .. self.fname).modedec
   value = value == "1" and "755" or "644"
   if value ~= mode then
