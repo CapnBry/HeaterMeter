@@ -35,7 +35,12 @@ local scriptitems = {
   { fname = "all", title = "All Alarm Script", desc =
     [[This script is run when HeaterMeter signals any alarm before any
     specific script below is executed. If the 'All' script returns non-zero
-    the alarm-specific script will not be run.]] },
+    the alarm-specific script will not be run.
+    <a href="https://github.com/CapnBry/HeaterMeter/wiki/Alarm-Script-Recipes"
+     target="wiki">
+    Example scripts</a>
+    can be found in the HeaterMeter wiki.
+    ]] },
   } 
 
 --local lm = LmClient() 
