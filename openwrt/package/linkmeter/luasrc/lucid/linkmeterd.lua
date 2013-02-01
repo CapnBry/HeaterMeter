@@ -531,8 +531,9 @@ local function segLmReboot(line)
   return "OK"
 end
 
-local function segLmIdentifier(line)
-  return hmConfig and hmConfig.ucid or "Unknown";
+local function segLmGet(line)
+  local vals = segSplit(line)
+  return hmConfig and hmConfig[vals[1]] or vals[2] or ""
 end
 
 local function segLmRfStatus(line)
@@ -632,13 +633,13 @@ local segmentMap = {
   ["$HMRM"] = segRfMap,
   ["$HMSU"] = segStateUpdate,
   ["$UCID"] = segUcIdentifier,
-  
+
+  ["$LMGT"] = segLmGet,
   ["$LMST"] = segLmSet,
   ["$LMSU"] = segLmStateUpdate,
   ["$LMRB"] = segLmReboot,
   ["$LMRF"] = segLmRfStatus,
   ["$LMDC"] = segLmDaemonControl,
-  ["$LMID"] = segLmIdentifier,
   ["$LMCF"] = segLmConfig,
   ["$LMUP"] = segLmUnknownProbe
   -- $LMSS
