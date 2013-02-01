@@ -1,16 +1,21 @@
 module("luci.controller.linkmeter.lmadmin", package.seeall)
 
 function index()
-  entry({"admin", "lm"}, alias("admin", "lm", "conf"), "LinkMeter",60).index = true
+  local node = entry({"admin", "lm"}, alias("admin", "lm", "conf"), "LinkMeter",60)
+  node.index = true
   entry({"admin", "lm", "home"}, template("linkmeter/index"), "Home", 10)
   entry({"admin", "lm", "conf"}, template("linkmeter/conf"), "Configuration", 20)
-  entry({"admin", "lm", "archive"}, template("linkmeter/archive"), "Archive", 30)
-  entry({"admin", "lm", "fw"}, call("action_fw"), "AVR Firmware", 40)
-  entry({"admin", "lm", "credits"}, template("linkmeter/credits"), "Credits", 50)
+  entry({"admin", "lm", "archive"}, template("linkmeter/archive"), "Archive", 40)
+  entry({"admin", "lm", "fw"}, call("action_fw"), "AVR Firmware", 50)
+  entry({"admin", "lm", "credits"}, template("linkmeter/credits"), "Credits", 60)
 
   entry({"admin", "lm", "stashdb"}, call("action_stashdb"))
   entry({"admin", "lm", "reboot"}, call("action_reboot"))
   entry({"admin", "lm", "set"}, call("action_set"))
+  
+  if node.inreq and nixio.fs.access("/usr/share/linkmeter/alarm") then
+    entry({"admin", "lm", "alarms"}, form("linkmeter/alarms"), "Alarm Scripts", 30)
+  end
 end
 
 function action_fw()
