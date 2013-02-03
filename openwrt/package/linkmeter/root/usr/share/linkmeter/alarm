@@ -1,10 +1,23 @@
 #!/bin/sh
 
+al_set() {
+  local AL="LMST,al,"
+  local PREMAIN=$al_probe
+  local VAL=$1
+
+  while [ $PREMAIN -gt 0 ] ; do
+    AL="${AL},,"
+    PREMAIN=$((PREMAIN-1))
+  done
+    
+  [ "$al_type" == "H" ] && AL="${AL},"
+  lmclient ${AL}${1}
+}
+
 cd `dirname $0`
-for SCR in "alarm-${al_probe}${al_type}" "alarm-all" ; do
+for SCR in "alarm-all" "alarm-${al_probe}${al_type}" ; do
   if [ -x "$SCR" ] ; then
-    ./$SCR
-    exit
+    . ./$SCR 2>&1 | logger -t lmalarm
+    [ $? -ne 0 ] && exit $?
   fi
 done
-
