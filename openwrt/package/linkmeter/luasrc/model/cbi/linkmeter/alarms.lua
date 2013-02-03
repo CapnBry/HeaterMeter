@@ -1,23 +1,23 @@
 require "luci.fs"
 require "luci.sys"
-require "luci.util"
 require "lmclient"
 
 local SCRIPT_PATH = "/usr/share/linkmeter/alarm-"
 local function isexec_cfgvalue(self)
-  return luci.fs.access(SCRIPT_PATH .. self.fname, "x") and "1"
+  return luci.fs.access(SCRIPT_PATH .. self.config, "x") and "1"
 end
 
 local function isexec_write(self, section, value)
-  local curmode = luci.fs.stat(SCRIPT_PATH .. self.fname).modedec
-  value = value == "1" and "755" or "644"
-  if value ~= mode then
-    luci.fs.chmod(SCRIPT_PATH .. self.fname, value)
+  self.value = value
+  local curmode = luci.fs.stat(SCRIPT_PATH .. self.config)
+  value = value == "1" and 755 or 644
+  if curmode and curmode.modedec ~= value then
+    luci.fs.chmod(SCRIPT_PATH .. self.config, value)
   end
 end
 
 local function script_cfgvalue(self)
-  return luci.fs.readfile(SCRIPT_PATH .. self.fname) or ""
+  return luci.fs.readfile(SCRIPT_PATH .. self.config) or ""
 end
 
 local function script_write(self, section, value)
@@ -26,7 +26,10 @@ local function script_write(self, section, value)
   local old = self:cfgvalue()
   value = value:gsub("\r\n", "\n")
   if old ~= value then
-    luci.fs.writefile(SCRIPT_PATH .. self.fname, value)
+    luci.fs.writefile(SCRIPT_PATH .. self.config, value)
+    -- If there was no file previously re-call the isexec handler
+    -- as it executes before this handler and there was not a file then
+    if old == "" then self.isexec:write(section, self.isexec.value) end
   end
 end
 
@@ -58,15 +61,14 @@ local retVal = {}
 for i, item in pairs(scriptitems) do
   local f = SimpleForm(item.fname, item.title, item.desc)
 
-  local fld = f:field(Flag, "isexec", "Execute on alarm")
-    fld.fname = item.fname
-    fld.default = "0"
-    fld.rmempty = nil
-    fld.cfgvalue = isexec_cfgvalue
-    fld.write = isexec_write
+  local isexec = f:field(Flag, "isexec", "Execute on alarm")
+    isexec.default = "0"
+    isexec.rmempty = nil
+    isexec.cfgvalue = isexec_cfgvalue
+    isexec.write = isexec_write
 
-  fld = f:field(TextValue, "script")
-    fld.fname = item.fname
+  local fld = f:field(TextValue, "script")
+    fld.isexec = isexec
     fld.rmempty = nil
     fld.optional = true
     fld.rows = 10
