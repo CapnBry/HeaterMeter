@@ -3,7 +3,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=linkmeter
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_BUILD_PARALLEL:=1
 
@@ -57,6 +57,8 @@ define Package/linkmeter/install
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/controller/linkmeter/* $(1)/usr/lib/lua/luci/controller/linkmeter/
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/linkmeter
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/view/linkmeter/* $(1)/usr/lib/lua/luci/view/linkmeter/
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/model/cbi/linkmeter
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/model/cbi/linkmeter/* $(1)/usr/lib/lua/luci/model/cbi/linkmeter/
 endef
 
 define Package/linkmeter/postinst
