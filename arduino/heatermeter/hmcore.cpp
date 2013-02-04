@@ -45,7 +45,7 @@ static unsigned char rfMap[TEMP_COUNT];
 #endif /* HEATERMETER_RFM12 */
 
 static unsigned char g_AlarmId; // ID of alarm going off
-static unsigned char g_homeBigProbe;
+static unsigned char g_HomeDisplayMode;
 unsigned char g_LcdBacklight; // 0-100
 
 #define config_store_byte(eeprom_field, src) { eeprom_write_byte((uint8_t *)offsetof(__eeprom_data, eeprom_field), src); }
@@ -68,7 +68,7 @@ static const struct __eeprom_data {
   unsigned char minFanSpeed;  // in percent
   unsigned char maxFanSpeed;  // in percent
   boolean invertPwm;
-  unsigned char homeBigProbe;
+  unsigned char homeDisplayMode;
 } DEFAULT_CONFIG PROGMEM = { 
   EEPROM_MAGIC,  // magic
   225,  // setpoint
@@ -84,7 +84,7 @@ static const struct __eeprom_data {
   10,   // min fan speed  
   100,  // max fan speed
   false, // invert PWM
-  0xff   // No bignum home
+  0xff   // 2-line home
 };
 
 // EEPROM address of the start of the probe structs, the 2 bytes before are magic
@@ -355,16 +355,22 @@ static void lcdPrintBigNum(float val)
   } while (x != 0);
 }
 
+static boolean isMenuHomeState(void)
+{
+  state_t state = Menus.getState();
+  return (state >= ST_HOME_FOOD1 && state <= ST_HOME_ALARM);
+}
+
 void updateDisplay(void)
 {
   // Updates to the temperature can come at any time, only update 
   // if we're in a state that displays them
   state_t state = Menus.getState();
-  if (state < ST_HOME_FOOD1 || state > ST_HOME_ALARM)
+  if (!isMenuHomeState())
     return;
 
   char buffer[17];
-  unsigned char probeIndex;
+  unsigned char probeIdxLow, probeIdxHigh;
 
   // Fixed pit area
   lcd.setCursor(0, 0);
@@ -376,16 +382,16 @@ void updateDisplay(void)
     else
       lcdprint_P(PSTR("** ALARM HIGH **"), false);
 
-    probeIndex = ALARM_ID_TO_PROBE(g_AlarmId);
+    probeIdxLow = probeIdxHigh = ALARM_ID_TO_PROBE(g_AlarmId);
   }  /* if ST_HOME_ALARM */
   else
   {
     toneEnable(false);
 
     /* Big Number probes overwrite the whole display if it has a temperature */
-    if (g_homeBigProbe != 0xff)
+    if (g_HomeDisplayMode >= TEMP_PIT && g_HomeDisplayMode <= TEMP_AMB)
     {
-      TempProbe *probe = pid.Probes[g_homeBigProbe];
+      TempProbe *probe = pid.Probes[g_HomeDisplayMode];
       if (probe->hasTemperature())
       {
         lcdPrintBigNum(probe->Temperature);
@@ -418,25 +424,37 @@ void updateDisplay(void)
     }
 
     lcd.print(buffer);
-    probeIndex = state - ST_HOME_FOOD1 + TEMP_FOOD1;
+    // Display mode 0xff is 2-line, which only has space for 1 non-pit value
+    if (g_HomeDisplayMode == 0xff)
+      probeIdxLow = probeIdxHigh = state - ST_HOME_FOOD1 + TEMP_FOOD1;
+    else
+    {
+      // Display mode 0xfe is 4 line home, display 3 other temps there
+      probeIdxLow = TEMP_FOOD1;
+      probeIdxHigh = TEMP_AMB;
+    }
   } /* if !ST_HOME_ALARM */
 
   // Rotating probe display
-  if (probeIndex < TEMP_COUNT)
+  for (unsigned char probeIndex=probeIdxLow; probeIndex<=probeIdxHigh; ++probeIndex)
   {
-    loadProbeName(probeIndex);
-    snprintf_P(buffer, sizeof(buffer), PSTR("%-12s%3d"DEGREE), editString, (int)pid.Probes[probeIndex]->Temperature);
-  }
-  else
-  {
-    // If probeIndex is outside the range (in the case of ST_HOME_NOPROBES)
-    // just fill the bottom line with spaces
-    memset(buffer, ' ', sizeof(buffer));
-    buffer[sizeof(buffer) - 1] = '\0';
-  }
+    if (probeIndex < TEMP_COUNT && pid.Probes[probeIndex]->hasTemperature())
+    {
+      loadProbeName(probeIndex);
+      snprintf_P(buffer, sizeof(buffer), PSTR("%-12s%3d"DEGREE), editString,
+        (int)pid.Probes[probeIndex]->Temperature);
+    }
+    else
+    {
+      // If probeIndex is outside the range (in the case of ST_HOME_NOPROBES)
+      // just fill the bottom line with spaces
+      memset(buffer, ' ', sizeof(buffer));
+      buffer[sizeof(buffer) - 1] = '\0';
+    }
 
-  lcd.setCursor(0, 1);
-  lcd.print(buffer);
+    lcd.setCursor(0, probeIndex - probeIdxLow + 1);
+    lcd.print(buffer);
+  }
 }
 
 void lcdprint_P(const prog_char *p, const boolean doClear)
@@ -623,7 +641,7 @@ void reportLcdParameters(void)
   print_P(PSTR("HMLB" CSV_DELIMITER));
   SerialX.print(g_LcdBacklight, DEC);
   Serial_csv();
-  SerialX.print(g_homeBigProbe, DEC);
+  SerialX.print(g_HomeDisplayMode, DEC);
   Serial_nl();
 }
 
@@ -635,8 +653,11 @@ void storeLcdParam(unsigned char idx, int val)
       storeLcdBacklight(val);
       break;
     case 1:
-      g_homeBigProbe = val;
-      config_store_byte(homeBigProbe, g_homeBigProbe);
+      g_HomeDisplayMode = val;
+      config_store_byte(homeDisplayMode, g_HomeDisplayMode);
+      // If we're in home, clear in case we're switching from 4 to 2
+      if (isMenuHomeState())
+        lcd.clear();
       break;
   }
 }
@@ -1142,7 +1163,7 @@ static void eepromLoadBaseConfig(boolean forceDefault)
   pid.setMaxFanSpeed(config.maxFanSpeed);
   pid.setMinFanSpeed(config.minFanSpeed);
   pid.setInvertPwm(config.invertPwm);
-  g_homeBigProbe = config.homeBigProbe;
+  g_HomeDisplayMode = config.homeDisplayMode;
   
 #ifdef HEATERMETER_RFM12
   memcpy(rfMap, config.rfMap, sizeof(rfMap));
