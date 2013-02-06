@@ -50,6 +50,8 @@ if [ "$TARGET" == "BCM47XX" ] ; then
 fi
 
 if [ "$TARGET" == "BCM2708" ] ; then
+  patch -N -p0 -d $WRT_PATH < patches/0600-rpi-patches-999b9c7a-4cdeb7b0.patch
+  patch -N -p0 -d $WRT_PATH < patches/0700-bcm2708-tweaks.patch
   patch -N -p0 -d $WRT_PATH < patches/110-default-netaddress-brcm2708.patch
   patch -N -p0 -d $WRT_PATH < patches/220-iwinfo-nl80211-over-wext.patch
   patch -N -p0 -d $WRT_PATH < patches/225-iwinfo-scan-wo-vintf.patch

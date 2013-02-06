@@ -1,0 +1,156 @@
+Index: target/linux/brcm2708/image/gen_rpi_sdcard_img.sh
+===================================================================
+--- target/linux/brcm2708/image/gen_rpi_sdcard_img.sh	(revision 35471)
++++ target/linux/brcm2708/image/gen_rpi_sdcard_img.sh	(working copy)
+@@ -12,7 +12,7 @@
+ BOOTFSSIZE="$4"
+ ROOTFSSIZE="$5"
+ 
+-head=4
++head=255
+ sect=63
+ 
+ set `ptgen -o $OUTPUT -h $head -s $sect -l 4096 -t c -p ${BOOTFSSIZE}M -t 83 -p ${ROOTFSSIZE}M`
+Index: target/linux/brcm2708/image/cmdline.txt
+===================================================================
+--- target/linux/brcm2708/image/cmdline.txt	(revision 35471)
++++ target/linux/brcm2708/image/cmdline.txt	(working copy)
+@@ -1 +1 @@
+-dwc_otg.lpm_enable=0 rpitestmode=1 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
++dwc_otg.lpm_enable=0 rpitestmode=1 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
+Index: target/linux/brcm2708/image/Makefile
+===================================================================
+--- target/linux/brcm2708/image/Makefile	(revision 35471)
++++ target/linux/brcm2708/image/Makefile	(working copy)
+@@ -20,9 +20,9 @@
+ 
+ 	mkdosfs $(KDIR)/boot.img -C $(FAT32_BLOCKS)
+ 	# Raspberry Pi has no bootloader, instead the GPU loads and starts the kernel
+-	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm128_start.elf ::
+-	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm192_start.elf ::
+-	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm224_start.elf ::
++	#mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm128_start.elf ::
++	#mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm192_start.elf ::
++	#mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm224_start.elf ::
+ 	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/bootcode.bin ::
+ 	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/COPYING.linux ::
+ 	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/LICENCE.broadcom ::
+@@ -36,7 +36,7 @@
+ 
+ define Image/Build
+ 	$(CP) $(KDIR)/root.$(1) $(BIN_DIR)/$(IMG_PREFIX)-$(1).img
+-	$(CP) $(KDIR)/Image $(BIN_DIR)/$(IMG_PREFIX)-Image
++	#$(CP) $(KDIR)/Image $(BIN_DIR)/$(IMG_PREFIX)-Image
+ 
+ 	$(call Image/Build/RaspberryPi,$(1),128)
+ 	$(call Image/Build/RaspberryPi,$(1),192)
+Index: target/linux/brcm2708/config-3.3
+===================================================================
+--- target/linux/brcm2708/config-3.3	(revision 35471)
++++ target/linux/brcm2708/config-3.3	(working copy)
+@@ -41,6 +41,7 @@
+ CONFIG_BLK_DEV_SD=y
+ # CONFIG_CACHE_L2X0 is not set
+ CONFIG_CLKDEV_LOOKUP=y
++CONFIG_CLKSRC_MMIO=y
+ CONFIG_CMDLINE="dwc_otg.lpm_enable=0 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 root=/dev/mmcblk0p2 rootfstype=ext3 rootwait"
+ CONFIG_CMDLINE_FROM_BOOTLOADER=y
+ CONFIG_CONFIGFS_FS=y
+@@ -80,6 +81,7 @@
+ CONFIG_EXT4_FS=y
+ CONFIG_EXT4_FS_POSIX_ACL=y
+ CONFIG_EXT4_FS_SECURITY=y
++CONFIG_FAT_FS=y
+ CONFIG_FB=y
+ CONFIG_FB_BCM2708=y
+ CONFIG_FB_CFB_COPYAREA=y
+@@ -137,6 +139,7 @@
+ CONFIG_HAVE_PERF_EVENTS=y
+ CONFIG_HAVE_PROC_CPU=y
+ CONFIG_HAVE_REGS_AND_STACK_ACCESS_API=y
++CONFIG_HAVE_SCHED_CLOCK=y
+ CONFIG_HAVE_SPARSE_IRQ=y
+ CONFIG_HW_CONSOLE=y
+ CONFIG_IKCONFIG=y
+@@ -151,8 +154,8 @@
+ CONFIG_KERNEL_GZIP=y
+ # CONFIG_KERNEL_XZ is not set
+ CONFIG_KTIME_SCALAR=y
++# CONFIG_LCD_AMS369FG06 is not set
+ CONFIG_LCD_CLASS_DEVICE=m
+-# CONFIG_LCD_AMS369FG06 is not set
+ # CONFIG_LCD_L4F00242T03 is not set
+ # CONFIG_LCD_LD9040 is not set
+ # CONFIG_LCD_LMS283GF05 is not set
+@@ -168,7 +171,6 @@
+ CONFIG_LOGO_LINUX_CLUT224=y
+ # CONFIG_LOGO_LINUX_MONO is not set
+ # CONFIG_LOGO_LINUX_VGA16 is not set
+-CONFIG_LOG_BUF_SHIFT=17
+ CONFIG_MACH_BCM2708=y
+ CONFIG_MAC_PARTITION=y
+ CONFIG_MAGIC_SYSRQ=y
+@@ -182,13 +184,16 @@
+ CONFIG_MMC_SDHCI_BCM2708_DMA=y
+ CONFIG_MMC_SDHCI_IO_ACCESSORS=y
+ CONFIG_MMC_SDHCI_PLTFM=y
++CONFIG_MSDOS_FS=y
+ # CONFIG_MTD is not set
+ CONFIG_NEED_DMA_MAP_STATE=y
+ CONFIG_NEED_MACH_MEMORY_H=y
+ CONFIG_NEED_PER_CPU_KM=y
+ CONFIG_NLS=y
+ CONFIG_NLS_ASCII=y
++CONFIG_NLS_CODEPAGE_437=y
+ CONFIG_NLS_DEFAULT="utf8"
++CONFIG_NLS_ISO8859_1=y
+ CONFIG_NO_HZ=y
+ CONFIG_OABI_COMPAT=y
+ CONFIG_PAGEFLAGS_EXTENDED=y
+@@ -238,6 +243,7 @@
+ CONFIG_USB_UAS=y
+ CONFIG_USB_USBNET=y
+ CONFIG_VECTORS_BASE=0xffff0000
++CONFIG_VFAT_FS=y
+ CONFIG_VFP=y
+ CONFIG_VT=y
+ CONFIG_VT_CONSOLE=y
+Index: target/linux/brcm2708/base-files/etc/inittab
+===================================================================
+--- target/linux/brcm2708/base-files/etc/inittab	(revision 35471)
++++ target/linux/brcm2708/base-files/etc/inittab	(working copy)
+@@ -1,5 +1,5 @@
+ ::sysinit:/etc/init.d/rcS S boot
+ ::shutdown:/etc/init.d/rcS K shutdown
+ tts/0::askfirst:/bin/ash --login
+-ttyAMA0::askfirst:/bin/ash --login
++#ttyAMA0::askfirst:/bin/ash --login
+ tty1::askfirst:/bin/ash --login
+Index: target/linux/brcm2708/Makefile
+===================================================================
+--- target/linux/brcm2708/Makefile	(revision 35471)
++++ target/linux/brcm2708/Makefile	(working copy)
+@@ -23,6 +23,7 @@
+ 	Currently produces SD Card image for Raspberry Pi.
+ endef
+ 
+-CFLAGS:=-pipe -march=armv6 -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=softfp -marm
++#CFLAGS:=-pipe -march=armv6 -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=softfp -marm
++CFLAGS:=-pipe -march=armv6zk -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard -marm
+ 
+ $(eval $(call BuildTarget))
+Index: package/brcm2708-gpu-fw/Makefile
+===================================================================
+--- package/brcm2708-gpu-fw/Makefile	(revision 35471)
++++ package/brcm2708-gpu-fw/Makefile	(working copy)
+@@ -8,8 +8,8 @@
+ include $(INCLUDE_DIR)/kernel.mk
+ 
+ PKG_NAME:=brcm2708-gpu-fw
+-PKG_REV:=29ce6bcf278e7e79cd8a2b84c6aa9db9864ca91d
+-PKG_VERSION:=20120529
++PKG_REV:=02cda903bd918190acbde4acd5d63aa97ecd444f
++PKG_VERSION:=20120819
+ PKG_RELEASE:=1
+ 
+ PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
