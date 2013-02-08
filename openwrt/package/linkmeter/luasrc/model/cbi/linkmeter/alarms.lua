@@ -42,7 +42,9 @@ local scriptitems = {
      target="wiki">
     Example scripts</a>
     can be found in the HeaterMeter wiki.
-    ]] },
+    If using sendmail in your scripts, make sure your <a href="]] ..
+    luci.dispatcher.build_url("admin/services/msmtp") ..
+    [[">SMTP Client</a> is configured as well.]] },
   } 
 
 --local lm = LmClient() 
