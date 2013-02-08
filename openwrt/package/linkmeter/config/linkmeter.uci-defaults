@@ -45,5 +45,10 @@ fi
 uci set luci.ccache.enable=$LUCI_CCACHE
 uci commit luci
 
+# Include any alarm scripts in the backup file
+ALARMS="/usr/share/linkmeter/alarm-"
+grep $ALARMS /etc/sysupgrade.conf > /dev/null || \
+  echo "${ALARMS}*" >> /etc/sysupgrade.conf
+
 # On applicable platforms, avrupdate loads HeaterMeter onto the AVR
 avrupdate
