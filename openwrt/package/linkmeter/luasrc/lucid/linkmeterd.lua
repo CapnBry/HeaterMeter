@@ -533,7 +533,11 @@ end
 
 local function segLmGet(line)
   local vals = segSplit(line)
-  return hmConfig and hmConfig[vals[1]] or vals[2] or ""
+  local retVal = {}
+  for i = 1, #vals, 2 do
+    retVal[#retVal+1] = hmConfig and hmConfig[vals[i]] or vals[i+1] or ""
+  end
+  return table.concat(retVal, '\n')
 end
 
 local function segLmRfStatus(line)

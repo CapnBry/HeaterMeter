@@ -47,17 +47,20 @@ local scriptitems = {
     [[">SMTP Client</a> is configured as well.]] },
   } 
 
---local lm = LmClient() 
-for i = 0, 3 do
-  local pname = "" -- lm:query("$LMGT,pn"..i)
-  if pname ~= "" then pname = " (" .. pname .. ")" end
-  
-  for _, j in pairs({ "Low", "High" }) do
-    scriptitems[#scriptitems+1] = { fname = i..j:sub(1,1), 
-      title = "Probe " .. i .. " " .. j .. pname }
-  end
+-- Get the probe names (separated by newline) and split into an array
+local pnamestr = LmClient():query("$LMGT,pn0,,pn1,,pn2,,pn3") or ""
+local pnames = {}
+for p in pnamestr:gmatch("([^\n]+)\n?") do
+  pnames[#pnames+1] = p
 end
---lm:close()
+
+for i = 0, 3 do
+  local pname = pnames[i+1] or "Probe " .. i
+
+  for _, j in pairs({ "Low", "High" }) do
+    scriptitems[#scriptitems+1] = { fname = i..j:sub(1,1),
+      title = pname .. " " .. j }
+end
  
 local retVal = {}
 for i, item in pairs(scriptitems) do
