@@ -6,6 +6,7 @@
 #include <util/crc16.h>
 #include <avr/eeprom.h>
 #include <avr/sleep.h>
+#include <util/atomic.h>
 #include <Arduino.h> // Arduino 1.0
 
 // #define OPTIMIZE_SPI 1  // uncomment this to write to the RFM12B @ 8 Mhz
@@ -336,8 +337,11 @@ static void rf12_recvStart () {
     rf12_crc = 0;
     rf12_len = 0xff;
     rxstate = TXRECV;
-    rf12_setDrssi(3);
-    rf12_xfer(RF_RECEIVER_ON);
+    ATOMIC_BLOCK(ATOMIC_FORCEON)
+    {
+      rf12_setDrssi(3);
+      rf12_xfer(RF_RECEIVER_ON);
+    }
 }
 
 uint8_t rf12_recvDone () {
@@ -354,17 +358,23 @@ uint8_t rf12_canSend () {
     // no need to test with interrupts disabled: state TXRECV is only reached
     // outside of ISR and we don't care if rxfill jumps from 0 to 1 here
     if (rxstate == TXRECV && rxfill == 0) {
-        rf12_xfer(RF_IDLE_MODE); // stop receiver
-        rxstate = TXIDLE;
+        ATOMIC_BLOCK(ATOMIC_FORCEON)
+        {
+          rf12_xfer(RF_IDLE_MODE); // stop receiver
+          rxstate = TXIDLE;
+        }
         return 1;
     }
     return 0;
 }
 
 void rf12_sendStart() {
-    rf12_crc = 0;
-    rxstate = TXSYN1;
-    rf12_xfer(RF_XMITTER_ON); // bytes will be fed via interrupts
+    ATOMIC_BLOCK(ATOMIC_FORCEON)
+    {
+      rf12_crc = 0;
+      rxstate = TXSYN1;
+      rf12_xfer(RF_XMITTER_ON); // bytes will be fed via interrupts
+    }
 }
 
 void rf12_sendStart (const void* ptr, uint8_t len) {
