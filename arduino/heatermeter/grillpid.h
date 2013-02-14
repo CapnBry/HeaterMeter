@@ -51,16 +51,16 @@ public:
   void setHigh(int value);
   int getLow(void) const { return Thresholds[ALARM_IDX_LOW]; }
   int getHigh(void) const { return Thresholds[ALARM_IDX_HIGH]; }
-  void setDisabled(unsigned char idx) { setThreshold(idx, 0); }
   boolean getLowEnabled(void) const { return Thresholds[ALARM_IDX_LOW] > 0; }
   boolean getHighEnabled(void) const { return Thresholds[ALARM_IDX_HIGH] > 0; }
   boolean getLowRinging(void) const { return Ringing[ALARM_IDX_LOW]; }
   boolean getHighRinging(void) const { return Ringing[ALARM_IDX_HIGH]; }
   void setThreshold(unsigned char idx, int value);
   int getThreshold(unsigned char idx) const { return Thresholds[idx]; }
-  void silenceAll(void) { Ringing[ALARM_IDX_LOW] = false; Ringing[ALARM_IDX_HIGH] = false; }
+  void silenceAll(void) { setThreshold(ALARM_IDX_LOW, 0); setThreshold(ALARM_IDX_HIGH, 0); }
   int Thresholds[2];
   boolean Ringing[2];
+  boolean Armed[2];
 };
 
 class TempProbe

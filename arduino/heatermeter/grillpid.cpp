@@ -29,10 +29,21 @@ static void calcExpMovingAverage(const float smooth, float *currAverage, float n
 
 void ProbeAlarm::updateStatus(int value)
 {
-  if (getLowEnabled() && value <= getLow())
-    Ringing[ALARM_IDX_LOW] = true;
-  if (getHighEnabled() && value >= getHigh())
-    Ringing[ALARM_IDX_HIGH] = true;
+  if (getLowEnabled())
+  {
+    if (value > (getLow() + 1))
+      Armed[ALARM_IDX_LOW] = true;
+    else if (Armed[ALARM_IDX_LOW] && value <= getLow())
+      Ringing[ALARM_IDX_LOW] = true;
+  }
+
+  if (getHighEnabled())
+  {
+    if (value < (getHigh() - 1))
+      Armed[ALARM_IDX_HIGH] = true;
+    else if (Armed[ALARM_IDX_HIGH] && value >= getHigh())
+      Ringing[ALARM_IDX_HIGH] = true;
+  }
 }
 
 void ProbeAlarm::setHigh(int value)
@@ -47,16 +58,11 @@ void ProbeAlarm::setLow(int value)
 
 void ProbeAlarm::setThreshold(unsigned char idx, int value)
 {
+  Armed[idx] = false;
   Ringing[idx] = false;
-  /* 0 is a special value meaning disable the alarm, i.e. set the threshold negative */
+  /* 0 just means silence */
   if (value == 0)
-  {
-    int oldval = Thresholds[idx];
-    if (oldval < 0)
-      return;
-    else
-      value = -oldval;
-  }
+    return;
   Thresholds[idx] = value;
 }
 
