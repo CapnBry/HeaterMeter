@@ -64,7 +64,7 @@ void storeLcdBacklight(unsigned char lcdBacklight);
 void reportLcdParameters(void);
 void Debug_begin(char level = '0');
 #define Debug_end Serial_nl
-void disableRingingAlarm(void);
+void silenceRingingAlarm(void);
 
 #define LIDPARAM_OFFSET 0
 #define LIDPARAM_DURATION 1

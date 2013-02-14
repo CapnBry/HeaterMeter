@@ -18,6 +18,7 @@ static state_t menuProbeAlarmVal(button_t button);
 static state_t menuAlarmTriggered(button_t button);
 static state_t menuLcdBacklight(button_t button);
 static state_t menuToast(button_t button);
+static state_t menuAlarmAction(button_t button);
 
 #ifdef HEATERMETER_NETWORKING
 static state_t menuConnecting(button_t button);
@@ -46,6 +47,7 @@ static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_MAXFANSPEED, menuMaxFanSpeed, 10 },
   { ST_LCDBACKLIGHT, menuLcdBacklight, 10},
 #if 0
+  { ST_ALARM_ACTION, menuAlarmAction, 5 },
   { ST_PROBESUB0, menuProbeSubmenu, 10 },
   { ST_PROBESUB1, menuProbeSubmenu, 10 },
   { ST_PROBESUB2, menuProbeSubmenu, 10 },
@@ -563,15 +565,37 @@ static state_t menuProbeAlarmVal(button_t button)
 static state_t menuAlarmTriggered(button_t button)
 {
   if (button == BUTTON_ENTER)
-  {
     updateDisplay();
-  }
-  // If any physical button is pressed, clear the alarm state and return to HOME
+  // If any physical button is pressed, silence and return home
   else if (button & BUTTON_ANY)
   {
-    disableRingingAlarm();
+    silenceRingingAlarm();
     return ST_HOME_FOOD1;
   }
+
+  return ST_AUTO;
+}
+
+static state_t menuAlarmAction(button_t button)
+{
+  if (button == BUTTON_ENTER)
+  {
+    lcdprint_P(PSTR("Alarm"), true);
+    editInt = 0;
+  }
+  else if (button == BUTTON_TIMEOUT)
+    return ST_HOME_ALARM;
+  else if (button == BUTTON_LEFT || button == BUTTON_RIGHT)
+  {
+    /* False is 'silence', true is 'disable' */
+    silenceRingingAlarm(); //editInt);
+    return ST_HOME_FOOD1;
+  }
+  else if (button == BUTTON_UP || button == BUTTON_DOWN)
+    editInt = !editInt;
+
+  lcd.setCursor(0, 1);
+  lcdprint_P((editInt != 0) ? PSTR("^ Disable v") : PSTR("^ Silence v"), false);
 
   return ST_AUTO;
 }

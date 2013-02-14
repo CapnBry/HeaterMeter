@@ -18,6 +18,7 @@ enum HmMenuStates {
   ST_HOME_AMB,
   ST_HOME_NOPROBES,
   ST_HOME_ALARM,
+  ST_ALARM_ACTION,
   ST_CONNECTING,
   ST_SETPOINT,
   ST_PROBENAME1,  // ST_PROBENAMEX must stay sequential and in order

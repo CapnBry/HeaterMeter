@@ -779,17 +779,21 @@ static void storeAlarmLimits(unsigned char idx, int val)
   a.setThreshold(alarmIndex, val);
 
   unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, alarmLow));
-  if (ofs != 0)
+  if (ofs != 0 && val != 0)
   {
-    /* Read the value back because we might have just set it to 'disabled' */
-    int newVal = a.getThreshold(alarmIndex);
-    ofs += alarmIndex * sizeof(newVal);
-    eeprom_write_block(&newVal, (void *)ofs, sizeof(newVal));
+    ofs += alarmIndex * sizeof(val);
+    eeprom_write_block(&val, (void *)ofs, sizeof(val));
   }
 }
 
-void disableRingingAlarm(void)
+void silenceRingingAlarm(void)
 {
+  /*
+  unsigned char probeIndex = ALARM_ID_TO_PROBE(g_AlarmId);
+  ProbeAlarm &a = pid.Probes[probeIndex]->Alarms;
+  unsigned char alarmIndex = ALARM_ID_TO_IDX(g_AlarmId);
+  storeAlarmLimits(g_AlarmId, disable ? -a.getThreshold(alarmIndex) : 0);
+  */
   storeAlarmLimits(g_AlarmId, 0);
   reportAlarmLimits();
 }
