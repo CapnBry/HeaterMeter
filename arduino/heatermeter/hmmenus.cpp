@@ -5,7 +5,7 @@
 
 static state_t menuHome(button_t button);
 static state_t menuSetpoint(button_t button);
-//static state_t menuProbename(button_t button);
+static state_t menuProbename(button_t button);
 static state_t menuProbeOffset(button_t button);
 static state_t menuProbeSubmenu(button_t button);
 static state_t menuLidOpenOff(button_t button);
@@ -36,13 +36,6 @@ static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_HOME_ALARM, menuAlarmTriggered, 0 },
   { ST_SETPOINT, menuSetpoint, 10 },
   { ST_MANUALMODE, menuManualMode, 10 },
-  { ST_PROBESUB0, menuProbeSubmenu, 10 },
-  { ST_PROBESUB1, menuProbeSubmenu, 10 },
-  { ST_PROBESUB2, menuProbeSubmenu, 10 },
-  { ST_PROBESUB3, menuProbeSubmenu, 10 },
-//  { ST_PROBENAME1, menuProbename, 10 },
-//  { ST_PROBENAME2, menuProbename, 10 },
-//  { ST_PROBENAME3, menuProbename, 10 },
   { ST_PROBEOFF0, menuProbeOffset, 10 },
   { ST_PROBEOFF1, menuProbeOffset, 10 },
   { ST_PROBEOFF2, menuProbeOffset, 10 },
@@ -52,8 +45,17 @@ static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_RESETCONFIG, menuResetConfig, 10 },
   { ST_MAXFANSPEED, menuMaxFanSpeed, 10 },
   { ST_LCDBACKLIGHT, menuLcdBacklight, 10},
+#if 0
+  { ST_PROBESUB0, menuProbeSubmenu, 10 },
+  { ST_PROBESUB1, menuProbeSubmenu, 10 },
+  { ST_PROBESUB2, menuProbeSubmenu, 10 },
+  { ST_PROBESUB3, menuProbeSubmenu, 10 },
+  { ST_PROBENAME1, menuProbename, 10 },
+  { ST_PROBENAME2, menuProbename, 10 },
+  { ST_PROBENAME3, menuProbename, 10 },
   { ST_PALARM1_H_ON, menuProbeAlarmOn, 10 },
   { ST_PALARM1_H_VAL, menuProbeAlarmVal, 10 },
+#endif
   { ST_TOAST, menuToast, 20 },
   { 0, 0 },
 };
@@ -100,7 +102,7 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   { ST_PROBEOFF3, BUTTON_RIGHT, ST_LIDOPEN_OFF },
   
   /* Probe 1 Submenu */
-#if defined(NEVER)  // disabled temporarily
+#if 0
   { ST_PROBESUB1, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_PROBESUB1, BUTTON_RIGHT, ST_PROBESUB2 },
   { ST_PROBESUB1, BUTTON_DOWN | BUTTON_UP, ST_PROBEOFF1 },
@@ -215,7 +217,6 @@ static void menuNumberEdit(button_t button, unsigned char increment,
     (State) - If the edit is completed and the caller should commit the new value
               the current Menu State is returned. The menu will return to read-only state
 */            
-/*
 static state_t menuStringEdit(button_t button, const char *line1, unsigned char maxLength)
 {
   static unsigned char editPos = 0;
@@ -255,7 +256,7 @@ static state_t menuStringEdit(button_t button, const char *line1, unsigned char 
     {
       editPos = 0;
       lcd.noBlink();
-      return Menus.State;
+      return Menus.getState();
     }
   }
 
@@ -283,7 +284,6 @@ static state_t menuStringEdit(button_t button, const char *line1, unsigned char 
   
   return ST_AUTO;
 }
-*/
 
 static void menuProbenameLine(unsigned char probeIndex)
 {
@@ -376,11 +376,10 @@ static state_t menuSetpoint(button_t button)
   return ST_AUTO;
 }
 
-/*
 static state_t menuProbename(button_t button)
 {
   char buffer[17];
-  unsigned char probeIndex = Menus.State - ST_PROBENAME1 + 1;
+  unsigned char probeIndex = Menus.getState() - ST_PROBENAME1 + 1;
 
   if (button == BUTTON_ENTER)
   {
@@ -391,12 +390,11 @@ static state_t menuProbename(button_t button)
   // note that we only load the buffer with text on the ENTER call,
   // after that it is OK to have garbage in it  
   state_t retVal = menuStringEdit(button, buffer, PROBE_NAME_SIZE - 1);
-  if (retVal == Menus.State)
-    storeProbeName(probeIndex, editString);
+  if (retVal == Menus.getState())
+    storeAndReportProbeName(probeIndex, editString);
     
   return retVal;
 }
-*/
 
 static state_t menuProbeOffset(button_t button)
 {
@@ -528,8 +526,13 @@ static state_t menuProbeAlarmOn(button_t button)
   }
   else if (button == BUTTON_LEAVE)
   {
-//    boolean val = (editInt != 0);
-//    if 
+    boolean val = (editInt != 0);
+    int t = pid.Probes[probeIndex]->Alarms.Thresholds[ST_PALARM0_H_ON - highOrLow];
+    if ((val && t < 0) || (!val && t > 0))
+    {
+      pid.Probes[probeIndex]->Alarms.Thresholds[ST_PALARM0_H_ON - highOrLow] = -t;
+      // TODO: Store the value in EEPROM
+    }
   }
 
   menuBooleanEdit(button, (highOrLow == ST_PALARM0_H_ON) ? PSTR("High alarm? ") : PSTR("Low alarm? "));

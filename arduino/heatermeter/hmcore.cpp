@@ -137,7 +137,7 @@ static unsigned char getProbeConfigOffset(unsigned char probeIndex, unsigned cha
   return retVal;
 }
 
-void storeProbeName(unsigned char probeIndex, const char *name)
+static void storeProbeName(unsigned char probeIndex, const char *name)
 {
   unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, name));
   if (ofs != 0)
@@ -620,6 +620,12 @@ void storeAndReportProbeOffset(unsigned char probeIndex, int offset)
   reportProbeOffsets();
 }
 
+void storeAndReportProbeName(unsigned char probeIndex, char *name)
+{
+  storeProbeName(probeIndex, name);
+  reportProbeNames();
+}
+
 static void reportVersion(void)
 {
   print_P(PSTR("UCID" CSV_DELIMITER "HeaterMeter" CSV_DELIMITER HM_VERSION));
@@ -846,8 +852,7 @@ static boolean handleCommandUrl(char *URL)
   if (strncmp_P(URL, PSTR("set?pn"), 6) == 0 && urlLen > 8) 
   {
     // Store probe name will only store it if a valid probe number is passed
-    storeProbeName(URL[6] - '0', URL + 8);
-    reportProbeNames();
+    storeAndReportProbeName(URL[6] - '0', URL + 8);
     return true;
   }
   if (strncmp_P(URL, PSTR("set?pc"), 6) == 0 && urlLen > 8) 
