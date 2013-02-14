@@ -44,6 +44,9 @@ void ProbeAlarm::updateStatus(int value)
     else if (Armed[ALARM_IDX_HIGH] && value >= getHigh())
       Ringing[ALARM_IDX_HIGH] = true;
   }
+
+  if (pid.isLidOpen())
+    Ringing[ALARM_IDX_LOW] = Ringing[ALARM_IDX_HIGH] = false;
 }
 
 void ProbeAlarm::setHigh(int value)

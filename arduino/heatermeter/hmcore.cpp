@@ -1135,7 +1135,7 @@ static void checkAlarms(void)
 {
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
     for (unsigned char j=ALARM_IDX_LOW; j<=ALARM_IDX_HIGH; ++j)
-      if (!pid.isLidOpen() && pid.Probes[i]->Alarms.Ringing[j])
+      if (pid.Probes[i]->Alarms.Ringing[j])
       {
         g_AlarmId = MAKE_ALARM_ID(i, j);
 #ifdef HEATERMETER_SERIAL
