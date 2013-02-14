@@ -95,7 +95,7 @@ $(document).ready(function()
     });
     
     $("#alarmclear").click(function () {
-        $(this).html("Disabling...");
+        $(this).html("Silencing...");
         $.get("<%=build_url("admin/lm/set")%>", {al: "0,0,0,0,0,0,0,0"});
     }).show();
         
@@ -139,7 +139,7 @@ function alarmEvent(o)
   if (o.atype)
   {
     $("#dialog-overlay").show();
-    $("#alarmclear").html("Disable");
+    $("#alarmclear").html("Silence");
     $("#alarm h2").text(o.pn);
     $("#alarm p").html('Alarm (' + o.atype + ') trigged at ' +
       o.c + '&deg; exceeds threshold ' + o.t + '&deg;');
