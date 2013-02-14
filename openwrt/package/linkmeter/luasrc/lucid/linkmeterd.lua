@@ -271,14 +271,25 @@ local lastIpCheck
 local lastIp
 local function checkIpUpdate()
   local newIp
-  -- We can only display 1 IP address so hopefully the last "up" interface
-  -- in the interface list is the most relevant
-  for _,v in pairs(nixio.getifaddrs()) do
-    if not v.flags['loopback'] and v.flags['up'] and
-      v.family == "inet" and v.addr ~= "" then
-      newIp = v.addr end
+  local ifaces = nixio.getifaddrs()
+  local packets = {}
+  -- First find out how many packets have been sent on each interface
+  -- from the packet family instance of each adapter
+  for _,v in ipairs(ifaces) do
+    if not v.flags.loopback and v.family == "packet" then
+      packets[v.name] = v.data.tx_packets
+    end
   end
-  
+
+  -- Static interfaces are always 'up' just not 'running' but nixio does not
+  -- have a flag for running so look for an interface that has sent packets
+  for _,v in ipairs(ifaces) do
+    if not v.flags.loopback and v.flags.up and
+      v.family == "inet" and packets[v.name] > 0 then
+      newIp = v.addr
+    end
+  end
+
   if newIp and newIp ~= lastIp then
     serialPolle.fd:write("/set?tt=Network Address,"..newIp.."\n")
     lastIp = newIp
