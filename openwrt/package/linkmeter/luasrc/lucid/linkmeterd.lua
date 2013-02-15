@@ -48,7 +48,7 @@ end
 -- This might look a big hokey but rather than build the string
 -- and discard it every time, just replace the values to reduce
 -- the load on the garbage collector
-local JSON_TEMPLATE = {
+local JSON_TEMPLATE_SRC = {
   '',
   '{"time":', 0,
   ',"set":', 0,
@@ -61,6 +61,7 @@ local JSON_TEMPLATE = {
   '}]}',
   ''
 }
+local JSON_TEMPLATE
 local JSON_FROM_CSV = {3, 5, 15, 22, 29, 36, 9, 11, 7 }
 
 local function jsonWrite(vals)
@@ -478,6 +479,10 @@ local function initHmVars()
   rfMap = {}
   rfStatus = {}
   hmAlarms = {}
+  JSON_TEMPLATE = {}
+  for _,v in pairs(JSON_TEMPLATE_SRC) do
+    JSON_TEMPLATE[#JSON_TEMPLATE+1] = v
+  end
 end
 
 local function lmdStart()
