@@ -316,7 +316,7 @@ function updateConfigUrl(divname, h)
     var url = '<%=build_url("admin/lm/set")%>?' + aValues.join("&amp;");
     if (divname == "#updateurl")
     {
-      $("input:button[name=cbi.apply]").click(
+      $(':button[name="cbi.apply"]').click(
         (function (urlval) {
           return function () { return ifrmTarget(urlval); }
         })(url)
