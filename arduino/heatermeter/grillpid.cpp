@@ -27,13 +27,13 @@ static void calcExpMovingAverage(const float smooth, float *currAverage, float n
   }
 }
 
-void ProbeAlarm::updateStatus(int value)
+void ProbeAlarm::updateStatus(float value)
 {
   if (getLowEnabled())
   {
     if (value > (getLow() + 1))
       Armed[ALARM_IDX_LOW] = true;
-    else if (Armed[ALARM_IDX_LOW] && value <= getLow())
+    else if (value <= getLow() && Armed[ALARM_IDX_LOW])
       Ringing[ALARM_IDX_LOW] = true;
   }
 
@@ -41,7 +41,7 @@ void ProbeAlarm::updateStatus(int value)
   {
     if (value < (getHigh() - 1))
       Armed[ALARM_IDX_HIGH] = true;
-    else if (Armed[ALARM_IDX_HIGH] && value >= getHigh())
+    else if (value >= getHigh() && Armed[ALARM_IDX_HIGH])
       Ringing[ALARM_IDX_HIGH] = true;
   }
 
