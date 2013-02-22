@@ -27,16 +27,18 @@ static void calcExpMovingAverage(const float smooth, float *currAverage, float n
   }
 }
 
-void ProbeAlarm::updateStatus(float value)
+void ProbeAlarm::updateStatus(int value)
 {
+  // Low: Arming point = Thresh + 1.0f, Trigger point = Thresh - 0.1f
   if (getLowEnabled())
   {
-    if (value > (getLow() + 1))
+    if (value >= (getLow() + 1))
       Armed[ALARM_IDX_LOW] = true;
-    else if (value <= getLow() && Armed[ALARM_IDX_LOW])
+    else if (value < getLow() && Armed[ALARM_IDX_LOW])
       Ringing[ALARM_IDX_LOW] = true;
   }
 
+  // High: Arming point = Thresh - 1.1f, Trigger point = Thresh
   if (getHighEnabled())
   {
     if (value < (getHigh() - 1))

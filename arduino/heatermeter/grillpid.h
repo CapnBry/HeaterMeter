@@ -46,7 +46,7 @@ public:
   ProbeAlarm(void) {};
 
   // Check value against Low/High
-  void updateStatus(float value);
+  void updateStatus(int value);
   void setLow(int value);
   void setHigh(int value);
   int getLow(void) const { return Thresholds[ALARM_IDX_LOW]; }
