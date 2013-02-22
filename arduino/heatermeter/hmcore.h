@@ -62,7 +62,7 @@ void storeAndReportMaxFanSpeed(unsigned char maxFanSpeed);
 void setLcdBacklight(unsigned char lcdBacklight);
 void storeLcdBacklight(unsigned char lcdBacklight);
 void reportLcdParameters(void);
-void Debug_begin(char level = '0');
+void Debug_begin(void);
 #define Debug_end Serial_nl
 void silenceRingingAlarm(void);
 
