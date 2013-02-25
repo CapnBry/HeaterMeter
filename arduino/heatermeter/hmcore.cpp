@@ -1085,11 +1085,11 @@ static void rfSourceNotify(RFSource &r, RFManager::event e)
     {
       if (e & (RFManager::Update | RFManager::Remove))
       {
-        unsigned int val = r.Value;
-        if (r.isNative() && val != 0)
-          pid.Probes[i]->setTemperatureC((int)val / 10.0f);
+        if (r.isNative())
+          pid.Probes[i]->setTemperatureC(r.Value / 10.0f);
         else
         {
+          unsigned int val = r.Value;
           unsigned char adcBits = rfmanager.getAdcBits();
           // If the remote is lower resolution then shift it up to our resolution
           if (adcBits < pid.getAdcBits())
