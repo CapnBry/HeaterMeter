@@ -53,15 +53,19 @@ local JSON_TEMPLATE_SRC = {
   ',"set":', 0,
   ',"lid":', 0,
   ',"fan":{"c":', 0, ',"a":', 0,
-  '},"temps":[{"n":"', 'Pit', '","c":', 0, ',"ar":', 'null', '', -- probe1
-  '},{"n":"', 'Food Probe1', '","c":', 0, ',"ar":', 'null', '', -- probe2
-  '},{"n":"', 'Food Probe2', '","c":', 0, ',"ar":', 'null', '', -- probe3
-  '},{"n":"', 'Ambient', '","c":', 0, ',"ar":', 'null', '', -- probe4
-  '}]}',
+  '},"temps":[{"n":"', 'Pit', '","c":', 0, '',
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null',
+  '}},{"n":"', 'Food Probe1', '","c":', 0, '',
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null',
+  '}},{"n":"', 'Food Probe2', '","c":', 0, '',
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null',
+  '}},{"n":"', 'Ambient', '","c":', 0, '',
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null',
+  '}}]}',
   ''
 }
 local JSON_TEMPLATE
-local JSON_FROM_CSV = {3, 5, 15, 22, 29, 36, 9, 11, 7 }
+local JSON_FROM_CSV = {3, 5, 15, 26, 37, 48, 9, 11, 7 }
 
 local function jsonWrite(vals)
   local i,v
@@ -83,7 +87,7 @@ local function jsonWrite(vals)
     else
       rfval = ''
     end
-    JSON_TEMPLATE[11+(i*7)] = rfval
+    JSON_TEMPLATE[5+(i*11)] = rfval
   end
 end
 
@@ -114,7 +118,7 @@ local function buildConfigMap()
   if JSON_TEMPLATE[3] ~= 0 then
     -- Current temperatures
     for i = 0, 3 do
-      r["pcurr"..i] = tonumber(JSON_TEMPLATE[15+(i*7)])
+      r["pcurr"..i] = tonumber(JSON_TEMPLATE[15+(i*11)])
     end
     -- Setpoint
     r["sp"] = JSON_TEMPLATE[5]
@@ -181,11 +185,10 @@ end
 
 local function segProbeNames(line)
   local vals = segConfig(line, {"pn0", "pn1", "pn2", "pn3"})
-  
-  JSON_TEMPLATE[13] = vals[1]
-  JSON_TEMPLATE[20] = vals[2]
-  JSON_TEMPLATE[27] = vals[3]
-  JSON_TEMPLATE[34] = vals[4]
+ 
+  for i,v in ipairs(vals) do
+    JSON_TEMPLATE[2+i*11] = v
+  end
 end
 
 local function segProbeOffsets(line)
@@ -263,7 +266,7 @@ end
 
 function stsLmStateUpdate()
   JSON_TEMPLATE[1] = "event: hmstatus\ndata: "
-  JSON_TEMPLATE[41] = "\n\n"
+  JSON_TEMPLATE[#JSON_TEMPLATE] = "\n\n"
   return table.concat(JSON_TEMPLATE)
 end
 
@@ -377,8 +380,8 @@ local function segStateUpdate(line)
 end
 
 local function broadcastAlarm(probeIdx, alarmType, thresh)
-  local curTemp = JSON_TEMPLATE[15+(probeIdx*7)]
-  local pname = JSON_TEMPLATE[13+(probeIdx*7)]
+  local curTemp = JSON_TEMPLATE[15+(probeIdx*11)]
+  local pname = JSON_TEMPLATE[13+(probeIdx*11)]
   
   if alarmType then
     nixio.syslog("warning", "Alarm "..probeIdx..alarmType.." started ringing")
@@ -398,7 +401,7 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
   end
   
   skippedUpdates = 99 -- force the next update    
-  JSON_TEMPLATE[17+(probeIdx*7)] = alarmType
+  JSON_TEMPLATE[17+(probeIdx*11)] = alarmType
   broadcastStatus(function ()
     return ('event: alarm\ndata: {"atype":%s,"p":%d,"pn":"%s","c":%s,"t":%s}\n\n'):format(
       alarmType, probeIdx, pname, curTemp, thresh)
@@ -417,10 +420,12 @@ local function segAlarmLimits(line)
   
     local curr = hmAlarms[i] or {}
     local probeIdx = math.floor(alarmId/2)
+    local alarmType = alarmId % 2
+    JSON_TEMPLATE[18+(probeIdx*11)+(alarmType*2)] = v
     -- Wait until we at least have some config before broadcasting
     if (ringing and not curr.ringing) and (hmConfig and hmConfig.ucid) then
       curr.ringing = os.time()
-      broadcastAlarm(probeIdx, (alarmId % 2 == 0) and "L" or "H", v)
+      broadcastAlarm(probeIdx, (alarmType == 0) and "L" or "H", v)
     elseif not ringing and curr.ringing then
       curr.ringing = nil
       broadcastAlarm(probeIdx, nil, v)
@@ -584,7 +589,7 @@ end
 
 local function segLmStateUpdate()
   JSON_TEMPLATE[1] = ""
-  JSON_TEMPLATE[41] = ""
+  JSON_TEMPLATE[#JSON_TEMPLATE] = ""
   -- If the "time" field is still 0, we haven't gotten an update
   if JSON_TEMPLATE[3] == 0 then
     return "{}"
