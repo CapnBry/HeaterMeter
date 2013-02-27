@@ -301,27 +301,28 @@ end
 
 local lastStateUpdate
 local spareUpdates = 0
-local skippedUpdates = 2
+local skippedUpdates = 99
 local function throttleUpdate(line)
   -- SLOW: If (line) is the same, only every third update
   -- NORMAL: If (line) is different, only every second update
   -- Exception: If (line) is different following a SLOW period, do not skip that line
   -- In:  A B C D E E E E F G H
   -- Out: A   C   E     E F   H
-  if skippedUpdates >= 2 then
-    spareUpdates = 1
-  else
-    if line == lastStateUpdate then
+  if line == lastStateUpdate then
+    if skippedUpdates >= 2 then
+      spareUpdates = 1
+    end
+    if skippedUpdates < 4 then
       skippedUpdates = skippedUpdates + 1
       return true
-    else
-      if skippedUpdates == 0 then
-        if spareUpdates == 0 then
-          skippedUpdates = skippedUpdates + 1
-          return true
-        else
-          spareUpdates = 0
-        end
+    end
+  else
+    if skippedUpdates == 0 then
+      if spareUpdates == 0 then
+        skippedUpdates = skippedUpdates + 1
+        return true
+      else
+        spareUpdates = 0
       end
     end
   end
