@@ -1,4 +1,3 @@
-local io = require "io"
 local os = require "os"
 local rrd = require "rrd" 
 local nixio = require "nixio" 
