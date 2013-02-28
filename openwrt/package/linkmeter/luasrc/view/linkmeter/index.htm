@@ -553,15 +553,16 @@ function connectionSuccess(o)
         else
             tempElem.html(val.toFixed(1) + "&deg;");
             
-        if (o.temps[i].ar == 'H')
+        if (o.temps[i].a.r == 'H')
             tempElem.removeClass("alarmLow").addClass("alarmHigh");
-        else if (o.temps[i].ar == 'L')
+        else if (o.temps[i].a.r == 'L')
             tempElem.removeClass("alarmHigh").addClass("alarmLow");
         else
             tempElem.removeClass("alarmLow alarmHigh");
         
         var dataIdx = mapJson[i];
         graphData[dataIdx].label = o.temps[i].n;
+        graphData[dataIdx].alarm_h = o.temps[i].a.h;
         if (graphLoaded)
             addGraphPoint(graphData[dataIdx].data, o.time, val);
 
@@ -628,13 +629,14 @@ function updateTime(time)
 
 function degPerHour(probeIdx)
 {
-    var pname = "#dph" + probeIdx; 
+    var pname = "#dph" + probeIdx;
+    var alarm_h = +graphData[mapJson[probeIdx]].alarm_h;
     var data = graphData[mapJson[probeIdx]].data;
-    if (data.length != 0 && !isNaN(data[data.length-1][1]))
+    if (alarm_h > 0 && data.length != 0 && !isNaN(data[data.length-1][1]))
     {
         var val = data[data.length-1][1];
-       
         var time = data[data.length-1][0];
+        
         // Target is 59mins30secs ago, allows drawing with scale set to 1hr
         var targetTime = time - (60 * 60 * 1000) + 30000;
         for (var i=data.length-1; i>=0; --i)
@@ -647,11 +649,9 @@ function degPerHour(probeIdx)
                 // Don't display if there isn't clear increase, prevents wild numbers
                 if (dph < 1.0)
                     break;
-                var timeRemain180 = ((180.0 - val) / dph) * 3600;
-                timeRemain180 = (timeRemain180 > 0) ? formatTimer(timeRemain180, false) + " to 180&deg;<br />" : "";
-                var timeRemain200 = ((200.0 - val) / dph) * 3600;
-                timeRemain200 = (timeRemain200 > 0) ? formatTimer(timeRemain200, false) + " to 200&deg;" : "";
-                $(pname).html(diffTemp.toFixed(1) + "&deg;/hr<br />" + timeRemain180 + timeRemain200).show();
+                var timeRemain = ((alarm_h - val) / dph) * 3600;
+                timeRemain = (timeRemain > 0) ? formatTimer(timeRemain, false) + " to " + alarm_h + "&deg;<br />" : "";
+                $(pname).html(diffTemp.toFixed(1) + "&deg;/hr<br />" + timeRemain).show();
                 return;
             }
     }  /* if has valid data */
