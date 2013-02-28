@@ -1308,6 +1308,12 @@ void hmcoreSetup(void)
 #ifdef USE_EXTERNAL_VREF  
   analogReference(EXTERNAL);
 #endif  /* USE_EXTERNAL_VREF */
+  // Disable Analog Comparator
+  ACSR = bit(ACD);
+  // Disable Digital Input on ADC pins
+  DIDR0 = bit(ADC5D) | bit(ADC4D) | bit(ADC3D) | bit(ADC2D) | bit(ADC1D) | bit(ADC0D);
+  // And other unused units
+  PRR = bit(PRTWI);
 
   // Switch the pin mode first to INPUT with internal pullup
   // to take it to 5V before setting the mode to OUTPUT. 
