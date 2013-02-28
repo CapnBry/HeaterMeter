@@ -60,6 +60,7 @@ for i = 0, 3 do
   for _, j in pairs({ "Low", "High" }) do
     scriptitems[#scriptitems+1] = { fname = i..j:sub(1,1),
       title = pname .. " " .. j }
+  end
 end
  
 local retVal = {}
