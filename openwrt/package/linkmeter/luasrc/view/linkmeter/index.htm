@@ -632,7 +632,7 @@ function degPerHour(probeIdx)
     var pname = "#dph" + probeIdx;
     var alarm_h = +graphData[mapJson[probeIdx]].alarm_h;
     var data = graphData[mapJson[probeIdx]].data;
-    if (alarm_h > 0 && data.length != 0 && !isNaN(data[data.length-1][1]))
+    if (data.length != 0 && !isNaN(data[data.length-1][1]))
     {
         var val = data[data.length-1][1];
         var time = data[data.length-1][0];
