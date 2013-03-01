@@ -402,7 +402,7 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
   end
   
   skippedUpdates = 99 -- force the next update    
-  JSON_TEMPLATE[17+(probeIdx*11)] = alarmType
+  JSON_TEMPLATE[22+(probeIdx*11)] = alarmType
   broadcastStatus(function ()
     return ('event: alarm\ndata: {"atype":%s,"p":%d,"pn":"%s","c":%s,"t":%s}\n\n'):format(
       alarmType, probeIdx, pname, curTemp, thresh)
