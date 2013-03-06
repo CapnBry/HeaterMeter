@@ -6,6 +6,7 @@
 class SerialXorChecksum : public Print
 {
 public:
+  using Print::write;
   virtual size_t write(uint8_t ch)
   {
     if (!_preambleSent)
