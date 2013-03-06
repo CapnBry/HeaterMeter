@@ -632,7 +632,7 @@ static state_t menuToast(button_t button)
     return ST_AUTO;
   }
   // Timeout or button press returns you to the previous menu
-  return Menus.getSavedState();
+  return Menus.getLastState();
 }
 
 void HmMenuSystem::displayToast(char *msg)
@@ -652,10 +652,9 @@ void HmMenuSystem::displayToast(char *msg)
     memcpy(getToastLine1(), pos+1, min(strlen(pos)-1, sizeof(_toastMsg)/2));
   }
   if (getState() != ST_TOAST)
-    _savedState = getState();
+    setState(ST_TOAST);
   else
-    setState(ST_NONE); // If already in a toast force a refresh
-  setState(ST_TOAST);
+    menuToast(BUTTON_ENTER); // If already in a toast force a refresh
 }
 
 HmMenuSystem Menus(MENU_DEFINITIONS, MENU_TRANSITIONS, &readButton);

@@ -44,9 +44,10 @@ inline state_t MenuSystem::findTransition(button_t button) const
 
 void MenuSystem::setState(state_t state)
 {
-  //Serial.print("Setting state: ");
+  //Serial.print("$HMLG,0,Setting state: ");
   //Serial.println(state, DEC);
-  
+  m_lastState = m_state;
+
   while (state > ST_VMAX && state != m_state)
   {
     handler_t handler = getHandler();

@@ -66,12 +66,10 @@ public:
     {};
 
   void displayToast(char *msg);
-  state_t getSavedState(void) const { return _savedState; }
   unsigned char *getToastLine0(void) { return &_toastMsg[0]; }
   unsigned char *getToastLine1(void) { return &_toastMsg[sizeof(_toastMsg)/2+1]; }
 private:
   unsigned char _toastMsg[33];
-  state_t _savedState;
 };
 
 extern HmMenuSystem Menus;

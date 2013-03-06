@@ -47,6 +47,7 @@ public:
   
   void setState(state_t state);
   state_t getState(void) const { return m_state; }
+  state_t getLastState(void) const { return m_lastState; }
   button_t getButton(void) const { return m_lastButton; }
 private:
   const menu_definition_t *m_definitions;
@@ -54,6 +55,7 @@ private:
   const menu_definition_t *m_currMenu;
   const buttonread_t m_readButton;
   state_t m_state;
+  state_t m_lastState;
   button_t m_lastButton;
   unsigned long m_lastActivity;
 
