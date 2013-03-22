@@ -174,7 +174,7 @@ static button_t readButton(void)
   return BUTTON_NONE;
 }
 
-static void menuBooleanEdit(button_t button, const prog_char *preamble)
+static void menuBooleanEdit(button_t button, const char PROGMEM *preamble)
 {
   if (button == BUTTON_UP || button == BUTTON_DOWN)
     editInt = !editInt;
@@ -186,7 +186,7 @@ static void menuBooleanEdit(button_t button, const prog_char *preamble)
 }
 
 static void menuNumberEdit(button_t button, unsigned char increment,
-  int minVal, int maxVal, const prog_char *format)
+  int minVal, int maxVal, const char PROGMEM *format)
 {
   char buffer[17];
   

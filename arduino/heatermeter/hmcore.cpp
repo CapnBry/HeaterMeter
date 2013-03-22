@@ -327,7 +327,7 @@ static void lcdPrintBigNum(float val)
   {
     if (uval != 0 || x >= 9)
     {
-      const prog_char *numData = NUMS + ((uval % 10) * 6);
+      const char PROGMEM *numData = NUMS + ((uval % 10) * 6);
 
       x -= C_WIDTH;
       lcd.setCursor(x, 0);
@@ -457,7 +457,7 @@ void updateDisplay(void)
   }
 }
 
-void lcdprint_P(const prog_char *p, const boolean doClear)
+void lcdprint_P(const char PROGMEM *p, const boolean doClear)
 {
   if (doClear)
     lcd.clear();
@@ -1050,7 +1050,7 @@ static boolean sendPage(char* URL)
   const struct flash_file_t *file = FLASHFILES;
   while (pgm_read_word(&file->fname))
   {
-    if (strcmp_P(URL, (const prog_char *)pgm_read_word(&file->fname)) == 0)
+    if (strcmp_P(URL, (const char PROGMEM *)pgm_read_word(&file->fname)) == 0)
     {
       sendFlashFile(file);
       return true;

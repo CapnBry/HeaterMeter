@@ -22,6 +22,6 @@ const char LCD_LINE1_UNPLUGGED[] PROGMEM = "- No Pit Probe -";
 inline void Serial_char(char c) { SerialX.write(c); }
 inline void Serial_nl(void) { SerialX.nl(); }
 inline void Serial_csv(void) { Serial_char(CSV_DELIMITER[0]); }
-inline void print_P(const prog_char *s) {  while (unsigned char c = pgm_read_byte(s++)) Serial_char(c); }
+inline void print_P(const char PROGMEM *s) {  while (unsigned char c = pgm_read_byte(s++)) Serial_char(c); }
 
 #endif /* __STRINGS_H__ */
