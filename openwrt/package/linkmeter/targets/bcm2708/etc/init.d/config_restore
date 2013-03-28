@@ -3,9 +3,15 @@
 START=90
 start () {
 
+PARTED=`which parted`
+if [ -z "$PARTED" ] ; then
+  echo parted utility not found
+  exit 1
+fi
+
 DEV="/dev/mmcblk0"
 RESTORE=0
-PARTED="parted -m -s $DEV unit s"
+PARTED="$PARTED -m -s $DEV unit s"
 SECTORS=`$PARTED p | grep ^${DEV} | cut -d':' -f 2 | cut -d's' -f 1`
 
 # Make sure we've got at least 64MB of storage
