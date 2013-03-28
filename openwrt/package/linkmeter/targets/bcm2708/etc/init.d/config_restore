@@ -35,6 +35,17 @@ if [ $? -ne 0 ] ; then
   RESTORE=1
 fi # if no partition 3
 
+# The device won't show up in /dev for a little while
+CNT=0
+while [ ! -e "${DEV}p3" ] ; do
+  sleep 1
+  CNT=$((CNT+1))
+  if [ $CNT -gt 20 ] ; then
+    echo Backup device not found, aborting
+    exit 1
+  fi
+done
+
 e2fsck -n ${DEV}p3 > /dev/null
 if [ $? -ne 0 ] ; then
   RESTORE=0
