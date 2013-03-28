@@ -3,7 +3,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=linkmeter
-PKG_RELEASE:=5
+PKG_RELEASE:=7
 
 PKG_BUILD_PARALLEL:=1
 
@@ -64,9 +64,10 @@ endef
 define Package/linkmeter/postinst
 #!/bin/sh
 	[ -n "$${IPKG_INSTROOT}" ] && exit
-	/etc/uci-defaults/linkmeter
+	/etc/uci-defaults/linkmeter update
 	rm /etc/uci-defaults/linkmeter
 	rm -f /tmp/luci-indexcache
+	rm -f /tmp/luci-modulecache
 	/etc/init.d/lucid restart
 endef
 
@@ -76,10 +77,11 @@ define Package/linkmeter/postrm
 	[ -n "$${IPKG_INSTROOT}" ] && exit
 
 	/etc/init.d/lucid stop
-	if [ -f "/tmp/hm.rrd" ] ; then rm "/tmp/hm.rrd" ; fi
+	[ -f "/tmp/hm.rrd" ] && rm "/tmp/hm.rrd"
 	uci del lucid.lmserver
 	uci commit lucid
 	rm -f /tmp/luci-indexcache
+	rm -f /tmp/luci-modulecache
 	/etc/init.d/lucid start
 endef
 
