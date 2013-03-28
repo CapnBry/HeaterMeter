@@ -1,0 +1,61 @@
+#!/bin/sh /etc/rc.common
+
+START=90
+start () {
+
+DEV="/dev/mmcblk0"
+RESTORE=0
+PARTED="parted -m -s $DEV unit s"
+SECTORS=`$PARTED p | grep ^${DEV} | cut -d':' -f 2 | cut -d's' -f 1`
+
+# Make sure we've got at least 64MB of storage
+[ -z "$SECTORS" ] || [ "$SECTORS" -lt 131072 ] && exit 1
+
+# If there's not already a partition 3, create one
+$PARTED p 3 > /dev/null 2>&1
+if [ $? -ne 0 ] ; then
+  echo No partition 3 found
+  
+  # If any other partition extends to the end of the device, forget it
+  $PARTED p | grep -v ${DEV} | grep :$((SECTORS-1))s: && exit 0
+
+  echo No partition reaches end of device, creating partition 3
+  # START 32MB from the end
+  $PARTED mkpart primary ext2 $((SECTORS-65536))s $((SECTORS-1))s
+  RC=$?
+  
+  # Make sure the creation was successful
+  [ $RC -ne 0 ] && exit $RC
+  RESTORE=1
+fi # if no partition 3
+
+e2fsck -n ${DEV}p3 > /dev/null
+if [ $? -ne 0 ] ; then
+  RESTORE=0
+  echo Formatting filesystem...
+  # fsck failed so go ahead and create a new filesystem
+  mkfs.ext4 -m 0 -O ^resize_inode,^has_journal,extent,uninit_bg ${DEV}p3
+  e2fsck ${DEV}p3
+fi
+
+# Mount the device if not already mounted
+MNT="/mnt/${DEV##/dev/}p3"
+[ -d "$MNT" ] || mkdir -p $MNT
+mount | grep ${DEV}p3 || mount ${DEV}p3 $MNT
+
+if [ "$RESTORE" -ne 0 ] ; then
+  if [ -f "$MNT/backup.tar.gz" ] ; then
+    echo Restoring system backup...
+    sysupgrade -r $MNT/backup.tar.gz
+    sync
+    reboot
+  fi
+  exit 0
+fi
+
+if [ -d "$MNT/lost+found" ] ; then
+  sysupgrade -b $MNT/backup.tar.gz
+  sync
+fi
+
+}

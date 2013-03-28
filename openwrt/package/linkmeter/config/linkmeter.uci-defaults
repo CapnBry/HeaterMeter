@@ -1,5 +1,8 @@
 #!/bin/sh
 
+INSTALL_PARAM="$1"
+[ -z "$INSTALL_PARAM" ] && INSTALL_PARAM="new"
+
 uci_set_nomodify() {
   uci -q get $1 > /dev/null || uci set $1=$2
 }
@@ -50,5 +53,16 @@ ALARMS="/usr/share/linkmeter/alarm-"
 grep $ALARMS /etc/sysupgrade.conf > /dev/null || \
   echo "${ALARMS}*" >> /etc/sysupgrade.conf
 
-# On applicable platforms, avrupdate loads HeaterMeter onto the AVR
-avrupdate
+if [ "$INSTAL_PARAM" = "new" ] ; then
+  # On applicable platforms, avrupdate loads HeaterMeter onto the AVR
+  avrupdate
+
+  # Enable the config backup/restore service
+  [ "$HARDWARE_MODEL" = "BCM2708" ] && \
+    /etc/init.d/config_restore enable
+
+  # New install, disable dnsmasq by default
+  [ "$HARDWARE_MODEL" = "BCM2708" ] && \
+    [ -x "/etc/init.d/dnsmasq" ] && \
+    /etc/init.d/dnsmasq disable
+end
