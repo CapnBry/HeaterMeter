@@ -38,7 +38,7 @@ cp patches/215-luci-adminfull-inreq.patch $LUCIP
 cp patches/217-luci-login-urltok.patch $LUCIP
 cp patches/218-lucid-cacheloader.patch $LUCIP
 
-LMPACKS="rrdtool kmod-broadcom-sdhc26 linkmeter kmod-8192cu kmod-spi-bcm2708 luci-app-msmtp"
+LMPACKS="rrdtool kmod-broadcom-sdhc26 linkmeter kmod-8192cu kmod-spi-bcm2708 luci-app-msmtp parted"
 for PACK in $LMPACKS ; do
   $WRT_PATH/scripts/feeds install -p linkmeter $PACK
 done
