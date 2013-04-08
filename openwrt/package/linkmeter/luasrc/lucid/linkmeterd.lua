@@ -496,6 +496,7 @@ local function lmdStart()
   local SERIAL_DEVICE = cfg:get("lucid", "linkmeter", "serial_device")
   local SERIAL_BAUD = cfg:get("lucid", "linkmeter", "serial_baud")
   
+  initHmVars() 
   if os.execute("/bin/stty -F " .. SERIAL_DEVICE .. " raw -echo " .. SERIAL_BAUD) ~= 0 then
     return nil, -2, "Can't set serial baud"
   end
@@ -520,7 +521,6 @@ local function lmdStart()
     handler = serialHandler
   }
   
-  initHmVars() 
   lucid.register_pollfd(serialPolle)
   
   return true
