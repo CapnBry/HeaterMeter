@@ -81,11 +81,11 @@ $(document).ready(function()
 <% if context.authuser == "root" then %>
     $(".pname").editable(function(value, settings) {
         return(nameChanged(this.id, value));
-    }, {maxlength: 13});
+    }, {maxlength: 13, select: true});
 
     $("#set").editable(function(value, settings) {
         return(tempChanged(value));
-    }, {style: "display: inline"});
+    }, {style: "display: inline", select: true});
     
     $("#lid").click(function () { 
         if (lastLidOpen == -1) return;
