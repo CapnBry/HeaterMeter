@@ -118,7 +118,6 @@ enum {
     TXSYN1, TXSYN2,
 };
 
-static uint8_t nodeid;              // address of this node
 static volatile uint8_t rxfill;     // number of data bytes in rf12_buf
 static volatile int8_t rxstate;     // current transceiver state
 
@@ -403,9 +402,7 @@ void rf12_sendWait (uint8_t mode) {
 /*!
   Call this once with the node ID (0-31), frequency band (0-3)
 */
-uint8_t rf12_initialize (uint8_t id, uint8_t band) {
-    nodeid = id;
-    
+void rf12_initialize (uint8_t band) {
     rf12_spiInit();
 
     rf12_xfer(0x0000); // intitial SPI transfer added to avoid power-up problem
@@ -465,13 +462,8 @@ uint8_t rf12_initialize (uint8_t id, uint8_t band) {
             bitClear(PCMSK1, RFM_IRQ - 14);
     #endif
 #else
-    if ((nodeid & NODE_ID) != 0)
-        attachInterrupt(0, rf12_interrupt, LOW);
-    else
-        detachInterrupt(0);
+    attachInterrupt(0, rf12_interrupt, LOW);
 #endif
-    
-    return nodeid;
 }
 
 void rf12_sleep (char n) {

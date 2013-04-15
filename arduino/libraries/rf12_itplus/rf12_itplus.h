@@ -24,8 +24,8 @@ extern volatile uint16_t rf_bad_status;
 // only needed if you want to init the SPI bus before rf12_initialize does it
 void rf12_spiInit(void);
 
-// call this once with the node ID, frequency band, and optional group
-uint8_t rf12_initialize(uint8_t id, uint8_t band);
+// call this once with the frequency band
+void rf12_initialize(uint8_t band);
 
 // initialize the RF12 module from settings stored in EEPROM by "RF12demo"
 // don't call rf12_initialize() if you init the hardware with rf12_config()
