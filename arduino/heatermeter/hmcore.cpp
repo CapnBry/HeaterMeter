@@ -1083,25 +1083,20 @@ static void rfSourceNotify(RFSource &r, RFManager::event e)
     ((rfMap[i] == RFSOURCEID_ANY) || (rfMap[i] == r.getId()))
     )
     {
-      if (e & (RFManager::Update | RFManager::Remove))
+      if (e == RFManager::Remove)
+        pid.Probes[i]->addAdcValue(0);
+      else if (r.isNative())
+        pid.Probes[i]->setTemperatureC(r.Value / 10.0f);
+      else
       {
-        if (r.isNative())
-          pid.Probes[i]->setTemperatureC(r.Value / 10.0f);
-        else
-        {
-          unsigned int val = r.Value;
-          unsigned char adcBits = rfmanager.getAdcBits();
-          // If the remote is lower resolution then shift it up to our resolution
-          if (adcBits < pid.getAdcBits())
-            val <<= (pid.getAdcBits() - adcBits);
-          pid.Probes[i]->addAdcValue(val);
-        }
+        unsigned int val = r.Value;
+        unsigned char adcBits = rfmanager.getAdcBits();
+        // If the remote is lower resolution then shift it up to our resolution
+        if (adcBits < pid.getAdcBits())
+          val <<= (pid.getAdcBits() - adcBits);
+        pid.Probes[i]->addAdcValue(val);
       }
     } /* if probe is this source */
-
-  // Set the value to 0 so when we remove the source later it
-  // adds a 0 to the adcValue, effectively clearing it
-  r.Value = 0;
 
   if (e & (RFManager::Add | RFManager::Remove))
     outputRfStatus();
