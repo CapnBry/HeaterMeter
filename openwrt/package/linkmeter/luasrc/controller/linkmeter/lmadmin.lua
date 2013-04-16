@@ -118,6 +118,9 @@ function action_stashdb()
     end
     lm:query("$LMDC,1") -- start serial process and close connection
   else
+    if not nixio.fs.stat(STASH_PATH) then
+      nixio.fs.mkdir(STASH_PATH)
+    end
     result = nixio.fs.copy(RRD_FILE, stashfile)
     http.write("Stashing "..RRD_FILE.." to "..stashfile)
   end
