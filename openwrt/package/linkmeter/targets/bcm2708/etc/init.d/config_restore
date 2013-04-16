@@ -17,27 +17,42 @@ SECTORS=`$PARTED p | grep ^${DEV} | cut -d':' -f 2 | cut -d's' -f 1`
 # Make sure we've got at least 64MB of storage
 [ -z "$SECTORS" ] || [ "$SECTORS" -lt 131072 ] && exit 1
 
-# If there's not already a partition 3, create one
-$PARTED p 3 > /dev/null 2>&1
+# If there's not already a partition 4, create one
+$PARTED p 4 > /dev/null 2>&1
 if [ $? -ne 0 ] ; then
-  echo No partition 3 found
+  P3CREATED=0
+  echo No partition 4 found on $SECTORS sector device
   
   # If any other partition extends to the end of the device, forget it
   $PARTED p | grep -v ${DEV} | grep :$((SECTORS-1))s: && exit 0
-
-  echo No partition reaches end of device, creating partition 3
+  
+  echo No partition reaches end of device
+  if ! $PARTED p 3 > /dev/null 2>&1; then
+    echo No partition 3 found
+    
+    P2END=`$PARTED p | grep "^2:" | cut -d':' -f 3 | cut -d's' -f 1`
+    [ -z "$P2END" ] && exit 1
+    echo Creating temporary partition 3: $((P2END+1))s $((SECTORS-131073))s
+    $PARTED mkpart primary ext2 $((P2END+1))s $((SECTORS-131073))s || exit 1
+    P3CREATED=1
+  fi
+  
   # START 64MB from the end
+  echo Creating partition 4: $((SECTORS-131072))s $((SECTORS-1))s
   $PARTED mkpart primary ext2 $((SECTORS-131072))s $((SECTORS-1))s
   RC=$?
   
   # Make sure the creation was successful
   [ $RC -ne 0 ] && exit $RC
   RESTORE=1
+ 
+  # Remove the temporary partition if we made it 
+  [ $P3CREATED -ne 0 ] && $PARTED rm 3
 fi # if no partition 3
 
 # The device won't show up in /dev for a little while
 CNT=0
-while [ ! -e "${DEV}p3" ] ; do
+while [ ! -e "${DEV}p4" ] ; do
   sleep 1
   CNT=$((CNT+1))
   if [ $CNT -gt 20 ] ; then
@@ -46,19 +61,19 @@ while [ ! -e "${DEV}p3" ] ; do
   fi
 done
 
-e2fsck -n ${DEV}p3 > /dev/null
+e2fsck -n ${DEV}p4 > /dev/null
 if [ $? -ne 0 ] ; then
   RESTORE=0
   echo Formatting filesystem...
   # fsck failed so go ahead and create a new filesystem
-  mkfs.ext4 -m 0 -O ^resize_inode,^has_journal,extent,uninit_bg ${DEV}p3
-  e2fsck ${DEV}p3
+  mkfs.ext4 -m 0 -O ^resize_inode,^has_journal,extent,uninit_bg ${DEV}p4
+  e2fsck ${DEV}p4
 fi
 
 # Mount the device if not already mounted
-MNT="/mnt/${DEV##/dev/}p3"
+MNT="/mnt/${DEV##/dev/}p4"
 [ -d "$MNT" ] || mkdir -p $MNT
-mount | grep ${DEV}p3 || mount ${DEV}p3 $MNT
+mount | grep ${DEV}p4 || mount -t ext4 ${DEV}p4 $MNT
 
 if [ "$RESTORE" -ne 0 ] ; then
   if [ -f "$MNT/backup.tar.gz" ] ; then
