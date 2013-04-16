@@ -26,8 +26,8 @@ if [ $? -ne 0 ] ; then
   $PARTED p | grep -v ${DEV} | grep :$((SECTORS-1))s: && exit 0
 
   echo No partition reaches end of device, creating partition 3
-  # START 32MB from the end
-  $PARTED mkpart primary ext2 $((SECTORS-65536))s $((SECTORS-1))s
+  # START 64MB from the end
+  $PARTED mkpart primary ext2 $((SECTORS-131072))s $((SECTORS-1))s
   RC=$?
   
   # Make sure the creation was successful
