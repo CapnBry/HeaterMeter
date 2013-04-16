@@ -49,7 +49,7 @@ static int spi_intialized;
 
 static bool do_chiperase;
 static bool do_disable_autoerace;
-static bool do_dumpprogmem;
+static bool do_dumpmemory;
 static bool do_verify = true;
 
 #define msleep(x) usleep(x * 1000)
@@ -541,6 +541,22 @@ static void spi_dump_progmem(void)
   }
 }
 
+static void spi_dump_eeprom(void)
+{
+  uint16_t addr;
+  for (addr=0; addr<1024; ++addr)
+  {
+    uint8_t msb = (addr >> 8) & 0xff;
+    uint8_t lsb = addr & 0xff;
+
+    if (addr % 16 == 0)
+      fprintf(stdout, "%04x:", addr);
+    fprintf(stdout, "%02x ", spi_transaction(0xa0, msb, lsb, 0, 3));
+    if (addr % 16 == 15)
+      fprintf(stdout, "\n");
+  }
+}
+
 static int spi_upload_file(void)
 {
   int rc = 0;
@@ -613,8 +629,13 @@ static int spi_upload_file(void)
     if (do_fuse[fuse])
       spi_write_fuse(fuse, write_fuse[fuse]);
   
-  if (do_dumpprogmem)
+  if (do_dumpmemory)
+  {
+    fprintf(stdout, "PROGMEM\n");
     spi_dump_progmem();
+    fprintf(stdout, "\nEEPROM\n");
+    spi_dump_eeprom();
+  }
 
 cleanup:  
   if (port_fd >= 0)
@@ -706,7 +727,7 @@ int main(int argc, char *argv[])
         baud = atol(optarg);
         break;
       case 'd':
-        do_dumpprogmem = true;
+        do_dumpmemory = true;
         break;
       case 'e':
         do_chiperase = true;
