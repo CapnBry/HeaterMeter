@@ -48,7 +48,7 @@ static int ihex_len;
 static int spi_intialized;
 
 static bool do_chiperase;
-static bool do_disable_autoerace;
+static bool do_disable_autoerase;
 static bool do_dumpmemory;
 static bool do_verify = true;
 
@@ -612,7 +612,7 @@ static int spi_upload_file(void)
   // during a flash operation, so you can flash without erasing if your
   // chip is already full of 0xff
   if (do_chiperase || 
-    (file_ihex != NULL && do_disable_autoerace == false))
+    (file_ihex != NULL && do_disable_autoerase == false))
   { 
     if ((rc = spi_chiperase()) != 0)
       goto cleanup;
@@ -736,7 +736,7 @@ int main(int argc, char *argv[])
         ++verbose;
         break;
       case 'D':
-        do_disable_autoerace = true;
+        do_disable_autoerase = true;
         break;
       case 'P':
         set_port(optarg);
