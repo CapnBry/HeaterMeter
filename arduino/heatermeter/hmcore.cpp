@@ -46,6 +46,7 @@ static unsigned char rfMap[TEMP_COUNT];
 
 static unsigned char g_AlarmId; // ID of alarm going off
 static unsigned char g_HomeDisplayMode;
+static unsigned char g_LogPidInternals; // If non-zero then log PID interals
 unsigned char g_LcdBacklight; // 0-100
 
 #define config_store_byte(eeprom_field, src) { eeprom_write_byte((uint8_t *)offsetof(__eeprom_data, eeprom_field), src); }
@@ -827,6 +828,16 @@ static void storeFanParams(unsigned char idx, int val)
   }
 }
 
+static void setTempParam(unsigned char idx, int val)
+{
+  switch (idx)
+  {
+    case 0:
+      g_LogPidInternals = val;
+      break;
+  }
+}
+
 /* handleCommandUrl returns true if it consumed the URL */
 static boolean handleCommandUrl(char *URL)
 {
@@ -888,6 +899,11 @@ static boolean handleCommandUrl(char *URL)
   if (strncmp_P(URL, PSTR("set?tt="), 7) == 0)
   {
     Menus.displayToast(URL+7);
+    return true;
+  }
+  if (strncmp_P(URL, PSTR("set?tp="), 7) == 0)
+  {
+    csvParseI(URL + 7, setTempParam);
     return true;
   }
   if (strncmp_P(URL, PSTR("config"), 6) == 0) 
@@ -1275,13 +1291,14 @@ static void newTempsAvail(void)
     
   if ((pidCycleCount % 0x20) == 0)
     outputRfStatus();
-  if ((pidCycleCount % 0x10) == 0)
-    pid.pidStatus();
 
   outputCsv();
   // We want to report the status before the alarm readout so
   // receivers can tell what the value was that caused the alarm
   checkAlarms();
+
+  if (g_LogPidInternals)
+    pid.pidStatus();
 
   lcd.digitalWrite(0, pid.LidOpenResumeCountdown != 0);
   lcd.digitalWrite(1, pid.getFanSpeed() != 0);

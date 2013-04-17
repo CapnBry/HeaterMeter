@@ -65,6 +65,7 @@ Both Serial and Web
 /set?al=L,H[,L,H...] - Set probe alarms thresholds. Setting to a negative number will disable the alarm, setting to 0 will stop a ringing alarm and disarm it.
 /set?fn=L,H,I,O - Set the fan output parameters. L = min fan speed before "long PID" mode, H = max fan speed, I = Invert PWM polarity so that 100% actually outputs 0% and 0% outputs 100%, O = output mode (0 = Fan, 1 = Servo)
 /set?tt=XXX[,YYY] - Display a "toast" message on the LCD which is temporarily displayed over any other menu and is cleared either by timeout or any button press. XXX and YYY are the two lines to displau and can be up to 16 characters each.
+/set?tp=A - Set a "temp param". A = Log PID Internals ($HMPS)
 /reboot - Reboots the microcontroller.  Only if wired to do so (LinkMeter)
 
 Serial-only URLs
@@ -94,8 +95,8 @@ Probe Names
 $HMPN,Probe0,Probe1,Probe2,Probe3
 Probe Offsets
 $HMPO,Probe0,Probe1,Probe2,Probe3
-PID Internal Status
-$HMPS,pidISum,tempD
+PID Internal Status (Sum cPID* to get output)
+$HMPS,cPidB,cPidP,cPidI,cPidD,tempD
 PID State Update
 $HMSU,SetPoint,Pit,Food1,Food2,Ambient,Fan,FanMovAvg,LidOpenCountdown
 RF Status

@@ -252,30 +252,30 @@ inline void GrillPid::calcFanSpeed(void)
   if (!Probes[TEMP_PIT]->hasTemperature())
     return;
 
-  float currentTemp = Probes[TEMP_PIT]->Temperature;
   // If we're in lid open mode, fan should be off
   if (isLidOpen())
     return;
 
+  float currentTemp = Probes[TEMP_PIT]->Temperature;
   float error;
   error = _setPoint - currentTemp;
+
+  // PPPPP = fan speed percent per degree of error
+  _pidCurrent[PIDP] = Pid[PIDP] * error;
+
+  // IIIII = fan speed percent per degree of accumulated error
   // In servo mode the "fan speed" always is 0-100 as in percent of open
   uint8_t max = (_outputDevice == GrillPidOutput::Servo) ? 100 : _maxFanSpeed;
+  // anti-windup: Make sure we only adjust the I term while inside the proportional control range
+  if ((error > 0 && lastFanSpeed < max) || (error < 0 && lastFanSpeed > 0))
+    _pidCurrent[PIDI] += Pid[PIDI] * error;
 
-  // anti-windup: Make sure we only adjust the I term while
-  // inside the proportional control range
-  if ((error > 0 && lastFanSpeed < max) ||
-      (error < 0 && lastFanSpeed > 0))
-    _pidErrorSum += Pid[PIDI] * error;
+  // DDDDD = fan speed percent per degree of change over TEMPPROBE_AVG_SMOOTH period
+  _pidCurrent[PIDD] = Pid[PIDD] * (Probes[TEMP_PIT]->TemperatureAvg - currentTemp);
+  // BBBBB = fan speed percent
+  _pidCurrent[PIDB] = Pid[PIDB];
 
-  // B = fan speed percent
-  // P = fan speed percent per degree of error
-  // I = fan speed percent per degree of accumulated error
-  // D = fan speed percent per degree of change over TEMPPROBE_AVG_SMOOTH period
-  float averageTemp = Probes[TEMP_PIT]->TemperatureAvg;
-  int control 
-    = Pid[PIDB] + Pid[PIDP] * error + _pidErrorSum + (Pid[PIDD] * (averageTemp - currentTemp));
-  
+  int control = _pidCurrent[PIDB] + _pidCurrent[PIDP] + _pidCurrent[PIDI] + _pidCurrent[PIDD];
   if (control >= max)
     _fanSpeed = max;
   else if (control > 0)
@@ -354,7 +354,7 @@ void GrillPid::setSetPoint(int value)
   _setPoint = value;
   _pitTemperatureReached = false;
   _manualFanMode = false;
-  _pidErrorSum = 0;
+  _pidCurrent[PIDI] = 0.0f;
   LidOpenResumeCountdown = 0;
 }
 
@@ -379,7 +379,7 @@ void GrillPid::setPidConstant(unsigned char idx, float value)
   Pid[idx] = value;
   if (idx == PIDI)
     // Proably should scale the error sum by newval / oldval instead of resetting
-    _pidErrorSum = 0.0f;
+    _pidCurrent[PIDI] = 0.0f;
 }
 
 void GrillPid::setOutputDevice(GrillPidOutput::Type outputDevice)
@@ -467,7 +467,7 @@ boolean GrillPid::doWork(void)
       if (!_pitTemperatureReached)
       {
         _pitTemperatureReached = true;
-        _pidErrorSum = 0.0f;
+        _pidCurrent[PIDI] = 0.0f;
       }
       LidOpenResumeCountdown = 0;
     }
@@ -495,8 +495,11 @@ boolean GrillPid::doWork(void)
 void GrillPid::pidStatus(void) const
 {
   print_P(PSTR("HMPS"CSV_DELIMITER));
-  SerialX.print(_pidErrorSum, 3);
-  Serial_csv();
+  for (uint8_t i=PIDB; i<=PIDD; ++i)
+  {
+    SerialX.print(_pidCurrent[i], 2);
+    Serial_csv();
+  }
   SerialX.print(Probes[TEMP_PIT]->Temperature - Probes[TEMP_PIT]->TemperatureAvg, 2);
   Serial_nl();
 }
