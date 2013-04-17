@@ -167,6 +167,18 @@ local function segLogMessage(line)
   lastLogMessage = line
   broadcastStatus(stsLogMessage)
 end
+
+local lastPidInternals
+local function stsPidInternals()
+  local vals = segSplit(lastPidInternals)
+  return ('event: pidint\ndata: {"b":%s,"p":%s,"i":%s,"d":%s,"t":%s}\n\n')
+    :format(vals[1], vals[2], vals[3], vals[4], vals[5])
+end
+
+local function segPidInternals(line)
+  lastPidInternals = line
+  broadcastStatus(stsPidInternals)
+end
           
 local function segConfig(line, names, numeric)
   local vals = segSplit(line)
@@ -654,6 +666,7 @@ local segmentMap = {
   ["$HMPD"] = segPidParams,
   ["$HMPN"] = segProbeNames,
   ["$HMPO"] = segProbeOffsets,
+  ["$HMPS"] = segPidInternals,
   ["$HMRF"] = segRfUpdate,
   ["$HMRM"] = segRfMap,
   ["$HMSU"] = segStateUpdate,

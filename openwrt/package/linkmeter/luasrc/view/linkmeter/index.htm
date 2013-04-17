@@ -125,6 +125,10 @@ $(window).load(function ()
             alarmEvent(o);
         });
         source.addEventListener("error", connectionFailure);
+        source.addEventListener("pidint", function (e) {
+            var o = JSON.parse(e.data);
+            pidIntEvent(o);
+        });
     } else {
         if (!lastUpdateUtc)
             JSONQuery();
@@ -150,6 +154,32 @@ function alarmEvent(o)
     $("#alarm").hide("fast");
     $("#dialog-overlay").hide();
   }
+}
+
+function pidIntBar(target, val)
+{
+  val = (val > 100) ? 100 : (val < -100) ? -100 : val;
+  if (val > 0)
+    $(target).css({
+      "left": "50%",
+      "right": '',
+      "width": val/2 + "%",
+      "background-color": "#74b931"});
+  else
+    $(target).css({
+      "left": '',
+      "right": "50%",
+      "width": -val/2 + "%",
+      "background-color": "#ce3b46"});
+}
+
+function pidIntEvent(o)
+{
+  $("#pidint").show();
+  $("#pivb").html(o.b + "%"); pidIntBar("#pibb", o.b);
+  $("#pivp").html(o.p + "%"); pidIntBar("#pibp", o.p);
+  $("#pivi").html(o.i + "%"); pidIntBar("#pibi", o.i);
+  $("#pivd").html(o.d + "%"); pidIntBar("#pibd", o.d);
 }
 
 function legendClicked()
@@ -692,6 +722,13 @@ div.ptemp { font-size: 32pt; line-height: 26pt; color: #fff; }
 #alarmclear { display: none; position: absolute; bottom: 4px; right: 4px; color: #ccc; }
 div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; 
     width: 16px; height: 16px; background-image: url('<%=resource%>/rf.png'); }
+#pidint { width: 250px; background: #fcfcfc; border-radius: 5px; 
+    border: 1px solid #333; position: absolute; font-size: 10pt;
+    bottom: 0px; line-height: 12pt; display: none; }
+td.pilabel { width: 10%; color: #555; font-weight: bold; }
+td.pival { width: 20%; color: #555; text-align: center; }
+td.pibar { width: 70%; position: relative; border: 1px solid #f0f0f0; }
+div.pibar { position: absolute; top: 1px; height: 14px; }
 </style>
 </head>
 
@@ -709,6 +746,18 @@ div.rfstatus { display: none; position: absolute; left: 0; bottom: 0;
           <span id="temp0">---</span>
           <div style="font-size: 22pt; line-height: 22pt; position: absolute; bottom: 0; right:0;">Set
             <span id="set">---</span>&deg;
+          </div>
+          <div id="pidint">
+            <table style="width: 100%">
+              <tr><td class="pilabel">B</td><td class="pival" id="pivb">-%</td>
+                <td class="pibar"><div id="pibb" class="pibar"></div></td></tr>
+              <tr><td class="pilabel">P</td><td class="pival" id="pivp">-%</td>
+                <td class="pibar"><div id="pibp" class="pibar"></div></td></tr>
+              <tr><td class="pilabel">I</td><td class="pival" id="pivi">-%</td>
+                <td class="pibar"><div id="pibi" class="pibar"></div></td></tr>
+              <tr><td class="pilabel">D</td><td class="pival" id="pivd">-%</td>
+                <td class="pibar"><div id="pibd" class="pibar"></div></td></tr>
+            </table>
           </div>
         </div>
 
