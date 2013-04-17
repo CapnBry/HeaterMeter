@@ -20,16 +20,7 @@ static state_t menuLcdBacklight(button_t button);
 static state_t menuToast(button_t button);
 static state_t menuAlarmAction(button_t button);
 
-#ifdef HEATERMETER_NETWORKING
-static state_t menuConnecting(button_t button);
-static state_t menuNetworkInfo(button_t button);
-#endif  /* HEATERMETER_NETWORKING */
-
 static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
-#ifdef HEATERMETER_NETWORKING
-  { ST_CONNECTING, menuConnecting, 2 },
-  { ST_NETWORK_INFO, menuNetworkInfo, 10 },
-#endif  /* HEATERMETER_NETWORKING */
   { ST_HOME_FOOD1, menuHome, 5 },
   { ST_HOME_FOOD2, menuHome, 5 },
   { ST_HOME_AMB, menuHome, 5 },
@@ -63,9 +54,6 @@ static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
 };
 
 const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
-#ifdef HEATERMETER_NETWORKING
-  { ST_CONNECTING, BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-#endif  /* HEATERMETER_NETWORKING */
   { ST_HOME_FOOD1, BUTTON_DOWN | BUTTON_TIMEOUT, ST_HOME_FOOD2 },
   { ST_HOME_FOOD1, BUTTON_RIGHT,   ST_SETPOINT },
   { ST_HOME_FOOD1, BUTTON_UP,      ST_HOME_AMB },
@@ -126,28 +114,13 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   { ST_LIDOPEN_OFF, BUTTON_RIGHT, ST_LIDOPEN_DUR },
 
   { ST_LIDOPEN_DUR, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-#ifdef HEATERMETER_NETWORKING
-  { ST_LIDOPEN_DUR, BUTTON_RIGHT, ST_NETWORK_INFO },
-
-  { ST_NETWORK_INFO, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  { ST_NETWORK_INFO, BUTTON_RIGHT, ST_RESETCONFIG },
-#else
-   { ST_LIDOPEN_DUR, BUTTON_RIGHT, ST_RESETCONFIG },
-#endif  /* HEATERMETER_NETWORKING */
+  { ST_LIDOPEN_DUR, BUTTON_RIGHT, ST_RESETCONFIG },
 
   { ST_RESETCONFIG, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_RESETCONFIG, BUTTON_RIGHT, ST_SETPOINT },
 
   { 0, 0, 0 },
 };
-
-#ifdef HEATERMETER_NETWORKING
-extern "C" {
-#include "witypes.h"
-#include "g2100.h"
-extern char ssid[];
-}
-#endif /* HEATERMETER_NETWORKING */
 
 // scratch space for edits
 int editInt;
@@ -334,30 +307,6 @@ static state_t menuHome(button_t button)
   }
   return ST_AUTO;
 }
-
-#ifdef HEATERMETER_NETWORKING
-static state_t menuConnecting(button_t button)
-{
-  lcdprint_P(PSTR("Connecting to"), true);
-  lcd.setCursor(0, 1);
-  lcd.print(ssid);
-
-  return ST_AUTO;
-}
-
-static state_t menuNetworkInfo(button_t button)
-{
-  if (button == BUTTON_ENTER || button == BUTTON_UP || button == BUTTON_DOWN)
-  {
-    char buffer[17];
-    lcdprint_P(PSTR("Wireless Signal"), true);
-    lcd.setCursor(0, 1);
-    snprintf_P(buffer, sizeof(buffer), PSTR("%3u%% %s"), zg_get_rssi() - 100, ssid);
-    lcd.print(buffer);
-  }
-  return ST_AUTO;
-}
-#endif /* HEATERMETER_NETWORKING */
 
 static state_t menuSetpoint(button_t button)
 {

@@ -5,17 +5,8 @@
 
 #include "hmcore.h"
 
-#ifdef HEATERMETER_NETWORKING
-#include <WiServer.h>  
-#endif
-
 #ifdef HEATERMETER_RFM12
 #include "rfmanager.h"
-#endif
-
-#ifdef DFLASH_SERVING
-#include <dataflash.h>
-#include "flashfiles.h"
 #endif
 
 #include "bigchars.h"
@@ -32,9 +23,6 @@ ShiftRegLCD lcd(PIN_LCD_DATA, PIN_LCD_CLK, TWO_WIRE, 2);
 ShiftRegLCD lcd(PIN_LCD_CLK, 2);
 #endif /* SHIFTREGLCD_NATIVE */
 
-#ifdef HEATERMETER_NETWORKING
-static boolean g_NetworkInitialized;
-#endif /* HEATERMETER_NETWORKING */
 #ifdef HEATERMETER_SERIAL
 static char g_SerialBuff[64]; 
 #endif /* HEATERMETER_SERIAL */
@@ -500,7 +488,7 @@ static void outputCsv(void)
 #endif /* HEATERMETER_SERIAL */
 }
 
-#if defined(HEATERMETER_NETWORKING) || defined(HEATERMETER_SERIAL)
+#if defined(HEATERMETER_SERIAL)
 static void printSciFloat(float f)
 {
   // This function could use a rework, it is pretty expensive
@@ -838,88 +826,73 @@ static void setTempParam(unsigned char idx, int val)
   }
 }
 
-/* handleCommandUrl returns true if it consumed the URL */
-static boolean handleCommandUrl(char *URL)
+static void handleCommandUrl(char *URL)
 {
   unsigned char urlLen = strlen(URL);
   if (strncmp_P(URL, PSTR("set?sp="), 7) == 0) 
   {
     storeSetPoint(atoi(URL + 7));
     storePidUnits(URL[urlLen-1]);
-    return true;
   }
-  if (strncmp_P(URL, PSTR("set?lb="), 7) == 0) 
+  else if (strncmp_P(URL, PSTR("set?lb="), 7) == 0)
   {
     csvParseI(URL + 7, storeLcdParam);
     reportLcdParameters();
-    return true;
   }
-  if (strncmp_P(URL, PSTR("set?ld="), 7) == 0) 
+  else if (strncmp_P(URL, PSTR("set?ld="), 7) == 0)
   {
     csvParseI(URL + 7, storeLidParam);
     reportLidParameters();
-    return true;
   }
-  if (strncmp_P(URL, PSTR("set?po="), 7) == 0)
+  else if (strncmp_P(URL, PSTR("set?po="), 7) == 0)
   {
     csvParseI(URL + 7, storeProbeOffset);
     reportProbeOffsets();
-    return true;
   }
-  if (strncmp_P(URL, PSTR("set?pid"), 7) == 0 && urlLen > 9) 
+  else if (strncmp_P(URL, PSTR("set?pid"), 7) == 0 && urlLen > 9)
   {
     float f = atof(URL + 9);
     storePidParam(URL[7], f);
     reportPidParams();
-    return true;
   }
-  if (strncmp_P(URL, PSTR("set?pn"), 6) == 0 && urlLen > 8) 
+  else if (strncmp_P(URL, PSTR("set?pn"), 6) == 0 && urlLen > 8)
   {
     // Store probe name will only store it if a valid probe number is passed
     storeAndReportProbeName(URL[6] - '0', URL + 8);
-    return true;
   }
-  if (strncmp_P(URL, PSTR("set?pc"), 6) == 0 && urlLen > 8) 
+  else if (strncmp_P(URL, PSTR("set?pc"), 6) == 0 && urlLen > 8)
   {
     storeProbeCoeff(URL[6] - '0', URL + 8);
-    return true;
   }
-  if (strncmp_P(URL, PSTR("set?al="), 7) == 0)
+  else if (strncmp_P(URL, PSTR("set?al="), 7) == 0)
   {
     csvParseI(URL + 7, storeAlarmLimits);
     reportAlarmLimits();
-    return true;
   }
-  if (strncmp_P(URL, PSTR("set?fn="), 7) == 0)
+  else if (strncmp_P(URL, PSTR("set?fn="), 7) == 0)
   {
     csvParseI(URL + 7, storeFanParams);
     reportFanParams();
-    return true;
   }
-  if (strncmp_P(URL, PSTR("set?tt="), 7) == 0)
+  else if (strncmp_P(URL, PSTR("set?tt="), 7) == 0)
   {
     Menus.displayToast(URL+7);
-    return true;
   }
-  if (strncmp_P(URL, PSTR("set?tp="), 7) == 0)
+  else if (strncmp_P(URL, PSTR("set?tp="), 7) == 0)
   {
     csvParseI(URL + 7, setTempParam);
-    return true;
   }
-  if (strncmp_P(URL, PSTR("config"), 6) == 0) 
+  else if (strncmp_P(URL, PSTR("config"), 6) == 0)
   {
     reportConfig();
-    return true;
   }
-  if (strncmp_P(URL, PSTR("reboot"), 5) == 0)
+  else if (strncmp_P(URL, PSTR("reboot"), 5) == 0)
   {
     reboot();
     // reboot doesn't return
   }
-  
-  return false;
 }
-#endif /* defined(HEATERMETER_NETWORKING) || defined(HEATERMETER_SERIAL) */
+#endif /* defined(HEATERMETER_SERIAL) */
 
 static void outputRfStatus(void)
 {
@@ -927,178 +900,6 @@ static void outputRfStatus(void)
   rfmanager.status();
 #endif /* defined(HEATERMETER_SERIAL) && defined(HEATERMETER_RFM12) */
 }
-
-#ifdef HEATERMETER_NETWORKING
-
-#ifdef DFLASH_SERVING 
-#define HTTP_HEADER_LENGTH 19 // "HTTP/1.0 200 OK\r\n\r\n"
-static void sendFlashFile(const struct flash_file_t *file)
-{
-  // Note we mess with the underlying UIP stack to prevent reading the entire
-  // file each time from flash just to discard all but 300 bytes of it
-  // Speeds up an 11kB send by approximately 3x (up to 1.5KB/sec)
-  uip_tcp_appstate_t *app = &(uip_conn->appstate);
-  unsigned int sentBytes = app->ackedCount;
-
-  // The first time through, the buffer contains the header but nothing is acked yet
-  // so don't mess with any of the state, just send the first segment  
-  if (app->ackedCount > 0)
-  {
-   app->cursor = (char *)sentBytes;
-   sentBytes -= HTTP_HEADER_LENGTH;
-  }
-
-  unsigned int page = pgm_read_word(&file->page) + (sentBytes / DATAFLASH_PAGE_BYTES);
-  unsigned int off = sentBytes % DATAFLASH_PAGE_BYTES;
-  unsigned int size = pgm_read_word(&file->size);
-  unsigned int sendSize = size - sentBytes;
-
-  if (sendSize > uip_mss())
-    sendSize = uip_mss();
-   
-  dflash.Cont_Flash_Read_Enable(page, off);
-  while (sendSize-- > 0)
-    WiServer.write(dflash.Cont_Flash_Read());
-  dflash.DF_CS_inactive();
-  
-  // Pretend that we've sent the whole file
-  app->cursor = (char *)(HTTP_HEADER_LENGTH + size);
-}
-#endif  /* DFLASH_SERVING */
-
-static void outputJson(void)
-{
-  WiServer.print_P(PSTR("{\"temps\":["));
-
-  for (unsigned char i=0; i<TEMP_COUNT; ++i)
-  {
-    WiServer.print_P(PSTR("{\"n\":\""));
-    loadProbeName(i);
-    WiServer.print(editString);
-    WiServer.print_P(PSTR("\",\"c\":"));
-    if (pid.Probes[i]->hasTemperature())
-      WiServer.print(pid.Probes[i]->Temperature, 1);
-    else
-      WiServer.print_P(PSTR("null"));
-    WiServer.print_P(PSTR(",\"a\":"));
-    if (pid.Probes[i]->hasTemperatureAvg())
-      WiServer.print(pid.Probes[i]->TemperatureAvg, 2);
-    else
-      WiServer.print_P(PSTR("null"));
-    WiServer.print_P(PSTR("},"));
-  }
-  
-  WiServer.print_P(PSTR("{}],\"set\":"));
-  WiServer.print(pid.getSetPoint(),DEC);
-  WiServer.print_P(PSTR(",\"lid\":"));
-  WiServer.print(pid.LidOpenResumeCountdown,DEC);
-  WiServer.print_P(PSTR(",\"fan\":{\"c\":"));
-  WiServer.print(pid.getFanSpeed(),DEC);
-  WiServer.print_P(PSTR(",\"a\":"));
-  WiServer.print((unsigned char)pid.FanSpeedAvg,DEC);
-  WiServer.print_P(PSTR("}}"));
-}
-
-/*
-  This hexdecode function may look dumb as shit but
-  the logic does this in 4 instructions (8 bytes)
-  instead of 12 instructions
-  if (c == 0)
-    return 0;
-  if (c >= '0' && c <= '9')
-    return c - '0';
-  if (c >= 'A' && c <= 'F')
-    return c - 'A';
-  if (c >= 'a' && c <= 'f')
-    return c - 'a';
-  return (undefined);
-*/
-static unsigned char hexdecode(unsigned char c)
-{
-  // Convert 'a'-'f' to lowercase and '0'-'9' to 0-9
-  c &= 0xcf;
-  if (c > 9)
-    return c - 'A' + 10;
-  return c;
-}
-
-/* In-place URL decoder */
-static void urldecode(char *URL)
-{
-  char *dest = URL;
-  while (true)
-  {
-    *dest = *URL;
-    char ofs = 1;
-
-    switch (*URL)
-    {
-    case 0:
-      return;
-      break;
-
-    case '+':
-      *dest = ' ';
-      break;
-
-    case '%':
-      char c1 = *(URL+1);
-      char c2 = *(URL+2);
-      if (c1 && c2)
-      {
-        *dest = (hexdecode(c1) << 4 | hexdecode(c2));
-        ofs = 3;
-      }
-      break;
-    }  /* switch */
-    URL += ofs;
-    ++dest;
-  }
-}
-
-static boolean sendPage(char* URL)
-{
-  ++URL;  // WARNING: URL no longer has leading '/'
-  urldecode(URL);
-  if (handleCommandUrl(URL))
-  {
-    WiServer.print_P(PSTR("OK\n"));
-    return true;
-  }
-  if (strcmp_P(URL, PSTR("json")) == 0) 
-  {
-    outputJson();
-    return true;    
-  }
-  
-#ifdef DFLASH_SERVING
-  const struct flash_file_t *file = FLASHFILES;
-  while (pgm_read_word(&file->fname))
-  {
-    if (strcmp_P(URL, (const char PROGMEM *)pgm_read_word(&file->fname)) == 0)
-    {
-      sendFlashFile(file);
-      return true;
-    }
-    ++file;
-  }
-#endif  /* DFLASH_SERVING */
-  
-  return false;
-}
-
-#ifdef DFLASH_SERVING
-static void dflashInit(void)
-{
-  // Set the WiFi Slave Select to HIGH (disable) to
-  // prevent it from interferring with the dflash init
-  pinMode(PIN_SPI_SS, OUTPUT);
-  digitalWrite(PIN_SPI_SS, HIGH);
-  dflash.init(PIN_SOFTRESET);  // actually DATAFLASH_SS
-}
-#endif  /* DFLASH_SERVING */
-
-#endif /* HEATERMETER_NETWORKING */
 
 #ifdef HEATERMETER_RFM12
 static void rfSourceNotify(RFSource &r, RFManager::event e)
@@ -1242,13 +1043,11 @@ void eepromLoadConfig(boolean forceDefault)
 
 static void blinkLed(void)
 {
-#ifndef HEATERMETER_NETWORKING  
   pinMode(PIN_WIRELESS_LED, OUTPUT);
   digitalWrite(PIN_WIRELESS_LED, HIGH);
   delay(100);
   digitalWrite(PIN_WIRELESS_LED, LOW);
   delay(50);
-#endif // !HEATERMETER_NETWORKING
 }
 
 #ifdef HEATERMETER_SERIAL
@@ -1353,16 +1152,6 @@ void hmcoreSetup(void)
   checkInitRfManager();
 #endif
 
-#ifdef HEATERMETER_NETWORKING
-  dflashInit();
-  
-  g_NetworkInitialized = readButton() == BUTTON_NONE;
-  if (g_NetworkInitialized)  
-  {
-    Menus.setState(ST_CONNECTING);
-    WiServer.init(sendPage);
-  }
-#endif  /* HEATERMETER_NETWORKING */
   Menus.setState(ST_HOME_NOPROBES);
 
   // BLINK 2: Initialization complete
@@ -1384,11 +1173,6 @@ void hmcoreLoop(void)
   else
     digitalWrite(PIN_WIRELESS_LED, LOW);
 #endif /* HEATERMETER_RFM12 */
-
-#ifdef HEATERMETER_NETWORKING 
-  if (g_NetworkInitialized)
-    WiServer.server_task(); 
-#endif /* HEATERMETER_NETWORKING */
 
   Menus.doWork();
   if (pid.doWork())
