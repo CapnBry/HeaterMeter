@@ -1276,10 +1276,8 @@ static void newTempsAvail(void)
     
   if ((pidCycleCount % 0x20) == 0)
     outputRfStatus();
-#ifdef PID_DEBUG
-  if ((pidCycleCount % 4) == 0)
+  if ((pidCycleCount % 0x10) == 0)
     pid.pidStatus();
-#endif
 
   outputCsv();
   // We want to report the status before the alarm readout so

@@ -94,6 +94,8 @@ Probe Names
 $HMPN,Probe0,Probe1,Probe2,Probe3
 Probe Offsets
 $HMPO,Probe0,Probe1,Probe2,Probe3
+PID Internal Status
+$HMPS,pidISum,tempD
 PID State Update
 $HMSU,SetPoint,Pit,Food1,Food2,Ambient,Fan,FanMovAvg,LidOpenCountdown
 RF Status

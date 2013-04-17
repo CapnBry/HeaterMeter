@@ -495,7 +495,7 @@ boolean GrillPid::doWork(void)
 void GrillPid::pidStatus(void) const
 {
   print_P(PSTR("HMPS"CSV_DELIMITER));
-  SerialX.print(_pidErrorSum, 2);
+  SerialX.print(_pidErrorSum, 3);
   Serial_csv();
   SerialX.print(Probes[TEMP_PIT]->Temperature - Probes[TEMP_PIT]->TemperatureAvg, 2);
   Serial_nl();
