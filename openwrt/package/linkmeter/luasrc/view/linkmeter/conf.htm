@@ -137,6 +137,9 @@ function configHashToForm()
       
     if (isProbeId(k, "pt"))
       elem.trigger("change");
+    else if (k == "fout")
+      elem.change(configElemChange)
+      .trigger("change");
     else if (isProbeId(k, "prfn"))
       $("#prfa" + k.substr(4))
         .change(configElemChange)
@@ -166,6 +169,12 @@ function configElemChange()
       if (values.length >= 4)
         $("#pcr"+name).val(values[3]);
     }
+  }
+  else if (name == "fout")
+  {
+    $(".fout-0").hide();
+    $(".fout-1").hide();
+    $(".fout-" + this.value).show();
   }
   else if (isProbeId(name, "prfa"))
   {
@@ -301,7 +310,7 @@ function updateConfigUrl(divname, h)
   csvItems(h, aValues, "lb", ["lb", "lbn"]);
   csvItems(h, aValues, "ld", ["lo", "ld"]);
   csvItems(h, aValues, "po", ["po0", "po1", "po2", "po3"]);
-  csvItems(h, aValues, "fn", ["fmin", "fmax", "finv"]);
+  csvItems(h, aValues, "fn", ["fmin", "fmax", "finv", "fout"]);
   csvItems(h, aValues, "al", ["pall0", "palh0", "pall1", "palh1",
     "pall2", "palh2", "pall3", "palh3"]);
   for (var i=0; i<4; ++i)
@@ -416,7 +425,7 @@ function ifrmHide()
     top: 0px; left: 0px; display: none; background-color: #000; 
     opacity: 0.6; z-index: 1; }
   #dialog-container { background-color: #f5f5f5; width: 480px; height: 200px;
-    border: 5px solid #4A6B7C; padding: 10px; 
+    border: 4px solid #4A6B7C; padding: 10px; border-radius: 10px;
     position: fixed; z-index: 2; top: 100px; display: none;
     left: 50%; margin-left: -240px; }
 </style>
@@ -501,8 +510,14 @@ time they are restarted.</div>
     Derivative <input type="text" maxlength="12" id="pidd" style="width: 5em;"/>
   </div>
   <div class="cbi-value">
-    Fan speed min <input type="text" maxlength="3" id="fmin" style="width: 2em;"/>%
-    max <input type="text" maxlength="3" id="fmax" style="width: 2em;"/>%
+    <select id="fout" style="width: 5em;">
+      <option value="0">Fan</option>
+      <option value="1">Servo</option>
+    </select>
+    <span class="fout-0">speed min</span>
+    <span class="fout-1">pulse duration</span>
+    <input type="text" maxlength="3" id="fmin" style="width: 2em;"/><span class="fout-0">% max</span><span class="fout-1"> -</span>
+    <input type="text" maxlength="3" id="fmax" style="width: 2em;"/><span class="fout-0">%</span><span class="fout-1">x10 usec (e.g. 150=1500us)</span>
     <input type="checkbox" id="finv"/><label for="finv"> Invert output</label>
   </div>
 </fieldset>

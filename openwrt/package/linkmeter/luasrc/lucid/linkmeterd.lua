@@ -204,7 +204,7 @@ local function segLidParams(line)
 end
 
 local function segFanParams(line)
-  return segConfig(line, {"fmin", "fmax", "finv"}, true)
+  return segConfig(line, {"fmin", "fmax", "finv", "fout"}, true)
 end
 
 local function segProbeCoeffs(line)
