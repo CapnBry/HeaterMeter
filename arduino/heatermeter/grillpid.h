@@ -113,8 +113,8 @@ struct GrillPidOutput
 {
   typedef enum {
     Default = 0xff,
-    Fan = 1,
-    Servo = 2
+    Fan = 0,
+    Servo = 1
   } Type;
 };
 
