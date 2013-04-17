@@ -810,14 +810,13 @@ void silenceRingingAlarm(void)
 
 static void storeFanParams(unsigned char idx, int val)
 {
-  uint8_t cval = constrain(val, 0, 100);
   switch (idx)
   {
     case 0:
-      storeMinFanSpeed(cval);
+      storeMinFanSpeed(val);
       break;
     case 1:
-      storeMaxFanSpeed(cval);
+      storeMaxFanSpeed(val);
       break;
     case 2:
       storeInvertPwm((boolean)val);
