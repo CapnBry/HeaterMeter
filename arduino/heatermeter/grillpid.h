@@ -109,6 +109,15 @@ public:
 #define PIDI 2
 #define PIDD 3
 
+struct GrillPidOutput
+{
+  typedef enum {
+    Default = 0xff,
+    Fan = 1,
+    Servo = 2
+  } Type;
+};
+
 class GrillPid
 {
 private:
@@ -127,6 +136,7 @@ private:
   unsigned char _maxFanSpeed;
   unsigned char _minFanSpeed;
   boolean _invertPwm;
+  GrillPidOutput::Type _outputDevice;
   
   void calcFanSpeed(void);
   void commitFanSpeed(void);
@@ -136,6 +146,7 @@ public:
   TempProbe *Probes[TEMP_COUNT];
   
   /* Configuration */
+  unsigned char getBlowerPin(void) const { return _blowerPin; }
   int getSetPoint(void) const { return _setPoint; }
   void setSetPoint(int value); 
   char getUnits(void) const { return _units; }
@@ -150,15 +161,20 @@ public:
   // The PID constants
   float Pid[4];
   void setPidConstant(unsigned char idx, float value);
-  // The maximum fan speed that will be used in automatic mode
+  // The maximum fan speed percent that will be used in automatic mode
+  // In Servo output maxfanspeed is the duration of the maximum pulse in 10x uSec (240 = 2400us)
   unsigned char getMaxFanSpeed(void) const { return _maxFanSpeed; }
   void setMaxFanSpeed(unsigned char value) { _maxFanSpeed = value; }
-  // The minimum fan speed before converting to "long PID" (SRTP) mode
+  // The minimum fan speed percent before converting to "long PID" (SRTP) mode
+  // In Servo output minfanspeed is the duration of the minumum pulse in 10x uSec (54 = 540us)
   unsigned char getMinFanSpeed(void) const { return _minFanSpeed; }
   void setMinFanSpeed(unsigned char value) { _minFanSpeed = value; }
   // Reverse the PWM output, i.e. 100% writes 0 to the output
   boolean getInvertPwm(void) const { return _invertPwm; }
   void setInvertPwm(boolean value) { _invertPwm = value; }
+  // Sets the type of device connected to the output pin
+  GrillPidOutput::Type getOutputDevice(void) const { return _outputDevice; }
+  void setOutputDevice(GrillPidOutput::Type outputDevice);
   
   /* Runtime Data */
   // Current fan speed in percent, setting this will put the fan into manual mode

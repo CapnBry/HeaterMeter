@@ -63,7 +63,7 @@ Both Serial and Web
 /set?lb=A,B - Set the LCD backlight to A.  Range is 0 (off) to 255 (full)
 /set?ld=A,B,C - Set Lid Detect offset to A%, duration to B seconds. C is used to enable or disable a currently running lid detect mode. Non-zero will enter lid open mode, zero will disable lid open mode.
 /set?al=L,H[,L,H...] - Set probe alarms thresholds. Setting to a negative number will disable the alarm, setting to 0 will stop a ringing alarm and disarm it.
-/set?fn=L,H,I - Set the fan output parameters. L = min fan speed before "long PID" mode, H = max fan speed, I = Invert PWM polarity so that 100% actually outputs 0% and 0% outputs 100%
+/set?fn=L,H,I,O - Set the fan output parameters. L = min fan speed before "long PID" mode, H = max fan speed, I = Invert PWM polarity so that 100% actually outputs 0% and 0% outputs 100%, O = output mode (0 = Fan, 1 = Servo)
 /set?tt=XXX[,YYY] - Display a "toast" message on the LCD which is temporarily displayed over any other menu and is cleared either by timeout or any button press. XXX and YYY are the two lines to displau and can be up to 16 characters each.
 /reboot - Reboots the microcontroller.  Only if wired to do so (LinkMeter)
 
@@ -83,7 +83,7 @@ $UCID,HeaterMeter,VersionID
 Alarm Indicator
 $HMAL,LowProbe0,HighProbe0[,...] (L or H suffix indicates ringing, negative values indicated disabled alarms)
 Fan Parameters
-$HMFN,Low,High,Invert (0=off 1=on)
+$HMFN,Low,High,Invert (0=off 1=on),Output (0=Fan 1=Servo)
 Lid Detect Parameters
 $HMLD,Offset Percent,Lid Duration
 Debug Log Message

@@ -69,6 +69,7 @@ static const struct __eeprom_data {
   unsigned char maxFanSpeed;  // in percent
   boolean invertPwm;
   unsigned char homeDisplayMode;
+  unsigned char pidOutputDevice;
 } DEFAULT_CONFIG PROGMEM = { 
   EEPROM_MAGIC,  // magic
   225,  // setpoint
@@ -84,7 +85,8 @@ static const struct __eeprom_data {
   10,   // min fan speed  
   100,  // max fan speed
   false, // invert PWM
-  0xff   // 2-line home
+  0xff,  // 2-line home
+  GrillPidOutput::Fan,   // Pid output device
 };
 
 // EEPROM address of the start of the probe structs, the 2 bytes before are magic
@@ -278,6 +280,12 @@ static void storeInvertPwm(unsigned char invertPwm)
 {
   pid.setInvertPwm(invertPwm);
   config_store_byte(invertPwm, invertPwm);
+}
+
+static void storePidOutputDevice(unsigned char pidOutputDevice)
+{
+  pid.setOutputDevice((GrillPidOutput::Type)pidOutputDevice);
+  config_store_byte(pidOutputDevice, pidOutputDevice);
 }
 
 void storeLcdBacklight(unsigned char lcdBacklight)
@@ -698,6 +706,8 @@ static void reportFanParams(void)
   SerialX.print(pid.getMaxFanSpeed(), DEC);
   Serial_csv();
   SerialX.print((unsigned char)pid.getInvertPwm(), DEC);
+  Serial_csv();
+  SerialX.print((unsigned char)pid.getOutputDevice(), DEC);
   Serial_nl();
 }
 
@@ -800,20 +810,20 @@ void silenceRingingAlarm(void)
 
 static void storeFanParams(unsigned char idx, int val)
 {
-  if (val < 0)
-    val = 0;
-  if (val > 100)
-    val = 100;
+  uint8_t cval = constrain(val, 0, 100);
   switch (idx)
   {
     case 0:
-      storeMinFanSpeed(val);
+      storeMinFanSpeed(cval);
       break;
     case 1:
-      storeMaxFanSpeed(val);
+      storeMaxFanSpeed(cval);
       break;
     case 2:
       storeInvertPwm((boolean)val);
+      break;
+    case 3:
+      storePidOutputDevice(val);
       break;
   }
 }
@@ -1167,6 +1177,7 @@ static void eepromLoadBaseConfig(boolean forceDefault)
   pid.setMaxFanSpeed(config.maxFanSpeed);
   pid.setMinFanSpeed(config.minFanSpeed);
   pid.setInvertPwm(config.invertPwm);
+  pid.setOutputDevice((GrillPidOutput::Type)config.pidOutputDevice);
   g_HomeDisplayMode = config.homeDisplayMode;
   
 #ifdef HEATERMETER_RFM12
