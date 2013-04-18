@@ -162,13 +162,11 @@ function pidIntBar(target, val)
   if (val > 0)
     $(target).css({
       "left": "50%",
-      "right": '',
       "width": val/2 + "%",
       "background-color": "#74b931"});
   else
     $(target).css({
-      "left": '',
-      "right": "50%",
+      "left": 50 + val/2 + "%",
       "width": -val/2 + "%",
       "background-color": "#ce3b46"});
 }
@@ -180,6 +178,7 @@ function pidIntEvent(o)
   $("#pivp").html(o.p + "%"); pidIntBar("#pibp", o.p);
   $("#pivi").html(o.i + "%"); pidIntBar("#pibi", o.i);
   $("#pivd").html(o.d + "%"); pidIntBar("#pibd", o.d);
+  $("#pivdt").html(o.t + "&deg;");
 }
 
 function legendClicked()
@@ -722,13 +721,16 @@ div.ptemp { font-size: 32pt; line-height: 26pt; color: #fff; }
 #alarmclear { display: none; position: absolute; bottom: 4px; right: 4px; color: #ccc; }
 div.rfstatus { display: none; position: absolute; left: 0; bottom: 0; 
     width: 16px; height: 16px; background-image: url('<%=resource%>/rf.png'); }
-#pidint { width: 250px; background: #fcfcfc; border-radius: 5px; 
+#pidint { width: 200px; background-color: #fcfcfc; border-radius: 5px; 
     border: 1px solid #333; position: absolute; font-size: 10pt;
-    bottom: 0px; line-height: 12pt; display: none; }
-td.pilabel { width: 10%; color: #555; font-weight: bold; }
-td.pival { width: 20%; color: #555; text-align: center; }
-td.pibar { width: 70%; position: relative; border: 1px solid #f0f0f0; }
-div.pibar { position: absolute; top: 1px; height: 14px; }
+    bottom: 0px; line-height: 12pt; padding: 3px; display: none; }
+div.pilabel { width: 7%; color: #555; font-weight: bold; float: left; clear: left; }
+div.pival { width: 25%; color: #aaa; text-align: right; float: left; }
+div.pibarcont { position: relative; float: right; width: 65%; border: 1px solid #999;
+    background-color: #f0f0f0; }
+div.pibar { position: relative; }
+div.pipip { position: absolute; left: 50%; top: 0; width: 1px; height: 100%;
+    background-color: #999; }
 </style>
 </head>
 
@@ -748,16 +750,23 @@ div.pibar { position: absolute; top: 1px; height: 14px; }
             <span id="set">---</span>&deg;
           </div>
           <div id="pidint">
-            <table style="width: 100%">
-              <tr><td class="pilabel">B</td><td class="pival" id="pivb">-%</td>
-                <td class="pibar"><div id="pibb" class="pibar"></div></td></tr>
-              <tr><td class="pilabel">P</td><td class="pival" id="pivp">-%</td>
-                <td class="pibar"><div id="pibp" class="pibar"></div></td></tr>
-              <tr><td class="pilabel">I</td><td class="pival" id="pivi">-%</td>
-                <td class="pibar"><div id="pibi" class="pibar"></div></td></tr>
-              <tr><td class="pilabel">D</td><td class="pival" id="pivd">-%</td>
-                <td class="pibar"><div id="pibd" class="pibar"></div></td></tr>
-            </table>
+            <div class="pibarcont">
+              <div class="pibar" id="pibb">&nbsp;</div>
+              <div class="pibar" id="pibp">&nbsp;</div>
+              <div class="pibar" id="pibi">&nbsp;</div>
+              <div class="pibar" id="pibd">&nbsp;</div>
+              <div class="pipip"></div>
+            </div>
+            <div class="pilabel" style="margin-top: 1px;">B</div>
+            <div class="pival" id="pivb" style="margin-top: 1px;">-%</div>
+            <div class="pilabel">P</div>
+            <div class="pival" id="pivp">-%</div>
+            <div class="pilabel">I</div>
+            <div class="pival" id="pivi">-%</div>
+            <div class="pilabel">D</div>
+            <div class="pival" id="pivd">-%</div>
+            <div class="pilabel">dT</div>
+            <div class="pival" id="pivdt">-&deg;</div>
           </div>
         </div>
 
