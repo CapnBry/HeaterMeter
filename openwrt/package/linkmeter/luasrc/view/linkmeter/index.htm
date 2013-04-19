@@ -71,6 +71,7 @@ $(document).ready(function()
     $("#graph").bind("plothover", graphHover);
     $("#graph").mouseout(function () { $("#graphtt").fadeOut(); });
     $("div.legfill").click(legendClicked);
+    $(document).bind('keydown', 'p', togglePidInt);
 
     // Set colors of probe readings to match the graph colors
     for (var srs=0; srs<4; ++srs)
@@ -156,6 +157,19 @@ function alarmEvent(o)
   }
 }
 
+function togglePidInt()
+{
+  if ($("#pidint").is(":visible"))
+    // Use a timeout on success to make sure the next (final) update
+    // doesn't turn the display back on and leave it on
+    $.get("<%=build_url("admin/lm/set")%>", {tp: 0},
+      function () { setTimeout(
+        function () { $("#pidint").fadeOut('fast'); }, 1000);
+        });
+  else
+    $.get("<%=build_url("admin/lm/set")%>", {tp: 1});
+}
+
 function pidIntBar(target, val)
 {
   val = (val > 100) ? 100 : (val < -100) ? -100 : val;
@@ -173,7 +187,7 @@ function pidIntBar(target, val)
 
 function pidIntEvent(o)
 {
-  $("#pidint").show();
+  $("#pidint").show('fast');
   $("#pivb").html(o.b + "%"); pidIntBar("#pibb", o.b);
   $("#pivp").html(o.p + "%"); pidIntBar("#pibp", o.p);
   $("#pivi").html(o.i + "%"); pidIntBar("#pibi", o.i);
