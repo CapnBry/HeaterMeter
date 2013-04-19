@@ -46,7 +46,7 @@ void hmcoreLoop(void);
 void updateDisplay(void);
 void lcdprint_P(const char PROGMEM *p, const boolean doClear);
 
-void eepromLoadConfig(boolean forceDefault);
+void eepromLoadConfig(unsigned char forceDefault);
 void storeSetPoint(int sp);
 void loadProbeName(unsigned char probeIndex);
 void storeAndReportProbeName(unsigned char probeIndex, const char *name);

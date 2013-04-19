@@ -437,7 +437,7 @@ static state_t menuResetConfig(button_t button)
   else if (button == BUTTON_LEAVE)
   {
     if (editInt != 0)
-      eepromLoadConfig(true);
+      eepromLoadConfig(1);
   }
   menuBooleanEdit(button, NULL);
   return ST_AUTO;

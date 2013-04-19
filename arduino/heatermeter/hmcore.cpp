@@ -59,7 +59,7 @@ static const struct __eeprom_data {
   boolean invertPwm;
   unsigned char homeDisplayMode;
   unsigned char pidOutputDevice;
-} DEFAULT_CONFIG PROGMEM = { 
+} DEFAULT_CONFIG[] PROGMEM = {
   EEPROM_MAGIC,  // magic
   225,  // setpoint
   6,    // lid open offset %
@@ -971,14 +971,14 @@ static void checkAlarms(void)
     Menus.setState(ST_HOME_FOOD1);
 }
 
-static void eepromLoadBaseConfig(boolean forceDefault)
+static void eepromLoadBaseConfig(unsigned char forceDefault)
 {
   struct __eeprom_data config;
   eeprom_read_block(&config, 0, sizeof(config));
   forceDefault = forceDefault || config.magic != EEPROM_MAGIC;
-  if (forceDefault)
+  if (forceDefault != 0)
   {
-    memcpy_P(&config, &DEFAULT_CONFIG, sizeof(__eeprom_data));
+    memcpy_P(&config, &DEFAULT_CONFIG[forceDefault - 1], sizeof(__eeprom_data));
     eeprom_write_block(&config, 0, sizeof(__eeprom_data));  
   }
   
@@ -1001,7 +1001,7 @@ static void eepromLoadBaseConfig(boolean forceDefault)
 #endif
 }
 
-static void eepromLoadProbeConfig(boolean forceDefault)
+static void eepromLoadProbeConfig(unsigned char forceDefault)
 {
   unsigned int magic;
   // instead of this use below because we don't have eeprom_read_word linked yet
@@ -1018,7 +1018,7 @@ static void eepromLoadProbeConfig(boolean forceDefault)
   p = (struct  __eeprom_probe *)(EEPROM_PROBE_START);
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
-    if (forceDefault)
+    if (forceDefault != 0)
     {
       memcpy_P(&config, &DEFAULT_PROBE_CONFIG, sizeof( __eeprom_probe));
       // Hardcoded to change the last character of the string instead of [strlen(config.name)-1]
@@ -1033,7 +1033,7 @@ static void eepromLoadProbeConfig(boolean forceDefault)
   }  /* for i<TEMP_COUNT */
 }
 
-void eepromLoadConfig(boolean forceDefault)
+void eepromLoadConfig(unsigned char forceDefault)
 {
   // These are separated into two functions to prevent needing stack
   // space for both a __eeprom_data and __eeprom_probe structure
@@ -1146,7 +1146,7 @@ void hmcoreSetup(void)
   pid.Probes[TEMP_FOOD2] = &probe2;
   pid.Probes[TEMP_AMB] = &probe3;
 
-  eepromLoadConfig(false);
+  eepromLoadConfig(0);
   lcdDefineChars();
 #ifdef HEATERMETER_RFM12
   checkInitRfManager();
