@@ -157,8 +157,11 @@ function alarmEvent(o)
   }
 }
 
-function togglePidInt()
+function togglePidInt(e)
 {
+  if (this !== e.target && e.target.type == "text")
+    return;
+    
   if ($("#pidint").is(":visible"))
     // Use a timeout on success to make sure the next (final) update
     // doesn't turn the display back on and leave it on
