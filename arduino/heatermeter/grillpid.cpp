@@ -2,7 +2,7 @@
 // GrillPid uses TIMER1 COMPB and OVF vectors, as well as modifies the waveform
 // generation mode of TIMER1. Blower output pin does not need to be a hardware
 // PWM pin.
-// Fan output is 490Hz phase-correct PWM
+// Fan output is 489Hz fast PWM
 // Servo output is 50Hz pulse duration
 #include <math.h>
 #include <string.h>
@@ -24,36 +24,34 @@ extern const GrillPid pid;
 #define LIDOPEN_MIN_AUTORESUME 30
 
 // Servo refresh period in usec, 20000 usec = 20ms = 50Hz
-#define SERVO_REFRESH         20000
+#define SERVO_REFRESH          20000
 
-#define uSecToTicks(x) (clockCyclesPerMicrosecond() / 8 * x)
+// For this calculation to work, ccpm()/8 must return a round number
+#define uSecToTicks(x) ((unsigned int)(clockCyclesPerMicrosecond() / 8) * x)
+
+//#define TIMER1_DEBUG
+#if defined(TIMER1_DEBUG)
+static bool ovf;
+static unsigned int rst;
+#endif
 
 ISR(TIMER1_COMPB_vect)
 {
-  // Fan mode is simple PWM so just set low. Same with Servo for the first call
-  // case
-  uint8_t dir = LOW;
-  if (pid.getOutputDevice() == GrillPidOutput::Servo)
-  {
-    // In servo mode, the first time COMPB is thrown is when we pass the pulse
-    // width, just like PWM. At that point we want to set COMPB to the servo
-    // refresh interval and wait for that.
-    if (TCNT1 < uSecToTicks(SERVO_REFRESH))
-      OCR1B = uSecToTicks(SERVO_REFRESH);
-    else
-    {
-      // Passed SERVO_REFRESH interval, so restart the period
-      dir = HIGH;
-      TCNT1 = 0;
-    }
-  }
-  digitalWrite(pid.getBlowerPin(), dir);
+#if defined(TIMER1_DEBUG)
+  rst = TCNT1;
+#endif
+  // In fan mode at 100% the COMPB interrupt never fires, so it is always safe
+  // to set the pin LOW
+  digitalWrite(pid.getBlowerPin(), LOW);
 }
 
 ISR(TIMER1_OVF_vect)
 {
-  // Overflow vector is used for PWM of fan only
-  digitalWrite(pid.getBlowerPin(), HIGH);
+#if defined(TIMER1_DEBUG)
+  ovf = true;
+#endif
+  if (OCR1B != 0)
+    digitalWrite(pid.getBlowerPin(), HIGH);
 }
 
 static void calcExpMovingAverage(const float smooth, float *currAverage, float newValue)
@@ -265,7 +263,7 @@ inline void GrillPid::calcFanSpeed(void)
 
   // IIIII = fan speed percent per degree of accumulated error
   // In servo mode the "fan speed" always is 0-100 as in percent of open
-  uint8_t max = (_outputDevice == GrillPidOutput::Servo) ? 100 : _maxFanSpeed;
+  unsigned char max = (_outputDevice == GrillPidOutput::Servo) ? 100 : _maxFanSpeed;
   // anti-windup: Make sure we only adjust the I term while inside the proportional control range
   if ((error > 0 && lastFanSpeed < max) || (error < 0 && lastFanSpeed > 0))
     _pidCurrent[PIDI] += Pid[PIDI] * error;
@@ -317,7 +315,7 @@ inline void GrillPid::commitFanSpeed(void)
 
     if (_invertPwm)
       output = _maxFanSpeed - output;
-    OCR1B = (unsigned int)output * 255 / 100;
+    OCR1B = (unsigned int)output * 512 / 100;
   }
   else
   {
@@ -329,8 +327,52 @@ inline void GrillPid::commitFanSpeed(void)
       output = _fanSpeed;
     // Get the output speed in 10x usec by LERPing between min and max
     output = ((_maxFanSpeed - _minFanSpeed) * (unsigned int)output / 100) + _minFanSpeed;
-    OCR1B = uSecToTicks(10 * output);
+    OCR1B = uSecToTicks(10U * output);
   }
+
+#if defined(TIMER1_DEBUG)
+  SerialX.print("HMLG,0,");
+  SerialX.print(" ICR1="); SerialX.print(ICR1, DEC);
+  SerialX.print(" OCR1B="); SerialX.print(OCR1B, DEC);
+  SerialX.print(" TCCR1A=x"); SerialX.print(TCCR1A, HEX);
+  SerialX.print(" TCCR1B=x"); SerialX.print(TCCR1B, HEX);
+  SerialX.print(" TCCR1C=x"); SerialX.print(TCCR1C, HEX);
+  SerialX.print(" TIMSK1=x"); SerialX.print(TIMSK1, HEX);
+  if (ovf) { ovf = false; SerialX.print(" ovf"); }
+  if (rst) { SerialX.print(' '); SerialX.print(rst, DEC); rst = 0; }
+  if (bit_is_set(TIFR1, TOV1)) { SerialX.print(" TOV1"); TIFR1 = bit(TOV1); }
+  SerialX.nl();
+#endif
+}
+
+void GrillPid::setOutputDevice(GrillPidOutput::Type outputDevice)
+{
+  TIMSK1 = 0;
+  // Fast PWM Timer with TOP=ICR1 with no OC1x output
+  TCCR1A = bit(WGM11);
+
+  switch (outputDevice)
+  {
+    case GrillPidOutput::Default:
+    case GrillPidOutput::Fan:
+      _outputDevice = GrillPidOutput::Fan;
+      // 64 prescaler
+      TCCR1B = bit(WGM13) | bit(WGM12) | bit(CS11) | bit(CS10);
+      // 511 TOP to be close to original 488Hz and allows OCR1B to be set to
+      // 512 to prevent COMB_vect from firing (which means no LOW when at 100%)
+      ICR1 = 511;
+      break;
+    case GrillPidOutput::Servo:
+      _outputDevice = GrillPidOutput::Servo;
+      // 8 prescaler gives us down to 30Hz with 0.5usec resolution
+      TCCR1B = bit(WGM13) | bit(WGM12) | bit(CS11);
+      // TOP = servo refresh
+      ICR1 = uSecToTicks(SERVO_REFRESH);
+      break;
+  }
+
+  // Interrupt on overflow, and OCB
+  TIMSK1 = bit(OCIE1B) | bit(TOIE1);
 }
 
 boolean GrillPid::isAnyFoodProbeActive(void) const
@@ -380,32 +422,6 @@ void GrillPid::setPidConstant(unsigned char idx, float value)
   if (idx == PIDI)
     // Proably should scale the error sum by newval / oldval instead of resetting
     _pidCurrent[PIDI] = 0.0f;
-}
-
-void GrillPid::setOutputDevice(GrillPidOutput::Type outputDevice)
-{
-  switch (outputDevice)
-  {
-  case GrillPidOutput::Default:
-  case GrillPidOutput::Fan:
-    _outputDevice = GrillPidOutput::Fan;
-    // Phase Correct 8-bit PWM w/ OC1A and OC1B disconnected
-    TCCR1A = bit(WGM10);
-    //TCCR1A = bit(WGM12) | bit(WGM10);
-    // 64 prescaler
-    TCCR1B = bit(CS11) | bit(CS10);
-    break;
-  case GrillPidOutput::Servo:
-    _outputDevice = GrillPidOutput::Servo;
-    // Normal timer operation
-    TCCR1A = 0;
-    // 8 prescaler gives us down to 30Hz with 0.5usec resolution
-    TCCR1B = bit(CS11);
-    TCNT1 = 0;
-    break;
-  }
-  // Interrupt on overflow, and OCB
-  TIMSK1 = bit(OCIE1B) | bit(TOIE1);
 }
 
 void GrillPid::status(void) const
@@ -495,7 +511,7 @@ boolean GrillPid::doWork(void)
 void GrillPid::pidStatus(void) const
 {
   print_P(PSTR("HMPS"CSV_DELIMITER));
-  for (uint8_t i=PIDB; i<=PIDD; ++i)
+  for (unsigned char i=PIDB; i<=PIDD; ++i)
   {
     SerialX.print(_pidCurrent[i], 2);
     Serial_csv();
@@ -515,4 +531,3 @@ void GrillPid::setUnits(char units)
       break;
   }
 }
-
