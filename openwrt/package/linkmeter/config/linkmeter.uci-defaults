@@ -65,4 +65,4 @@ if [ "$INSTAL_PARAM" = "new" ] ; then
   [ "$HARDWARE_MODEL" = "BCM2708" ] && \
     [ -x "/etc/init.d/dnsmasq" ] && \
     /etc/init.d/dnsmasq disable
-end
+fi
