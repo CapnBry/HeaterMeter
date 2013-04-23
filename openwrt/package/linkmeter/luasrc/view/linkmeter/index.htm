@@ -71,7 +71,7 @@ $(document).ready(function()
     $("#graph").bind("plothover", graphHover);
     $("#graph").mouseout(function () { $("#graphtt").fadeOut(); });
     $("div.legfill").click(legendClicked);
-    $(document).bind('keydown', 'p', togglePidInt);
+    $(document).keydown(keyPressed);
 
     // Set colors of probe readings to match the graph colors
     for (var srs=0; srs<4; ++srs)
@@ -157,18 +157,26 @@ function alarmEvent(o)
   }
 }
 
-function togglePidInt(e)
+function keyPressed(e)
 {
   if (this !== e.target && e.target.type == "text")
     return;
-    
+  switch (e.which)
+  {
+    case 80: // P
+      togglePidInt();
+      break;
+  }
+}
+
+function togglePidInt()
+{
   if ($("#pidint").is(":visible"))
     // Use a timeout on success to make sure the next (final) update
     // doesn't turn the display back on and leave it on
     $.get("<%=build_url("admin/lm/set")%>", {tp: 0},
-      function () { setTimeout(
-        function () { $("#pidint").fadeOut('fast'); }, 1000);
-        });
+      function () { $("#pidint").delay(1000).fadeOut('fast'); }
+    );
   else
     $.get("<%=build_url("admin/lm/set")%>", {tp: 1});
 }
