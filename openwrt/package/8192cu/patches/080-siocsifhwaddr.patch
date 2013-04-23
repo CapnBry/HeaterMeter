@@ -1,0 +1,28 @@
+--- 8192cu-3.4.3/os_dep/linux/os_intfs.c.orig	2013-04-23 12:26:07.924661436 -0400
++++ 8192cu-3.4.3/os_dep/linux/os_intfs.c	2013-04-23 12:26:57.552661891 -0400
+@@ -639,11 +639,12 @@
+ 		//DBG_8192C("r8711_net_set_mac_address(), MAC=%x:%x:%x:%x:%x:%x\n", addr->sa_data[0], addr->sa_data[1], addr->sa_data[2], addr->sa_data[3],
+ 		//addr->sa_data[4], addr->sa_data[5]);
+ 		_rtw_memcpy(padapter->eeprompriv.mac_addr, addr->sa_data, ETH_ALEN);
+-		//_rtw_memcpy(pnetdev->dev_addr, addr->sa_data, ETH_ALEN);
++		_rtw_memcpy(pnetdev->dev_addr, addr->sa_data, ETH_ALEN);
+ 		//padapter->bset_hwaddr = _TRUE;
++		return 0;
+ 	}
+-
+-	return 0;
++	else
++		return -EBUSY;
+ }
+ 
+ static struct net_device_stats *rtw_net_get_stats(struct net_device *pnetdev)
+@@ -1528,7 +1529,8 @@
+ 	rtw_cfg80211_indicate_scan_done(wdev_to_priv(padapter->rtw_wdev), _TRUE);
+ 	padapter->rtw_wdev->iftype = NL80211_IFTYPE_MONITOR; //set this at the end
+ #endif
+-	
++
++	padapter->bup = _FALSE;	
+ 	RT_TRACE(_module_os_intfs_c_,_drv_info_,("-871x_drv - drv_close\n"));
+ 	DBG_8192C("-871x_drv - drv_close, bup=%d\n", padapter->bup);
+ 	   
