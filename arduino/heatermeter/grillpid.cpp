@@ -510,14 +510,19 @@ boolean GrillPid::doWork(void)
 
 void GrillPid::pidStatus(void) const
 {
-  print_P(PSTR("HMPS"CSV_DELIMITER));
-  for (unsigned char i=PIDB; i<=PIDD; ++i)
+  TempProbe const* const pit = Probes[TEMP_PIT];
+  if (pit->hasTemperature())
   {
-    SerialX.print(_pidCurrent[i], 2);
-    Serial_csv();
+    print_P(PSTR("HMPS"CSV_DELIMITER));
+    for (unsigned char i=PIDB; i<=PIDD; ++i)
+    {
+      SerialX.print(_pidCurrent[i], 2);
+      Serial_csv();
+    }
+
+    SerialX.print(pit->Temperature - pit->TemperatureAvg, 2);
+    Serial_nl();
   }
-  SerialX.print(Probes[TEMP_PIT]->Temperature - Probes[TEMP_PIT]->TemperatureAvg, 2);
-  Serial_nl();
 }
 
 void GrillPid::setUnits(char units)
