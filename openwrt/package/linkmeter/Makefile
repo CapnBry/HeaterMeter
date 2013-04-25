@@ -67,7 +67,7 @@ define Package/linkmeter/postinst
 	/etc/uci-defaults/linkmeter update
 	rm /etc/uci-defaults/linkmeter
 	rm -f /tmp/luci-indexcache
-	rm -f /tmp/luci-modulecache
+	rm -f /tmp/luci-modulecache/*
 	/etc/init.d/lucid restart
 endef
 
@@ -81,7 +81,7 @@ define Package/linkmeter/postrm
 	uci del lucid.lmserver
 	uci commit lucid
 	rm -f /tmp/luci-indexcache
-	rm -f /tmp/luci-modulecache
+	rm -f /tmp/luci-modulecache/*
 	/etc/init.d/lucid start
 endef
 
