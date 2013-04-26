@@ -35,8 +35,6 @@ rm -fR $LUCIP
 mkdir $LUCIP
 cp patches/200-luci-inreq-fix.patch $LUCIP
 cp patches/215-luci-adminfull-inreq.patch $LUCIP
-cp patches/217-luci-login-urltok.patch $LUCIP
-cp patches/218-lucid-cacheloader.patch $LUCIP
 
 LMPACKS="rrdtool kmod-broadcom-sdhc26 linkmeter kmod-8192cu kmod-spi-bcm2708 luci-app-msmtp parted"
 for PACK in $LMPACKS ; do
@@ -46,6 +44,9 @@ done
 cp config.$TARGET $WRT_PATH/.config
 
 if [ "$TARGET" = "BCM47XX" ] ; then
+  cp patches/217-luci-login-urltok.patch $LUCIP
+  cp patches/218-lucid-cacheloader.patch $LUCIP
+
   patch -N -p0 -d $WRT_PATH/package < patches/100-dhcp_add_hostname.patch
 fi
 
