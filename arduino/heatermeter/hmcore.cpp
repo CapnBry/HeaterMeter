@@ -10,6 +10,7 @@
 #endif
 
 #include "bigchars.h"
+#include "ledmanager.h"
 
 static TempProbe probe0(PIN_PIT);
 static TempProbe probe1(PIN_FOOD1);
@@ -26,11 +27,15 @@ ShiftRegLCD lcd(PIN_LCD_CLK, 2);
 #ifdef HEATERMETER_SERIAL
 static char g_SerialBuff[64]; 
 #endif /* HEATERMETER_SERIAL */
+
 #ifdef HEATERMETER_RFM12
 static void rfSourceNotify(RFSource &r, RFManager::event e); // prototype
-static RFManager rfmanager(rfSourceNotify);
+static RFManager rfmanager(&rfSourceNotify);
 static unsigned char rfMap[TEMP_COUNT];
 #endif /* HEATERMETER_RFM12 */
+
+static void ledExecutor(uint8_t led, bool on); // prototype
+static LedManager ledmanager(&ledExecutor);
 
 static unsigned char g_AlarmId; // ID of alarm going off
 static unsigned char g_HomeDisplayMode;
@@ -1099,8 +1104,9 @@ static void newTempsAvail(void)
   if (g_LogPidInternals)
     pid.pidStatus();
 
-  lcd.digitalWrite(0, pid.LidOpenResumeCountdown != 0);
-  lcd.digitalWrite(1, pid.getFanSpeed() != 0);
+  ledmanager.publish(LidOpen, pid.isLidOpen());
+  ledmanager.publish(FanOn, pid.isFanRunning());
+  ledmanager.publish(PitTempReached, pid.isPitTempReached());
 
 #ifdef HEATERMETER_RFM12
   rfmanager.sendUpdate(pid.getFanSpeed());
@@ -1111,6 +1117,25 @@ static void lcdDefineChars(void)
 {
   for (uint8_t i=0; i<8; ++i)
     lcd.createChar_P(i, BIG_CHAR_PARTS + (i * 8));
+}
+
+static void ledExecutor(uint8_t led, bool on)
+{
+  Debug_begin();
+  SerialX.print(millis(), DEC);
+  SerialX.print(F(" LED ")); SerialX.print(led, DEC);
+  SerialX.print('='); SerialX.print(on, DEC);
+  Debug_end();
+
+  switch (led)
+  {
+    case 0:
+      digitalWrite(PIN_WIRELESS_LED, on);
+      break;
+    default:
+      lcd.digitalWrite(led - 1, on);
+      break;
+  }
 }
 
 void hmcoreSetup(void)
@@ -1156,6 +1181,12 @@ void hmcoreSetup(void)
 
   // BLINK 2: Initialization complete
   blinkLed();
+  ledmanager.Assignment[0].stimulus = FanOn;
+  ledmanager.Assignment[0].action = Steady;
+  ledmanager.Assignment[1].stimulus = PitTempReached;
+  ledmanager.Assignment[1].action = Steady;
+  ledmanager.Assignment[2].stimulus = RfReceive;
+  ledmanager.Assignment[2].action = OneShot;
 }
 
 void hmcoreLoop(void)
@@ -1165,17 +1196,13 @@ void hmcoreLoop(void)
 #endif /* HEATERMETER_SERIAL */
 
 #ifdef HEATERMETER_RFM12
-  if (rfmanager.doWork()) 
-  {
-    digitalWrite(PIN_WIRELESS_LED, HIGH);
-    delay(10);
-  }
-  else
-    digitalWrite(PIN_WIRELESS_LED, LOW);
+  if (rfmanager.doWork())
+    ledmanager.publish(RfReceive, true);
 #endif /* HEATERMETER_RFM12 */
 
   Menus.doWork();
   if (pid.doWork())
     newTempsAvail();
   tone_doWork();
+  ledmanager.doWork();
 }

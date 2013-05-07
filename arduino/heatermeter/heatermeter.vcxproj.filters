@@ -51,6 +51,9 @@
     <ClInclude Include="Visual Micro\.heatermeter.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ledmanager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="grillpid.cpp">
@@ -69,6 +72,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="serialxor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ledmanager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

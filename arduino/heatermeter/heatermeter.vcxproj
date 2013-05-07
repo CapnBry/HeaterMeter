@@ -120,6 +120,9 @@
     <ClInclude Include="hmmenus.h">
       <FileType>CppCode</FileType>
     </ClInclude>
+    <ClInclude Include="ledmanager.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
     <ClInclude Include="menus.h">
       <FileType>CppCode</FileType>
     </ClInclude>
@@ -141,6 +144,7 @@
     <ClCompile Include="grillpid.cpp" />
     <ClCompile Include="hmcore.cpp" />
     <ClCompile Include="hmmenus.cpp" />
+    <ClCompile Include="ledmanager.cpp" />
     <ClCompile Include="menus.cpp" />
     <ClCompile Include="rfmanager.cpp" />
     <ClCompile Include="serialxor.cpp" />

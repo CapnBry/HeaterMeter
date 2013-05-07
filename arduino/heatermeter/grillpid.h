@@ -190,6 +190,10 @@ public:
   // true if any probe has a non-zero temperature
   boolean isAnyFoodProbeActive(void) const;
   unsigned int countOfType(unsigned char probeType) const;
+  // true if FanSpeed > 0
+  boolean isFanRunning(void) const { return _fanSpeed != 0; }
+  // true if temperature was >= setpoint since last set / lid event
+  boolean isPitTempReached(void) const { return _pitTemperatureReached; };
   
   // Call this in loop()
   boolean doWork(void);
