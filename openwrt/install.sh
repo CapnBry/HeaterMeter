@@ -36,7 +36,7 @@ mkdir $LUCIP
 cp patches/200-luci-inreq-fix.patch $LUCIP
 cp patches/215-luci-adminfull-inreq.patch $LUCIP
 
-LMPACKS="rrdtool kmod-broadcom-sdhc26 linkmeter kmod-8192cu kmod-spi-bcm2708 luci-app-msmtp parted"
+LMPACKS="rrdtool kmod-broadcom-sdhc26 linkmeter kmod-8192cu kmod-spi-bcm2708 luci-app-msmtp parted avahi-daemon"
 for PACK in $LMPACKS ; do
   $WRT_PATH/scripts/feeds install -p linkmeter $PACK
 done
