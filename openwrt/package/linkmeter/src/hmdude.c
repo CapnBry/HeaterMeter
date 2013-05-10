@@ -709,6 +709,27 @@ static void parse_uflag(char *arg)
   set_file_ihex(arg);
 }
 
+static int config_fuses_invalid(void)
+{
+  /* Just some sanity checks to make sure I don't set anything that
+     will require a high voltage programmer to fix */
+  int rc = 0;
+  if (do_fuse[FUSE_HIGH])
+  {
+    if ((write_fuse[FUSE_HIGH] & 0x80) == 0)
+    {
+      fprintf(stderr, "FUSE: Will not RSTDISBL\n");
+      rc = -1;
+    }
+    if ((write_fuse[FUSE_HIGH] & 0x20) != 0)
+    {
+      fprintf(stderr, "FUSE: Will not disable SPIEN\n");
+      rc = -1;
+    }
+  }
+  return rc;
+}
+
 int main(int argc, char *argv[])
 {
   int rc;
@@ -752,6 +773,9 @@ int main(int argc, char *argv[])
         break;
     }
   } /* while getopt */
+ 
+  if (config_fuses_invalid())
+    return -1; 
 
   fprintf(stdout, "Using port: %s\n", port);
   load_ihex();
