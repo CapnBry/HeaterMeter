@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <title>HeaterMeter BBQ Control</title>
+ <style>
+   body { background: #e5e5e5; font-family: arial, sans-serif; padding: 0; 
+     margin: 0; }
+   div.title { background: #506d80; color: #fff; padding: 5px; 
+     font-size: 12pt;
+     border: 1px solid #354854; border-width: 0 0 1px 0;
+     border-radius: 3px 3px 0 0; 
+     }
+   div.main { background: #fff; border: 1px solid #d8d8d8;
+     border-bottom-width: 2px; border-top-width: 0;
+     border-radius: 3px; -webkit-border-radius: 3px;
+     margin: 0 10px 0 10px;
+     }
+   div.content { padding: 0 10px 10px 10px; 
+     }
+ </style>
+</head>
+<body>
+<div class="main">
+<div class="title">HeaterMeter <span id="updatedtime"><%=os.date("%X", lm.time)%>UTC<span></div>
+<div class="content">
+<ul>
+<% for i=1,#lm.temps do %>
+<li>
+  <span id="pn<%=i%>"><%=lm.temps[i].n%></span>
+  <span id="tem<%=i%>"><%=lm.temps[i].c%>&deg;</span>
+</li>
+<% end %>
+<li>Fan <span id="fan"><%=lm.fan.c%>%</li>
+</ul>
+<div>Setpoint <%=lm.set%>&deg;</div>
+<div>Lid <%=lm.lid == 0 and "closed" or "open"%></div>
+</div>
+</div>
+<script>
+  var o = <%=lmraw%>;
+  var d = new Date(o.time * 1000);
+  document.getElementById("updatedtime").innerHTML = d.toLocaleTimeString();
+</script>
+</body>
+</html>
