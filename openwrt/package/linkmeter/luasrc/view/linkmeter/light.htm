@@ -2,43 +2,41 @@
 <html>
 <head>
  <meta charset="UTF-8">
- <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="viewport" content="width=320">
  <title>HeaterMeter BBQ Control</title>
  <style>
-   body { background: #e5e5e5; font-family: arial, sans-serif; padding: 0; 
-     margin: 0; }
-   .title { background: #506d80; color: #fff; padding: 5px; 
-     font-size: 12pt;
-     border: 1px solid #354854; border-width: 0 0 1px 0;
-     border-radius: 3px 3px 0 0; }
-   .main { background: #fff; border: 1px solid #d8d8d8;
-     border-bottom-width: 2px; border-top-width: 0;
-     border-radius: 3px; -webkit-border-radius: 3px;
-     margin: 0 10px 0 10px; }
-   .content { padding: 0 10px 10px 10px; }
+   body { background: #e5e5e5; font-family: arial, sans-serif; color: #686868; 
+     width: 300px; }
+   .title { background: #506d80; color: #fff; padding: 4px;
+     font-size: 16pt; border: 1px solid #354854; border-width: 0 1px 0 0;
+     border-radius: 3px; position: relative; }
+   #utime { position: absolute; right: 4px; top: 4px; }
+   ul { padding: 0; margin-top: 6px; }
+   li { border: 1px solid #d8d8d8; margin-bottom: 6px; height: 1.5em;
+     border-radius: 3px; list-style-type: none; padding: 4px;
+     background: #fff; border-width: 0 1px 2px 1px; }
+   .t { font-size: 18pt; float: left; width: 3em; text-align: right;
+     margin-right: 10px; color: #101010; }
+   .n { font-size: 10pt; vertical-align: top; }
  </style>
 </head>
 <body>
-<div class="main">
-<div class="title">HeaterMeter <span id="updatedtime"><%=os.date("%X", lm.time)%>UTC<span></div>
-<div class="content">
+<div class="title"><div>HeaterMeter</div><div id="utime"><%=os.date("%X", lm.time)%>UTC</div></div>
 <ul>
 <%- for i=1,#lm.temps do %>
 <li>
-  <span id="pn<%=i%>"><%=lm.temps[i].n%></span>
-  <span id="t<%=i%>"><%=lm.temps[i].c%>&deg;</span>
+  <div class="t"><%=
+    lm.temps[i].c and ("%.1f&deg;"):format(lm.temps[i].c) or "Off"
+  %></div><div class="n"><%=lm.temps[i].n%></div>
 </li>
 <%- end %>
-<li>Fan <span id="fan"><%=lm.fan.c%>%</li>
+<li><div class="t"><%=lm.fan.c%>%</div><div class="n">Fan</div></li>
 </ul>
 <div>Setpoint <%=lm.set%>&deg;</div>
 <div>Lid <%=lm.lid == 0 and "closed" or "open"%></div>
-</div>
-</div>
 <script>
-  var o = <%=lmraw%>;
-  var d = new Date(o.time * 1000);
-  document.getElementById("updatedtime").innerHTML = d.toLocaleTimeString();
+  var d = new Date(<%=lm.time * 1000%>);
+  document.getElementById("utime").innerHTML = d.toLocaleTimeString();
 </script>
 </body>
 </html>
