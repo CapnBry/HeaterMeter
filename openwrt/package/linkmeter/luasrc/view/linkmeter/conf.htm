@@ -101,7 +101,7 @@ function typeChanged()
   $("#prf" + name).css("display", (this.value == 2) ? "block" : "none");
   // If switching to 'RF' and no node number is filled in, default to 'any'
   if (this.value == 2 && $("#prfn" + name).val() == "")
-    $("#prfa" + name).attr("checked", true).trigger("change");
+    $("#prfa" + name).prop("checked", true).trigger("change");
 }
 
 function isProbeId(hay, need)
@@ -143,13 +143,13 @@ function configHashToForm()
     else if (isProbeId(k, "prfn"))
       $("#prfa" + k.substr(4))
         .change(configElemChange)
-        .attr("checked", val == 127);
+        .prop("checked", val == 127);
     else if (isProbeId(k, "pall") || isProbeId(k, "palh"))
       $("#pale" + k.substr(3))
         .change(configElemChange)
-        .attr("checked", val > 0);
+        .prop("checked", val > 0);
     else if (k == "finv")
-      elem.attr("checked", val != 0);
+      elem.prop("checked", val != 0);
     elem.change(configElemChange);
   }
 }
@@ -189,7 +189,7 @@ function configElemChange()
   else if (isProbeId(name, "prfn"))
   {
     name = "#prfa" + name.substr(4);
-    $(name).attr("checked", $(this).val() == "127");
+    $(name).prop("checked", $(this).val() == "127");
   }
   else if (isProbeId(name, "palel") || isProbeId(name, "paleh"))
   {
@@ -204,7 +204,7 @@ function configElemChange()
   else if (isProbeId(name, "pall") || isProbeId(name, "palh"))
   {
     name = "#pale" + name.substr(3);
-    $(name).attr("checked", $(this).val() > 0);
+    $(name).prop("checked", $(this).val() > 0);
   }
   updateUpdateUrl();
 }
