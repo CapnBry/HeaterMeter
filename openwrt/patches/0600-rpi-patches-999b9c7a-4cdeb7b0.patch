@@ -1,49 +1,373 @@
---- linux-3.3.8/arch/arm/mach-bcm2708/bcm2708.c.orig	2012-08-15 14:57:56.940560493 -0400
-+++ linux-3.3.8/arch/arm/mach-bcm2708/bcm2708.c	2012-08-15 14:58:13.392818827 -0400
+--- a/arch/arm/mach-bcm2708/bcm2708.c
++++ b/arch/arm/mach-bcm2708/bcm2708.c
 @@ -23,6 +23,7 @@
  #include <linux/dma-mapping.h>
  #include <linux/serial_8250.h>
  #include <linux/platform_device.h>
-+#include <linux/sysdev.h>
++#include <linux/syscore_ops.h>
  #include <linux/interrupt.h>
  #include <linux/amba/bus.h>
  #include <linux/amba/clcd.h>
-From d0735c7d129d35bd91ba1c2c5b5a5201ed4a6c37 Mon Sep 17 00:00:00 2001
-From: Arne Fitzenreiter <arne.fitzenreiter@ipfire.org>
-Date: Wed, 6 Jun 2012 08:02:10 +0200
-Subject: [PATCH 1/2] bcm2835-ctl: fix alsamixer control.
-
-alsamixer read the volume for the screen controller so we had to
-scale the chipvol back to db for reading.
----
- sound/arm/bcm2835-ctl.c |   22 ++++++++++++++++------
- 1 file changed, 16 insertions(+), 6 deletions(-)
-
-diff --git a/sound/arm/bcm2835-ctl.c b/sound/arm/bcm2835-ctl.c
-index c0546e35..828a820 100755
+@@ -30,18 +31,17 @@
+ #include <linux/cnt32_to_63.h>
+ #include <linux/io.h>
+ #include <linux/module.h>
++#include <linux/spi/spi.h>
+ 
+ #include <linux/version.h>
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38)
+ #include <linux/clkdev.h>
+-#else
+-#include <asm/clkdev.h>
+-#endif
+ #include <asm/system.h>
+ #include <mach/hardware.h>
+ #include <asm/irq.h>
+ #include <linux/leds.h>
+ #include <asm/mach-types.h>
++#include <asm/sched_clock.h>
++#include <linux/clocksource.h>
+ 
+ #include <asm/mach/arch.h>
+ #include <asm/mach/flash.h>
+@@ -52,6 +52,7 @@
+ #include <mach/timex.h>
+ #include <mach/dma.h>
+ #include <mach/vcio.h>
++#include <mach/system.h>
+ 
+ #include "bcm2708.h"
+ #include "armctrl.h"
+@@ -69,6 +70,8 @@
+  */
+ #define DMA_MASK_BITS_COMMON 32
+ 
++static DEFINE_CLOCK_DATA(cd);
++
+ /* command line parameters */
+ static unsigned boardrev, serial;
+ 
+@@ -139,48 +142,24 @@ void __init bcm2708_map_io(void)
+ 	iotable_init(bcm2708_io_desc, ARRAY_SIZE(bcm2708_io_desc));
+ }
+ 
+-// The STC is a free running counter that increments at the rate of 1MHz
++/* The STC is a free running counter that increments at the rate of 1MHz */
+ #define STC_FREQ_HZ 1000000
+ 
+-static cycle_t stc_read_cycles(struct clocksource *cs)
++static u32 notrace bcm2708_read_sched_clock(void)
+ {
+-	/* STC: a free running counter that increments at the rate of 1MHz */
+-	return (cycle_t) readl(__io_address(ST_BASE + 0x04));
++	return readl(__io_address(ST_BASE + 0x04));
+ }
+ 
+-static struct clocksource clocksource_stc = {
+-	.name = "stc",
+-	.rating = 300,
+-	.read = stc_read_cycles,
+-	.mask = CLOCKSOURCE_MASK(32),
+-	.flags = CLOCK_SOURCE_IS_CONTINUOUS,
+-};
+-
+ unsigned long frc_clock_ticks32(void)
+ {
+-	return (unsigned long)stc_read_cycles(&clocksource_stc);
+-}
+-
+-static void __init bcm2708_clocksource_init(void)
+-{
+-	// calculate .shift and .mult values and register clocksource
+-	if (clocksource_register_hz(&clocksource_stc, STC_FREQ_HZ)) {
+-		printk(KERN_ERR "timer: failed to initialize clock "
+-		       "source %s\n", clocksource_stc.name);
+-	}
+-}
+-
+-unsigned long long sched_clock(void)
+-{
+-	return clocksource_cyc2ns(clocksource_stc.read(&clocksource_stc),
+-				  clocksource_stc.mult, clocksource_stc.shift);
++	return bcm2708_read_sched_clock();
+ }
+ 
+ /*
+  * These are fixed clocks.
+  */
+ static struct clk ref24_clk = {
+-	.rate = 3000000,	/* The UART is clocked at 3MHz via APB_CLK */
++	.rate = UART0_CLOCK,	/* The UART is clocked at 3MHz via APB_CLK */
+ };
+ 
+ static struct clk osc_clk = {
+@@ -193,7 +172,6 @@ static struct clk osc_clk = {
+ 
+ /* warning - the USB needs a clock > 34MHz */
+ 
+-#ifdef CONFIG_MMC_BCM2708
+ static struct clk sdhost_clk = {
+ #ifdef CONFIG_ARCH_BCM2708_CHIPIT
+ 	.rate = 4000000,	/* 4MHz */
+@@ -201,7 +179,6 @@ static struct clk sdhost_clk = {
+ 	.rate = 250000000,	/* 250MHz */
+ #endif
+ };
+-#endif
+ 
+ static struct clk_lookup lookups[] = {
+ 	{			/* UART0 */
+@@ -217,6 +194,15 @@ static struct clk_lookup lookups[] = {
+ 	 .dev_id = "bcm2708_mci.0",
+ 	 .clk = &sdhost_clk,
+ #endif
++	 }, {	/* SPI */
++		 .dev_id = "bcm2708_spi.0",
++		 .clk = &sdhost_clk,
++	 }, {	/* BSC0 */
++		 .dev_id = "bcm2708_i2c.0",
++		 .clk = &sdhost_clk,
++	 }, {	/* BSC1 */
++		 .dev_id = "bcm2708_i2c.1",
++		 .clk = &sdhost_clk,
+ 	 }
+ };
+ 
+@@ -459,6 +445,80 @@ static struct platform_device bcm2708_al
+ 	       },
+ };
+ 
++static struct resource bcm2708_spi_resources[] = {
++	{
++		.start = SPI0_BASE,
++		.end = SPI0_BASE + SZ_256 - 1,
++		.flags = IORESOURCE_MEM,
++	}, {
++		.start = IRQ_SPI,
++		.end = IRQ_SPI,
++		.flags = IORESOURCE_IRQ,
++	}
++};
++
++static struct platform_device bcm2708_spi_device = {
++	.name = "bcm2708_spi",
++	.id = 0,
++	.num_resources = ARRAY_SIZE(bcm2708_spi_resources),
++	.resource = bcm2708_spi_resources,
++};
++
++static struct spi_board_info bcm2708_spi_devices[] = {
++	{
++		.modalias = "spidev",
++		.max_speed_hz = 500000,
++		.bus_num = 0,
++		.chip_select = 0,
++		.mode = SPI_MODE_0,
++	}, {
++		.modalias = "spidev",
++		.max_speed_hz = 500000,
++		.bus_num = 0,
++		.chip_select = 1,
++		.mode = SPI_MODE_0,
++	}
++};
++
++static struct resource bcm2708_bsc0_resources[] = {
++	{
++		.start = BSC0_BASE,
++		.end = BSC0_BASE + SZ_256 - 1,
++		.flags = IORESOURCE_MEM,
++	}, {
++		.start = INTERRUPT_I2C,
++		.end = INTERRUPT_I2C,
++		.flags = IORESOURCE_IRQ,
++	}
++};
++
++static struct platform_device bcm2708_bsc0_device = {
++	.name = "bcm2708_i2c",
++	.id = 0,
++	.num_resources = ARRAY_SIZE(bcm2708_bsc0_resources),
++	.resource = bcm2708_bsc0_resources,
++};
++
++
++static struct resource bcm2708_bsc1_resources[] = {
++	{
++		.start = BSC1_BASE,
++		.end = BSC1_BASE + SZ_256 - 1,
++		.flags = IORESOURCE_MEM,
++	}, {
++		.start = INTERRUPT_I2C,
++		.end = INTERRUPT_I2C,
++		.flags = IORESOURCE_IRQ,
++	}
++};
++
++static struct platform_device bcm2708_bsc1_device = {
++	.name = "bcm2708_i2c",
++	.id = 1,
++	.num_resources = ARRAY_SIZE(bcm2708_bsc1_resources),
++	.resource = bcm2708_bsc1_resources,
++};
++
+ int __init bcm_register_device(struct platform_device *pdev)
+ {
+ 	int ret;
+@@ -471,10 +531,24 @@ int __init bcm_register_device(struct pl
+ 	return ret;
+ }
+ 
++/* We can't really power off, but if we do the normal reset scheme, and indicate to bootcode.bin not to reboot, then most of the chip will be powered off */
++static void bcm2708_power_off(void)
++{
++	/* we set the watchdog hard reset bit here to distinguish this reset from the normal (full) reset. bootcode.bin will not reboot after a hard reset */
++	uint32_t pm_rsts = readl(IO_ADDRESS(PM_RSTS));
++	pm_rsts = PM_PASSWORD | (pm_rsts & PM_RSTC_WRCFG_CLR) | PM_RSTS_HADWRH_SET;
++	writel(pm_rsts, IO_ADDRESS(PM_RSTS));
++	/* continue with normal reset mechanism */
++	arch_reset(0, "");
++}
++
+ void __init bcm2708_init(void)
+ {
+ 	int i;
+ 
++	pm_power_off = bcm2708_power_off;
++	arm_pm_restart = arch_reset;
++
+ 	for (i = 0; i < ARRAY_SIZE(lookups); i++)
+ 		clkdev_add(&lookups[i]);
+ 
+@@ -498,6 +572,10 @@ void __init bcm2708_init(void)
+ 	for (i = 0; i < ARRAY_SIZE(bcm2708_alsa_devices); i++)
+ 		bcm_register_device(&bcm2708_alsa_devices[i]);
+ 
++	bcm_register_device(&bcm2708_spi_device);
++	bcm_register_device(&bcm2708_bsc0_device);
++	bcm_register_device(&bcm2708_bsc1_device);
++
+ #ifdef CONFIG_BCM2708_VCMEM
+ 	{
+ 		extern void vc_mem_connected_init(void);
+@@ -510,9 +588,14 @@ void __init bcm2708_init(void)
+ 	}
+ 	system_rev = boardrev;
+ 	system_serial_low = serial;
++
++#ifdef CONFIG_SPI
++	spi_register_board_info(bcm2708_spi_devices,
++			ARRAY_SIZE(bcm2708_spi_devices));
++#endif
+ }
+ 
+-#define TIMER_PERIOD 10000	/* HZ in microsecs */
++#define TIMER_PERIOD DIV_ROUND_CLOSEST(STC_FREQ_HZ, HZ)
+ 
+ static void timer_set_mode(enum clock_event_mode mode,
+ 			   struct clock_event_device *clk)
+@@ -578,9 +661,6 @@ static struct irqaction bcm2708_timer_ir
+  */
+ static void __init bcm2708_timer_init(void)
+ {
+-	/* init high res timer */
+-	bcm2708_clocksource_init();
+-
+ 	/*
+ 	 * Initialise to a known state (all timers off)
+ 	 */
+@@ -590,15 +670,12 @@ static void __init bcm2708_timer_init(vo
+ 	 */
+ 	setup_irq(IRQ_TIMER3, &bcm2708_timer_irq);
+ 
+-	timer0_clockevent.mult =
+-	    div_sc(STC_FREQ_HZ, NSEC_PER_SEC, timer0_clockevent.shift);
+-	timer0_clockevent.max_delta_ns =
+-	    clockevent_delta2ns(0xffffffff, &timer0_clockevent);
+-	timer0_clockevent.min_delta_ns =
+-	    clockevent_delta2ns(0xf, &timer0_clockevent);
+-
+-	timer0_clockevent.cpumask = cpumask_of(0);
+-	clockevents_register_device(&timer0_clockevent);
++	setup_sched_clock(bcm2708_read_sched_clock, 32, STC_FREQ_HZ);
++	if (clocksource_mmio_init(__io_address(ST_BASE + 0x04), "stc",
++		STC_FREQ_HZ, 300, 32, clocksource_mmio_readl_up))
++		printk(KERN_ERR "timer: failed to initialize clock source stc\n");
++	clockevents_config_and_register(&timer0_clockevent, STC_FREQ_HZ,
++		0xf, 0xffffffff);
+ }
+ 
+ struct sys_timer bcm2708_timer = {
 --- a/sound/arm/bcm2835-ctl.c
 +++ b/sound/arm/bcm2835-ctl.c
-@@ -33,6 +33,19 @@
+@@ -33,16 +33,22 @@
  
  #include "bcm2835.h"
  
-+
-+/* functions to convert alsa to chip volume and back. */
-+int alsa2chip(int vol)
-+{
-+	return -((vol << 8) / 100);
-+}
-+
-+int chip2alsa(int vol)
-+{
-+	return -((vol * 100) >> 8);
-+}
++/* volume maximum and minimum in terms of 0.01dB */
++#define CTRL_VOL_MAX 400
++#define CTRL_VOL_MIN -10239 /* originally -10240 */
 +
 +
  static int snd_bcm2835_ctl_info(struct snd_kcontrol *kcontrol,
  				struct snd_ctl_elem_info *uinfo)
  {
-@@ -64,7 +77,7 @@ static int snd_bcm2835_ctl_get(struct snd_kcontrol *kcontrol,
++	audio_info(" ... IN ");
+ 	if (kcontrol->private_value == PCM_PLAYBACK_VOLUME) {
+ 		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+ 		uinfo->count = 1;
+-		uinfo->value.integer.min = -10240;
+-		uinfo->value.integer.max = 2303;
++		uinfo->value.integer.min = CTRL_VOL_MIN;
++		uinfo->value.integer.max = CTRL_VOL_MAX;      /* 2303 */
+ 	} else if (kcontrol->private_value == PCM_PLAYBACK_MUTE) {
+-		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
++		uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
+ 		uinfo->count = 1;
+ 		uinfo->value.integer.min = 0;
+ 		uinfo->value.integer.max = 1;
+@@ -50,12 +56,38 @@ static int snd_bcm2835_ctl_info(struct s
+ 		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+ 		uinfo->count = 1;
+ 		uinfo->value.integer.min = 0;
+-		uinfo->value.integer.max = AUDIO_DEST_MAX-0;
++		uinfo->value.integer.max = AUDIO_DEST_MAX-1;
+ 	}
+-
++	audio_info(" ... OUT ");
+ 	return 0;
+ }
+ 
++/* toggles mute on or off depending on the value of nmute, and returns
++ * 1 if the mute value was changed, otherwise 0
++ */
++static int toggle_mute(struct bcm2835_chip *chip, int nmute)
++{
++	/* if settings are ok, just return 0 */
++	if(chip->mute == nmute)
++		return 0;
++
++	/* if the sound is muted then we need to unmute */
++	if(chip->mute == CTRL_VOL_MUTE)
++	{
++		chip->volume = chip->old_volume; /* copy the old volume back */
++		audio_info("Unmuting, old_volume = %d, volume = %d ...", chip->old_volume, chip->volume);
++	}
++	else /* otherwise we mute */
++	{
++		chip->old_volume = chip->volume;
++		chip->volume = 26214; /* set volume to minimum level AKA mute */
++		audio_info("Muting, old_volume = %d, volume = %d ...", chip->old_volume, chip->volume);
++	}
++
++	chip->mute = nmute;
++	return 1;
++}
++
+ static int snd_bcm2835_ctl_get(struct snd_kcontrol *kcontrol,
+ 			       struct snd_ctl_elem_value *ucontrol)
+ {
+@@ -64,7 +96,7 @@ static int snd_bcm2835_ctl_get(struct sn
  	BUG_ON(!chip && !(chip->avail_substreams & AVAIL_SUBSTREAMS_MASK));
  
  	if (kcontrol->private_value == PCM_PLAYBACK_VOLUME)
@@ -52,8 +376,17 @@ index c0546e35..828a820 100755
  	else if (kcontrol->private_value == PCM_PLAYBACK_MUTE)
  		ucontrol->value.integer.value[0] = chip->mute;
  	else if (kcontrol->private_value == PCM_PLAYBACK_DEVICE)
-@@ -85,13 +98,10 @@ static int snd_bcm2835_ctl_put(struct snd_kcontrol *kcontrol,
- 			changed = 1;
+@@ -80,26 +112,23 @@ static int snd_bcm2835_ctl_put(struct sn
+ 	int changed = 0;
+ 
+ 	if (kcontrol->private_value == PCM_PLAYBACK_VOLUME) {
+-		if (chip->mute) {
+-			chip->mute = 0;
+-			changed = 1;
++		audio_info("Volume change attempted.. volume = %d new_volume = %d", chip->volume, (int)ucontrol->value.integer.value[0]);
++		if (chip->mute == CTRL_VOL_MUTE) {
++			/* changed = toggle_mute(chip, CTRL_VOL_UNMUTE); */
++			return 1; /* should return 0 to signify no change but the mixer takes this as the opposite sign (no idea why) */
  		}
  		if (changed
 -		    || (ucontrol->value.integer.value[0] != chip->volume)) {
@@ -68,95 +401,140 @@ index c0546e35..828a820 100755
  		}
  
  	} else if (kcontrol->private_value == PCM_PLAYBACK_MUTE) {
--- 
-1.7.10
-
-
-From 829da61c0229c0734a109339f5de308bf8205bf6 Mon Sep 17 00:00:00 2001
-From: Arne Fitzenreiter <arne.fitzenreiter@ipfire.org>
-Date: Wed, 6 Jun 2012 08:06:15 +0200
-Subject: [PATCH 2/2] bcm2835-ctl: limit maximal volume to 4db.
-
-it makes no sense to set 23.04db as maximum volume since around 3db it start to cliping. So with 4db the alsamixer is much better to control. (86% is 0db)
----
- sound/arm/bcm2835-ctl.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/sound/arm/bcm2835-ctl.c b/sound/arm/bcm2835-ctl.c
-index 828a820..f901ddd 100755
---- a/sound/arm/bcm2835-ctl.c
-+++ b/sound/arm/bcm2835-ctl.c
-@@ -53,7 +53,7 @@ static int snd_bcm2835_ctl_info(struct snd_kcontrol *kcontrol,
- 		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
- 		uinfo->count = 1;
- 		uinfo->value.integer.min = -10240;
--		uinfo->value.integer.max = 2303;
-+		uinfo->value.integer.max = 400;      /* 2303 */
- 	} else if (kcontrol->private_value == PCM_PLAYBACK_MUTE) {
- 		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
- 		uinfo->count = 1;
--- 
-1.7.10
-
-From d64b84ca8c171596b68bf125d266c84306ac421c Mon Sep 17 00:00:00 2001
-From: Grigori Goronzy <greg@blackbox>
-Date: Mon, 4 Jun 2012 04:27:48 +0200
-Subject: [PATCH 1/5] sdhci-bcm2708: speed up DMA sync
-
-Experiments show that it doesn't really take that long to sync, so we
-can reduce the poll interval slightly. Might improve performance a bit.
----
- drivers/mmc/host/sdhci-bcm2708.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/mmc/host/sdhci-bcm2708.c b/drivers/mmc/host/sdhci-bcm2708.c
-index 7136998..9aebdfb 100644
+-		/* Not implemented */
+-		if (ucontrol->value.integer.value[0] != chip->mute) {
+-			chip->mute = ucontrol->value.integer.value[0];
+-			changed = 0;
+-		}
++		/* Now implemented */
++		audio_info(" Mute attempted");
++		changed = toggle_mute(chip, ucontrol->value.integer.value[0]);
++
+ 	} else if (kcontrol->private_value == PCM_PLAYBACK_DEVICE) {
+ 		if (ucontrol->value.integer.value[0] != chip->dest) {
+ 			chip->dest = ucontrol->value.integer.value[0];
+@@ -115,22 +144,21 @@ static int snd_bcm2835_ctl_put(struct sn
+ 	return changed;
+ }
+ 
+-static DECLARE_TLV_DB_SCALE(snd_bcm2835_db_scale, -10240, 1, 1);
++static DECLARE_TLV_DB_SCALE(snd_bcm2835_db_scale, CTRL_VOL_MIN, 1, 1);
+ 
+ static struct snd_kcontrol_new snd_bcm2835_ctl[] __devinitdata = {
+ 	{
+ 	 .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+ 	 .name = "PCM Playback Volume",
+ 	 .index = 0,
+-	 .access =
+-	 SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_TLV_READWRITE,
++	 .access = SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_TLV_READ,
+ 	 .private_value = PCM_PLAYBACK_VOLUME,
+ 	 .info = snd_bcm2835_ctl_info,
+ 	 .get = snd_bcm2835_ctl_get,
+ 	 .put = snd_bcm2835_ctl_put,
+ 	 .count = 1,
+ 	 .tlv = {.p = snd_bcm2835_db_scale}
+-	 },
++	},
+ 	{
+ 	 .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+ 	 .name = "PCM Playback Switch",
+@@ -152,7 +180,7 @@ static struct snd_kcontrol_new snd_bcm28
+ 	 .get = snd_bcm2835_ctl_get,
+ 	 .put = snd_bcm2835_ctl_put,
+ 	 .count = 1,
+-	 },
++	},
+ };
+ 
+ int __devinit snd_bcm2835_new_ctl(bcm2835_chip_t * chip)
 --- a/drivers/mmc/host/sdhci-bcm2708.c
 +++ b/drivers/mmc/host/sdhci-bcm2708.c
-@@ -907,7 +907,7 @@ static void sdhci_bcm2708_dma_complete_irq(struct sdhci_host *host,
- 		while (0 != (sdhci_bcm2708_raw_readl(host, SDHCI_PRESENT_STATE) 
- 			& state_mask) && --timeout > 0)
+@@ -52,7 +52,6 @@
+ #undef CONFIG_MMC_SDHCI_BCM2708_DMA
+ #define CONFIG_MMC_SDHCI_BCM2708_DMA y
+ 
+-#define USE_SYNC_AFTER_DMA
+ #ifdef CONFIG_MMC_SDHCI_BCM2708_DMA
+ /* #define CHECK_DMA_USE */
+ #endif
+@@ -74,12 +73,14 @@
+ #define BCM2708_SDHCI_SLEEP_TIMEOUT 1000   /* msecs */
+ 
+ /* Mhz clock that the EMMC core is running at. Should match the platform clockman settings */
+-#define BCM2708_EMMC_CLOCK_FREQ 80000000
++#define BCM2708_EMMC_CLOCK_FREQ 50000000
+ 
+ #define POWER_OFF 0
+ #define POWER_LAZY_OFF 1
+ #define POWER_ON  2
+ 
++#define REG_EXRDFIFO_EN     0x80
++#define REG_EXRDFIFO_CFG    0x84
+ 
+ /*****************************************************************************\
+  *									     *
+@@ -135,6 +136,11 @@ static inline unsigned long int since_ns
+ 	return (unsigned long)((hptime() - t) * HPTIME_CLK_NS);
+ }
+ 
++static bool allow_highspeed = 1;
++static int emmc_clock_freq = BCM2708_EMMC_CLOCK_FREQ;
++static bool sync_after_dma = 1;
++static bool missing_status = 1;
++
+ #if 0
+ static void hptime_test(void)
+ {
+@@ -252,14 +258,14 @@ static void sdhci_bcm2708_raw_writel(str
+ 		if (now == last_write_hpt || now == last_write_hpt+1) {
+ 			 /* we can't guarantee any significant time has
+ 			  * passed - we'll have to wait anyway ! */
+-			udelay((ns_2clk+1000-1)/1000);
++			ndelay(ns_2clk);
+ 		} else
  		{
--			udelay(100);
-+			udelay(30);
- 			continue;
+ 			/* we must have waited at least this many ns: */
+ 			unsigned int ns_wait = HPTIME_CLK_NS *
+ 					       (last_write_hpt - now - 1);
+ 			if (ns_wait < ns_2clk)
+-				udelay((ns_2clk-ns_wait+500)/1000);
++				ndelay(ns_2clk - ns_wait);
  		}
- 		if (timeout <= 0)
--- 
-1.7.10
-
-
-From 9f144964006fb10db9436c5982c26d0ee9d8ec32 Mon Sep 17 00:00:00 2001
-From: Grigori Goronzy <greg@blackbox>
-Date: Mon, 11 Jun 2012 18:52:04 +0200
-Subject: [PATCH 2/5] sdhci-bcm2708: remove custom clock handling
-
-The custom clock handling code is redundant and buggy. The MMC/SDHCI
-subsystem does a better job than it, so remove it for good.
----
- drivers/mmc/host/sdhci-bcm2708.c |   65 +-------------------------------------
- 1 file changed, 1 insertion(+), 64 deletions(-)
-
-diff --git a/drivers/mmc/host/sdhci-bcm2708.c b/drivers/mmc/host/sdhci-bcm2708.c
-index 9aebdfb..c964911 100644
---- a/drivers/mmc/host/sdhci-bcm2708.c
-+++ b/drivers/mmc/host/sdhci-bcm2708.c
-@@ -359,68 +359,9 @@ void sdhci_bcm2708_writeb(struct sdhci_host *host, u8 val, int reg)
+ 		last_write_hpt = now;
+ 	}
+@@ -275,13 +281,13 @@ static void sdhci_bcm2708_raw_writel(str
+ 		ier &= ~SDHCI_INT_DATA_TIMEOUT;
+ 		writel(ier, host->ioaddr + SDHCI_SIGNAL_ENABLE);
+ 		timeout_disabled = true;
+-		udelay((ns_2clk+1000-1)/1000);
++		ndelay(ns_2clk);
+ 	} else if (timeout_disabled) {
+ 		ier = readl(host->ioaddr + SDHCI_SIGNAL_ENABLE);
+ 		ier |= SDHCI_INT_DATA_TIMEOUT;
+ 		writel(ier, host->ioaddr + SDHCI_SIGNAL_ENABLE);
+ 		timeout_disabled = false;
+-		udelay((ns_2clk+1000-1)/1000);
++		ndelay(ns_2clk);
+ 	}
+ #endif
+ 	writel(val, host->ioaddr + reg);
+@@ -359,68 +365,9 @@ void sdhci_bcm2708_writeb(struct sdhci_h
  
  static unsigned int sdhci_bcm2708_get_max_clock(struct sdhci_host *host)
  {
 -	return 20000000;	// this value is in Hz (20MHz)
-+	return BCM2708_EMMC_CLOCK_FREQ;
- }
- 
+-}
+-
 -static unsigned int sdhci_bcm2708_get_timeout_clock(struct sdhci_host *host)
 -{
 -	if(host->clock)
 -		return (host->clock / 1000);		// this value is in kHz (100MHz)
 -	else
 -		return (sdhci_bcm2708_get_max_clock(host) / 1000);
--}
--
++	return emmc_clock_freq;
+ }
+ 
 -static void sdhci_bcm2708_set_clock(struct sdhci_host *host, unsigned int clock)
 -{
 -	int div = 0;
@@ -211,7 +589,125 @@ index 9aebdfb..c964911 100644
  /*****************************************************************************\
   *									     *
   * DMA Operation							     *
-@@ -1307,11 +1248,7 @@ static unsigned int sdhci_bcm2708_missing_status(struct sdhci_host *host)
+@@ -709,7 +656,7 @@ sdhci_bcm2708_platdma_reset(struct sdhci
+ 
+ 	BUG_ON(NULL == host);
+ 
+-	spin_lock_irqsave(&host->lock, flags);
++//	spin_lock_irqsave(&host->lock, flags);
+ 
+ 	if (host_priv->dma_wanted) {
+ 		if (NULL == data) {
+@@ -789,7 +736,7 @@ sdhci_bcm2708_platdma_reset(struct sdhci
+ #endif
+ 	}
+ 
+-	spin_unlock_irqrestore(&host->lock, flags);
++//	spin_unlock_irqrestore(&host->lock, flags);
+ }
+ 
+ 
+@@ -806,7 +753,7 @@ static void sdhci_bcm2708_dma_complete_i
+ 
+ 	BUG_ON(NULL == host);
+ 
+-	spin_lock_irqsave(&host->lock, flags);
++//	spin_lock_irqsave(&host->lock, flags);
+ 	data = host->data;
+ 
+ #ifdef CHECK_DMA_USE
+@@ -831,7 +778,7 @@ static void sdhci_bcm2708_dma_complete_i
+ 
+ 	if (NULL == data) {
+ 		DBG("PDMA unused completion - status 0x%X\n", dma_cs);
+-		spin_unlock_irqrestore(&host->lock, flags);
++//		spin_unlock_irqrestore(&host->lock, flags);
+ 		return;
+ 	}
+ 	sg = data->sg;
+@@ -888,34 +835,34 @@ static void sdhci_bcm2708_dma_complete_i
+ 						SDHCI_INT_SPACE_AVAIL);
+ 		}
+ 	} else {
+-#ifdef USE_SYNC_AFTER_DMA
+-		/* On the Arasan controller the stop command (which will be
+-		   scheduled after this completes) does not seem to work
+-		   properly if we allow it to be issued when we are
+-		   transferring data to/from the SD card.
+-		   We get CRC and DEND errors unless we wait for
+-		   the SD controller to finish reading/writing to the card. */
+-		u32 state_mask;
+-		int timeout=1000;
++		if (sync_after_dma) {
++			/* On the Arasan controller the stop command (which will be
++			   scheduled after this completes) does not seem to work
++			   properly if we allow it to be issued when we are
++			   transferring data to/from the SD card.
++			   We get CRC and DEND errors unless we wait for
++			   the SD controller to finish reading/writing to the card. */
++			u32 state_mask;
++			int timeout=30*5000;
+ 
+-		DBG("PDMA over - sync card\n");
+-		if (data->flags & MMC_DATA_READ)
+-			state_mask = SDHCI_DOING_READ;
+-		else
+-			state_mask = SDHCI_DOING_WRITE;
++			DBG("PDMA over - sync card\n");
++			if (data->flags & MMC_DATA_READ)
++				state_mask = SDHCI_DOING_READ;
++			else
++				state_mask = SDHCI_DOING_WRITE;
+ 
+-		while (0 != (sdhci_bcm2708_raw_readl(host, SDHCI_PRESENT_STATE) 
+-			& state_mask) && --timeout > 0)
+-		{
+-			udelay(100);
+-			continue;
++			while (0 != (sdhci_bcm2708_raw_readl(host, SDHCI_PRESENT_STATE) 
++				& state_mask) && --timeout > 0)
++			{
++				udelay(1);
++				continue;
++			}
++			if (timeout <= 0)
++				printk(KERN_ERR"%s: final %s to SD card still "
++				       "running\n",
++				       mmc_hostname(host->mmc),
++				       data->flags & MMC_DATA_READ? "read": "write");
+ 		}
+-		if (timeout <= 0)
+-			printk(KERN_ERR"%s: final %s to SD card still "
+-			       "running\n",
+-			       mmc_hostname(host->mmc),
+-			       data->flags & MMC_DATA_READ? "read": "write");
+-#endif
+ 		if (host_priv->complete) {
+ 			(*host_priv->complete)(host);
+ 			DBG("PDMA %s complete\n",
+@@ -924,7 +871,7 @@ static void sdhci_bcm2708_dma_complete_i
+ 						SDHCI_INT_SPACE_AVAIL);
+ 		}
+ 	}
+-	spin_unlock_irqrestore(&host->lock, flags);
++//	spin_unlock_irqrestore(&host->lock, flags);
+ }
+ 
+ static irqreturn_t sdhci_bcm2708_dma_irq(int irq, void *dev_id)
+@@ -1023,10 +970,12 @@ static ssize_t attr_dma_store(struct dev
+ 		int on = simple_strtol(buf, NULL, 0);
+ 		if (on) {
+ 			host->flags |= SDHCI_USE_PLATDMA;
++			sdhci_bcm2708_writel(host, 1, REG_EXRDFIFO_EN);
+ 			printk(KERN_INFO "%s: DMA enabled\n",
+ 			       mmc_hostname(host->mmc));
+ 		} else {
+ 			host->flags &= ~(SDHCI_USE_PLATDMA | SDHCI_REQ_USE_DMA);
++			sdhci_bcm2708_writel(host, 0, REG_EXRDFIFO_EN);
+ 			printk(KERN_INFO "%s: DMA disabled\n",
+ 			       mmc_hostname(host->mmc));
+ 		}
+@@ -1307,11 +1256,7 @@ static struct sdhci_ops sdhci_bcm2708_op
  #else
  #error The BCM2708 SDHCI driver needs CONFIG_MMC_SDHCI_IO_ACCESSORS to be set
  #endif
@@ -223,82 +719,71 @@ index 9aebdfb..c964911 100644
  
  	.enable = sdhci_bcm2708_enable,
  	.disable = sdhci_bcm2708_disable,
--- 
-1.7.10
-
-
-From 7a6fba9809c8d3a7fb1b2d0c40e0eae335127a6a Mon Sep 17 00:00:00 2001
-From: Grigori Goronzy <greg@blackbox>
-Date: Mon, 11 Jun 2012 18:53:59 +0200
-Subject: [PATCH 3/5] sdhci-bcm2708: add additional quirks
-
-Some additional quirks are needed for correct operation.
-There's no SDHCI capabilities register documented, and it always reads
-zero, so add SDHCI_QUIRK_MISSING_CAPS. Apparently
-SDHCI_QUIRK_NO_HISPD_BIT is needed for many cards to work correctly in
-high-speed mode, so add it as well.
----
- drivers/mmc/host/sdhci-bcm2708.c |    4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/mmc/host/sdhci-bcm2708.c b/drivers/mmc/host/sdhci-bcm2708.c
-index c964911..16c918b 100644
---- a/drivers/mmc/host/sdhci-bcm2708.c
-+++ b/drivers/mmc/host/sdhci-bcm2708.c
-@@ -1311,7 +1311,9 @@ static int __devinit sdhci_bcm2708_probe(struct platform_device *pdev)
+@@ -1327,7 +1272,6 @@ static struct sdhci_ops sdhci_bcm2708_op
+ 	.spurious_crc_acmd51 = sdhci_bcm2708_quirk_spurious_crc,
+ 	.voltage_broken = sdhci_bcm2708_quirk_voltage_broken,
+ 	.uhs_broken = sdhci_bcm2708_uhs_broken,
+-	.missing_status = sdhci_bcm2708_missing_status,
+ };
+ 
+ /*****************************************************************************\
+@@ -1366,6 +1310,9 @@ static int __devinit sdhci_bcm2708_probe
+ 		ret = PTR_ERR(host);
+ 		goto err;
+ 	}
++	if (missing_status) {
++		sdhci_bcm2708_ops.missing_status = sdhci_bcm2708_missing_status;
++	}
+ 
+ 	host->hw_name = "BCM2708_Arasan";
+ 	host->ops = &sdhci_bcm2708_ops;
+@@ -1374,7 +1321,11 @@ static int __devinit sdhci_bcm2708_probe
  	host->quirks = SDHCI_QUIRK_BROKEN_CARD_DETECTION |
  		       SDHCI_QUIRK_DATA_TIMEOUT_USES_SDCLK |
  		       SDHCI_QUIRK_BROKEN_TIMEOUT_VAL |
 -		       SDHCI_QUIRK_NONSTANDARD_CLOCK;
 +               SDHCI_QUIRK_MISSING_CAPS |
-+               SDHCI_QUIRK_NO_HISPD_BIT;
++               SDHCI_QUIRK_NO_HISPD_BIT |
++               (sync_after_dma ? 0:SDHCI_QUIRK_MULTIBLOCK_READ_ACMD12);
++
 +
  #ifdef CONFIG_MMC_SDHCI_BCM2708_DMA
  	host->flags = SDHCI_USE_PLATDMA;
  #endif
--- 
-1.7.10
-
-
-From 420806e5adabd8343b362b4a1d7f64f22b394dbf Mon Sep 17 00:00:00 2001
-From: Grigori Goronzy <greg@blackbox>
-Date: Mon, 11 Jun 2012 18:57:13 +0200
-Subject: [PATCH 4/5] sdhci-bcm2708: add allow_highspeed parameter
-
-Add a parameter to disable high-speed mode for the few cards that
-still might have problems. High-speed mode is enabled by default.
----
- drivers/mmc/host/sdhci-bcm2708.c |    9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/mmc/host/sdhci-bcm2708.c b/drivers/mmc/host/sdhci-bcm2708.c
-index 16c918b..a8aae16 100644
---- a/drivers/mmc/host/sdhci-bcm2708.c
-+++ b/drivers/mmc/host/sdhci-bcm2708.c
-@@ -135,6 +135,8 @@ static inline unsigned long int since_ns(hptime_t t)
- 	return (unsigned long)((hptime() - t) * HPTIME_CLK_NS);
- }
- 
-+static bool allow_highspeed = 1;
-+
- #if 0
- static void hptime_test(void)
- {
-@@ -1381,7 +1383,8 @@ static int __devinit sdhci_bcm2708_probe(struct platform_device *pdev)
+@@ -1442,7 +1393,11 @@ static int __devinit sdhci_bcm2708_probe
  	    host_priv->dma_chan, host_priv->dma_chan_base,
  	    host_priv->dma_irq);
  
 -	host->mmc->caps |= MMC_CAP_SD_HIGHSPEED | MMC_CAP_MMC_HIGHSPEED;
 +    if (allow_highspeed)
 +        host->mmc->caps |= MMC_CAP_SD_HIGHSPEED | MMC_CAP_MMC_HIGHSPEED;
++
++    /* single block writes cause data loss with some SD cards! */
++    host->mmc->caps2 |= MMC_CAP2_FORCE_MULTIBLOCK;
  #endif
  
  	ret = sdhci_add_host(host);
-@@ -1487,8 +1490,12 @@ static void __exit sdhci_drv_exit(void)
+@@ -1454,6 +1409,12 @@ static int __devinit sdhci_bcm2708_probe
+ 	ret = device_create_file(&pdev->dev, &dev_attr_dma_wait);
+ 	ret = device_create_file(&pdev->dev, &dev_attr_status);
+ 
++#ifdef CONFIG_MMC_SDHCI_BCM2708_DMA
++	/* enable extension fifo for paced DMA transfers */
++	sdhci_bcm2708_writel(host, 1, REG_EXRDFIFO_EN);
++	sdhci_bcm2708_writel(host, 4, REG_EXRDFIFO_CFG);
++#endif
++
+ 	printk(KERN_INFO "%s: BCM2708 SDHC host at 0x%08llx DMA %d IRQ %d\n",
+ 	       mmc_hostname(host->mmc), (unsigned long long)iomem->start,
+ 	       host_priv->dma_chan, host_priv->dma_irq);
+@@ -1548,8 +1509,19 @@ static void __exit sdhci_drv_exit(void)
  module_init(sdhci_drv_init);
  module_exit(sdhci_drv_exit);
  
 +module_param(allow_highspeed, bool, 0444);
++module_param(emmc_clock_freq, int, 0444);
++module_param(sync_after_dma, bool, 0444);
++module_param(missing_status, bool, 0444);
 +
  MODULE_DESCRIPTION("Secure Digital Host Controller Interface platform driver");
  MODULE_AUTHOR("Broadcom <info@broadcom.com>");
@@ -306,187 +791,14 @@ index 16c918b..a8aae16 100644
  MODULE_ALIAS("platform:"DRIVER_NAME);
  
 +MODULE_PARM_DESC(allow_highspeed, "Allow high speed transfers modes");
-+
--- 
-1.7.10
-
-
-From f1a14aea8494dc019eb145a08f2f26022efd7731 Mon Sep 17 00:00:00 2001
-From: Grigori Goronzy <greg@blackbox>
-Date: Mon, 11 Jun 2012 18:58:40 +0200
-Subject: [PATCH 5/5] sdhci-bcm2708: assume 50 MHz eMMC clock
-
-80 MHz clock isnt't suited well to be dividable to get SD clocks of 25
-MHz (default mode) or 50 MHz (high speed mode). 50 MHz are perfect to
-drive the SD interface at ideal frequencies.
----
- drivers/mmc/host/sdhci-bcm2708.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/mmc/host/sdhci-bcm2708.c b/drivers/mmc/host/sdhci-bcm2708.c
-index a8aae16..64b956b 100644
---- a/drivers/mmc/host/sdhci-bcm2708.c
-+++ b/drivers/mmc/host/sdhci-bcm2708.c
-@@ -74,7 +74,7 @@
- #define BCM2708_SDHCI_SLEEP_TIMEOUT 1000   /* msecs */
- 
- /* Mhz clock that the EMMC core is running at. Should match the platform clockman settings */
--#define BCM2708_EMMC_CLOCK_FREQ 80000000
-+#define BCM2708_EMMC_CLOCK_FREQ 50000000
- 
- #define POWER_OFF 0
- #define POWER_LAZY_OFF 1
--- 
-1.7.10
-
-From 598d87246fde30287f0c423cc761e26600dd7c17 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Sat, 16 Jun 2012 22:31:55 +0100
-Subject: [PATCH 1/4] Allow emmc clock to be specified as command line
- parameter
-
----
- drivers/mmc/host/sdhci-bcm2708.c |    6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/mmc/host/sdhci-bcm2708.c b/drivers/mmc/host/sdhci-bcm2708.c
-index 64b956b..3beb323 100644
---- a/drivers/mmc/host/sdhci-bcm2708.c
-+++ b/drivers/mmc/host/sdhci-bcm2708.c
-@@ -136,6 +136,7 @@ static inline unsigned long int since_ns(hptime_t t)
- }
- 
- static bool allow_highspeed = 1;
-+static bool emmc_clock_freq = BCM2708_EMMC_CLOCK_FREQ;
- 
- #if 0
- static void hptime_test(void)
-@@ -361,7 +362,7 @@ void sdhci_bcm2708_writeb(struct sdhci_host *host, u8 val, int reg)
- 
- static unsigned int sdhci_bcm2708_get_max_clock(struct sdhci_host *host)
- {
--	return BCM2708_EMMC_CLOCK_FREQ;
-+	return emmc_clock_freq;
- }
- 
- /*****************************************************************************\
-@@ -1491,6 +1492,7 @@ static void __exit sdhci_drv_exit(void)
- module_exit(sdhci_drv_exit);
- 
- module_param(allow_highspeed, bool, 0444);
-+module_param(emmc_clock_freq, bool, 0444);
- 
- MODULE_DESCRIPTION("Secure Digital Host Controller Interface platform driver");
- MODULE_AUTHOR("Broadcom <info@broadcom.com>");
-@@ -1498,4 +1500,6 @@ static void __exit sdhci_drv_exit(void)
- MODULE_ALIAS("platform:"DRIVER_NAME);
- 
- MODULE_PARM_DESC(allow_highspeed, "Allow high speed transfers modes");
 +MODULE_PARM_DESC(emmc_clock_freq, "Specify the speed of emmc clock");
++MODULE_PARM_DESC(sync_after_dma, "Block in driver until dma complete");
++MODULE_PARM_DESC(missing_status, "Use the missing status quirk");
 +
- 
--- 
-1.7.10
-
-
-From 682bc2a568462089005c32aed2a0d7a2faa59cf8 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Sat, 16 Jun 2012 22:35:38 +0100
-Subject: [PATCH 2/4] sdhci-bcm2708: raise DMA sync timeout
-
-Commit d64b84c by accident reduced the maximum overall DMA sync
-timeout. The maximum overall timeout was reduced from 100ms to 30ms,
-which isn't enough for many cards. Increase it to 150ms, just to be
-extra safe. According to commit 872a8ff in the MMC subsystem, some
-cards require crazy long timeouts (3s), but as we're busy-waiting,
-and shouldn't delay for such a long time, let's hope 150ms will be
-enough for most cards.
----
- drivers/mmc/host/sdhci-bcm2708.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/mmc/host/sdhci-bcm2708.c b/drivers/mmc/host/sdhci-bcm2708.c
-index 3beb323..85bf3ce 100644
---- a/drivers/mmc/host/sdhci-bcm2708.c
-+++ b/drivers/mmc/host/sdhci-bcm2708.c
-@@ -840,7 +840,7 @@ static void sdhci_bcm2708_dma_complete_irq(struct sdhci_host *host,
- 		   We get CRC and DEND errors unless we wait for
- 		   the SD controller to finish reading/writing to the card. */
- 		u32 state_mask;
--		int timeout=1000;
-+		int timeout=5000;
- 
- 		DBG("PDMA over - sync card\n");
- 		if (data->flags & MMC_DATA_READ)
--- 
-1.7.10
-
-
-From 1ccd0107253e1dd14ee78a1e3eb0ed723d8fa595 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Sat, 16 Jun 2012 23:26:28 +0100
-Subject: [PATCH 3/4] Fix bool/int error
-
----
- drivers/mmc/host/sdhci-bcm2708.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/mmc/host/sdhci-bcm2708.c b/drivers/mmc/host/sdhci-bcm2708.c
-index 85bf3ce..eedd724 100644
---- a/drivers/mmc/host/sdhci-bcm2708.c
-+++ b/drivers/mmc/host/sdhci-bcm2708.c
-@@ -1492,7 +1492,7 @@ static void __exit sdhci_drv_exit(void)
- module_exit(sdhci_drv_exit);
- 
- module_param(allow_highspeed, bool, 0444);
--module_param(emmc_clock_freq, bool, 0444);
-+module_param(emmc_clock_freq, int, 0444);
- 
- MODULE_DESCRIPTION("Secure Digital Host Controller Interface platform driver");
- MODULE_AUTHOR("Broadcom <info@broadcom.com>");
--- 
-1.7.10
-
-
-From 6273fcbf72461c2bd3757a8b6c9ed175955b25c1 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Sat, 16 Jun 2012 23:46:08 +0100
-Subject: [PATCH 4/4] Fix bool/int error, part 2
-
----
- drivers/mmc/host/sdhci-bcm2708.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/mmc/host/sdhci-bcm2708.c b/drivers/mmc/host/sdhci-bcm2708.c
-index eedd724..13abbc9 100644
---- a/drivers/mmc/host/sdhci-bcm2708.c
-+++ b/drivers/mmc/host/sdhci-bcm2708.c
-@@ -136,7 +136,7 @@ static inline unsigned long int since_ns(hptime_t t)
- }
- 
- static bool allow_highspeed = 1;
--static bool emmc_clock_freq = BCM2708_EMMC_CLOCK_FREQ;
-+static int emmc_clock_freq = BCM2708_EMMC_CLOCK_FREQ;
- 
- #if 0
- static void hptime_test(void)
--- 
-1.7.10
-
-From 3fc65f9f291fb19cad434968a4a0f66ab749e637 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Sun, 17 Jun 2012 00:14:54 +0100
-Subject: [PATCH] Explicitly set usb host channels to 8, as in the spec
-
----
- drivers/usb/host/dwc_otg/dwc_otg_core_if.h |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/usb/host/dwc_otg/dwc_otg_core_if.h b/drivers/usb/host/dwc_otg/dwc_otg_core_if.h
-index 4a78b03..25aae5e 100644
++
 --- a/drivers/usb/host/dwc_otg/dwc_otg_core_if.h
 +++ b/drivers/usb/host/dwc_otg/dwc_otg_core_if.h
-@@ -267,7 +267,8 @@ extern int dwc_otg_set_param_max_packet_count(dwc_otg_core_if_t * core_if,
+@@ -267,7 +267,8 @@ extern int32_t dwc_otg_get_param_max_pac
  extern int dwc_otg_set_param_host_channels(dwc_otg_core_if_t * core_if,
  					   int32_t val);
  extern int32_t dwc_otg_get_param_host_channels(dwc_otg_core_if_t * core_if);
@@ -496,24 +808,65 @@ index 4a78b03..25aae5e 100644
  
  /** The number of endpoints in addition to EP0 available for device
   * mode operations.
--- 
-1.7.10
-
-From d2743760a691469cebfa3bc23cedb62c38388380 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Thu, 21 Jun 2012 01:31:08 +0100
-Subject: [PATCH 1/3] Remove silence method, and use atomic flags for kmalloc
-
----
- sound/arm/bcm2835-pcm.c   |   24 ------------------------
- sound/arm/bcm2835-vchiq.c |    4 ++--
- 2 files changed, 2 insertions(+), 26 deletions(-)
-
-diff --git a/sound/arm/bcm2835-pcm.c b/sound/arm/bcm2835-pcm.c
-index 40a9fb5..ff3eb4e 100755
 --- a/sound/arm/bcm2835-pcm.c
 +++ b/sound/arm/bcm2835-pcm.c
-@@ -345,29 +345,6 @@ static int snd_bcm2835_pcm_copy(struct snd_pcm_substream *substream,
+@@ -26,11 +26,11 @@ static struct snd_pcm_hardware snd_bcm28
+ 	.rate_max = 48000,
+ 	.channels_min = 1,
+ 	.channels_max = 2,
+-	.buffer_bytes_max = (4 * 8 - 1) * 1024,	/* Needs to be less than audioplay buffer size */
++	.buffer_bytes_max = 32 * 1024,	/* Needs to be less than audioplay buffer size */
+ 	.period_bytes_min = 1 * 1024,
+-	.period_bytes_max = (4 * 8 - 1) * 1024,
++	.period_bytes_max = 32 * 1024,
+ 	.periods_min = 1,
+-	.periods_max = 4 * 8 - 1,
++	.periods_max = 32,
+ };
+ 
+ static void snd_bcm2835_playback_free(struct snd_pcm_runtime *runtime)
+@@ -64,14 +64,18 @@ static irqreturn_t bcm2835_playback_fifo
+ 		    ((alsa_stream->pos + consumed) / alsa_stream->period_size))
+ 			new_period = 1;
+ 	}
+-	audio_debug("updating pos cur: %d + %d max:%d new_period:%d\n",
++	audio_debug("updating pos cur: %d + %d max:%d period_bytes:%d, hw_ptr: %d new_period:%d\n",
+ 		      alsa_stream->pos,
+-		      (consumed /** AUDIO_IPC_BLOCK_BUFFER_SIZE*/ ),
+-		      alsa_stream->buffer_size, new_period);
++		      consumed,
++		      alsa_stream->buffer_size,
++			  (int)(alsa_stream->period_size*alsa_stream->substream->runtime->periods),
++			  frames_to_bytes(alsa_stream->substream->runtime, alsa_stream->substream->runtime->status->hw_ptr),
++			  new_period);
+ 	if (alsa_stream->buffer_size) {
+ 		alsa_stream->pos += consumed;
+ 		alsa_stream->pos %= alsa_stream->buffer_size;
+ 	}
++
+ 	if (alsa_stream->substream) {
+ 		if (new_period)
+ 			snd_pcm_period_elapsed(alsa_stream->substream);
+@@ -135,7 +139,6 @@ static int snd_bcm2835_playback_open(str
+ 	runtime->private_data = alsa_stream;
+ 	runtime->private_free = snd_bcm2835_playback_free;
+ 	runtime->hw = snd_bcm2835_playback_hw;
+-
+ 	/* minimum 16 bytes alignment (for vchiq bulk transfers) */
+ 	snd_pcm_hw_constraint_step(runtime, 0, SNDRV_PCM_HW_PARAM_PERIOD_BYTES,
+ 				   16);
+@@ -224,6 +227,10 @@ static int snd_bcm2835_pcm_hw_params(str
+ 	}
+ 
+ 	bcm2835_audio_setup(alsa_stream);
++
++	/* in preparation of the stream, set the controls (volume level) of the stream */
++	bcm2835_audio_set_ctls(alsa_stream->chip);
++
+ 	audio_info(" .. OUT\n");
+ 
+ 	return err;
+@@ -345,29 +352,6 @@ static int snd_bcm2835_pcm_copy(struct s
  	return ret;
  }
  
@@ -543,7 +896,7 @@ index 40a9fb5..ff3eb4e 100755
  static int snd_bcm2835_pcm_lib_ioctl(struct snd_pcm_substream *substream,
  				     unsigned int cmd, void *arg)
  {
-@@ -388,7 +365,6 @@ static int snd_bcm2835_pcm_lib_ioctl(struct snd_pcm_substream *substream,
+@@ -388,7 +372,6 @@ static struct snd_pcm_ops snd_bcm2835_pl
  	.trigger = snd_bcm2835_pcm_trigger,
  	.pointer = snd_bcm2835_pcm_pointer,
  	.copy = snd_bcm2835_pcm_copy,
@@ -551,177 +904,116 @@ index 40a9fb5..ff3eb4e 100755
  };
  
  /* create a pcm device */
-diff --git a/sound/arm/bcm2835-vchiq.c b/sound/arm/bcm2835-vchiq.c
-index 820063a..23c0aa3 100755
+@@ -406,7 +389,8 @@ int __devinit snd_bcm2835_new_pcm(bcm283
+ 	strcpy(pcm->name, "bcm2835 ALSA");
+ 	chip->pcm = pcm;
+ 	chip->dest = AUDIO_DEST_AUTO;
+-	chip->volume = 100;
++	chip->volume = alsa2chip(0);
++	chip->mute = CTRL_VOL_UNMUTE;	/*disable mute on startup */
+ 	/* set operators */
+ 	snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK,
+ 			&snd_bcm2835_playback_ops);
 --- a/sound/arm/bcm2835-vchiq.c
 +++ b/sound/arm/bcm2835-vchiq.c
-@@ -102,7 +102,7 @@ int bcm2835_audio_start(bcm2835_alsa_stream_t * alsa_stream)
+@@ -43,12 +43,18 @@
+ 
+ /* Default VCOS logging level */
+ #define LOG_LEVEL  VCOS_LOG_WARN
+-
+ /* Logging macros (for remapping to other logging mechanisms, i.e., printf) */
+-#define LOG_ERR( fmt, arg... )   vcos_log_error( "%s:%d " fmt, __func__, __LINE__, ##arg)
+-#define LOG_WARN( fmt, arg... )  vcos_log_warn( "%s:%d " fmt, __func__, __LINE__, ##arg)
+-#define LOG_INFO( fmt, arg... )  vcos_log_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
+-#define LOG_DBG( fmt, arg... )   vcos_log_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
++#ifdef AUDIO_DEBUG_ENABLE
++	#define LOG_ERR( fmt, arg... )   pr_err( "%s:%d " fmt, __func__, __LINE__, ##arg)
++	#define LOG_WARN( fmt, arg... )  pr_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
++	#define LOG_INFO( fmt, arg... )  pr_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
++	#define LOG_DBG( fmt, arg... )   pr_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
++#else
++	#define LOG_ERR( fmt, arg... ) vcos_log_error( "%s:%d " fmt, __func__, __LINE__, ##arg)
++	#define LOG_WARN( fmt, arg... ) vcos_log_warn( "%s:%d " fmt, __func__, __LINE__, ##arg)
++	#define LOG_INFO( fmt, arg... ) vcos_log_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
++	#define LOG_DBG( fmt, arg... ) vcos_log_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
++#endif
+ 
+ typedef struct opaque_AUDIO_INSTANCE_T {
+ 	uint32_t num_connections;
+@@ -102,8 +108,8 @@ int bcm2835_audio_start(bcm2835_alsa_str
  	int ret = -1;
  	LOG_DBG(" .. IN\n");
  	if (alsa_stream->my_wq) {
 -		my_work_t *work = kmalloc(sizeof(my_work_t), GFP_KERNEL);
+-		/* Queue some work (item 1) */
 +		my_work_t *work = kmalloc(sizeof(my_work_t), GFP_ATOMIC);
- 		/* Queue some work (item 1) */
++		/*--- Queue some work (item 1) ---*/
  		if (work) {
  			INIT_WORK((struct work_struct *)work, my_wq_function);
-@@ -123,7 +123,7 @@ int bcm2835_audio_stop(bcm2835_alsa_stream_t * alsa_stream)
+ 			work->alsa_stream = alsa_stream;
+@@ -123,8 +129,8 @@ int bcm2835_audio_stop(bcm2835_alsa_stre
  	int ret = -1;
  	LOG_DBG(" .. IN\n");
  	if (alsa_stream->my_wq) {
 -		my_work_t *work = kmalloc(sizeof(my_work_t), GFP_KERNEL);
+-		/* Queue some work (item 1) */
 +		my_work_t *work = kmalloc(sizeof(my_work_t), GFP_ATOMIC);
- 		/* Queue some work (item 1) */
++		 /*--- Queue some work (item 1) ---*/
  		if (work) {
  			INIT_WORK((struct work_struct *)work, my_wq_function);
--- 
-1.7.10
-
-
-From 4cf265f1432ae31c8c2ceb95c6a41321c3ee2604 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Fri, 22 Jun 2012 12:55:39 +0100
-Subject: [PATCH 2/3] Fix unintended line swap that cause cause memory leak in
- USB driver
-
----
- drivers/usb/host/dwc_otg/dwc_otg_hcd_linux.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/usb/host/dwc_otg/dwc_otg_hcd_linux.c b/drivers/usb/host/dwc_otg/dwc_otg_hcd_linux.c
-index 2a3b689..970b065 100644
+ 			work->alsa_stream = alsa_stream;
+@@ -142,6 +148,7 @@ int bcm2835_audio_stop(bcm2835_alsa_stre
+ void my_workqueue_init(bcm2835_alsa_stream_t * alsa_stream)
+ {
+ 	alsa_stream->my_wq = create_workqueue("my_queue");
++	return;
+ }
+ 
+ void my_workqueue_quit(bcm2835_alsa_stream_t * alsa_stream)
+@@ -151,6 +158,7 @@ void my_workqueue_quit(bcm2835_alsa_stre
+ 		destroy_workqueue(alsa_stream->my_wq);
+ 		alsa_stream->my_wq = NULL;
+ 	}
++	return;
+ }
+ 
+ static void audio_vchi_callback(void *param,
+@@ -501,14 +509,22 @@ int bcm2835_audio_set_ctls(bcm2835_chip_
+ 	int i;
+ 	int ret = 0;
+ 	LOG_DBG(" .. IN\n");
++
+ 	/* change ctls for all substreams */
+ 	for (i = 0; i < MAX_SUBSTREAMS; i++) {
+ 		if (chip->avail_substreams & (1 << i)) {
+ 			if (!chip->alsa_stream[i])
++			{
++				LOG_DBG(" No ALSA stream available?! ");
+ 				ret = 0;
+-			else if (bcm2835_audio_set_ctls_chan
++			}
++			else if (bcm2835_audio_set_ctls_chan /* returns 0 on success */
+ 				 (chip->alsa_stream[i], chip) != 0)
+-				ret = -1;
++				 {
++					LOG_DBG("Couldn't set the controls for stream %d", i);
++					ret = -1;
++				 }
++			LOG_DBG(" Controls set for stream %d", i);
+ 		}
+ 	}
+ 	LOG_DBG(" .. OUT ret=%d\n", ret);
 --- a/drivers/usb/host/dwc_otg/dwc_otg_hcd_linux.c
 +++ b/drivers/usb/host/dwc_otg/dwc_otg_hcd_linux.c
-@@ -764,8 +764,8 @@ static int urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
- 	if(urb->hcpriv != NULL) {
- 		dwc_otg_hcd_urb_dequeue(dwc_otg_hcd, (dwc_otg_hcd_urb_t *)urb->hcpriv);
+@@ -70,6 +70,7 @@
+ #include "dwc_otg_hcd_if.h"
+ #include "dwc_otg_dbg.h"
+ #include "dwc_otg_driver.h"
++#include "dwc_otg_hcd.h"
  
--		urb->hcpriv = NULL;
- 		dwc_free(urb->hcpriv);
-+		urb->hcpriv = NULL;
- 	}
- 
- 	/* Higher layer software sets URB status. */
--- 
-1.7.10
-
-
-From e8b8f8db6d6bbe0784c7d5719259c57c9d6608f5 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Fri, 22 Jun 2012 12:57:42 +0100
-Subject: [PATCH 3/3] Use ndelay rather than udelay. Thanks lb
-
----
- drivers/mmc/host/sdhci-bcm2708.c |    8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/drivers/mmc/host/sdhci-bcm2708.c b/drivers/mmc/host/sdhci-bcm2708.c
-index 13abbc9..1d8751c 100644
---- a/drivers/mmc/host/sdhci-bcm2708.c
-+++ b/drivers/mmc/host/sdhci-bcm2708.c
-@@ -255,14 +255,14 @@ static void sdhci_bcm2708_raw_writel(struct sdhci_host *host, u32 val, int reg)
- 		if (now == last_write_hpt || now == last_write_hpt+1) {
- 			 /* we can't guarantee any significant time has
- 			  * passed - we'll have to wait anyway ! */
--			udelay((ns_2clk+1000-1)/1000);
-+			ndelay(ns_2clk);
- 		} else
- 		{
- 			/* we must have waited at least this many ns: */
- 			unsigned int ns_wait = HPTIME_CLK_NS *
- 					       (last_write_hpt - now - 1);
- 			if (ns_wait < ns_2clk)
--				udelay((ns_2clk-ns_wait+500)/1000);
-+				ndelay(ns_2clk - ns_wait);
- 		}
- 		last_write_hpt = now;
- 	}
-@@ -278,13 +278,13 @@ static void sdhci_bcm2708_raw_writel(struct sdhci_host *host, u32 val, int reg)
- 		ier &= ~SDHCI_INT_DATA_TIMEOUT;
- 		writel(ier, host->ioaddr + SDHCI_SIGNAL_ENABLE);
- 		timeout_disabled = true;
--		udelay((ns_2clk+1000-1)/1000);
-+		ndelay(ns_2clk);
- 	} else if (timeout_disabled) {
- 		ier = readl(host->ioaddr + SDHCI_SIGNAL_ENABLE);
- 		ier |= SDHCI_INT_DATA_TIMEOUT;
- 		writel(ier, host->ioaddr + SDHCI_SIGNAL_ENABLE);
- 		timeout_disabled = false;
--		udelay((ns_2clk+1000-1)/1000);
-+		ndelay(ns_2clk);
- 	}
- #endif
- 	writel(val, host->ioaddr + reg);
--- 
-1.7.10
-
-From f679f0534867d64a3672108d73bed5d349728f73 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Tue, 26 Jun 2012 15:54:11 +0100
-Subject: [PATCH] Fixed issue with some keyboards giving too much data 
- resulting in overrun of the input buffer and memory 
- corruption causing an OOPS. We should be checking for the 
- fact that we might get more data than we want. Thanks
- Naren.
-
----
- drivers/usb/host/dwc_otg/dwc_otg_hcd_ddma.c  |    4 ++--
- drivers/usb/host/dwc_otg/dwc_otg_hcd_intr.c  |    6 +++---
- drivers/usb/host/dwc_otg/dwc_otg_hcd_linux.c |   13 ++++++++++---
- 3 files changed, 15 insertions(+), 8 deletions(-)
-
-diff --git a/drivers/usb/host/dwc_otg/dwc_otg_hcd_ddma.c b/drivers/usb/host/dwc_otg/dwc_otg_hcd_ddma.c
-index 21d1ab1..01c4780 100644
---- a/drivers/usb/host/dwc_otg/dwc_otg_hcd_ddma.c
-+++ b/drivers/usb/host/dwc_otg/dwc_otg_hcd_ddma.c
-@@ -886,7 +886,7 @@ uint8_t update_non_isoc_urb_state_ddma(dwc_otg_hcd_t * hcd,
- 	if (hc->ep_type == DWC_OTG_EP_TYPE_CONTROL) {
- 	    if (qtd->control_phase == DWC_OTG_CONTROL_DATA) {
- 		urb->actual_length += n_bytes - remain;
--		if (remain || urb->actual_length == urb->length) {
-+		if (remain || urb->actual_length >= urb->length) {
- 			/* 
- 			 * For Control Data stage do not set urb->status=0 to prevent
- 			 * URB callback. Set it when Status phase done. See below.
-@@ -905,7 +905,7 @@ uint8_t update_non_isoc_urb_state_ddma(dwc_otg_hcd_t * hcd,
- 	else { 
- 	    /* BULK and INTR */
- 	    urb->actual_length += n_bytes - remain;
--	    if (remain || urb->actual_length == urb->length) {
-+	    if (remain || urb->actual_length >= urb->length) {
- 		urb->status = 0;
- 		*xfer_done = 1;
- 	    }
-diff --git a/drivers/usb/host/dwc_otg/dwc_otg_hcd_intr.c b/drivers/usb/host/dwc_otg/dwc_otg_hcd_intr.c
-index 6e4bc60..86fee99 100644
---- a/drivers/usb/host/dwc_otg/dwc_otg_hcd_intr.c
-+++ b/drivers/usb/host/dwc_otg/dwc_otg_hcd_intr.c
-@@ -567,7 +567,7 @@ static int update_urb_state_xfer_comp(dwc_hc_t * hc,
- 	   (urb->flags & URB_SEND_ZERO_PACKET) && (urb->actual_length == urb->length) &&
- 	   !(urb->length % hc->max_packet)) {
- 		xfer_done = 0;
--	} else if (short_read || urb->actual_length == urb->length) {
-+	} else if (short_read || urb->actual_length >= urb->length) {
- 		xfer_done = 1;
- 		urb->status = 0;
- 	}
-@@ -1876,10 +1876,10 @@ static void handle_hc_chhltd_intr_dma(dwc_otg_hcd_t * hcd,
- 	} else if (hcint.b.xacterr && !hcd->core_if->dma_desc_enable) {
- 		if (out_nak_enh) {
- 			if (hcint.b.nyet || hcint.b.nak || hcint.b.ack) {
--				DWC_DEBUG("XactErr with NYET/NAK/ACK\n");
-+				DWC_DEBUGPL(DBG_HCD, "XactErr with NYET/NAK/ACK\n");
- 				qtd->error_count = 0;
- 			} else {
--				DWC_DEBUG("XactErr without NYET/NAK/ACK\n");
-+				DWC_DEBUGPL(DBG_HCD, "XactErr without NYET/NAK/ACK\n");
- 			}
- 		}
- 
-diff --git a/drivers/usb/host/dwc_otg/dwc_otg_hcd_linux.c b/drivers/usb/host/dwc_otg/dwc_otg_hcd_linux.c
-index 970b065..05fd421 100644
---- a/drivers/usb/host/dwc_otg/dwc_otg_hcd_linux.c
-+++ b/drivers/usb/host/dwc_otg/dwc_otg_hcd_linux.c
-@@ -190,6 +190,7 @@ static int _hub_info(dwc_otg_hcd_t * hcd, void *urb_handle, uint32_t * hub_addr,
+ /**
+  * Gets the endpoint number from a _bEndpointAddress argument. The endpoint is
+@@ -190,6 +191,7 @@ static int _hub_info(dwc_otg_hcd_t * hcd
  		     uint32_t * port_addr)
  {
     struct urb *urb = (struct urb *)urb_handle;
@@ -729,7 +1021,7 @@ index 970b065..05fd421 100644
  #if 1 //GRAYG - temporary
     if (NULL == urb_handle)
        DWC_ERROR("**** %s - NULL URB handle\n", __func__);//GRAYG
-@@ -206,12 +207,18 @@ static int _hub_info(dwc_otg_hcd_t * hcd, void *urb_handle, uint32_t * hub_addr,
+@@ -206,12 +208,18 @@ static int _hub_info(dwc_otg_hcd_t * hcd
                  *hub_addr = 0; //GRAYG
                  // we probably shouldn't have a transaction translator if
                  // there's no associated hub?
@@ -751,22 +1043,107 @@ index 970b065..05fd421 100644
     return 0;
  }
  
--- 
-1.7.10
-
-From f3b653ec9e4961fd983fa1efe833c203c1701f15 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Sat, 30 Jun 2012 11:47:45 +0100
-Subject: [PATCH 1/4] Add interrupt support to gpio driver. Thanks Mrkva
-
----
- arch/arm/mach-bcm2708/bcm2708_gpio.c      |  264 +++++++++++++++--------------
- arch/arm/mach-bcm2708/include/mach/gpio.h |   17 +-
- arch/arm/mach-bcm2708/include/mach/irqs.h |    8 +-
- 3 files changed, 154 insertions(+), 135 deletions(-)
-
-diff --git a/arch/arm/mach-bcm2708/bcm2708_gpio.c b/arch/arm/mach-bcm2708/bcm2708_gpio.c
-index 59df912..7f8a6db 100644
+@@ -256,6 +264,7 @@ static void free_bus_bandwidth(struct us
+ static int _complete(dwc_otg_hcd_t * hcd, void *urb_handle,
+ 		     dwc_otg_hcd_urb_t * dwc_otg_urb, int32_t status)
+ {
++	uint64_t flags;
+ 	struct urb *urb = (struct urb *)urb_handle;
+ #ifdef DEBUG
+ 	if (CHK_DEBUG_LEVEL(DBG_HCDV | DBG_HCD_URB)) {
+@@ -340,7 +349,9 @@ static int _complete(dwc_otg_hcd_t * hcd
+ #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,30))
+ 	usb_hcd_giveback_urb(dwc_otg_hcd_to_hcd(hcd), urb);
+ #else
++	DWC_SPINLOCK_IRQSAVE(hcd->lock, &flags);
+ 	usb_hcd_unlink_urb_from_ep(dwc_otg_hcd_to_hcd(hcd), urb);
++	DWC_SPINUNLOCK_IRQRESTORE(hcd->lock, flags);
+ 	usb_hcd_giveback_urb(dwc_otg_hcd_to_hcd(hcd), urb, status);
+ #endif
+ 	return 0;
+@@ -751,6 +762,8 @@ static int urb_dequeue(struct usb_hcd *h
+ static int urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
+ #endif
+ {
++	int rc;
++	uint64_t flags;
+ 	dwc_otg_hcd_t *dwc_otg_hcd;
+ 	DWC_DEBUGPL(DBG_HCD, "DWC OTG HCD URB Dequeue\n");
+ 
+@@ -764,16 +777,26 @@ static int urb_dequeue(struct usb_hcd *h
+ 	if(urb->hcpriv != NULL) {
+ 		dwc_otg_hcd_urb_dequeue(dwc_otg_hcd, (dwc_otg_hcd_urb_t *)urb->hcpriv);
+ 
+-		urb->hcpriv = NULL;
+ 		dwc_free(urb->hcpriv);
++		urb->hcpriv = NULL;
+ 	}
+ 
+ 	/* Higher layer software sets URB status. */
+ #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,30))
+ 	usb_hcd_giveback_urb(hcd, urb);
+ #else
+-	usb_hcd_unlink_urb_from_ep(hcd, urb);
+-	usb_hcd_giveback_urb(hcd, urb, status);
++	DWC_SPINLOCK_IRQSAVE(dwc_otg_hcd->lock, &flags);
++	rc = usb_hcd_check_unlink_urb(hcd, urb, status);
++	if(!rc)
++	{
++		usb_hcd_unlink_urb_from_ep(hcd, urb);
++	}
++
++	DWC_SPINUNLOCK_IRQRESTORE(dwc_otg_hcd->lock, flags);
++	if (!rc)
++	{
++		usb_hcd_giveback_urb(hcd, urb, status);
++	}
+ #endif
+ 	if (CHK_DEBUG_LEVEL(DBG_HCDV | DBG_HCD_URB)) {
+ 		DWC_PRINTF("Called usb_hcd_giveback_urb()\n");
+--- a/drivers/usb/host/dwc_otg/dwc_otg_hcd_ddma.c
++++ b/drivers/usb/host/dwc_otg/dwc_otg_hcd_ddma.c
+@@ -886,7 +886,7 @@ uint8_t update_non_isoc_urb_state_ddma(d
+ 	if (hc->ep_type == DWC_OTG_EP_TYPE_CONTROL) {
+ 	    if (qtd->control_phase == DWC_OTG_CONTROL_DATA) {
+ 		urb->actual_length += n_bytes - remain;
+-		if (remain || urb->actual_length == urb->length) {
++		if (remain || urb->actual_length >= urb->length) {
+ 			/* 
+ 			 * For Control Data stage do not set urb->status=0 to prevent
+ 			 * URB callback. Set it when Status phase done. See below.
+@@ -905,7 +905,7 @@ uint8_t update_non_isoc_urb_state_ddma(d
+ 	else { 
+ 	    /* BULK and INTR */
+ 	    urb->actual_length += n_bytes - remain;
+-	    if (remain || urb->actual_length == urb->length) {
++	    if (remain || urb->actual_length >= urb->length) {
+ 		urb->status = 0;
+ 		*xfer_done = 1;
+ 	    }
+--- a/drivers/usb/host/dwc_otg/dwc_otg_hcd_intr.c
++++ b/drivers/usb/host/dwc_otg/dwc_otg_hcd_intr.c
+@@ -567,7 +567,7 @@ static int update_urb_state_xfer_comp(dw
+ 	   (urb->flags & URB_SEND_ZERO_PACKET) && (urb->actual_length == urb->length) &&
+ 	   !(urb->length % hc->max_packet)) {
+ 		xfer_done = 0;
+-	} else if (short_read || urb->actual_length == urb->length) {
++	} else if (short_read || urb->actual_length >= urb->length) {
+ 		xfer_done = 1;
+ 		urb->status = 0;
+ 	}
+@@ -1876,10 +1876,10 @@ static void handle_hc_chhltd_intr_dma(dw
+ 	} else if (hcint.b.xacterr && !hcd->core_if->dma_desc_enable) {
+ 		if (out_nak_enh) {
+ 			if (hcint.b.nyet || hcint.b.nak || hcint.b.ack) {
+-				DWC_DEBUG("XactErr with NYET/NAK/ACK\n");
++				DWC_DEBUGPL(DBG_HCD, "XactErr with NYET/NAK/ACK\n");
+ 				qtd->error_count = 0;
+ 			} else {
+-				DWC_DEBUG("XactErr without NYET/NAK/ACK\n");
++				DWC_DEBUGPL(DBG_HCD, "XactErr without NYET/NAK/ACK\n");
+ 			}
+ 		}
+ 
 --- a/arch/arm/mach-bcm2708/bcm2708_gpio.c
 +++ b/arch/arm/mach-bcm2708/bcm2708_gpio.c
 @@ -14,6 +14,7 @@
@@ -842,7 +1219,7 @@ index 59df912..7f8a6db 100644
  
  //printk(KERN_ERR DRIVER_NAME ": bcm2708_gpio_set_function %p (%d,%d)\n", gc, offset, function);
  	if (offset >= ARCH_NR_GPIOS)
-@@ -81,7 +77,7 @@ static int bcm2708_set_function(struct gpio_chip *gc, unsigned offset, int funct
+@@ -81,7 +77,7 @@ static int bcm2708_set_function(struct g
  
  	gpiodir = readl(gpio->base + GPIOFSEL(gpio_bank));
  	gpiodir &= ~(7 << gpio_field_offset);
@@ -851,7 +1228,7 @@ index 59df912..7f8a6db 100644
  	writel(gpiodir, gpio->base + GPIOFSEL(gpio_bank));
  	spin_unlock_irqrestore(&lock, flags);
  	gpiodir = readl(gpio->base + GPIOFSEL(gpio_bank));
-@@ -89,157 +85,177 @@ static int bcm2708_set_function(struct gpio_chip *gc, unsigned offset, int funct
+@@ -89,157 +85,177 @@ static int bcm2708_set_function(struct g
  	return 0;
  }
  
@@ -1003,15 +1380,16 @@ index 59df912..7f8a6db 100644
 +	unsigned gb = gn / 32;
 +	unsigned long rising = readl(gpio->base + GPIOREN(gb));
 +	unsigned long falling = readl(gpio->base + GPIOFEN(gb));
-+
-+	writel(rising & ~(1 << gn), gpio->base + GPIOREN(gb));
-+	writel(falling & ~(1 << gn), gpio->base + GPIOFEN(gb));
-+}
  
 -	writel(gpioren, chip->base + GPIOREN(gpio_bank));
 -	writel(gpiofen, chip->base + GPIOFEN(gpio_bank));
 -	writel(gpiohen, chip->base + GPIOHEN(gpio_bank));
 -	writel(gpiolen, chip->base + GPIOLEN(gpio_bank));
++	writel(rising & ~(1 << gn), gpio->base + GPIOREN(gb));
++	writel(falling & ~(1 << gn), gpio->base + GPIOFEN(gb));
++}
+ 
+-	spin_unlock_irqrestore(&chip->irq_lock, flags);
 +static void bcm2708_gpio_irq_unmask(struct irq_data *d)
 +{
 +	unsigned irq = d->irq;
@@ -1021,10 +1399,9 @@ index 59df912..7f8a6db 100644
 +	unsigned long rising = readl(gpio->base + GPIOREN(gb));
 +	unsigned long falling = readl(gpio->base + GPIOFEN(gb));
  
--	spin_unlock_irqrestore(&chip->irq_lock, flags);
-+	gn = gn % 32;
- 
 -	return 0;
++	gn = gn % 32;
++
 +	writel(1 << gn, gpio->base + GPIOEDS(gb));
 +
 +	if (gpio->rising & (1 << gn)) {
@@ -1070,12 +1447,6 @@ index 59df912..7f8a6db 100644
 -		for (gpio_bank = 0; gpio_bank < ARCH_NR_GPIOS/32; gpio_bank++) {
 -			pending = readl(chip->base + GPIOEDS(gpio_bank));
 -			writel(pending, chip->base + GPIOEDS(gpio_bank));
--
--			if (pending == 0)
--				continue;
--
--			for_each_set_bit(offset, &pending, ARCH_NR_GPIOS)
--				generic_handle_irq(gpio_to_irq(offset+32*gpio_bank));
 +	unsigned long edsr;
 +	unsigned bank;
 +	int i;
@@ -1085,20 +1456,23 @@ index 59df912..7f8a6db 100644
 +		for_each_set_bit(i, &edsr, 32) {
 +			gpio = i + bank * 32;
 +			generic_handle_irq(gpio_to_irq(gpio));
- 		}
++		}
 +		writel(0xffffffff, __io_address(GPIO_BASE) + GPIOEDS(bank));
- 	}
--	desc->chip->unmask(irq);
++	}
 +	return IRQ_HANDLED;
- }
--#endif /* #if BCM_GPIO_USE_IRQ */
-+
++}
+ 
+-			if (pending == 0)
+-				continue;
 +static struct irqaction bcm2708_gpio_irq = {
 +	.name = "BCM2708 GPIO catchall handler",
 +	.flags = IRQF_DISABLED | IRQF_TIMER | IRQF_IRQPOLL,
 +	.handler = bcm2708_gpio_interrupt,
 +};
-+
+ 
+-			for_each_set_bit(offset, &pending, ARCH_NR_GPIOS)
+-				generic_handle_irq(gpio_to_irq(offset+32*gpio_bank));
+-		}
 +static void bcm2708_gpio_irq_init(struct bcm2708_gpio *ucb)
 +{
 +	unsigned irq;
@@ -1109,7 +1483,8 @@ index 59df912..7f8a6db 100644
 +		irq_set_chip_data(irq, ucb);
 +		irq_set_chip(irq, &bcm2708_irqchip);
 +		set_irq_flags(irq, IRQF_VALID);
-+	}
+ 	}
+-	desc->chip->unmask(irq);
 +	setup_irq(IRQ_GPIO3, &bcm2708_gpio_irq);
 +}
 +
@@ -1117,13 +1492,14 @@ index 59df912..7f8a6db 100644
 +
 +static void bcm2708_gpio_irq_init(struct bcm2708_gpio *ucb)
 +{
-+}
+ }
+-#endif /* #if BCM_GPIO_USE_IRQ */
 +
 +#endif /* #if BCM_GPIO_USE_IRQ ***************************************************************************************************************** */
  
  static int bcm2708_gpio_probe(struct platform_device *dev)
  {
-@@ -247,7 +263,7 @@ static int bcm2708_gpio_probe(struct platform_device *dev)
+@@ -247,7 +263,7 @@ static int bcm2708_gpio_probe(struct pla
  	struct resource *res;
  	int err = 0;
  
@@ -1132,7 +1508,7 @@ index 59df912..7f8a6db 100644
  
  	ucb = kzalloc(sizeof(*ucb), GFP_KERNEL);
  	if (NULL == ucb) {
-@@ -260,7 +276,7 @@ static int bcm2708_gpio_probe(struct platform_device *dev)
+@@ -260,7 +276,7 @@ static int bcm2708_gpio_probe(struct pla
  	res = platform_get_resource(dev, IORESOURCE_MEM, 0);
  
  	platform_set_drvdata(dev, ucb);
@@ -1141,7 +1517,7 @@ index 59df912..7f8a6db 100644
  
  	ucb->gc.label = "bcm2708_gpio";
  	ucb->gc.base = 0;
-@@ -273,6 +289,8 @@ static int bcm2708_gpio_probe(struct platform_device *dev)
+@@ -273,6 +289,8 @@ static int bcm2708_gpio_probe(struct pla
  	ucb->gc.set = bcm2708_gpio_set;
  	ucb->gc.can_sleep = 0;
  
@@ -1150,7 +1526,7 @@ index 59df912..7f8a6db 100644
  	err = gpiochip_add(&ucb->gc);
  	if (err)
  		goto err;
-@@ -298,11 +316,10 @@ static int bcm2708_gpio_remove(struct platform_device *dev)
+@@ -298,11 +316,10 @@ static int bcm2708_gpio_remove(struct pl
  }
  
  static struct platform_driver bcm2708_gpio_driver = {
@@ -1166,13 +1542,11 @@ index 59df912..7f8a6db 100644
  };
  
  static int __init bcm2708_gpio_init(void)
-@@ -320,4 +337,3 @@ static void __exit bcm2708_gpio_exit(void)
+@@ -320,4 +337,3 @@ module_exit(bcm2708_gpio_exit);
  
  MODULE_DESCRIPTION("Broadcom BCM2708 GPIO driver");
  MODULE_LICENSE("GPL");
 -
-diff --git a/arch/arm/mach-bcm2708/include/mach/gpio.h b/arch/arm/mach-bcm2708/include/mach/gpio.h
-index 526004f..90a7ba2 100644
 --- a/arch/arm/mach-bcm2708/include/mach/gpio.h
 +++ b/arch/arm/mach-bcm2708/include/mach/gpio.h
 @@ -12,7 +12,8 @@
@@ -1185,7 +1559,7 @@ index 526004f..90a7ba2 100644
  
  #ifdef CONFIG_GPIOLIB
  
-@@ -31,18 +32,14 @@ static inline int gpio_cansleep(unsigned gpio)
+@@ -31,18 +32,14 @@ static inline int gpio_cansleep(unsigned
          return __gpio_cansleep(gpio);
  }
  
@@ -1209,8 +1583,6 @@ index 526004f..90a7ba2 100644
  #endif /* CONFIG_GPIOLIB */
  
  #endif
-diff --git a/arch/arm/mach-bcm2708/include/mach/irqs.h b/arch/arm/mach-bcm2708/include/mach/irqs.h
-index f59d474..e8bb068 100644
 --- a/arch/arm/mach-bcm2708/include/mach/irqs.h
 +++ b/arch/arm/mach-bcm2708/include/mach/irqs.h
 @@ -185,6 +185,12 @@
@@ -1227,63 +1599,22 @@ index f59d474..e8bb068 100644
 +
  
  #endif /* _BCM2708_IRQS_H_ */
--- 
-1.7.10
-
-
-From 4f574f96955a5f918be460b1b9afe60ad405ba00 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Sat, 30 Jun 2012 16:07:18 +0100
-Subject: [PATCH 2/4] Add a pm_power_off function that resets us, and
- indicates to bootcode.bin not to reboot us. Should
- allow a lower power 'off' state
-
----
- arch/arm/mach-bcm2708/bcm2708.c               |   14 ++++++++++++++
- arch/arm/mach-bcm2708/include/mach/platform.h |   16 +++++++++++++---
- 2 files changed, 27 insertions(+), 3 deletions(-)
-
-diff --git a/arch/arm/mach-bcm2708/bcm2708.c b/arch/arm/mach-bcm2708/bcm2708.c
-index fa02a1a..17c6dbd 100644
---- a/arch/arm/mach-bcm2708/bcm2708.c
-+++ b/arch/arm/mach-bcm2708/bcm2708.c
-@@ -53,6 +53,7 @@
- #include <mach/timex.h>
- #include <mach/dma.h>
- #include <mach/vcio.h>
-+#include <mach/system.h>
- 
- #include "bcm2708.h"
- #include "armctrl.h"
-@@ -472,10 +473,23 @@ int __init bcm_register_device(struct platform_device *pdev)
- 	return ret;
- }
- 
-+/* We can't really power off, but if we do the normal reset scheme, and indicate to bootcode.bin not to reboot, then most of the chip will be powered off */
-+static void bcm2708_power_off(void)
-+{
-+	/* we set the watchdog hard reset bit here to distinguish this reset from the normal (full) reset. bootcode.bin will not reboot after a hard reset */
-+	uint32_t pm_rsts = readl(IO_ADDRESS(PM_RSTS));
-+	pm_rsts = PM_PASSWORD | (pm_rsts & PM_RSTC_WRCFG_CLR) | PM_RSTS_HADWRH_SET;
-+	writel(pm_rsts, IO_ADDRESS(PM_RSTS));
-+	/* continue with normal reset mechanism */
-+	arch_reset(0, "");
-+}
-+
- void __init bcm2708_init(void)
- {
- 	int i;
- 
-+	pm_power_off = bcm2708_power_off;
-+
- 	for (i = 0; i < ARRAY_SIZE(lookups); i++)
- 		clkdev_add(&lookups[i]);
- 
-diff --git a/arch/arm/mach-bcm2708/include/mach/platform.h b/arch/arm/mach-bcm2708/include/mach/platform.h
-index 5cb1caa..5afa0a7 100644
 --- a/arch/arm/mach-bcm2708/include/mach/platform.h
 +++ b/arch/arm/mach-bcm2708/include/mach/platform.h
-@@ -191,6 +191,7 @@
+@@ -63,9 +63,12 @@
+ #define GPIO_BASE                (BCM2708_PERI_BASE + 0x200000) /* GPIO */
+ #define UART0_BASE               (BCM2708_PERI_BASE + 0x201000)	/* Uart 0 */
+ #define MMCI0_BASE               (BCM2708_PERI_BASE + 0x202000) /* MMC interface */
++#define SPI0_BASE		 (BCM2708_PERI_BASE + 0x204000) /* SPI0 */
++#define BSC0_BASE		 (BCM2708_PERI_BASE + 0x205000) /* BSC0 I2C/TWI */
+ #define UART1_BASE               (BCM2708_PERI_BASE + 0x215000) /* Uart 1 */
+ #define EMMC_BASE                (BCM2708_PERI_BASE + 0x300000) /* eMMC interface */
+ #define SMI_BASE		 (BCM2708_PERI_BASE + 0x600000) /* SMI */
++#define BSC1_BASE		 (BCM2708_PERI_BASE + 0x804000) /* BSC1 I2C/TWI */
+ #define USB_BASE                 (BCM2708_PERI_BASE + 0x980000) /* DTC_OTG USB controller */
+ #define MCORE_BASE               (BCM2708_PERI_BASE + 0x0000)   /* Fake frame buffer device (actually the multicore sync block*/
+ 
+@@ -191,6 +194,7 @@
   * Watchdog
   */
  #define PM_RSTC			       (PM_BASE+0x1c)
@@ -1291,7 +1622,7 @@ index 5cb1caa..5afa0a7 100644
  #define PM_WDOG			       (PM_BASE+0x24)
  
  #define PM_WDOG_RESET                                         0000000000
-@@ -199,9 +200,18 @@
+@@ -199,11 +203,20 @@
  #define PM_RSTC_WRCFG_CLR              0xffffffcf
  #define PM_RSTC_WRCFG_SET              0x00000030
  #define PM_RSTC_WRCFG_FULL_RESET       0x00000020
@@ -1299,7 +1630,7 @@ index 5cb1caa..5afa0a7 100644
 -
 -
 +#define PM_RSTC_RESET                  0x00000102
-+
+ 
 +#define PM_RSTS_HADPOR_SET                                 0x00001000
 +#define PM_RSTS_HADSRH_SET                                 0x00000400
 +#define PM_RSTS_HADSRF_SET                                 0x00000200
@@ -1311,27 +1642,21 @@ index 5cb1caa..5afa0a7 100644
 +#define PM_RSTS_HADDRF_SET                                 0x00000002
 +#define PM_RSTS_HADDRQ_SET                                 0x00000001
  
++#define UART0_CLOCK      3000000
  
+ #endif
  
--- 
-1.7.10
-
-
-From 14ad68cf4afc7acf14076f895b539d81cd9f32ab Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Sun, 1 Jul 2012 12:09:52 +0100
-Subject: [PATCH 3/4] Store palette info where GPU can see it, so 8bpp modes
- can work. Requires updated start.elf to work properly
-
----
- drivers/video/bcm2708_fb.c |   14 ++++++++++++++
- 1 file changed, 14 insertions(+)
-
-diff --git a/drivers/video/bcm2708_fb.c b/drivers/video/bcm2708_fb.c
-index 8d67e86..ec01655 100644
 --- a/drivers/video/bcm2708_fb.c
 +++ b/drivers/video/bcm2708_fb.c
-@@ -48,6 +48,7 @@ struct fbinfo_s {
+@@ -18,6 +18,7 @@
+ #include <linux/errno.h>
+ #include <linux/string.h>
+ #include <linux/slab.h>
++#include <linux/delay.h>
+ #include <linux/mm.h>
+ #include <linux/fb.h>
+ #include <linux/init.h>
+@@ -48,6 +49,7 @@ struct fbinfo_s {
  	u32 xoffset, yoffset;
  	u32 base;
  	u32 screen_size;
@@ -1339,7 +1664,15 @@ index 8d67e86..ec01655 100644
  };
  
  struct bcm2708_fb {
-@@ -266,18 +267,31 @@ static inline u32 convert_bitfield(int val, struct fb_bitfield *bf)
+@@ -220,7 +222,6 @@ static int bcm2708_fb_set_par(struct fb_
+ 	/* inform vc about new framebuffer */
+ 	bcm_mailbox_write(MBOX_CHAN_FB, fb->dma);
+ 
+-	/* TODO: replace fb driver with vchiq version */
+ 	/* wait for response */
+ 	bcm_mailbox_read(MBOX_CHAN_FB, &val);
+ 
+@@ -266,18 +267,31 @@ static inline u32 convert_bitfield(int v
  	return (val >> (16 - bf->length) & mask) << bf->offset;
  }
  
@@ -1350,49 +1683,8 @@ index 8d67e86..ec01655 100644
  {
  	struct bcm2708_fb *fb = to_bcm2708(info);
  
-+	/*pr_info("BCM2708FB: setcolreg %d:(%02x,%02x,%02x,%02x) %x\n", regno, red, green, blue, transp, fb->fb.fix.visual);*/
- 	if (regno < 16)
- 		fb->cmap[regno] = convert_bitfield(transp, &fb->fb.var.transp) |
- 		    convert_bitfield(blue, &fb->fb.var.blue) |
- 		    convert_bitfield(green, &fb->fb.var.green) |
- 		    convert_bitfield(red, &fb->fb.var.red);
- 
-+	if (regno < 256) {
-+		/* blue [0:4], green [5:10], red [11:15] */
-+		fb->info->cmap[regno] = ((red   >> (16-5)) & 0x1f) << 11 |
-+					((green >> (16-6)) & 0x3f) << 5 |
-+					((blue  >> (16-5)) & 0x1f) << 0;
-+	}
-+	/* Hack: we need to tell GPU the palette has changed, but currently bcm2708_fb_set_par takes noticable time when called for every (256) colour */
-+        /* So just call it for what looks like the last colour in a list for now. */
-+	if (regno == 15 || regno == 255)
-+		bcm2708_fb_set_par(info);
-+
- 	return regno > 255;
- }
- 
--- 
-1.7.10
-
-
-From c47ee9d4a48c1f3cc53a54e096ca0f7a3961ed9f Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Mon, 2 Jul 2012 20:34:38 +0100
-Subject: [PATCH 4/4] Avoid blanking console when not in palettised mode
-
----
- drivers/video/bcm2708_fb.c |   24 ++++++++++++------------
- 1 file changed, 12 insertions(+), 12 deletions(-)
-
-diff --git a/drivers/video/bcm2708_fb.c b/drivers/video/bcm2708_fb.c
-index ec01655..2b23be6 100644
---- a/drivers/video/bcm2708_fb.c
-+++ b/drivers/video/bcm2708_fb.c
-@@ -275,23 +275,23 @@ static int bcm2708_fb_setcolreg(unsigned int regno, unsigned int red,
- 	struct bcm2708_fb *fb = to_bcm2708(info);
- 
- 	/*pr_info("BCM2708FB: setcolreg %d:(%02x,%02x,%02x,%02x) %x\n", regno, red, green, blue, transp, fb->fb.fix.visual);*/
 -	if (regno < 16)
++	/*pr_info("BCM2708FB: setcolreg %d:(%02x,%02x,%02x,%02x) %x\n", regno, red, green, blue, transp, fb->fb.fix.visual);*/
 +	if (fb->fb.var.bits_per_pixel <= 8) {
 +		if (regno < 256) {
 +			/* blue [0:4], green [5:10], red [11:15] */
@@ -1410,118 +1702,24 @@ index ec01655..2b23be6 100644
  		    convert_bitfield(green, &fb->fb.var.green) |
  		    convert_bitfield(red, &fb->fb.var.red);
 -
--	if (regno < 256) {
--		/* blue [0:4], green [5:10], red [11:15] */
--		fb->info->cmap[regno] = ((red   >> (16-5)) & 0x1f) << 11 |
--					((green >> (16-6)) & 0x3f) << 5 |
--					((blue  >> (16-5)) & 0x1f) << 0;
- 	}
--	/* Hack: we need to tell GPU the palette has changed, but currently bcm2708_fb_set_par takes noticable time when called for every (256) colour */
--        /* So just call it for what looks like the last colour in a list for now. */
--	if (regno == 15 || regno == 255)
--		bcm2708_fb_set_par(info);
--
++	}
  	return regno > 255;
  }
  
--- 
-1.7.10
-
-From 68b4a993dc006f80b7d19e461fcecd8191c5b9a3 Mon Sep 17 00:00:00 2001
-From: Bryan Kemp <bryan@kempville.com>
-Date: Sat, 7 Jul 2012 16:24:07 -0500
-Subject: [PATCH 1/3] Updating dwc_otg driver to fix issue releasing pcm
- stream see:
- https://github.com/raspberrypi/firmware/issues/51
-
----
- drivers/usb/host/dwc_otg/dwc_otg_hcd_linux.c |   20 ++++++++++++++++++--
- 1 file changed, 18 insertions(+), 2 deletions(-)
-
-diff --git a/drivers/usb/host/dwc_otg/dwc_otg_hcd_linux.c b/drivers/usb/host/dwc_otg/dwc_otg_hcd_linux.c
-index 6a89b1e..68664e5 100644
---- a/drivers/usb/host/dwc_otg/dwc_otg_hcd_linux.c
-+++ b/drivers/usb/host/dwc_otg/dwc_otg_hcd_linux.c
-@@ -70,6 +70,7 @@
- #include "dwc_otg_hcd_if.h"
- #include "dwc_otg_dbg.h"
- #include "dwc_otg_driver.h"
-+#include "dwc_otg_hcd.h"
+@@ -360,8 +374,8 @@ static int bcm2708_fb_register(struct bc
+ 	fb->fb.var.vmode = FB_VMODE_NONINTERLACED;
+ 	fb->fb.var.activate = FB_ACTIVATE_NOW;
+ 	fb->fb.var.nonstd = 0;
+-	fb->fb.var.height = fbwidth;
+-	fb->fb.var.width = fbheight;
++	fb->fb.var.height = -1;		/* height of picture in mm    */
++	fb->fb.var.width = -1;		/* width of picture in mm    */
+ 	fb->fb.var.accel_flags = 0;
  
- /**
-  * Gets the endpoint number from a _bEndpointAddress argument. The endpoint is
-@@ -267,6 +268,7 @@ static void free_bus_bandwidth(struct usb_hcd *hcd, uint32_t bw,
- static int _complete(dwc_otg_hcd_t * hcd, void *urb_handle,
- 		     dwc_otg_hcd_urb_t * dwc_otg_urb, int32_t status)
- {
-+	uint64_t flags;
- 	struct urb *urb = (struct urb *)urb_handle;
- 
- #ifdef DEBUG_SOF_FIX
-@@ -356,7 +358,9 @@ static int _complete(dwc_otg_hcd_t * hcd, void *urb_handle,
- #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,30))
- 	usb_hcd_giveback_urb(dwc_otg_hcd_to_hcd(hcd), urb);
- #else
-+	DWC_SPINLOCK_IRQSAVE(hcd->lock, &flags);
- 	usb_hcd_unlink_urb_from_ep(dwc_otg_hcd_to_hcd(hcd), urb);
-+	DWC_SPINUNLOCK_IRQRESTORE(hcd->lock, flags);
- 	usb_hcd_giveback_urb(dwc_otg_hcd_to_hcd(hcd), urb, status);
- #endif
- 	return 0;
-@@ -767,6 +771,8 @@ static int urb_dequeue(struct usb_hcd *hcd, struct urb *urb)
- static int urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
- #endif
- {
-+	int rc;
-+	uint64_t flags;
- 	dwc_otg_hcd_t *dwc_otg_hcd;
- 	DWC_DEBUGPL(DBG_HCD, "DWC OTG HCD URB Dequeue\n");
- 
-@@ -788,8 +794,18 @@ static int urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
- #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,30))
- 	usb_hcd_giveback_urb(hcd, urb);
- #else
--	usb_hcd_unlink_urb_from_ep(hcd, urb);
--	usb_hcd_giveback_urb(hcd, urb, status);
-+	DWC_SPINLOCK_IRQSAVE(dwc_otg_hcd->lock, &flags);
-+	rc = usb_hcd_check_unlink_urb(hcd, urb, status);
-+	if(!rc)
-+	{
-+		usb_hcd_unlink_urb_from_ep(hcd, urb);
-+	}
-+
-+	DWC_SPINUNLOCK_IRQRESTORE(dwc_otg_hcd->lock, flags);
-+	if (!rc)
-+	{
-+		usb_hcd_giveback_urb(hcd, urb, status);
-+	}
- #endif
- 	if (CHK_DEBUG_LEVEL(DBG_HCDV | DBG_HCD_URB)) {
- 		DWC_PRINTF("Called usb_hcd_giveback_urb()\n");
--- 
-1.7.10
-
-
-From 6d0f2d3c8bd430edcbb5058ed4fd6fa535cb7496 Mon Sep 17 00:00:00 2001
-From: Number 27 <chris@bham>
-Date: Sun, 8 Jul 2012 20:57:25 +0100
-Subject: [PATCH 2/3] Backport of Chris Boot's i2c and spi drivers.
-
----
- arch/arm/configs/bcmrpi_cutdown_defconfig     |    9 +++
- arch/arm/mach-bcm2708/bcm2708.c               |   95 ++++++++++++++++++++++++-
- arch/arm/mach-bcm2708/include/mach/platform.h |    3 +
- drivers/i2c/busses/Kconfig                    |    8 +++
- drivers/i2c/busses/Makefile                   |    1 +
- drivers/spi/Kconfig                           |    8 +++
- drivers/spi/Makefile                          |    1 +
- 7 files changed, 123 insertions(+), 2 deletions(-)
-
-diff --git a/arch/arm/configs/bcmrpi_cutdown_defconfig b/arch/arm/configs/bcmrpi_cutdown_defconfig
-index bb8cafe..cc9e1df 100644
+ 	fb->fb.monspecs.hfmin = 0;
 --- a/arch/arm/configs/bcmrpi_cutdown_defconfig
 +++ b/arch/arm/configs/bcmrpi_cutdown_defconfig
-@@ -550,3 +550,12 @@ CONFIG_CRYPTO_DEFLATE=m
+@@ -492,3 +492,12 @@ CONFIG_CRYPTO_DEFLATE=m
  # CONFIG_CRYPTO_HW is not set
  CONFIG_CRC_ITU_T=y
  CONFIG_LIBCRC32C=y
@@ -1535,176 +1733,9 @@ index bb8cafe..cc9e1df 100644
 +CONFIG_SPI_MASTER=y
 +CONFIG_SPI_BCM2708=m
 \ No newline at end of file
-diff --git a/arch/arm/mach-bcm2708/bcm2708.c b/arch/arm/mach-bcm2708/bcm2708.c
-index 17c6dbd..a466f44 100644
---- a/arch/arm/mach-bcm2708/bcm2708.c
-+++ b/arch/arm/mach-bcm2708/bcm2708.c
-@@ -31,6 +31,7 @@
- #include <linux/cnt32_to_63.h>
- #include <linux/io.h>
- #include <linux/module.h>
-+#include <linux/spi/spi.h>
- 
- #include <linux/version.h>
- #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38)
-@@ -195,7 +196,6 @@ unsigned long long sched_clock(void)
- 
- /* warning - the USB needs a clock > 34MHz */
- 
--#ifdef CONFIG_MMC_BCM2708
- static struct clk sdhost_clk = {
- #ifdef CONFIG_ARCH_BCM2708_CHIPIT
- 	.rate = 4000000,	/* 4MHz */
-@@ -203,7 +203,6 @@ unsigned long long sched_clock(void)
- 	.rate = 250000000,	/* 250MHz */
- #endif
- };
--#endif
- 
- static struct clk_lookup lookups[] = {
- 	{			/* UART0 */
-@@ -219,6 +218,15 @@ unsigned long long sched_clock(void)
- 	 .dev_id = "bcm2708_mci.0",
- 	 .clk = &sdhost_clk,
- #endif
-+	 }, {	/* SPI */
-+		 .dev_id = "bcm2708_spi.0",
-+		 .clk = &sdhost_clk,
-+	 }, {	/* BSC0 */
-+		 .dev_id = "bcm2708_i2c.0",
-+		 .clk = &sdhost_clk,
-+	 }, {	/* BSC1 */
-+		 .dev_id = "bcm2708_i2c.1",
-+		 .clk = &sdhost_clk,
- 	 }
- };
- 
-@@ -461,6 +469,80 @@ struct platform_device bcm2708_powerman_device = {
- 	       },
- };
- 
-+static struct resource bcm2708_spi_resources[] = {
-+	{
-+		.start = SPI0_BASE,
-+		.end = SPI0_BASE + SZ_256 - 1,
-+		.flags = IORESOURCE_MEM,
-+	}, {
-+		.start = IRQ_SPI,
-+		.end = IRQ_SPI,
-+		.flags = IORESOURCE_IRQ,
-+	}
-+};
-+
-+static struct platform_device bcm2708_spi_device = {
-+	.name = "bcm2708_spi",
-+	.id = 0,
-+	.num_resources = ARRAY_SIZE(bcm2708_spi_resources),
-+	.resource = bcm2708_spi_resources,
-+};
-+
-+static struct spi_board_info bcm2708_spi_devices[] = {
-+	{
-+		.modalias = "spidev",
-+		.max_speed_hz = 500000,
-+		.bus_num = 0,
-+		.chip_select = 0,
-+		.mode = SPI_MODE_0,
-+	}, {
-+		.modalias = "spidev",
-+		.max_speed_hz = 500000,
-+		.bus_num = 0,
-+		.chip_select = 1,
-+		.mode = SPI_MODE_0,
-+	}
-+};
-+
-+static struct resource bcm2708_bsc0_resources[] = {
-+	{
-+		.start = BSC0_BASE,
-+		.end = BSC0_BASE + SZ_256 - 1,
-+		.flags = IORESOURCE_MEM,
-+	}, {
-+		.start = INTERRUPT_I2C,
-+		.end = INTERRUPT_I2C,
-+		.flags = IORESOURCE_IRQ,
-+	}
-+};
-+
-+static struct platform_device bcm2708_bsc0_device = {
-+	.name = "bcm2708_i2c",
-+	.id = 0,
-+	.num_resources = ARRAY_SIZE(bcm2708_bsc0_resources),
-+	.resource = bcm2708_bsc0_resources,
-+};
-+
-+
-+static struct resource bcm2708_bsc1_resources[] = {
-+	{
-+		.start = BSC1_BASE,
-+		.end = BSC1_BASE + SZ_256 - 1,
-+		.flags = IORESOURCE_MEM,
-+	}, {
-+		.start = INTERRUPT_I2C,
-+		.end = INTERRUPT_I2C,
-+		.flags = IORESOURCE_IRQ,
-+	}
-+};
-+
-+static struct platform_device bcm2708_bsc1_device = {
-+	.name = "bcm2708_i2c",
-+	.id = 1,
-+	.num_resources = ARRAY_SIZE(bcm2708_bsc1_resources),
-+	.resource = bcm2708_bsc1_resources,
-+};
-+
- int __init bcm_register_device(struct platform_device *pdev)
- {
- 	int ret;
-@@ -513,6 +595,10 @@ void __init bcm2708_init(void)
- 	for (i = 0; i < ARRAY_SIZE(bcm2708_alsa_devices); i++)
- 		bcm_register_device(&bcm2708_alsa_devices[i]);
- 
-+	bcm_register_device(&bcm2708_spi_device);
-+	bcm_register_device(&bcm2708_bsc0_device);
-+	bcm_register_device(&bcm2708_bsc1_device);
-+
- #ifdef CONFIG_BCM2708_VCMEM
- 	{
- 		extern void vc_mem_connected_init(void);
-@@ -525,6 +611,11 @@ void __init bcm2708_init(void)
- 	}
- 	system_rev = boardrev;
- 	system_serial_low = serial;
-+
-+#ifdef CONFIG_SPI
-+	spi_register_board_info(bcm2708_spi_devices,
-+			ARRAY_SIZE(bcm2708_spi_devices));
-+#endif
- }
- 
- #define TIMER_PERIOD 10000	/* HZ in microsecs */
-diff --git a/arch/arm/mach-bcm2708/include/mach/platform.h b/arch/arm/mach-bcm2708/include/mach/platform.h
-index 5afa0a7..3085af1 100644
---- a/arch/arm/mach-bcm2708/include/mach/platform.h
-+++ b/arch/arm/mach-bcm2708/include/mach/platform.h
-@@ -63,9 +63,12 @@
- #define GPIO_BASE                (BCM2708_PERI_BASE + 0x200000) /* GPIO */
- #define UART0_BASE               (BCM2708_PERI_BASE + 0x201000)	/* Uart 0 */
- #define MMCI0_BASE               (BCM2708_PERI_BASE + 0x202000) /* MMC interface */
-+#define SPI0_BASE		 (BCM2708_PERI_BASE + 0x204000) /* SPI0 */
-+#define BSC0_BASE		 (BCM2708_PERI_BASE + 0x205000) /* BSC0 I2C/TWI */
- #define UART1_BASE               (BCM2708_PERI_BASE + 0x215000) /* Uart 1 */
- #define EMMC_BASE                (BCM2708_PERI_BASE + 0x300000) /* eMMC interface */
- #define SMI_BASE		 (BCM2708_PERI_BASE + 0x600000) /* SMI */
-+#define BSC1_BASE		 (BCM2708_PERI_BASE + 0x804000) /* BSC1 I2C/TWI */
- #define USB_BASE                 (BCM2708_PERI_BASE + 0x980000) /* DTC_OTG USB controller */
- #define MCORE_BASE               (BCM2708_PERI_BASE + 0x0000)   /* Fake frame buffer device (actually the multicore sync block*/
- 
-diff --git a/drivers/i2c/busses/Kconfig b/drivers/i2c/busses/Kconfig
-index 646068e..42c792b 100644
 --- a/drivers/i2c/busses/Kconfig
 +++ b/drivers/i2c/busses/Kconfig
-@@ -309,6 +309,14 @@ config I2C_AU1550
+@@ -308,6 +308,14 @@ config I2C_AU1550
  	  This driver can also be built as a module.  If so, the module
  	  will be called i2c-au1550.
  
@@ -1719,11 +1750,9 @@ index 646068e..42c792b 100644
  config I2C_BLACKFIN_TWI
  	tristate "Blackfin TWI I2C support"
  	depends on BLACKFIN
-diff --git a/drivers/i2c/busses/Makefile b/drivers/i2c/busses/Makefile
-index e6cf294..3922593 100644
 --- a/drivers/i2c/busses/Makefile
 +++ b/drivers/i2c/busses/Makefile
-@@ -30,6 +30,7 @@ obj-$(CONFIG_I2C_POWERMAC)	+= i2c-powermac.o
+@@ -30,6 +30,7 @@ obj-$(CONFIG_I2C_POWERMAC)	+= i2c-powerm
  # Embedded system I2C/SMBus host controller drivers
  obj-$(CONFIG_I2C_AT91)		+= i2c-at91.o
  obj-$(CONFIG_I2C_AU1550)	+= i2c-au1550.o
@@ -1731,8 +1760,6 @@ index e6cf294..3922593 100644
  obj-$(CONFIG_I2C_BLACKFIN_TWI)	+= i2c-bfin-twi.o
  obj-$(CONFIG_I2C_CPM)		+= i2c-cpm.o
  obj-$(CONFIG_I2C_DAVINCI)	+= i2c-davinci.o
-diff --git a/drivers/spi/Kconfig b/drivers/spi/Kconfig
-index 52e2900..28df0a9 100644
 --- a/drivers/spi/Kconfig
 +++ b/drivers/spi/Kconfig
 @@ -74,6 +74,14 @@ config SPI_ATMEL
@@ -1750,11 +1777,9 @@ index 52e2900..28df0a9 100644
  config SPI_BFIN
  	tristate "SPI controller driver for ADI Blackfin5xx"
  	depends on BLACKFIN
-diff --git a/drivers/spi/Makefile b/drivers/spi/Makefile
-index 61c3261..2ff2985 100644
 --- a/drivers/spi/Makefile
 +++ b/drivers/spi/Makefile
-@@ -14,6 +14,7 @@ obj-$(CONFIG_SPI_ALTERA)		+= spi-altera.o
+@@ -14,6 +14,7 @@ obj-$(CONFIG_SPI_ALTERA)		+= spi-altera.
  obj-$(CONFIG_SPI_ATMEL)			+= spi-atmel.o
  obj-$(CONFIG_SPI_ATH79)			+= spi-ath79.o
  obj-$(CONFIG_SPI_AU1550)		+= spi-au1550.o
@@ -1762,25 +1787,6 @@ index 61c3261..2ff2985 100644
  obj-$(CONFIG_SPI_BFIN)			+= spi-bfin5xx.o
  obj-$(CONFIG_SPI_BFIN_SPORT)		+= spi-bfin-sport.o
  obj-$(CONFIG_SPI_BITBANG)		+= spi-bitbang.o
--- 
-1.7.10
-
-
-From dc9424fa359d244aab37bb59268faaf1300f8eb4 Mon Sep 17 00:00:00 2001
-From: Number 27 <chris@bham>
-Date: Sun, 8 Jul 2012 21:39:42 +0100
-Subject: [PATCH 3/3] forgotten files....
-
----
- drivers/i2c/busses/i2c-bcm2708.c |  396 +++++++++++++++++++++++++
- drivers/spi/spi-bcm2708.c        |  594 ++++++++++++++++++++++++++++++++++++++
- 2 files changed, 990 insertions(+)
- create mode 100644 drivers/i2c/busses/i2c-bcm2708.c
- create mode 100644 drivers/spi/spi-bcm2708.c
-
-diff --git a/drivers/i2c/busses/i2c-bcm2708.c b/drivers/i2c/busses/i2c-bcm2708.c
-new file mode 100644
-index 0000000..70e8d29
 --- /dev/null
 +++ b/drivers/i2c/busses/i2c-bcm2708.c
 @@ -0,0 +1,396 @@
@@ -2180,9 +2186,6 @@ index 0000000..70e8d29
 +MODULE_AUTHOR("Chris Boot <bootc@bootc.net>");
 +MODULE_LICENSE("GPL v2");
 +MODULE_ALIAS("platform:" DRV_NAME);
-diff --git a/drivers/spi/spi-bcm2708.c b/drivers/spi/spi-bcm2708.c
-new file mode 100644
-index 0000000..ef8fef0
 --- /dev/null
 +++ b/drivers/spi/spi-bcm2708.c
 @@ -0,0 +1,594 @@
@@ -2780,62 +2783,13 @@ index 0000000..ef8fef0
 +MODULE_AUTHOR("Chris Boot <bootc@bootc.net>");
 +MODULE_LICENSE("GPL v2");
 +MODULE_ALIAS("platform:" DRV_NAME);
--- 
-1.7.10
-
-From fc48dbcb3a1eb6a80ddf132b6ca65d408c268c84 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Tue, 10 Jul 2012 00:14:48 +0100
-Subject: [PATCH] Possible fix for failure to boot with compressed kernels
-
----
- arch/arm/mach-bcm2708/include/mach/uncompress.h |    7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
-
-diff --git a/arch/arm/mach-bcm2708/include/mach/uncompress.h b/arch/arm/mach-bcm2708/include/mach/uncompress.h
-index 8ad4f5c..582bb10 100644
 --- a/arch/arm/mach-bcm2708/include/mach/uncompress.h
 +++ b/arch/arm/mach-bcm2708/include/mach/uncompress.h
-@@ -20,6 +20,7 @@
+@@ -20,30 +20,66 @@
   */
  
  #include <linux/io.h>
 +#include <linux/amba/serial.h>
- #include <mach/hardware.h>
- 
- #define BCM2708_UART_DR	__io_address(UART0_BASE + 0x00)
-@@ -38,8 +39,12 @@ static inline void putc(int c)
- 
- static inline void flush(void)
- {
--	while (readl(BCM2708_UART_FR) & (1 << 3))
-+	int fr;
-+
-+	do {
-+		fr = __raw_readl(BCM2708_UART_FR);
- 		barrier();
-+	} while ((fr & (UART011_FR_TXFE | UART01x_FR_BUSY)) != UART011_FR_TXFE);
- }
- 
- /*
--- 
-1.7.10
-
-From 529f715dfcff43d012f242c3c7efa6bf339c0ae2 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Wed, 11 Jul 2012 00:29:52 +0100
-Subject: [PATCH 1/2] Another try at fixing compressed kernel booting
-
----
- arch/arm/mach-bcm2708/include/mach/uncompress.h |   41 ++++++++++++++++++++---
- 1 file changed, 36 insertions(+), 5 deletions(-)
-
-diff --git a/arch/arm/mach-bcm2708/include/mach/uncompress.h b/arch/arm/mach-bcm2708/include/mach/uncompress.h
-index 582bb10..5c43412 100644
---- a/arch/arm/mach-bcm2708/include/mach/uncompress.h
-+++ b/arch/arm/mach-bcm2708/include/mach/uncompress.h
-@@ -23,18 +23,24 @@
- #include <linux/amba/serial.h>
  #include <mach/hardware.h>
  
 -#define BCM2708_UART_DR	__io_address(UART0_BASE + 0x00)
@@ -2863,10 +2817,16 @@ index 582bb10..5c43412 100644
  }
  
  static inline void flush(void)
-@@ -47,8 +53,33 @@ static inline void flush(void)
- 	} while ((fr & (UART011_FR_TXFE | UART01x_FR_BUSY)) != UART011_FR_TXFE);
- }
- 
+ {
+-	while (readl(BCM2708_UART_FR) & (1 << 3))
++	int fr;
++
++	do {
++		fr = __raw_readl(BCM2708_UART_FR);
+ 		barrier();
++	} while ((fr & (UART011_FR_TXFE | UART01x_FR_BUSY)) != UART011_FR_TXFE);
++}
++
 +static inline void arch_decomp_setup(void)
 +{
 +	int temp, div, rem, frac;
@@ -2890,110 +2850,17 @@ index 582bb10..5c43412 100644
 +	/* Enable the UART */
 +	__raw_writel(UART01x_CR_UARTEN | UART011_CR_TXE | UART011_CR_RXE,
 +			BCM2708_UART_CR);
-+}
-+
+ }
+ 
  /*
   * nothing to do
   */
 -#define arch_decomp_setup()
  #define arch_decomp_wdog()
 +
--- 
-1.7.10
-
-
-From d461c6d577070637ceeae52ea019e6d907b21c47 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Wed, 11 Jul 2012 13:55:11 +0100
-Subject: [PATCH 2/2] Add missing UART0_CLOCK from last commit
-
----
- arch/arm/mach-bcm2708/bcm2708.c               |    2 +-
- arch/arm/mach-bcm2708/include/mach/platform.h |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/arch/arm/mach-bcm2708/bcm2708.c b/arch/arm/mach-bcm2708/bcm2708.c
-index a466f44..bf9f730 100644
---- a/arch/arm/mach-bcm2708/bcm2708.c
-+++ b/arch/arm/mach-bcm2708/bcm2708.c
-@@ -183,7 +183,7 @@ unsigned long long sched_clock(void)
-  * These are fixed clocks.
-  */
- static struct clk ref24_clk = {
--	.rate = 3000000,	/* The UART is clocked at 3MHz via APB_CLK */
-+	.rate = UART0_CLOCK,	/* The UART is clocked at 3MHz via APB_CLK */
- };
- 
- static struct clk osc_clk = {
-diff --git a/arch/arm/mach-bcm2708/include/mach/platform.h b/arch/arm/mach-bcm2708/include/mach/platform.h
-index 3085af1..5a797ac 100644
---- a/arch/arm/mach-bcm2708/include/mach/platform.h
-+++ b/arch/arm/mach-bcm2708/include/mach/platform.h
-@@ -216,7 +216,7 @@
- #define PM_RSTS_HADDRF_SET                                 0x00000002
- #define PM_RSTS_HADDRQ_SET                                 0x00000001
- 
--
-+#define UART0_CLOCK      3000000
- 
- #endif
- 
--- 
-1.7.10
-
-From 178f598a8ad9cc2eea1d33e6dc0d05fc80c2d87b Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Fri, 13 Jul 2012 18:34:18 +0100
-Subject: [PATCH 1/3] Add temporary fix for hang when quitting X
-
----
- drivers/video/bcm2708_fb.c |    5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/video/bcm2708_fb.c b/drivers/video/bcm2708_fb.c
-index 2b23be6..e7d93fb 100644
---- a/drivers/video/bcm2708_fb.c
-+++ b/drivers/video/bcm2708_fb.c
-@@ -18,6 +18,7 @@
- #include <linux/errno.h>
- #include <linux/string.h>
- #include <linux/slab.h>
-+#include <linux/delay.h>
- #include <linux/mm.h>
- #include <linux/fb.h>
- #include <linux/init.h>
-@@ -221,7 +222,9 @@ static int bcm2708_fb_set_par(struct fb_info *info)
- 	/* inform vc about new framebuffer */
- 	bcm_mailbox_write(MBOX_CHAN_FB, fb->dma);
- 
--	/* TODO: replace fb driver with vchiq version */
-+	/* workaround occasional failure to read results. TODO: fix */
-+	msleep(10);
-+
- 	/* wait for response */
- 	bcm_mailbox_read(MBOX_CHAN_FB, &val);
- 
--- 
-1.7.10
-
-
-From f6e4f04b715deaec1e48d475318e36e26efcee15 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Sat, 14 Jul 2012 18:38:58 +0100
-Subject: [PATCH 2/3] Better fix for quitting X hang. Interrupted mailbox
- reads are not something we can reliably recover from,
- so down_interruptable is not a safe call.
-
----
- arch/arm/mach-bcm2708/vcio.c |   12 ++++--------
- drivers/video/bcm2708_fb.c   |    3 ---
- 2 files changed, 4 insertions(+), 11 deletions(-)
-
-diff --git a/arch/arm/mach-bcm2708/vcio.c b/arch/arm/mach-bcm2708/vcio.c
-index 799a0ac..3874051 100644
 --- a/arch/arm/mach-bcm2708/vcio.c
 +++ b/arch/arm/mach-bcm2708/vcio.c
-@@ -119,14 +119,10 @@ static int mbox_read(struct vc_mailbox *mbox, unsigned chan, uint32_t *data28)
+@@ -119,14 +119,10 @@ static int mbox_read(struct vc_mailbox *
  	if (mbox->magic != MBOX_MAGIC)
  		rc = -EINVAL;
  	else {
@@ -3012,228 +2879,6 @@ index 799a0ac..3874051 100644
  	}
  	return rc;
  }
-diff --git a/drivers/video/bcm2708_fb.c b/drivers/video/bcm2708_fb.c
-index e7d93fb..f2c55a6 100644
---- a/drivers/video/bcm2708_fb.c
-+++ b/drivers/video/bcm2708_fb.c
-@@ -222,9 +222,6 @@ static int bcm2708_fb_set_par(struct fb_info *info)
- 	/* inform vc about new framebuffer */
- 	bcm_mailbox_write(MBOX_CHAN_FB, fb->dma);
- 
--	/* workaround occasional failure to read results. TODO: fix */
--	msleep(10);
--
- 	/* wait for response */
- 	bcm_mailbox_read(MBOX_CHAN_FB, &val);
- 
--- 
-1.7.10
-
-
-From 1220673bfd5191e7eb1118a91c1581a51421aef1 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Tue, 17 Jul 2012 00:48:27 +0100
-Subject: [PATCH 3/3] Add sync_after_dma module parameter
-
----
- drivers/mmc/host/sdhci-bcm2708.c |   60 ++++++++++++++++++++------------------
- 1 file changed, 32 insertions(+), 28 deletions(-)
-
-diff --git a/drivers/mmc/host/sdhci-bcm2708.c b/drivers/mmc/host/sdhci-bcm2708.c
-index 1d8751c..1d50cc6 100644
---- a/drivers/mmc/host/sdhci-bcm2708.c
-+++ b/drivers/mmc/host/sdhci-bcm2708.c
-@@ -52,7 +52,6 @@
- #undef CONFIG_MMC_SDHCI_BCM2708_DMA
- #define CONFIG_MMC_SDHCI_BCM2708_DMA y
- 
--#define USE_SYNC_AFTER_DMA
- #ifdef CONFIG_MMC_SDHCI_BCM2708_DMA
- /* #define CHECK_DMA_USE */
- #endif
-@@ -137,6 +136,7 @@ static inline unsigned long int since_ns(hptime_t t)
- 
- static bool allow_highspeed = 1;
- static int emmc_clock_freq = BCM2708_EMMC_CLOCK_FREQ;
-+static bool sync_after_dma = 1;
- 
- #if 0
- static void hptime_test(void)
-@@ -832,34 +832,34 @@ static void sdhci_bcm2708_dma_complete_irq(struct sdhci_host *host,
- 						SDHCI_INT_SPACE_AVAIL);
- 		}
- 	} else {
--#ifdef USE_SYNC_AFTER_DMA
--		/* On the Arasan controller the stop command (which will be
--		   scheduled after this completes) does not seem to work
--		   properly if we allow it to be issued when we are
--		   transferring data to/from the SD card.
--		   We get CRC and DEND errors unless we wait for
--		   the SD controller to finish reading/writing to the card. */
--		u32 state_mask;
--		int timeout=5000;
--
--		DBG("PDMA over - sync card\n");
--		if (data->flags & MMC_DATA_READ)
--			state_mask = SDHCI_DOING_READ;
--		else
--			state_mask = SDHCI_DOING_WRITE;
-+		if (sync_after_dma) {
-+			/* On the Arasan controller the stop command (which will be
-+			   scheduled after this completes) does not seem to work
-+			   properly if we allow it to be issued when we are
-+			   transferring data to/from the SD card.
-+			   We get CRC and DEND errors unless we wait for
-+			   the SD controller to finish reading/writing to the card. */
-+			u32 state_mask;
-+			int timeout=30*5000;
-+
-+			DBG("PDMA over - sync card\n");
-+			if (data->flags & MMC_DATA_READ)
-+				state_mask = SDHCI_DOING_READ;
-+			else
-+				state_mask = SDHCI_DOING_WRITE;
- 
--		while (0 != (sdhci_bcm2708_raw_readl(host, SDHCI_PRESENT_STATE) 
--			& state_mask) && --timeout > 0)
--		{
--			udelay(30);
--			continue;
-+			while (0 != (sdhci_bcm2708_raw_readl(host, SDHCI_PRESENT_STATE) 
-+				& state_mask) && --timeout > 0)
-+			{
-+				udelay(1);
-+				continue;
-+			}
-+			if (timeout <= 0)
-+				printk(KERN_ERR"%s: final %s to SD card still "
-+				       "running\n",
-+				       mmc_hostname(host->mmc),
-+				       data->flags & MMC_DATA_READ? "read": "write");
- 		}
--		if (timeout <= 0)
--			printk(KERN_ERR"%s: final %s to SD card still "
--			       "running\n",
--			       mmc_hostname(host->mmc),
--			       data->flags & MMC_DATA_READ? "read": "write");
--#endif
- 		if (host_priv->complete) {
- 			(*host_priv->complete)(host);
- 			DBG("PDMA %s complete\n",
-@@ -1315,7 +1315,9 @@ static int __devinit sdhci_bcm2708_probe(struct platform_device *pdev)
- 		       SDHCI_QUIRK_DATA_TIMEOUT_USES_SDCLK |
- 		       SDHCI_QUIRK_BROKEN_TIMEOUT_VAL |
-                SDHCI_QUIRK_MISSING_CAPS |
--               SDHCI_QUIRK_NO_HISPD_BIT;
-+               SDHCI_QUIRK_NO_HISPD_BIT |
-+               (sync_after_dma ? 0:SDHCI_QUIRK_MULTIBLOCK_READ_ACMD12);
-+
- 
- #ifdef CONFIG_MMC_SDHCI_BCM2708_DMA
- 	host->flags = SDHCI_USE_PLATDMA;
-@@ -1493,6 +1495,7 @@ static void __exit sdhci_drv_exit(void)
- 
- module_param(allow_highspeed, bool, 0444);
- module_param(emmc_clock_freq, int, 0444);
-+module_param(sync_after_dma, bool, 0444);
- 
- MODULE_DESCRIPTION("Secure Digital Host Controller Interface platform driver");
- MODULE_AUTHOR("Broadcom <info@broadcom.com>");
-@@ -1501,5 +1504,6 @@ static void __exit sdhci_drv_exit(void)
- 
- MODULE_PARM_DESC(allow_highspeed, "Allow high speed transfers modes");
- MODULE_PARM_DESC(emmc_clock_freq, "Specify the speed of emmc clock");
-+MODULE_PARM_DESC(sync_after_dma, "Block in driver until dma complete");
- 
- 
--- 
-1.7.10
-
-From eab45cba7edffe1a2ccdd9bcd7b30009f50a7914 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Tue, 24 Jul 2012 11:11:03 +0100
-Subject: [PATCH 1/2] Fix var.width/var.height. They actually mean display
- size. See #65
-
----
- drivers/video/bcm2708_fb.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/drivers/video/bcm2708_fb.c b/drivers/video/bcm2708_fb.c
-index f2c55a6..5ca8aca 100644
---- a/drivers/video/bcm2708_fb.c
-+++ b/drivers/video/bcm2708_fb.c
-@@ -374,8 +374,8 @@ static int bcm2708_fb_register(struct bcm2708_fb *fb)
- 	fb->fb.var.vmode = FB_VMODE_NONINTERLACED;
- 	fb->fb.var.activate = FB_ACTIVATE_NOW;
- 	fb->fb.var.nonstd = 0;
--	fb->fb.var.height = fbwidth;
--	fb->fb.var.width = fbheight;
-+	fb->fb.var.height = -1;		/* height of picture in mm    */
-+	fb->fb.var.width = -1;		/* width of picture in mm    */
- 	fb->fb.var.accel_flags = 0;
- 
- 	fb->fb.monspecs.hfmin = 0;
--- 
-1.7.10
-
-
-From b57a8d8bb13670b25f06de9a002fb91025f46099 Mon Sep 17 00:00:00 2001
-From: Ian Tessier <ian@cim.mcgill.ca>
-Date: Wed, 25 Jul 2012 12:22:35 -0400
-Subject: [PATCH 2/2] The TIMER_PERIOD should be calculated using the timer
- interrupt frequency.
-
----
- arch/arm/mach-bcm2708/bcm2708.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/arch/arm/mach-bcm2708/bcm2708.c b/arch/arm/mach-bcm2708/bcm2708.c
-index bf9f730..eff6874 100644
---- a/arch/arm/mach-bcm2708/bcm2708.c
-+++ b/arch/arm/mach-bcm2708/bcm2708.c
-@@ -618,7 +618,7 @@ void __init bcm2708_init(void)
- #endif
- }
- 
--#define TIMER_PERIOD 10000	/* HZ in microsecs */
-+#define TIMER_PERIOD DIV_ROUND_CLOSEST(STC_FREQ_HZ, HZ)
- 
- static void timer_set_mode(enum clock_event_mode mode,
- 			   struct clock_event_device *clk)
--- 
-1.7.10
-
-From c9ac8270d147da27526569cf4da29892c9523b7c Mon Sep 17 00:00:00 2001
-From: Chris Boot <bootc@bootc.net>
-Date: Mon, 7 May 2012 10:45:36 +0100
-Subject: [PATCH] dwc_common_port: remove unused cruft with onerous
- dependencies
-
-The dwc_common_port library used by the dwc_otg includes bignumber and
-crypto functions which require 64x64 multiplication functions. Remove
-this dead code.
-
-Signed-off-by: Chris Boot <bootc@bootc.net>
----
- drivers/usb/host/dwc_common_port/Makefile          |    4 +-
- .../usb/host/dwc_common_port/dwc_common_linux.c    |  109 ----
- drivers/usb/host/dwc_common_port/dwc_crypto.c      |  306 ----------
- drivers/usb/host/dwc_common_port/dwc_crypto.h      |  103 ----
- drivers/usb/host/dwc_common_port/dwc_dh.c          |  286 ---------
- drivers/usb/host/dwc_common_port/dwc_dh.h          |   98 ---
- drivers/usb/host/dwc_common_port/dwc_modpow.c      |  622 --------------------
- drivers/usb/host/dwc_common_port/dwc_modpow.h      |   26 -
- 8 files changed, 2 insertions(+), 1552 deletions(-)
- delete mode 100644 drivers/usb/host/dwc_common_port/dwc_crypto.c
- delete mode 100644 drivers/usb/host/dwc_common_port/dwc_crypto.h
- delete mode 100644 drivers/usb/host/dwc_common_port/dwc_dh.c
- delete mode 100644 drivers/usb/host/dwc_common_port/dwc_dh.h
- delete mode 100644 drivers/usb/host/dwc_common_port/dwc_modpow.c
- delete mode 100644 drivers/usb/host/dwc_common_port/dwc_modpow.h
-
-diff --git a/drivers/usb/host/dwc_common_port/Makefile b/drivers/usb/host/dwc_common_port/Makefile
-index b1a74eb..b593b08 100644
 --- a/drivers/usb/host/dwc_common_port/Makefile
 +++ b/drivers/usb/host/dwc_common_port/Makefile
 @@ -12,8 +12,8 @@ endif
@@ -3247,8 +2892,6 @@ index b1a74eb..b593b08 100644
  				   dwc_common_linux.o dwc_mem.o
  
  kernrelwd := $(subst ., ,$(KERNELRELEASE))
-diff --git a/drivers/usb/host/dwc_common_port/dwc_common_linux.c b/drivers/usb/host/dwc_common_port/dwc_common_linux.c
-index f269b39..8ac42a2 100644
 --- a/drivers/usb/host/dwc_common_port/dwc_common_linux.c
 +++ b/drivers/usb/host/dwc_common_port/dwc_common_linux.c
 @@ -1,7 +1,4 @@
@@ -3259,7 +2902,7 @@ index f269b39..8ac42a2 100644
  #include "dwc_notifier.h"
  
  #include <linux/kernel.h>
-@@ -51,24 +48,6 @@ static void dwc_common_port_exit_module(void)
+@@ -51,24 +48,6 @@ EXPORT_SYMBOL(dwc_cc_chid);
  EXPORT_SYMBOL(dwc_cc_cdid);
  EXPORT_SYMBOL(dwc_cc_name);
  
@@ -3284,7 +2927,7 @@ index f269b39..8ac42a2 100644
  /* Notification */
  EXPORT_SYMBOL(dwc_alloc_notification_manager);
  EXPORT_SYMBOL(dwc_free_notification_manager);
-@@ -96,7 +75,6 @@ static void dwc_common_port_exit_module(void)
+@@ -96,7 +75,6 @@ EXPORT_SYMBOL(dwc_dma_free_debug);
  #include <linux/module.h>
  #include <linux/moduleparam.h>
  #include <linux/ctype.h>
@@ -3386,9 +3029,6 @@ index f269b39..8ac42a2 100644
  /* Byte Ordering Conversions. */
  uint32_t DWC_CPU_TO_LE32(void *p)
  {
-diff --git a/drivers/usb/host/dwc_common_port/dwc_crypto.c b/drivers/usb/host/dwc_common_port/dwc_crypto.c
-deleted file mode 100644
-index 747840e..0000000
 --- a/drivers/usb/host/dwc_common_port/dwc_crypto.c
 +++ /dev/null
 @@ -1,306 +0,0 @@
@@ -3698,9 +3338,6 @@ index 747840e..0000000
 -			data, WUSB_HANDSHAKE_LEN_FOR_MIC, mic);
 -}
 -
-diff --git a/drivers/usb/host/dwc_common_port/dwc_crypto.h b/drivers/usb/host/dwc_common_port/dwc_crypto.h
-deleted file mode 100644
-index 219d961..0000000
 --- a/drivers/usb/host/dwc_common_port/dwc_crypto.h
 +++ /dev/null
 @@ -1,103 +0,0 @@
@@ -3807,9 +3444,6 @@ index 219d961..0000000
 -			*kck, uint8_t *data, uint8_t *mic);
 -
 -#endif /* _DWC_CRYPTO_H_ */
-diff --git a/drivers/usb/host/dwc_common_port/dwc_dh.c b/drivers/usb/host/dwc_common_port/dwc_dh.c
-deleted file mode 100644
-index 9529b6a..0000000
 --- a/drivers/usb/host/dwc_common_port/dwc_dh.c
 +++ /dev/null
 @@ -1,286 +0,0 @@
@@ -4099,9 +3733,6 @@ index 9529b6a..0000000
 -#endif /* DH_TEST_VECTORS */
 -
 -#endif /* CONFIG_IPMATE_MACH */
-diff --git a/drivers/usb/host/dwc_common_port/dwc_dh.h b/drivers/usb/host/dwc_common_port/dwc_dh.h
-deleted file mode 100644
-index 5a0e0cd..0000000
 --- a/drivers/usb/host/dwc_common_port/dwc_dh.h
 +++ /dev/null
 @@ -1,98 +0,0 @@
@@ -4203,9 +3834,6 @@ index 5a0e0cd..0000000
 -#endif
 -
 -#endif /* _DWC_DH_H_ */
-diff --git a/drivers/usb/host/dwc_common_port/dwc_modpow.c b/drivers/usb/host/dwc_common_port/dwc_modpow.c
-deleted file mode 100644
-index 563332d..0000000
 --- a/drivers/usb/host/dwc_common_port/dwc_modpow.c
 +++ /dev/null
 @@ -1,622 +0,0 @@
@@ -4831,9 +4459,6 @@ index 563332d..0000000
 -#endif /* UNITTEST */
 -
 -#endif /* CONFIG_MACH_IPMATE */
-diff --git a/drivers/usb/host/dwc_common_port/dwc_modpow.h b/drivers/usb/host/dwc_common_port/dwc_modpow.h
-deleted file mode 100644
-index 980f9f1..0000000
 --- a/drivers/usb/host/dwc_common_port/dwc_modpow.h
 +++ /dev/null
 @@ -1,26 +0,0 @@
@@ -4863,39 +4488,9 @@ index 980f9f1..0000000
 -extern Bignum dwc_modpow(Bignum base_in, Bignum exp, Bignum mod);
 -
 -#endif /* _LINUX_BIGNUM_H */
--- 
-1.7.10
-
-From 9592f718fc300e4b40a0b0f9b7c3c2c901144df5 Mon Sep 17 00:00:00 2001
-From: Chris Boot <bootc@bootc.net>
-Date: Mon, 7 May 2012 10:56:11 +0100
-Subject: [PATCH] arm: remove divdi3, it's not necessary at all
-
-This was added for the DWC OTG driver in commit d5ef856. As we've
-removed the dead code from that driver that depends on this, it is no
-longer required at all.
-
-Signed-off-by: Chris Boot <bootc@bootc.net>
----
- arch/arm/boot/compressed/Makefile   |    8 +-
- arch/arm/boot/compressed/divdi3.c   |  338 -----------------------------------
- arch/arm/boot/compressed/longlong.h |  151 ----------------
- arch/arm/kernel/armksyms.c          |    4 -
- arch/arm/lib/Makefile               |    3 +-
- arch/arm/lib/divdi3.c               |  338 -----------------------------------
- arch/arm/lib/lib1funcs.S            |   27 ---
- arch/arm/lib/longlong.h             |  151 ----------------
- 8 files changed, 2 insertions(+), 1018 deletions(-)
- delete mode 100644 arch/arm/boot/compressed/divdi3.c
- delete mode 100644 arch/arm/boot/compressed/longlong.h
- delete mode 100644 arch/arm/lib/divdi3.c
- delete mode 100644 arch/arm/lib/longlong.h
-
-diff --git a/arch/arm/boot/compressed/Makefile b/arch/arm/boot/compressed/Makefile
-index a441240..0c74a6f 100644
---- linux-3.3.8/arch/arm/boot/compressed/Makefile.orig	2012-08-15 15:41:02.088642218 -0400
-+++ linux-3.3.8/arch/arm/boot/compressed/Makefile	2012-08-15 15:41:38.681205671 -0400
-@@ -147,17 +147,11 @@
+--- a/arch/arm/boot/compressed/Makefile
++++ b/arch/arm/boot/compressed/Makefile
+@@ -147,17 +147,11 @@ LDFLAGS_vmlinux += -X
  LDFLAGS_vmlinux += -T
  
  # For __aeabi_uidivmod
@@ -4914,9 +4509,6 @@ index a441240..0c74a6f 100644
  # We need to prevent any GOTOFF relocs being used with references
  # to symbols in the .bss section since we cannot relocate them
  # independently from the rest at run time.  This can be achieved by
-diff --git a/arch/arm/boot/compressed/divdi3.c b/arch/arm/boot/compressed/divdi3.c
-deleted file mode 100644
-index 0848d21..0000000
 --- a/arch/arm/boot/compressed/divdi3.c
 +++ /dev/null
 @@ -1,338 +0,0 @@
@@ -5258,9 +4850,6 @@ index 0848d21..0000000
 -  *remainder = a - b * quotient;
 -  return quotient;
 -}
-diff --git a/arch/arm/boot/compressed/longlong.h b/arch/arm/boot/compressed/longlong.h
-deleted file mode 100644
-index 38e0dcc..0000000
 --- a/arch/arm/boot/compressed/longlong.h
 +++ /dev/null
 @@ -1,151 +0,0 @@
@@ -5415,11 +5004,9 @@ index 38e0dcc..0000000
 -
 -#define UDIV_NEEDS_NORMALIZATION 1
 -#define udiv_qrnnd __udiv_qrnnd_c
-diff --git a/arch/arm/kernel/armksyms.c b/arch/arm/kernel/armksyms.c
-index 13ed864..aeef960 100644
 --- a/arch/arm/kernel/armksyms.c
 +++ b/arch/arm/kernel/armksyms.c
-@@ -46,8 +46,6 @@
+@@ -46,8 +46,6 @@ extern void __aeabi_lmul(void);
  extern void __aeabi_uidiv(void);
  extern void __aeabi_uidivmod(void);
  extern void __aeabi_ulcmp(void);
@@ -5428,7 +5015,7 @@ index 13ed864..aeef960 100644
  
  extern void fpundefinstr(void);
  
-@@ -136,8 +134,6 @@
+@@ -133,8 +131,6 @@ EXPORT_SYMBOL(__aeabi_lmul);
  EXPORT_SYMBOL(__aeabi_uidiv);
  EXPORT_SYMBOL(__aeabi_uidivmod);
  EXPORT_SYMBOL(__aeabi_ulcmp);
@@ -5437,9 +5024,6 @@ index 13ed864..aeef960 100644
  #endif
  
  	/* bitops */
-diff --git a/arch/arm/lib/divdi3.c b/arch/arm/lib/divdi3.c
-deleted file mode 100644
-index 0848d21..0000000
 --- a/arch/arm/lib/divdi3.c
 +++ /dev/null
 @@ -1,338 +0,0 @@
@@ -5781,8 +5365,6 @@ index 0848d21..0000000
 -  *remainder = a - b * quotient;
 -  return quotient;
 -}
-diff --git a/arch/arm/lib/lib1funcs.S b/arch/arm/lib/lib1funcs.S
-index 1dfab8b..c562f64 100644
 --- a/arch/arm/lib/lib1funcs.S
 +++ b/arch/arm/lib/lib1funcs.S
 @@ -349,33 +349,6 @@ UNWIND(.save {r0, r1, ip, lr}	)
@@ -5819,9 +5401,6 @@ index 1dfab8b..c562f64 100644
  #endif
  
  Ldiv0:
-diff --git a/arch/arm/lib/longlong.h b/arch/arm/lib/longlong.h
-deleted file mode 100644
-index 38e0dcc..0000000
 --- a/arch/arm/lib/longlong.h
 +++ /dev/null
 @@ -1,151 +0,0 @@
@@ -5976,9 +5555,6 @@ index 38e0dcc..0000000
 -
 -#define UDIV_NEEDS_NORMALIZATION 1
 -#define udiv_qrnnd __udiv_qrnnd_c
--- 
-1.7.10
-
 --- a/arch/arm/lib/Makefile
 +++ b/arch/arm/lib/Makefile
 @@ -14,7 +14,7 @@ lib-y		:= backtrace.o changebit.o csumip
@@ -5990,22 +5566,6 @@ index 38e0dcc..0000000
  
  mmu-y	:= clear_user.o copy_page.o getuser.o putuser.o
  
-From 6b812ebea364ffcc3cb1a75a41765fdd57d0cb0b Mon Sep 17 00:00:00 2001
-From: Chris Boot <bootc@bootc.net>
-Date: Mon, 7 May 2012 10:58:15 +0100
-Subject: [PATCH 1/4] Remove some patch backup files
-
-Signed-off-by: Chris Boot <bootc@bootc.net>
----
- arch/arm/mach-bcm2708/include/mach/irqs.h.orig     |  185 -----------------
- arch/arm/mach-bcm2708/include/mach/platform.h.orig |  210 --------------------
- 2 files changed, 395 deletions(-)
- delete mode 100644 arch/arm/mach-bcm2708/include/mach/irqs.h.orig
- delete mode 100644 arch/arm/mach-bcm2708/include/mach/platform.h.orig
-
-diff --git a/arch/arm/mach-bcm2708/include/mach/irqs.h.orig b/arch/arm/mach-bcm2708/include/mach/irqs.h.orig
-deleted file mode 100644
-index afa7a34..0000000
 --- a/arch/arm/mach-bcm2708/include/mach/irqs.h.orig
 +++ /dev/null
 @@ -1,185 +0,0 @@
@@ -6194,9 +5754,6 @@ index afa7a34..0000000
 -#define FIQ_PENDING2          INT_PENDING2
 -
 -#define NR_IRQS			      (64 + 21)
-diff --git a/arch/arm/mach-bcm2708/include/mach/platform.h.orig b/arch/arm/mach-bcm2708/include/mach/platform.h.orig
-deleted file mode 100644
-index 90ad9e3..0000000
 --- a/arch/arm/mach-bcm2708/include/mach/platform.h.orig
 +++ /dev/null
 @@ -1,210 +0,0 @@
@@ -6410,31 +5967,6 @@ index 90ad9e3..0000000
 -#endif
 -
 -/* END */
--- 
-1.7.10
-
-
-From 2a1275cc191ff7b8fa44b031a9f52aff5718bb94 Mon Sep 17 00:00:00 2001
-From: Chris Boot <bootc@bootc.net>
-Date: Mon, 7 May 2012 11:21:15 +0100
-Subject: [PATCH 2/4] mach-bcm2708: fix mach/debug-macro.S so that early
- printk works
-
-Not sure what the original code was trying to do as it was completely
-wrong on many levels. This patch fixes the macro to return the correct
-physical and virtual addresses of the PL011 UART on the RPi.
-
-Note that you need to boot the compressed kernel (zImage) so that the
-UART is configured at boot, or your kernel will hang when it tries to
-access the UART.
-
-Signed-off-by: Chris Boot <bootc@bootc.net>
----
- arch/arm/mach-bcm2708/include/mach/debug-macro.S |   12 +++++-------
- 1 file changed, 5 insertions(+), 7 deletions(-)
-
-diff --git a/arch/arm/mach-bcm2708/include/mach/debug-macro.S b/arch/arm/mach-bcm2708/include/mach/debug-macro.S
-index 8abbf32..88229d8 100644
 --- a/arch/arm/mach-bcm2708/include/mach/debug-macro.S
 +++ b/arch/arm/mach-bcm2708/include/mach/debug-macro.S
 @@ -12,13 +12,11 @@
@@ -6450,30 +5982,15 @@ index 8abbf32..88229d8 100644
 -		orr	\rx, \rx, #0x00001000
 +#include <mach/platform.h>
 +
-+		.macro	addruart, rp, rv
++		.macro	addruart, rp, rv, tmp
 +		ldr	\rp, =UART0_BASE
 +		ldr	\rv, =IO_ADDRESS(UART0_BASE)
  		.endm
  
  #include <asm/hardware/debug-pl01x.S>
--- 
-1.7.10
-
-
-From 334ad414ec89738d39166b9df2af69bcd75d9815 Mon Sep 17 00:00:00 2001
-From: Chris Boot <bootc@bootc.net>
-Date: Tue, 8 May 2012 14:50:35 +0100
-Subject: [PATCH 4/4] vcos: add linux/kernel.h include
-
----
- .../vc04_services/interface/vcos/linuxkernel/vcos_platform_types.h    |    1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/drivers/misc/vc04_services/interface/vcos/linuxkernel/vcos_platform_types.h b/drivers/misc/vc04_services/interface/vcos/linuxkernel/vcos_platform_types.h
-index f841e12..5f82aaf 100644
 --- a/drivers/misc/vc04_services/interface/vcos/linuxkernel/vcos_platform_types.h
 +++ b/drivers/misc/vc04_services/interface/vcos/linuxkernel/vcos_platform_types.h
-@@ -26,6 +26,7 @@
+@@ -26,6 +26,7 @@ VideoCore OS Abstraction Layer - platfor
  #include <stddef.h>
  #include <linux/types.h>
  #include <linux/bug.h>
@@ -6481,111 +5998,6 @@ index f841e12..5f82aaf 100644
  
  #define VCOSPRE_ extern
  #define VCOSPOST_
--- 
-1.7.10
-
-From f7287d5193cf87b2f8ecdd31140a572cdaa71927 Mon Sep 17 00:00:00 2001
-From: Chris Boot <bootc@bootc.net>
-Date: Tue, 8 May 2012 14:51:16 +0100
-Subject: [PATCH] bcm2708: update for 3.2 kernel
-
-Signed-off-by: Chris Boot <bootc@bootc.net>
-
-Conflicts:
-
-	arch/arm/Kconfig.debug
-	arch/arm/mach-bcm2708/include/mach/memory.h
----
- arch/arm/Kconfig                                 |    2 +
- arch/arm/Kconfig.debug                           |  185 ++++++++++++++++++++++
- arch/arm/mach-bcm2708/bcm2708.c                  |   23 ++-
- arch/arm/mach-bcm2708/include/mach/debug-macro.S |    2 +-
- arch/arm/mach-bcm2708/include/mach/memory.h      |    6 +-
- 5 files changed, 207 insertions(+), 11 deletions(-)
-
-diff --git a/arch/arm/mach-bcm2708/bcm2708.c b/arch/arm/mach-bcm2708/bcm2708.c
-index bf9f730..92ad46e 100644
---- a/arch/arm/mach-bcm2708/bcm2708.c
-+++ b/arch/arm/mach-bcm2708/bcm2708.c
-@@ -23,7 +23,7 @@
- #include <linux/dma-mapping.h>
- #include <linux/serial_8250.h>
- #include <linux/platform_device.h>
--#include <linux/sysdev.h>
-+#include <linux/syscore_ops.h>
- #include <linux/interrupt.h>
- #include <linux/amba/bus.h>
- #include <linux/amba/clcd.h>
-@@ -34,16 +34,13 @@
- #include <linux/spi/spi.h>
- 
- #include <linux/version.h>
--#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38)
- #include <linux/clkdev.h>
--#else
--#include <asm/clkdev.h>
--#endif
- #include <asm/system.h>
- #include <mach/hardware.h>
- #include <asm/irq.h>
- #include <linux/leds.h>
- #include <asm/mach-types.h>
-+#include <asm/sched_clock.h>
- 
- #include <asm/mach/arch.h>
- #include <asm/mach/flash.h>
-@@ -72,6 +69,8 @@
-  */
- #define DMA_MASK_BITS_COMMON 32
- 
-+static DEFINE_CLOCK_DATA(cd);
-+
- /* command line parameters */
- static unsigned boardrev, serial;
- 
-@@ -175,8 +174,15 @@ static void __init bcm2708_clocksource_init(void)
- 
- unsigned long long sched_clock(void)
- {
--	return clocksource_cyc2ns(clocksource_stc.read(&clocksource_stc),
--				  clocksource_stc.mult, clocksource_stc.shift);
-+	u32 cyc = clocksource_stc.read(&clocksource_stc);
-+	return cyc_to_fixed_sched_clock(&cd, cyc, clocksource_stc.mask,
-+			clocksource_stc.mult, clocksource_stc.shift);
-+}
-+
-+static void notrace bcm2708_update_sched_clock(void)
-+{
-+	u32 cyc = clocksource_stc.read(&clocksource_stc);
-+	update_sched_clock(&cd, cyc, clocksource_stc.mask);
- }
- 
- /*
-@@ -696,6 +702,9 @@ static void __init bcm2708_timer_init(void)
- 	 */
- 	setup_irq(IRQ_TIMER3, &bcm2708_timer_irq);
- 
-+	init_fixed_sched_clock(&cd, bcm2708_update_sched_clock, 32,
-+		STC_FREQ_HZ, clocksource_stc.mult, clocksource_stc.shift);
-+
- 	timer0_clockevent.mult =
- 	    div_sc(STC_FREQ_HZ, NSEC_PER_SEC, timer0_clockevent.shift);
- 	timer0_clockevent.max_delta_ns =
-diff --git a/arch/arm/mach-bcm2708/include/mach/debug-macro.S b/arch/arm/mach-bcm2708/include/mach/debug-macro.S
-index 88229d8..2d0dc1c 100644
---- a/arch/arm/mach-bcm2708/include/mach/debug-macro.S
-+++ b/arch/arm/mach-bcm2708/include/mach/debug-macro.S
-@@ -14,7 +14,7 @@
- 
- #include <mach/platform.h>
- 
--		.macro	addruart, rp, rv
-+		.macro	addruart, rp, rv, tmp
- 		ldr	\rp, =UART0_BASE
- 		ldr	\rv, =IO_ADDRESS(UART0_BASE)
- 		.endm
-diff --git a/arch/arm/mach-bcm2708/include/mach/memory.h b/arch/arm/mach-bcm2708/include/mach/memory.h
-index e76fb0a..5d47513 100644
 --- a/arch/arm/mach-bcm2708/include/mach/memory.h
 +++ b/arch/arm/mach-bcm2708/include/mach/memory.h
 @@ -32,8 +32,8 @@
@@ -6608,16 +6020,14 @@ index e76fb0a..5d47513 100644
  #define __virt_to_bus(x)    ((x) + (BUS_OFFSET - PAGE_OFFSET))
  #define __bus_to_virt(x)    ((x) - (BUS_OFFSET - PAGE_OFFSET))
  #define __pfn_to_bus(x)     (__pfn_to_phys(x) + (BUS_OFFSET - PLAT_PHYS_OFFSET))
--- 
-1.7.10
-
---- linux-3.3.8.orig/arch/arm/Kconfig	2012-08-15 13:17:48.914124783 -0400
-+++ linux-3.3.8/arch/arm/Kconfig	2012-08-15 16:15:20.700499111 -0400
-@@ -966,12 +966,13 @@
+--- a/arch/arm/Kconfig
++++ b/arch/arm/Kconfig
+@@ -966,12 +966,14 @@ config ARCH_BCM2708
  	select CPU_V6
  	select ARM_AMBA
  	select HAVE_CLK
 +	select HAVE_SCHED_CLOCK
++	select CLKSRC_MMIO
 +	select NEED_MACH_MEMORY_H
  	select CLKDEV_LOOKUP
  	select GENERIC_CLOCKEVENTS
@@ -6628,9 +6038,9 @@ index e76fb0a..5d47513 100644
  	help
  	  This enables support for Broadcom BCM2708 boards.
  
---- linux-3.3.8.orig/arch/arm/Kconfig.debug	2012-06-01 03:16:13.000000000 -0400
-+++ linux-3.3.8/arch/arm/Kconfig.debug	2012-08-15 16:16:54.629965451 -0400
-@@ -292,6 +292,14 @@
+--- a/arch/arm/Kconfig.debug
++++ b/arch/arm/Kconfig.debug
+@@ -292,6 +292,14 @@ choice
  		  Say Y here if you want the debug print routines to direct
  		  their output to the serial port on MSM 8960 devices.
  
@@ -6645,87 +6055,6 @@ index e76fb0a..5d47513 100644
  endchoice
  
  config EARLY_PRINTK
-From 8f1d8e82a88abb9e6ea6ee007cc5724fca748d59 Mon Sep 17 00:00:00 2001
-From: Chris Boot <bootc@bootc.net>
-Date: Sun, 15 Jul 2012 16:52:11 +0100
-Subject: [PATCH 1/4] bcm2708: use a constant SC_MULT / SC_SHIFT
-
-The calculated values somehow don't agree with the sched_clock code and
-we end up with warnings like:
-
-sched_clock: wrong multiply/shift: 2097152000>>21 vs calculated 4194304000>>22
-sched_clock: fix multiply/shift to avoid scheduler hiccups
-
-So use the constant values much like arch/arm/mach-tegra/timer.c does.
-
-Signed-off-by: Chris Boot <bootc@bootc.net>
----
- arch/arm/mach-bcm2708/bcm2708.c |   14 ++++++++++----
- 1 file changed, 10 insertions(+), 4 deletions(-)
-
-diff --git a/arch/arm/mach-bcm2708/bcm2708.c b/arch/arm/mach-bcm2708/bcm2708.c
-index 92ad46e..b814a35 100644
---- a/arch/arm/mach-bcm2708/bcm2708.c
-+++ b/arch/arm/mach-bcm2708/bcm2708.c
-@@ -141,9 +141,16 @@ void __init bcm2708_map_io(void)
- 	iotable_init(bcm2708_io_desc, ARRAY_SIZE(bcm2708_io_desc));
- }
- 
--// The STC is a free running counter that increments at the rate of 1MHz
-+/* The STC is a free running counter that increments at the rate of 1MHz */
- #define STC_FREQ_HZ 1000000
- 
-+/*
-+ * Constants generated by clocks_calc_mult_shift(m, s, 1MHz, NSEC_PER_SEC, 60).
-+ * This gives a resolution of about 1us and a wrap period of about 1h11min.
-+ */
-+#define SC_MULT		4194304000u
-+#define SC_SHIFT	22
-+
- static cycle_t stc_read_cycles(struct clocksource *cs)
- {
- 	/* STC: a free running counter that increments at the rate of 1MHz */
-@@ -165,7 +172,6 @@ unsigned long frc_clock_ticks32(void)
- 
- static void __init bcm2708_clocksource_init(void)
- {
--	// calculate .shift and .mult values and register clocksource
- 	if (clocksource_register_hz(&clocksource_stc, STC_FREQ_HZ)) {
- 		printk(KERN_ERR "timer: failed to initialize clock "
- 		       "source %s\n", clocksource_stc.name);
-@@ -176,7 +182,7 @@ unsigned long long sched_clock(void)
- {
- 	u32 cyc = clocksource_stc.read(&clocksource_stc);
- 	return cyc_to_fixed_sched_clock(&cd, cyc, clocksource_stc.mask,
--			clocksource_stc.mult, clocksource_stc.shift);
-+			SC_MULT, SC_SHIFT);
- }
- 
- static void notrace bcm2708_update_sched_clock(void)
-@@ -703,7 +709,7 @@ static void __init bcm2708_timer_init(void)
- 	setup_irq(IRQ_TIMER3, &bcm2708_timer_irq);
- 
- 	init_fixed_sched_clock(&cd, bcm2708_update_sched_clock, 32,
--		STC_FREQ_HZ, clocksource_stc.mult, clocksource_stc.shift);
-+		STC_FREQ_HZ, SC_MULT, SC_SHIFT);
- 
- 	timer0_clockevent.mult =
- 	    div_sc(STC_FREQ_HZ, NSEC_PER_SEC, timer0_clockevent.shift);
--- 
-1.7.10
-
-
-From 20eadb1d5d1b450e7e95b4410e187a51f971f470 Mon Sep 17 00:00:00 2001
-From: Dom Cobley <dc4@broadcom.com>
-Date: Tue, 31 Jul 2012 16:42:03 +0100
-Subject: [PATCH 2/4] Sync with bootc's file
-
----
- arch/arm/mach-bcm2708/power.c |   10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
-
-diff --git a/arch/arm/mach-bcm2708/power.c b/arch/arm/mach-bcm2708/power.c
-index d147bb6..256bf1a 100644
 --- a/arch/arm/mach-bcm2708/power.c
 +++ b/arch/arm/mach-bcm2708/power.c
 @@ -14,7 +14,6 @@
@@ -6736,7 +6065,7 @@ index d147bb6..256bf1a 100644
  #include <mach/power.h>
  #include <mach/vcio.h>
  #include <mach/arm_power.h>
-@@ -97,6 +96,7 @@ int bcm_power_request(BCM_POWER_HANDLE_T handle, uint32_t request)
+@@ -97,6 +96,7 @@ int bcm_power_request(BCM_POWER_HANDLE_T
  				bcm_mailbox_write(MBOX_CHAN_POWER,
  						  global_request << 4);
  
@@ -6744,7 +6073,7 @@ index d147bb6..256bf1a 100644
  				if (global_request & ~g_state.global_request) {
  					rc = bcm_mailbox_read(MBOX_CHAN_POWER,
  							      &actual);
-@@ -111,14 +111,14 @@ int bcm_power_request(BCM_POWER_HANDLE_T handle, uint32_t request)
+@@ -111,14 +111,14 @@ int bcm_power_request(BCM_POWER_HANDLE_T
  
  				if (rc == 0) {
  					if (actual != global_request) {
@@ -6763,113 +6092,20 @@ index d147bb6..256bf1a 100644
  						request &= actual;
  						rc = -EIO;
  					}
--- 
-1.7.10
-
-
-From 8b1821c5aa046ee4816ecbf3000a90cf6b2debc4 Mon Sep 17 00:00:00 2001
-From: Grigori Goronzy <greg@blackbox>
-Date: Thu, 21 Jun 2012 00:57:59 +0200
-Subject: [PATCH 3/4] sdhci-bcm2708: use extension FIFO to buffer DMA
- transfers
-
-The additional FIFO might speed up transfers in some cases.
----
- drivers/mmc/host/sdhci-bcm2708.c |   10 ++++++++++
- 1 file changed, 10 insertions(+)
-
-diff --git a/drivers/mmc/host/sdhci-bcm2708.c b/drivers/mmc/host/sdhci-bcm2708.c
-index 1d50cc6..882ae42 100644
---- a/drivers/mmc/host/sdhci-bcm2708.c
-+++ b/drivers/mmc/host/sdhci-bcm2708.c
-@@ -79,6 +79,8 @@
- #define POWER_LAZY_OFF 1
- #define POWER_ON  2
- 
-+#define REG_EXRDFIFO_EN     0x80
-+#define REG_EXRDFIFO_CFG    0x84
- 
- /*****************************************************************************\
-  *									     *
-@@ -967,10 +969,12 @@ static ssize_t attr_dma_store(struct device *_dev,
- 		int on = simple_strtol(buf, NULL, 0);
- 		if (on) {
- 			host->flags |= SDHCI_USE_PLATDMA;
-+			sdhci_bcm2708_writel(host, 1, REG_EXRDFIFO_EN);
- 			printk(KERN_INFO "%s: DMA enabled\n",
- 			       mmc_hostname(host->mmc));
- 		} else {
- 			host->flags &= ~(SDHCI_USE_PLATDMA | SDHCI_REQ_USE_DMA);
-+			sdhci_bcm2708_writel(host, 0, REG_EXRDFIFO_EN);
- 			printk(KERN_INFO "%s: DMA disabled\n",
- 			       mmc_hostname(host->mmc));
- 		}
-@@ -1399,6 +1403,12 @@ static int __devinit sdhci_bcm2708_probe(struct platform_device *pdev)
- 	ret = device_create_file(&pdev->dev, &dev_attr_dma_wait);
- 	ret = device_create_file(&pdev->dev, &dev_attr_status);
- 
-+#ifdef CONFIG_MMC_SDHCI_BCM2708_DMA
-+	/* enable extension fifo for paced DMA transfers */
-+	sdhci_bcm2708_writel(host, 1, REG_EXRDFIFO_EN);
-+	sdhci_bcm2708_writel(host, 4, REG_EXRDFIFO_CFG);
-+#endif
-+
- 	printk(KERN_INFO "%s: BCM2708 SDHC host at 0x%08llx DMA %d IRQ %d\n",
- 	       mmc_hostname(host->mmc), (unsigned long long)iomem->start,
- 	       host_priv->dma_chan, host_priv->dma_irq);
--- 
-1.7.10
-
-
-From f20f6ae0c3a1338a67be8848f9f2613b9d562b2d Mon Sep 17 00:00:00 2001
-From: Grigori Goronzy <greg@blackbox>
-Date: Tue, 31 Jul 2012 23:18:12 +0200
-Subject: [PATCH 4/4] sdhci-bcm2708: use multiblock-type transfers for single
- blocks
-
-There are issues with both single block reads (missed completion)
-and writes (data loss in some cases!). Just don't do single block
-transfers anymore, and treat them like multiblock transfers. This
-adds a quirk for this and uses it.
----
- drivers/mmc/card/block.c         |    2 +-
- drivers/mmc/host/sdhci-bcm2708.c |    3 +++
- include/linux/mmc/host.h         |    1 +
- 3 files changed, 5 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/mmc/card/block.c b/drivers/mmc/card/block.c
-index d62f4cd..b2a844d 100644
 --- a/drivers/mmc/card/block.c
 +++ b/drivers/mmc/card/block.c
-@@ -965,7 +965,7 @@ static void mmc_blk_rw_rq_prep(struct mmc_queue_req *mqrq,
- 	if (disable_multi && brq->data.blocks > 1)
- 		brq->data.blocks = 1;
+@@ -1152,7 +1152,7 @@ static void mmc_blk_rw_rq_prep(struct mm
+ 			brq->data.blocks = 1;
+ 	}
  
 -	if (brq->data.blocks > 1 || do_rel_wr) {
 +	if (brq->data.blocks > 1 || do_rel_wr || card->host->caps2 & MMC_CAP2_FORCE_MULTIBLOCK) {
  		/* SPI multiblock writes terminate using a special
  		 * token, not a STOP_TRANSMISSION request.
  		 */
-diff --git a/drivers/mmc/host/sdhci-bcm2708.c b/drivers/mmc/host/sdhci-bcm2708.c
-index 882ae42..ad44fbe 100644
---- a/drivers/mmc/host/sdhci-bcm2708.c
-+++ b/drivers/mmc/host/sdhci-bcm2708.c
-@@ -1392,6 +1392,9 @@ static int __devinit sdhci_bcm2708_probe(struct platform_device *pdev)
- 
-     if (allow_highspeed)
-         host->mmc->caps |= MMC_CAP_SD_HIGHSPEED | MMC_CAP_MMC_HIGHSPEED;
-+
-+    /* single block writes cause data loss with some SD cards! */
-+    host->mmc->caps2 |= MMC_CAP2_FORCE_MULTIBLOCK;
- #endif
- 
- 	ret = sdhci_add_host(host);
--- 
-1.7.10
-
---- linux-3.3.8.orig/include/linux/mmc/host.h	2012-06-01 03:16:13.000000000 -0400
-+++ linux-3.3.8/include/linux/mmc/host.h	2012-08-15 16:24:50.641386541 -0400
-@@ -258,6 +258,7 @@
+--- a/include/linux/mmc/host.h
++++ b/include/linux/mmc/host.h
+@@ -258,6 +258,7 @@ struct mmc_host {
  #define MMC_CAP2_HS200		(MMC_CAP2_HS200_1_8V_SDR | \
  				 MMC_CAP2_HS200_1_2V_SDR)
  #define MMC_CAP2_BROKEN_VOLTAGE	(1 << 7)	/* Use the broken voltage */
@@ -6877,385 +6113,6 @@ index 882ae42..ad44fbe 100644
  
  	mmc_pm_flag_t		pm_caps;	/* supported pm features */
  	unsigned int        power_notify_type;
-From c6851e9ade0ea7135cd7bde2e92204d550439b64 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Wed, 1 Aug 2012 19:02:14 +0100
-Subject: [PATCH 1/3] Add module parameter for missing_status quirk.
- sdhci-bcm2708.missing_status=0 may improve interrupt
- latency
-
----
- drivers/mmc/host/sdhci-bcm2708.c |    7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/mmc/host/sdhci-bcm2708.c b/drivers/mmc/host/sdhci-bcm2708.c
-index ad44fbe..1ac1e64 100644
---- a/drivers/mmc/host/sdhci-bcm2708.c
-+++ b/drivers/mmc/host/sdhci-bcm2708.c
-@@ -139,6 +139,7 @@ static inline unsigned long int since_ns(hptime_t t)
- static bool allow_highspeed = 1;
- static int emmc_clock_freq = BCM2708_EMMC_CLOCK_FREQ;
- static bool sync_after_dma = 1;
-+static bool missing_status = 1;
- 
- #if 0
- static void hptime_test(void)
-@@ -1271,7 +1272,6 @@ static unsigned int sdhci_bcm2708_missing_status(struct sdhci_host *host)
- 	.spurious_crc_acmd51 = sdhci_bcm2708_quirk_spurious_crc,
- 	.voltage_broken = sdhci_bcm2708_quirk_voltage_broken,
- 	.uhs_broken = sdhci_bcm2708_uhs_broken,
--	.missing_status = sdhci_bcm2708_missing_status,
- };
- 
- /*****************************************************************************\
-@@ -1310,6 +1310,9 @@ static int __devinit sdhci_bcm2708_probe(struct platform_device *pdev)
- 		ret = PTR_ERR(host);
- 		goto err;
- 	}
-+	if (missing_status) {
-+		sdhci_bcm2708_ops.missing_status = sdhci_bcm2708_missing_status;
-+	}
- 
- 	host->hw_name = "BCM2708_Arasan";
- 	host->ops = &sdhci_bcm2708_ops;
-@@ -1509,6 +1512,7 @@ static void __exit sdhci_drv_exit(void)
- module_param(allow_highspeed, bool, 0444);
- module_param(emmc_clock_freq, int, 0444);
- module_param(sync_after_dma, bool, 0444);
-+module_param(missing_status, bool, 0444);
- 
- MODULE_DESCRIPTION("Secure Digital Host Controller Interface platform driver");
- MODULE_AUTHOR("Broadcom <info@broadcom.com>");
-@@ -1518,5 +1522,6 @@ static void __exit sdhci_drv_exit(void)
- MODULE_PARM_DESC(allow_highspeed, "Allow high speed transfers modes");
- MODULE_PARM_DESC(emmc_clock_freq, "Specify the speed of emmc clock");
- MODULE_PARM_DESC(sync_after_dma, "Block in driver until dma complete");
-+MODULE_PARM_DESC(missing_status, "Use the missing status quirk");
- 
- 
--- 
-1.7.10
-
-
-From b6d5be452c1f10aa3b678d18252e4c2ac0a75878 Mon Sep 17 00:00:00 2001
-From: popcornmix <popcornmix@gmail.com>
-Date: Tue, 7 Aug 2012 22:24:16 +0100
-Subject: [PATCH 2/3] Some fixed for ALSA. Mute and volume changing should be
- improved
-
----
- sound/arm/bcm2835-ctl.c   |   76 +++++++++++++++++-----------
- sound/arm/bcm2835-pcm.c   |   24 ++++++---
- sound/arm/bcm2835-vchiq.c |   34 +++++++++----
- sound/arm/bcm2835.h       |  123 +++++++--------------------------------------
- 4 files changed, 106 insertions(+), 151 deletions(-)
-
-diff --git a/sound/arm/bcm2835-ctl.c b/sound/arm/bcm2835-ctl.c
-index f901ddd..0c1b80a 100755
---- a/sound/arm/bcm2835-ctl.c
-+++ b/sound/arm/bcm2835-ctl.c
-@@ -33,29 +33,22 @@
- 
- #include "bcm2835.h"
- 
--
--/* functions to convert alsa to chip volume and back. */
--int alsa2chip(int vol)
--{
--	return -((vol << 8) / 100);
--}
--
--int chip2alsa(int vol)
--{
--	return -((vol * 100) >> 8);
--}
-+/* volume maximum and minimum in terms of 0.01dB */
-+#define CTRL_VOL_MAX 400
-+#define CTRL_VOL_MIN -10239 /* originally -10240 */
- 
- 
- static int snd_bcm2835_ctl_info(struct snd_kcontrol *kcontrol,
- 				struct snd_ctl_elem_info *uinfo)
- {
-+	audio_info(" ... IN ");
- 	if (kcontrol->private_value == PCM_PLAYBACK_VOLUME) {
- 		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
- 		uinfo->count = 1;
--		uinfo->value.integer.min = -10240;
--		uinfo->value.integer.max = 400;      /* 2303 */
-+		uinfo->value.integer.min = CTRL_VOL_MIN;
-+		uinfo->value.integer.max = CTRL_VOL_MAX;      /* 2303 */
- 	} else if (kcontrol->private_value == PCM_PLAYBACK_MUTE) {
--		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
-+		uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
- 		uinfo->count = 1;
- 		uinfo->value.integer.min = 0;
- 		uinfo->value.integer.max = 1;
-@@ -63,12 +56,38 @@ static int snd_bcm2835_ctl_info(struct snd_kcontrol *kcontrol,
- 		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
- 		uinfo->count = 1;
- 		uinfo->value.integer.min = 0;
--		uinfo->value.integer.max = AUDIO_DEST_MAX-0;
-+		uinfo->value.integer.max = AUDIO_DEST_MAX-1;
- 	}
--
-+	audio_info(" ... OUT ");
- 	return 0;
- }
- 
-+/* toggles mute on or off depending on the value of nmute, and returns
-+ * 1 if the mute value was changed, otherwise 0
-+ */
-+static int toggle_mute(struct bcm2835_chip *chip, int nmute)
-+{
-+	/* if settings are ok, just return 0 */
-+	if(chip->mute == nmute)
-+		return 0;
-+
-+	/* if the sound is muted then we need to unmute */
-+	if(chip->mute == CTRL_VOL_MUTE)
-+	{
-+		chip->volume = chip->old_volume; /* copy the old volume back */
-+		audio_info("Unmuting, old_volume = %d, volume = %d ...", chip->old_volume, chip->volume);
-+	}
-+	else /* otherwise we mute */
-+	{
-+		chip->old_volume = chip->volume;
-+		chip->volume = 26214; /* set volume to minimum level AKA mute */
-+		audio_info("Muting, old_volume = %d, volume = %d ...", chip->old_volume, chip->volume);
-+	}
-+
-+	chip->mute = nmute;
-+	return 1;
-+}
-+
- static int snd_bcm2835_ctl_get(struct snd_kcontrol *kcontrol,
- 			       struct snd_ctl_elem_value *ucontrol)
- {
-@@ -93,9 +112,10 @@ static int snd_bcm2835_ctl_put(struct snd_kcontrol *kcontrol,
- 	int changed = 0;
- 
- 	if (kcontrol->private_value == PCM_PLAYBACK_VOLUME) {
--		if (chip->mute) {
--			chip->mute = 0;
--			changed = 1;
-+		audio_info("Volume change attempted.. volume = %d new_volume = %d", chip->volume, (int)ucontrol->value.integer.value[0]);
-+		if (chip->mute == CTRL_VOL_MUTE) {
-+			/* changed = toggle_mute(chip, CTRL_VOL_UNMUTE); */
-+			return 1; /* should return 0 to signify no change but the mixer takes this as the opposite sign (no idea why) */
- 		}
- 		if (changed
- 		    || (ucontrol->value.integer.value[0] != chip2alsa(chip->volume))) {
-@@ -105,11 +125,10 @@ static int snd_bcm2835_ctl_put(struct snd_kcontrol *kcontrol,
- 		}
- 
- 	} else if (kcontrol->private_value == PCM_PLAYBACK_MUTE) {
--		/* Not implemented */
--		if (ucontrol->value.integer.value[0] != chip->mute) {
--			chip->mute = ucontrol->value.integer.value[0];
--			changed = 0;
--		}
-+		/* Now implemented */
-+		audio_info(" Mute attempted");
-+		changed = toggle_mute(chip, ucontrol->value.integer.value[0]);
-+
- 	} else if (kcontrol->private_value == PCM_PLAYBACK_DEVICE) {
- 		if (ucontrol->value.integer.value[0] != chip->dest) {
- 			chip->dest = ucontrol->value.integer.value[0];
-@@ -125,22 +144,21 @@ static int snd_bcm2835_ctl_put(struct snd_kcontrol *kcontrol,
- 	return changed;
- }
- 
--static DECLARE_TLV_DB_SCALE(snd_bcm2835_db_scale, -10240, 1, 1);
-+static DECLARE_TLV_DB_SCALE(snd_bcm2835_db_scale, CTRL_VOL_MIN, 1, 1);
- 
- static struct snd_kcontrol_new snd_bcm2835_ctl[] __devinitdata = {
- 	{
- 	 .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
- 	 .name = "PCM Playback Volume",
- 	 .index = 0,
--	 .access =
--	 SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_TLV_READWRITE,
-+	 .access = SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_TLV_READ,
- 	 .private_value = PCM_PLAYBACK_VOLUME,
- 	 .info = snd_bcm2835_ctl_info,
- 	 .get = snd_bcm2835_ctl_get,
- 	 .put = snd_bcm2835_ctl_put,
- 	 .count = 1,
- 	 .tlv = {.p = snd_bcm2835_db_scale}
--	 },
-+	},
- 	{
- 	 .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
- 	 .name = "PCM Playback Switch",
-@@ -162,7 +180,7 @@ static int snd_bcm2835_ctl_put(struct snd_kcontrol *kcontrol,
- 	 .get = snd_bcm2835_ctl_get,
- 	 .put = snd_bcm2835_ctl_put,
- 	 .count = 1,
--	 },
-+	},
- };
- 
- int __devinit snd_bcm2835_new_ctl(bcm2835_chip_t * chip)
-diff --git a/sound/arm/bcm2835-pcm.c b/sound/arm/bcm2835-pcm.c
-index ff3eb4e..6cc80dd 100755
---- a/sound/arm/bcm2835-pcm.c
-+++ b/sound/arm/bcm2835-pcm.c
-@@ -26,11 +26,11 @@
- 	.rate_max = 48000,
- 	.channels_min = 1,
- 	.channels_max = 2,
--	.buffer_bytes_max = (4 * 8 - 1) * 1024,	/* Needs to be less than audioplay buffer size */
-+	.buffer_bytes_max = 32 * 1024,	/* Needs to be less than audioplay buffer size */
- 	.period_bytes_min = 1 * 1024,
--	.period_bytes_max = (4 * 8 - 1) * 1024,
-+	.period_bytes_max = 32 * 1024,
- 	.periods_min = 1,
--	.periods_max = 4 * 8 - 1,
-+	.periods_max = 32,
- };
- 
- static void snd_bcm2835_playback_free(struct snd_pcm_runtime *runtime)
-@@ -64,14 +64,18 @@ static irqreturn_t bcm2835_playback_fifo_irq(int irq, void *dev_id)
- 		    ((alsa_stream->pos + consumed) / alsa_stream->period_size))
- 			new_period = 1;
- 	}
--	audio_debug("updating pos cur: %d + %d max:%d new_period:%d\n",
-+	audio_debug("updating pos cur: %d + %d max:%d period_bytes:%d, hw_ptr: %d new_period:%d\n",
- 		      alsa_stream->pos,
--		      (consumed /** AUDIO_IPC_BLOCK_BUFFER_SIZE*/ ),
--		      alsa_stream->buffer_size, new_period);
-+		      consumed,
-+		      alsa_stream->buffer_size,
-+			  (int)(alsa_stream->period_size*alsa_stream->substream->runtime->periods),
-+			  frames_to_bytes(alsa_stream->substream->runtime, alsa_stream->substream->runtime->status->hw_ptr),
-+			  new_period);
- 	if (alsa_stream->buffer_size) {
- 		alsa_stream->pos += consumed;
- 		alsa_stream->pos %= alsa_stream->buffer_size;
- 	}
-+
- 	if (alsa_stream->substream) {
- 		if (new_period)
- 			snd_pcm_period_elapsed(alsa_stream->substream);
-@@ -135,7 +139,6 @@ static int snd_bcm2835_playback_open(struct snd_pcm_substream *substream)
- 	runtime->private_data = alsa_stream;
- 	runtime->private_free = snd_bcm2835_playback_free;
- 	runtime->hw = snd_bcm2835_playback_hw;
--
- 	/* minimum 16 bytes alignment (for vchiq bulk transfers) */
- 	snd_pcm_hw_constraint_step(runtime, 0, SNDRV_PCM_HW_PARAM_PERIOD_BYTES,
- 				   16);
-@@ -224,6 +227,10 @@ static int snd_bcm2835_pcm_hw_params(struct snd_pcm_substream *substream,
- 	}
- 
- 	bcm2835_audio_setup(alsa_stream);
-+
-+	/* in preparation of the stream, set the controls (volume level) of the stream */
-+	bcm2835_audio_set_ctls(alsa_stream->chip);
-+
- 	audio_info(" .. OUT\n");
- 
- 	return err;
-@@ -382,7 +389,8 @@ int __devinit snd_bcm2835_new_pcm(bcm2835_chip_t * chip)
- 	strcpy(pcm->name, "bcm2835 ALSA");
- 	chip->pcm = pcm;
- 	chip->dest = AUDIO_DEST_AUTO;
--	chip->volume = 100;
-+	chip->volume = alsa2chip(0);
-+	chip->mute = CTRL_VOL_UNMUTE;	/*disable mute on startup */
- 	/* set operators */
- 	snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK,
- 			&snd_bcm2835_playback_ops);
-diff --git a/sound/arm/bcm2835-vchiq.c b/sound/arm/bcm2835-vchiq.c
-index 23c0aa3..68d838d 100755
---- a/sound/arm/bcm2835-vchiq.c
-+++ b/sound/arm/bcm2835-vchiq.c
-@@ -43,12 +43,18 @@
- 
- /* Default VCOS logging level */
- #define LOG_LEVEL  VCOS_LOG_WARN
--
- /* Logging macros (for remapping to other logging mechanisms, i.e., printf) */
--#define LOG_ERR( fmt, arg... )   vcos_log_error( "%s:%d " fmt, __func__, __LINE__, ##arg)
--#define LOG_WARN( fmt, arg... )  vcos_log_warn( "%s:%d " fmt, __func__, __LINE__, ##arg)
--#define LOG_INFO( fmt, arg... )  vcos_log_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
--#define LOG_DBG( fmt, arg... )   vcos_log_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
-+#ifdef AUDIO_DEBUG_ENABLE
-+	#define LOG_ERR( fmt, arg... )   pr_err( "%s:%d " fmt, __func__, __LINE__, ##arg)
-+	#define LOG_WARN( fmt, arg... )  pr_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
-+	#define LOG_INFO( fmt, arg... )  pr_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
-+	#define LOG_DBG( fmt, arg... )   pr_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
-+#else
-+	#define LOG_ERR( fmt, arg... ) vcos_log_error( "%s:%d " fmt, __func__, __LINE__, ##arg)
-+	#define LOG_WARN( fmt, arg... ) vcos_log_warn( "%s:%d " fmt, __func__, __LINE__, ##arg)
-+	#define LOG_INFO( fmt, arg... ) vcos_log_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
-+	#define LOG_DBG( fmt, arg... ) vcos_log_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
-+#endif
- 
- typedef struct opaque_AUDIO_INSTANCE_T {
- 	uint32_t num_connections;
-@@ -103,7 +109,7 @@ int bcm2835_audio_start(bcm2835_alsa_stream_t * alsa_stream)
- 	LOG_DBG(" .. IN\n");
- 	if (alsa_stream->my_wq) {
- 		my_work_t *work = kmalloc(sizeof(my_work_t), GFP_ATOMIC);
--		/* Queue some work (item 1) */
-+		/*--- Queue some work (item 1) ---*/
- 		if (work) {
- 			INIT_WORK((struct work_struct *)work, my_wq_function);
- 			work->alsa_stream = alsa_stream;
-@@ -124,7 +130,7 @@ int bcm2835_audio_stop(bcm2835_alsa_stream_t * alsa_stream)
- 	LOG_DBG(" .. IN\n");
- 	if (alsa_stream->my_wq) {
- 		my_work_t *work = kmalloc(sizeof(my_work_t), GFP_ATOMIC);
--		/* Queue some work (item 1) */
-+		 /*--- Queue some work (item 1) ---*/
- 		if (work) {
- 			INIT_WORK((struct work_struct *)work, my_wq_function);
- 			work->alsa_stream = alsa_stream;
-@@ -142,6 +148,7 @@ int bcm2835_audio_stop(bcm2835_alsa_stream_t * alsa_stream)
- void my_workqueue_init(bcm2835_alsa_stream_t * alsa_stream)
- {
- 	alsa_stream->my_wq = create_workqueue("my_queue");
-+	return;
- }
- 
- void my_workqueue_quit(bcm2835_alsa_stream_t * alsa_stream)
-@@ -151,6 +158,7 @@ void my_workqueue_quit(bcm2835_alsa_stream_t * alsa_stream)
- 		destroy_workqueue(alsa_stream->my_wq);
- 		alsa_stream->my_wq = NULL;
- 	}
-+	return;
- }
- 
- static void audio_vchi_callback(void *param,
-@@ -501,14 +509,22 @@ int bcm2835_audio_set_ctls(bcm2835_chip_t * chip)
- 	int i;
- 	int ret = 0;
- 	LOG_DBG(" .. IN\n");
-+
- 	/* change ctls for all substreams */
- 	for (i = 0; i < MAX_SUBSTREAMS; i++) {
- 		if (chip->avail_substreams & (1 << i)) {
- 			if (!chip->alsa_stream[i])
-+			{
-+				LOG_DBG(" No ALSA stream available?! ");
- 				ret = 0;
--			else if (bcm2835_audio_set_ctls_chan
-+			}
-+			else if (bcm2835_audio_set_ctls_chan /* returns 0 on success */
- 				 (chip->alsa_stream[i], chip) != 0)
--				ret = -1;
-+				 {
-+					LOG_DBG("Couldn't set the controls for stream %d", i);
-+					ret = -1;
-+				 }
-+			LOG_DBG(" Controls set for stream %d", i);
- 		}
- 	}
- 	LOG_DBG(" .. OUT ret=%d\n", ret);
-diff --git a/sound/arm/bcm2835.h b/sound/arm/bcm2835.h
-index 134a483..3db5e51 100755
 --- a/sound/arm/bcm2835.h
 +++ b/sound/arm/bcm2835.h
 @@ -15,8 +15,6 @@
@@ -7319,7 +6176,8 @@ index 134a483..3db5e51 100755
  
 -#define AUDIO_IPC_BLOCK_NUM_BUFFERS    (8)
 -#define AUDIO_IPC_BLOCK_BUFFER_SIZE    (1024*8)
--
++/* macros for alsa2chip and chip2alsa, instead of functions */
+ 
 -#define AUDIO_CONTROL_OFFSET			(0x00)
 -#define CTRL_EN_SHIFT			(0)
 -#define CTRL_EN_MASK			(0x00000001)
@@ -7385,14 +6243,12 @@ index 134a483..3db5e51 100755
 -
 -/* 8 entries here of 4 words each = 0x80 gap from 0xF0 */
 -#define AUDIO_OUT_FIFO_OFFSET			(0xF0)
-+/* macros for alsa2chip and chip2alsa, instead of functions */
-+
 +#define alsa2chip(vol) (uint)(-((vol << 8) / 100))	/* convert alsa to chip volume (defined as macro rather than function call) */
 +#define chip2alsa(vol) -((vol * 100) >> 8)			/* convert chip to alsa volume */
  
  /* Some constants for values .. */
  typedef enum {
-@@ -153,15 +92,6 @@
+@@ -153,15 +92,6 @@ typedef enum {
  	PCM_PLAYBACK_DEVICE,
  } SND_BCM2835_CTRL_T;
  
@@ -7408,7 +6264,7 @@ index 134a483..3db5e51 100755
  /* definition of the chip-specific record */
  typedef struct bcm2835_chip {
  	struct snd_card *card;
-@@ -172,20 +102,11 @@
+@@ -172,20 +102,11 @@ typedef struct bcm2835_chip {
  	struct bcm2835_alsa_stream *alsa_stream[MAX_SUBSTREAMS];
  
  	int volume;
@@ -7430,7 +6286,7 @@ index 134a483..3db5e51 100755
  typedef struct bcm2835_alsa_stream {
  	bcm2835_chip_t *chip;
  	struct snd_pcm_substream *substream;
-@@ -200,10 +121,6 @@
+@@ -200,10 +121,6 @@ typedef struct bcm2835_alsa_stream {
  	int running;
  	int draining;
  
@@ -7441,7 +6297,7 @@ index 134a483..3db5e51 100755
  	unsigned int pos;
  	unsigned int buffer_size;
  	unsigned int period_size;
-@@ -220,9 +137,6 @@
+@@ -220,9 +137,6 @@ typedef struct bcm2835_alsa_stream {
  int snd_bcm2835_new_ctl(bcm2835_chip_t * chip);
  int snd_bcm2835_new_pcm(bcm2835_chip_t * chip);
  
@@ -7451,7 +6307,7 @@ index 134a483..3db5e51 100755
  int bcm2835_audio_open(bcm2835_alsa_stream_t * alsa_stream);
  int bcm2835_audio_close(bcm2835_alsa_stream_t * alsa_stream);
  int bcm2835_audio_set_params(bcm2835_alsa_stream_t * alsa_stream,
-@@ -234,7 +148,6 @@ int bcm2835_audio_set_params(bcm2835_alsa_stream_t * alsa_stream,
+@@ -234,7 +148,6 @@ int bcm2835_audio_stop(bcm2835_alsa_stre
  int bcm2835_audio_set_ctls(bcm2835_chip_t * chip);
  int bcm2835_audio_write(bcm2835_alsa_stream_t * alsa_stream, uint32_t count,
  			void *src);
@@ -7459,186 +6315,3 @@ index 134a483..3db5e51 100755
  uint32_t bcm2835_audio_retrieve_buffers(bcm2835_alsa_stream_t * alsa_stream);
  void bcm2835_audio_flush_buffers(bcm2835_alsa_stream_t * alsa_stream);
  void bcm2835_audio_flush_playback_buffers(bcm2835_alsa_stream_t * alsa_stream);
--- 
-1.7.10
-
-
-From 921a3d1180d23cfc8a75eb2a0288b3b2fb9f1fdb Mon Sep 17 00:00:00 2001
-From: ddv2005 <ddv@abinet.com>
-Date: Sun, 5 Aug 2012 10:42:12 -0400
-Subject: [PATCH 3/3] Fix spinlock recursion in sdhci-bcm2708.c
-
----
- drivers/mmc/host/sdhci-bcm2708.c |   10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
-
-diff --git a/drivers/mmc/host/sdhci-bcm2708.c b/drivers/mmc/host/sdhci-bcm2708.c
-index 1ac1e64..349d7ab 100644
---- a/drivers/mmc/host/sdhci-bcm2708.c
-+++ b/drivers/mmc/host/sdhci-bcm2708.c
-@@ -656,7 +656,7 @@ static void schci_bcm2708_dma_go(struct sdhci_host *host)
- 
- 	BUG_ON(NULL == host);
- 
--	spin_lock_irqsave(&host->lock, flags);
-+//	spin_lock_irqsave(&host->lock, flags);
- 
- 	if (host_priv->dma_wanted) {
- 		if (NULL == data) {
-@@ -736,7 +736,7 @@ static void schci_bcm2708_dma_go(struct sdhci_host *host)
- #endif
- 	}
- 
--	spin_unlock_irqrestore(&host->lock, flags);
-+//	spin_unlock_irqrestore(&host->lock, flags);
- }
- 
- 
-@@ -753,7 +753,7 @@ static void sdhci_bcm2708_dma_complete_irq(struct sdhci_host *host,
- 
- 	BUG_ON(NULL == host);
- 
--	spin_lock_irqsave(&host->lock, flags);
-+//	spin_lock_irqsave(&host->lock, flags);
- 	data = host->data;
- 
- #ifdef CHECK_DMA_USE
-@@ -778,7 +778,7 @@ static void sdhci_bcm2708_dma_complete_irq(struct sdhci_host *host,
- 
- 	if (NULL == data) {
- 		DBG("PDMA unused completion - status 0x%X\n", dma_cs);
--		spin_unlock_irqrestore(&host->lock, flags);
-+//		spin_unlock_irqrestore(&host->lock, flags);
- 		return;
- 	}
- 	sg = data->sg;
-@@ -871,7 +871,7 @@ static void sdhci_bcm2708_dma_complete_irq(struct sdhci_host *host,
- 						SDHCI_INT_SPACE_AVAIL);
- 		}
- 	}
--	spin_unlock_irqrestore(&host->lock, flags);
-+//	spin_unlock_irqrestore(&host->lock, flags);
- }
- 
- static irqreturn_t sdhci_bcm2708_dma_irq(int irq, void *dev_id)
--- 
-1.7.10
-
---- linux-3.3.8/arch/arm/mach-bcm2708/bcm2708.c.orig	2012-08-19 17:17:21.085900365 -0400
-+++ linux-3.3.8/arch/arm/mach-bcm2708/bcm2708.c	2012-08-19 17:32:09.322292814 -0400
-@@ -41,6 +41,7 @@
- #include <linux/leds.h>
- #include <asm/mach-types.h>
- #include <asm/sched_clock.h>
-+#include <linux/clocksource.h>
- 
- #include <asm/mach/arch.h>
- #include <asm/mach/flash.h>
-@@ -144,51 +145,14 @@
- /* The STC is a free running counter that increments at the rate of 1MHz */
- #define STC_FREQ_HZ 1000000
- 
--/*
-- * Constants generated by clocks_calc_mult_shift(m, s, 1MHz, NSEC_PER_SEC, 60).
-- * This gives a resolution of about 1us and a wrap period of about 1h11min.
-- */
--#define SC_MULT		4194304000u
--#define SC_SHIFT	22
--
--static cycle_t stc_read_cycles(struct clocksource *cs)
-+static u32 notrace bcm2708_read_sched_clock(void)
- {
--	/* STC: a free running counter that increments at the rate of 1MHz */
--	return (cycle_t) readl(__io_address(ST_BASE + 0x04));
-+	return readl(__io_address(ST_BASE + 0x04));
- }
- 
--static struct clocksource clocksource_stc = {
--	.name = "stc",
--	.rating = 300,
--	.read = stc_read_cycles,
--	.mask = CLOCKSOURCE_MASK(32),
--	.flags = CLOCK_SOURCE_IS_CONTINUOUS,
--};
--
- unsigned long frc_clock_ticks32(void)
- {
--	return (unsigned long)stc_read_cycles(&clocksource_stc);
--}
--
--static void __init bcm2708_clocksource_init(void)
--{
--	if (clocksource_register_hz(&clocksource_stc, STC_FREQ_HZ)) {
--		printk(KERN_ERR "timer: failed to initialize clock "
--		       "source %s\n", clocksource_stc.name);
--	}
--}
--
--unsigned long long sched_clock(void)
--{
--	u32 cyc = clocksource_stc.read(&clocksource_stc);
--	return cyc_to_fixed_sched_clock(&cd, cyc, clocksource_stc.mask,
--			SC_MULT, SC_SHIFT);
--}
--
--static void notrace bcm2708_update_sched_clock(void)
--{
--	u32 cyc = clocksource_stc.read(&clocksource_stc);
--	update_sched_clock(&cd, cyc, clocksource_stc.mask);
-+	return bcm2708_read_sched_clock();
- }
- 
- /*
-@@ -583,6 +547,7 @@
- 	int i;
- 
- 	pm_power_off = bcm2708_power_off;
-+	arm_pm_restart = arch_reset;
- 
- 	for (i = 0; i < ARRAY_SIZE(lookups); i++)
- 		clkdev_add(&lookups[i]);
-@@ -696,9 +661,6 @@
-  */
- static void __init bcm2708_timer_init(void)
- {
--	/* init high res timer */
--	bcm2708_clocksource_init();
--
- 	/*
- 	 * Initialise to a known state (all timers off)
- 	 */
-@@ -708,18 +670,12 @@
- 	 */
- 	setup_irq(IRQ_TIMER3, &bcm2708_timer_irq);
- 
--	init_fixed_sched_clock(&cd, bcm2708_update_sched_clock, 32,
--		STC_FREQ_HZ, SC_MULT, SC_SHIFT);
--
--	timer0_clockevent.mult =
--	    div_sc(STC_FREQ_HZ, NSEC_PER_SEC, timer0_clockevent.shift);
--	timer0_clockevent.max_delta_ns =
--	    clockevent_delta2ns(0xffffffff, &timer0_clockevent);
--	timer0_clockevent.min_delta_ns =
--	    clockevent_delta2ns(0xf, &timer0_clockevent);
--
--	timer0_clockevent.cpumask = cpumask_of(0);
--	clockevents_register_device(&timer0_clockevent);
-+	setup_sched_clock(bcm2708_read_sched_clock, 32, STC_FREQ_HZ);
-+	if (clocksource_mmio_init(__io_address(ST_BASE + 0x04), "stc",
-+		STC_FREQ_HZ, 300, 32, clocksource_mmio_readl_up))
-+		printk(KERN_ERR "timer: failed to initialize clock source stc\n");
-+	clockevents_config_and_register(&timer0_clockevent, STC_FREQ_HZ,
-+		0xf, 0xffffffff);
- }
- 
- struct sys_timer bcm2708_timer = {
---- linux-3.3.8/arch/arm/Kconfig.orig	2012-08-19 17:36:06.593582525 -0400
-+++ linux-3.3.8/arch/arm/Kconfig	2012-08-19 17:36:20.737778724 -0400
-@@ -967,6 +967,7 @@
- 	select ARM_AMBA
- 	select HAVE_CLK
- 	select HAVE_SCHED_CLOCK
-+	select CLKSRC_MMIO
- 	select NEED_MACH_MEMORY_H
- 	select CLKDEV_LOOKUP
- 	select GENERIC_CLOCKEVENTS

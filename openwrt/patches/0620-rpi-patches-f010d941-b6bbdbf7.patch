@@ -1,0 +1,3453 @@
+unchanged:
+--- linux-3.3.8.orig/arch/arm/include/asm/fiq.h	2012-06-01 03:16:13.000000000 -0400
++++ linux-3.3.8/arch/arm/include/asm/fiq.h	2013-05-22 10:02:10.815968199 -0400
+@@ -42,6 +42,7 @@
+ /* helpers defined in fiqasm.S: */
+ extern void __set_fiq_regs(unsigned long const *regs);
+ extern void __get_fiq_regs(unsigned long *regs);
++extern void __FIQ_Branch(unsigned long *regs);
+ 
+ static inline void set_fiq_regs(struct pt_regs const *regs)
+ {
+unchanged:
+--- linux-3.3.8/arch/arm/Kconfig	2013-05-22 10:05:02.859969775 -0400
++++ linux-3.3.8/arch/arm/Kconfig	2013-05-22 10:14:03.079974726 -0400
+@@ -970,10 +970,12 @@
+ 	select CLKSRC_MMIO
+ 	select NEED_MACH_MEMORY_H
+ 	select CLKDEV_LOOKUP
++	select ARCH_HAS_CPUFREQ
+ 	select GENERIC_CLOCKEVENTS
+ 	select ARM_ERRATA_411920
+ 	select MACH_BCM2708
+ 	select VC4
++	select FIQ
+ 	help
+ 	  This enables support for Broadcom BCM2708 boards.
+ 
+unchanged:
+--- linux-3.3.8.orig/arch/arm/kernel/fiqasm.S	2012-06-01 03:16:13.000000000 -0400
++++ linux-3.3.8/arch/arm/kernel/fiqasm.S	2013-05-22 10:02:10.815968199 -0400
+@@ -47,3 +47,7 @@
+ 	mov	r0, r0		@ avoid hazard prior to ARMv4
+ 	mov	pc, lr
+ ENDPROC(__get_fiq_regs)
++
++ENTRY(__FIQ_Branch)
++	mov pc, r8
++ENDPROC(__FIQ_Branch)
+unchanged:
+--- linux-3.3.8.orig/arch/arm/kernel/fiq.c	2012-06-01 03:16:13.000000000 -0400
++++ linux-3.3.8/arch/arm/kernel/fiq.c	2013-05-22 10:02:10.815968199 -0400
+@@ -135,6 +135,7 @@
+ EXPORT_SYMBOL(set_fiq_handler);
+ EXPORT_SYMBOL(__set_fiq_regs);	/* defined in fiqasm.S */
+ EXPORT_SYMBOL(__get_fiq_regs);	/* defined in fiqasm.S */
++EXPORT_SYMBOL(__FIQ_Branch);	/* defined in fiqasm.S */
+ EXPORT_SYMBOL(claim_fiq);
+ EXPORT_SYMBOL(release_fiq);
+ EXPORT_SYMBOL(enable_fiq);
+unchanged:
+--- linux-3.3.8.orig/arch/arm/mach-bcm2708/armctrl.c	2013-05-22 09:46:53.539959793 -0400
++++ linux-3.3.8/arch/arm/mach-bcm2708/armctrl.c	2013-05-22 10:02:10.815968199 -0400
+@@ -59,12 +59,20 @@
+ 		IO_ADDRESS(ARM_IRQ_DIBL3),
+ 		0
+ 	};
++
++	if(d->irq >= FIQ_START)
++	{
++	  writel(0, __io(IO_ADDRESS(ARM_IRQ_FAST)));
++	}
++	else
++	{
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38)
+-	unsigned int data = (unsigned int)irq_get_chip_data(d->irq);
++		unsigned int data = (unsigned int)irq_get_chip_data(d->irq);
+ #else
+-	unsigned int data = (unsigned int)get_irq_chip_data(irq);
++		unsigned int data = (unsigned int)get_irq_chip_data(irq);
+ #endif
+-	writel(1 << (data & 0x1f), __io(disables[(data >> 5) & 0x3]));
++		writel(1 << (data & 0x1f), __io(disables[(data >> 5) & 0x3]));
++	}
+ }
+ 
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38)
+@@ -79,12 +87,21 @@
+ 		IO_ADDRESS(ARM_IRQ_ENBL3),
+ 		0
+ 	};
++
++	if(d->irq >= FIQ_START)
++	{
++	  unsigned int data = (unsigned int)irq_get_chip_data(d->irq) - FIQ_START;
++	  writel(0x80 | data, __io(IO_ADDRESS(ARM_IRQ_FAST)));
++	}
++	else
++	{
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38)
+-	unsigned int data = (unsigned int)irq_get_chip_data(d->irq);
++	  unsigned int data = (unsigned int)irq_get_chip_data(d->irq);
+ #else
+-	unsigned int data = (unsigned int)get_irq_chip_data(irq);
++	  unsigned int data = (unsigned int)get_irq_chip_data(irq);
+ #endif
+-	writel(1 << (data & 0x1f), __io(enables[(data >> 5) & 0x3]));
++	  writel(1 << (data & 0x1f), __io(enables[(data >> 5) & 0x3]));
++	}
+ }
+ 
+ #if defined(CONFIG_PM)
+@@ -379,7 +396,7 @@
+ 
+ 	for (irq = 0; irq < NR_IRQS; irq++) {
+ 		unsigned int data = irq;
+-		if (irq >= INTERRUPT_JPEG)
++		if (irq >= INTERRUPT_JPEG && irq <= INTERRUPT_ARASANSDIO)
+ 			data = remap_irqs[irq - INTERRUPT_JPEG];
+ 
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38)
+diff -u linux-3.3.8/arch/arm/mach-bcm2708/bcm2708.c linux-3.3.8/arch/arm/mach-bcm2708/bcm2708.c
+--- linux-3.3.8/arch/arm/mach-bcm2708/bcm2708.c	2013-05-22 11:35:39.780019600 -0400
++++ linux-3.3.8/arch/arm/mach-bcm2708/bcm2708.c	2013-05-22 12:01:01.972033549 -0400
+@@ -78,6 +78,7 @@
+ 
+ /* command line parameters */
+ static unsigned boardrev, serial;
++static unsigned uart_clock;
+ 
+ static void __init bcm2708_init_led(void);
+ 
+@@ -313,12 +314,32 @@
+ 	       .flags = IORESOURCE_MEM,
+ 	       },
+ 	[1] = {
+-	       .start = IRQ_USB,
+-	       .end = IRQ_USB,
++		.start = MPHI_BASE,
++		.end = MPHI_BASE + SZ_4K - 1,
++		.flags = IORESOURCE_MEM,
++	      },
++	[2] = {
++	       .start = IRQ_HOSTPORT,
++	       .end = IRQ_HOSTPORT,
+ 	       .flags = IORESOURCE_IRQ,
+ 	       },
+ };
+ 
++extern bool fiq_fix_enable;
++
++static struct resource bcm2708_usb_resources_no_fiq_fix[] = {
++	[0] = {
++		.start = USB_BASE,
++		.end = USB_BASE + SZ_128K - 1,
++		.flags = IORESOURCE_MEM,
++		},
++	[1] = {
++		.start = IRQ_USB,
++		.end = IRQ_USB,
++		.flags = IORESOURCE_IRQ,
++		},
++};
++
+ static u64 usb_dmamask = DMA_BIT_MASK(DMA_MASK_BITS_COMMON);
+ 
+ static struct platform_device bcm2708_usb_device = {
+@@ -460,6 +481,48 @@
+ 	       .resource = 0,
+ 	       .num_resources = 0,
+ 	       },
++	[1] = {
++	       .name = "bcm2835_AUD1",
++	       .id = 1,		/* second audio device */
++	       .resource = 0,
++	       .num_resources = 0,
++	       },
++	[2] = {
++	       .name = "bcm2835_AUD2",
++	       .id = 2,		/* third audio device */
++	       .resource = 0,
++	       .num_resources = 0,
++	       },
++	[3] = {
++	       .name = "bcm2835_AUD3",
++	       .id = 3,		/* forth audio device */
++	       .resource = 0,
++	       .num_resources = 0,
++	       },
++	[4] = {
++	       .name = "bcm2835_AUD4",
++	       .id = 4,		/* fifth audio device */
++	       .resource = 0,
++	       .num_resources = 0,
++	       },
++	[5] = {
++	       .name = "bcm2835_AUD5",
++	       .id = 5,		/* sixth audio device */
++	       .resource = 0,
++	       .num_resources = 0,
++	       },
++	[6] = {
++	       .name = "bcm2835_AUD6",
++	       .id = 6,		/* seventh audio device */
++	       .resource = 0,
++	       .num_resources = 0,
++	       },
++	[7] = {
++	       .name = "bcm2835_AUD7",
++	       .id = 7,		/* eighth audio device */
++	       .resource = 0,
++	       .num_resources = 0,
++	       },
+ };
+ 
+ static struct resource bcm2708_spi_resources[] = {
+@@ -536,6 +599,14 @@
+ 	.resource = bcm2708_bsc1_resources,
+ };
+ 
++static struct platform_device bcm2835_hwmon_device = {
++	.name = "bcm2835_hwmon",
++};
++
++static struct platform_device bcm2835_thermal_device = {
++	.name = "bcm2835_thermal",
++};
++
+ int __init bcm_register_device(struct platform_device *pdev)
+ {
+ 	int ret;
+@@ -563,9 +634,13 @@
+ {
+ 	int i;
+ 
++	printk("bcm2708.uart_clock = %d\n", uart_clock);
+ 	pm_power_off = bcm2708_power_off;
+ 	arm_pm_restart = arch_reset;
+ 
++	if (uart_clock)
++		lookups[0].clk->rate = uart_clock;
++
+ 	for (i = 0; i < ARRAY_SIZE(lookups); i++)
+ 		clkdev_add(&lookups[i]);
+ 
+@@ -582,6 +657,11 @@
+ 	bcm_register_device(&bcm2708_mci_device);
+ #endif
+ 	bcm_register_device(&bcm2708_fb_device);
++	if (!fiq_fix_enable)
++	{
++		bcm2708_usb_device.resource = bcm2708_usb_resources_no_fiq_fix;
++		bcm2708_usb_device.num_resources = ARRAY_SIZE(bcm2708_usb_resources_no_fiq_fix);
++	}
+ 	bcm_register_device(&bcm2708_usb_device);
+ 	bcm_register_device(&bcm2708_uart1_device);
+ 	bcm_register_device(&bcm2708_powerman_device);
+@@ -596,12 +676,9 @@
+ 	bcm_register_device(&bcm2708_bsc0_device);
+ 	bcm_register_device(&bcm2708_bsc1_device);
+ 
+-#ifdef CONFIG_BCM2708_VCMEM
+-	{
+-		extern void vc_mem_connected_init(void);
+-		vc_mem_connected_init();
+-	}
+-#endif
++	bcm_register_device(&bcm2835_hwmon_device);
++	bcm_register_device(&bcm2835_thermal_device);
++
+ 	for (i = 0; i < ARRAY_SIZE(amba_devs); i++) {
+ 		struct amba_device *d = amba_devs[i];
+ 		amba_device_register(d, &iomem_resource);
+@@ -740,6 +817,35 @@
++
++/* The assembly versions in delay.S don't account for core freq changing in cpufreq driver */
++/* Use 1MHz system timer for busy waiting */
++void __udelay(unsigned long usecs)
++{
++	unsigned long start = readl(__io_address(ST_BASE + 0x04));
++	unsigned long now;
++	do {
++		now = readl(__io_address(ST_BASE + 0x04));
++	} while ((long)(now - start) <= usecs);
++}
++
++
++void __const_udelay(unsigned long scaled_usecs)
++{
++	/* want /107374, this is about 3% bigger. We know usecs is less than 2000, so shouldn't overflow */
++	const unsigned long usecs = scaled_usecs * 10 >> 20;
++	unsigned long start = readl(__io_address(ST_BASE + 0x04));
++	unsigned long now;
++	do {
++		now = readl(__io_address(ST_BASE + 0x04));
++	} while ((long)(now - start) <= usecs);
++}
++
+ MACHINE_START(BCM2708, "BCM2708")
+     /* Maintainer: Broadcom Europe Ltd. */
+-    .map_io = bcm2708_map_io,.init_irq = bcm2708_init_irq,.timer =
+-    &bcm2708_timer,.init_machine =
+-    bcm2708_init, MACHINE_END module_param(boardrev, uint, 0644);
++	.map_io = bcm2708_map_io,
++	.init_irq = bcm2708_init_irq,
++	.timer =&bcm2708_timer,
++	.init_machine =bcm2708_init,
++MACHINE_END
++
++module_param(boardrev, uint, 0644);
+ module_param(serial, uint, 0644);
++module_param(uart_clock, uint, 0644);
+unchanged:
+--- linux-3.3.8.orig/arch/arm/mach-bcm2708/include/mach/irqs.h	2013-05-22 09:46:53.687959794 -0400
++++ linux-3.3.8/arch/arm/mach-bcm2708/include/mach/irqs.h	2013-05-22 10:02:10.815968199 -0400
+@@ -106,91 +106,94 @@
+ #define IRQ_PENDING1          (IRQ_ARMCTRL_START + INTERRUPT_PENDING1)
+ #define IRQ_PENDING2          (IRQ_ARMCTRL_START + INTERRUPT_PENDING2)
+ 
++#define FIQ_START             HARD_IRQS
++
+ /*
+  *  FIQ interrupts definitions are the same as the INT definitions.
+  */
+-#define FIQ_TIMER0            INT_TIMER0
+-#define FIQ_TIMER1            INT_TIMER1
+-#define FIQ_TIMER2            INT_TIMER2
+-#define FIQ_TIMER3            INT_TIMER3
+-#define FIQ_CODEC0            INT_CODEC0
+-#define FIQ_CODEC1            INT_CODEC1
+-#define FIQ_CODEC2            INT_CODEC2
+-#define FIQ_JPEG              INT_JPEG
+-#define FIQ_ISP               INT_ISP
+-#define FIQ_USB               INT_USB
+-#define FIQ_3D                INT_3D
+-#define FIQ_TRANSPOSER        INT_TRANSPOSER
+-#define FIQ_MULTICORESYNC0    INT_MULTICORESYNC0
+-#define FIQ_MULTICORESYNC1    INT_MULTICORESYNC1
+-#define FIQ_MULTICORESYNC2    INT_MULTICORESYNC2
+-#define FIQ_MULTICORESYNC3    INT_MULTICORESYNC3
+-#define FIQ_DMA0              INT_DMA0
+-#define FIQ_DMA1              INT_DMA1
+-#define FIQ_DMA2              INT_DMA2
+-#define FIQ_DMA3              INT_DMA3
+-#define FIQ_DMA4              INT_DMA4
+-#define FIQ_DMA5              INT_DMA5
+-#define FIQ_DMA6              INT_DMA6
+-#define FIQ_DMA7              INT_DMA7
+-#define FIQ_DMA8              INT_DMA8
+-#define FIQ_DMA9              INT_DMA9
+-#define FIQ_DMA10             INT_DMA10
+-#define FIQ_DMA11             INT_DMA11
+-#define FIQ_DMA12             INT_DMA12
+-#define FIQ_AUX               INT_AUX
+-#define FIQ_ARM               INT_ARM
+-#define FIQ_VPUDMA            INT_VPUDMA
+-#define FIQ_HOSTPORT          INT_HOSTPORT
+-#define FIQ_VIDEOSCALER       INT_VIDEOSCALER
+-#define FIQ_CCP2TX            INT_CCP2TX
+-#define FIQ_SDC               INT_SDC
+-#define FIQ_DSI0              INT_DSI0
+-#define FIQ_AVE               INT_AVE
+-#define FIQ_CAM0              INT_CAM0
+-#define FIQ_CAM1              INT_CAM1
+-#define FIQ_HDMI0             INT_HDMI0
+-#define FIQ_HDMI1             INT_HDMI1
+-#define FIQ_PIXELVALVE1       INT_PIXELVALVE1
+-#define FIQ_I2CSPISLV         INT_I2CSPISLV
+-#define FIQ_DSI1              INT_DSI1
+-#define FIQ_PWA0              INT_PWA0
+-#define FIQ_PWA1              INT_PWA1
+-#define FIQ_CPR               INT_CPR
+-#define FIQ_SMI               INT_SMI
+-#define FIQ_GPIO0             INT_GPIO0
+-#define FIQ_GPIO1             INT_GPIO1
+-#define FIQ_GPIO2             INT_GPIO2
+-#define FIQ_GPIO3             INT_GPIO3
+-#define FIQ_I2C               INT_I2C
+-#define FIQ_SPI               INT_SPI
+-#define FIQ_I2SPCM            INT_I2SPCM
+-#define FIQ_SDIO              INT_SDIO
+-#define FIQ_UART              INT_UART
+-#define FIQ_SLIMBUS           INT_SLIMBUS
+-#define FIQ_VEC               INT_VEC
+-#define FIQ_CPG               INT_CPG
+-#define FIQ_RNG               INT_RNG
+-#define FIQ_ARASANSDIO        INT_ARASANSDIO
+-#define FIQ_AVSPMON           INT_AVSPMON
+-
+-#define FIQ_ARM_TIMER         INT_ARM_TIMER
+-#define FIQ_ARM_MAILBOX       INT_ARM_MAILBOX
+-#define FIQ_ARM_DOORBELL_0    INT_ARM_DOORBELL_0
+-#define FIQ_ARM_DOORBELL_1    INT_ARM_DOORBELL_1
+-#define FIQ_VPU0_HALTED       INT_VPU0_HALTED
+-#define FIQ_VPU1_HALTED       INT_VPU1_HALTED
+-#define FIQ_ILLEGAL_TYPE0     INT_ILLEGAL_TYPE0
+-#define FIQ_ILLEGAL_TYPE1     INT_ILLEGAL_TYPE1
+-#define FIQ_PENDING1          INT_PENDING1
+-#define FIQ_PENDING2          INT_PENDING2
++#define FIQ_TIMER0            (FIQ_START+INTERRUPT_TIMER0)
++#define FIQ_TIMER1            (FIQ_START+INTERRUPT_TIMER1)
++#define FIQ_TIMER2            (FIQ_START+INTERRUPT_TIMER2)
++#define FIQ_TIMER3            (FIQ_START+INTERRUPT_TIMER3)
++#define FIQ_CODEC0            (FIQ_START+INTERRUPT_CODEC0)
++#define FIQ_CODEC1            (FIQ_START+INTERRUPT_CODEC1)
++#define FIQ_CODEC2            (FIQ_START+INTERRUPT_CODEC2)
++#define FIQ_JPEG              (FIQ_START+INTERRUPT_JPEG)
++#define FIQ_ISP               (FIQ_START+INTERRUPT_ISP)
++#define FIQ_USB               (FIQ_START+INTERRUPT_USB)
++#define FIQ_3D                (FIQ_START+INTERRUPT_3D)
++#define FIQ_TRANSPOSER        (FIQ_START+INTERRUPT_TRANSPOSER)
++#define FIQ_MULTICORESYNC0    (FIQ_START+INTERRUPT_MULTICORESYNC0)
++#define FIQ_MULTICORESYNC1    (FIQ_START+INTERRUPT_MULTICORESYNC1)
++#define FIQ_MULTICORESYNC2    (FIQ_START+INTERRUPT_MULTICORESYNC2)
++#define FIQ_MULTICORESYNC3    (FIQ_START+INTERRUPT_MULTICORESYNC3)
++#define FIQ_DMA0              (FIQ_START+INTERRUPT_DMA0)
++#define FIQ_DMA1              (FIQ_START+INTERRUPT_DMA1)
++#define FIQ_DMA2              (FIQ_START+INTERRUPT_DMA2)
++#define FIQ_DMA3              (FIQ_START+INTERRUPT_DMA3)
++#define FIQ_DMA4              (FIQ_START+INTERRUPT_DMA4)
++#define FIQ_DMA5              (FIQ_START+INTERRUPT_DMA5)
++#define FIQ_DMA6              (FIQ_START+INTERRUPT_DMA6)
++#define FIQ_DMA7              (FIQ_START+INTERRUPT_DMA7)
++#define FIQ_DMA8              (FIQ_START+INTERRUPT_DMA8)
++#define FIQ_DMA9              (FIQ_START+INTERRUPT_DMA9)
++#define FIQ_DMA10             (FIQ_START+INTERRUPT_DMA10)
++#define FIQ_DMA11             (FIQ_START+INTERRUPT_DMA11)
++#define FIQ_DMA12             (FIQ_START+INTERRUPT_DMA12)
++#define FIQ_AUX               (FIQ_START+INTERRUPT_AUX)
++#define FIQ_ARM               (FIQ_START+INTERRUPT_ARM)
++#define FIQ_VPUDMA            (FIQ_START+INTERRUPT_VPUDMA)
++#define FIQ_HOSTPORT          (FIQ_START+INTERRUPT_HOSTPORT)
++#define FIQ_VIDEOSCALER       (FIQ_START+INTERRUPT_VIDEOSCALER)
++#define FIQ_CCP2TX            (FIQ_START+INTERRUPT_CCP2TX)
++#define FIQ_SDC               (FIQ_START+INTERRUPT_SDC)
++#define FIQ_DSI0              (FIQ_START+INTERRUPT_DSI0)
++#define FIQ_AVE               (FIQ_START+INTERRUPT_AVE)
++#define FIQ_CAM0              (FIQ_START+INTERRUPT_CAM0)
++#define FIQ_CAM1              (FIQ_START+INTERRUPT_CAM1)
++#define FIQ_HDMI0             (FIQ_START+INTERRUPT_HDMI0)
++#define FIQ_HDMI1             (FIQ_START+INTERRUPT_HDMI1)
++#define FIQ_PIXELVALVE1       (FIQ_START+INTERRUPT_PIXELVALVE1)
++#define FIQ_I2CSPISLV         (FIQ_START+INTERRUPT_I2CSPISLV)
++#define FIQ_DSI1              (FIQ_START+INTERRUPT_DSI1)
++#define FIQ_PWA0              (FIQ_START+INTERRUPT_PWA0)
++#define FIQ_PWA1              (FIQ_START+INTERRUPT_PWA1)
++#define FIQ_CPR               (FIQ_START+INTERRUPT_CPR)
++#define FIQ_SMI               (FIQ_START+INTERRUPT_SMI)
++#define FIQ_GPIO0             (FIQ_START+INTERRUPT_GPIO0)
++#define FIQ_GPIO1             (FIQ_START+INTERRUPT_GPIO1)
++#define FIQ_GPIO2             (FIQ_START+INTERRUPT_GPIO2)
++#define FIQ_GPIO3             (FIQ_START+INTERRUPT_GPIO3)
++#define FIQ_I2C               (FIQ_START+INTERRUPT_I2C)
++#define FIQ_SPI               (FIQ_START+INTERRUPT_SPI)
++#define FIQ_I2SPCM            (FIQ_START+INTERRUPT_I2SPCM)
++#define FIQ_SDIO              (FIQ_START+INTERRUPT_SDIO)
++#define FIQ_UART              (FIQ_START+INTERRUPT_UART)
++#define FIQ_SLIMBUS           (FIQ_START+INTERRUPT_SLIMBUS)
++#define FIQ_VEC               (FIQ_START+INTERRUPT_VEC)
++#define FIQ_CPG               (FIQ_START+INTERRUPT_CPG)
++#define FIQ_RNG               (FIQ_START+INTERRUPT_RNG)
++#define FIQ_ARASANSDIO        (FIQ_START+INTERRUPT_ARASANSDIO)
++#define FIQ_AVSPMON           (FIQ_START+INTERRUPT_AVSPMON)
++
++#define FIQ_ARM_TIMER         (FIQ_START+INTERRUPT_ARM_TIMER)
++#define FIQ_ARM_MAILBOX       (FIQ_START+INTERRUPT_ARM_MAILBOX)
++#define FIQ_ARM_DOORBELL_0    (FIQ_START+INTERRUPT_ARM_DOORBELL_0)
++#define FIQ_ARM_DOORBELL_1    (FIQ_START+INTERRUPT_ARM_DOORBELL_1)
++#define FIQ_VPU0_HALTED       (FIQ_START+INTERRUPT_VPU0_HALTED)
++#define FIQ_VPU1_HALTED       (FIQ_START+INTERRUPT_VPU1_HALTED)
++#define FIQ_ILLEGAL_TYPE0     (FIQ_START+INTERRUPT_ILLEGAL_TYPE0)
++#define FIQ_ILLEGAL_TYPE1     (FIQ_START+INTERRUPT_ILLEGAL_TYPE1)
++#define FIQ_PENDING1          (FIQ_START+INTERRUPT_PENDING1)
++#define FIQ_PENDING2          (FIQ_START+INTERRUPT_PENDING2)
+ 
+-#define HARD_IRQS	      (64 + 21)
+-#define GPIO_IRQ_START	      HARD_IRQS
++#define GPIO_IRQ_START	      (HARD_IRQS + FIQ_IRQS)
+ 
+-#define GPIO_IRQS	      32*5
++#define HARD_IRQS	      (64 + 21)
++#define FIQ_IRQS              (64 + 21)
++#define GPIO_IRQS	      (32*5)
+ 
+-#define NR_IRQS		      HARD_IRQS+GPIO_IRQS
++#define NR_IRQS		      HARD_IRQS+FIQ_IRQS+GPIO_IRQS
+ 
+ 
+ #endif /* _BCM2708_IRQS_H_ */
+unchanged:
+--- linux-3.3.8.orig/arch/arm/mach-bcm2708/include/mach/platform.h	2013-05-22 09:46:53.687959794 -0400
++++ linux-3.3.8/arch/arm/mach-bcm2708/include/mach/platform.h	2013-05-22 10:02:10.815968199 -0400
+@@ -56,7 +56,9 @@
+  */
+ 
+ #define BCM2708_PERI_BASE        0x20000000
++#define IC0_BASE                 (BCM2708_PERI_BASE + 0x2000)
+ #define ST_BASE                  (BCM2708_PERI_BASE + 0x3000)   /* System Timer */
++#define MPHI_BASE		 (BCM2708_PERI_BASE + 0x6000)	/* Message -based Parallel Host Interface */
+ #define DMA_BASE		 (BCM2708_PERI_BASE + 0x7000)	/* DMA controller */
+ #define ARM_BASE                 (BCM2708_PERI_BASE + 0xB000)	 /* BCM2708 ARM control block */
+ #define PM_BASE			 (BCM2708_PERI_BASE + 0x100000) /* Power Management, Reset controller and Watchdog registers */
+unchanged:
+--- linux-3.3.8.orig/drivers/usb/host/dwc_otg/dwc_otg_cil_intr.c	2013-05-22 09:46:53.791959795 -0400
++++ linux-3.3.8/drivers/usb/host/dwc_otg/dwc_otg_cil_intr.c	2013-05-22 10:02:10.815968199 -0400
+@@ -45,6 +45,9 @@
+ #include "dwc_otg_driver.h"
+ #include "dwc_otg_pcd.h"
+ #include "dwc_otg_hcd.h"
++#include "dwc_otg_mphi_fix.h"
++
++extern bool fiq_fix_enable;
+ 
+ #ifdef DEBUG
+ inline const char *op_state_str(dwc_otg_core_if_t * core_if)
+@@ -1351,10 +1354,15 @@
+ 			    gintsts.d32, gintmsk.d32);
+ 	}
+ #endif
+-	if (gahbcfg.b.glblintrmsk)	
++	if (!fiq_fix_enable){
++		if (gahbcfg.b.glblintrmsk)
++			return ((gintsts.d32 & gintmsk.d32) & gintmsk_common.d32);
++		else
++			return 0;
++	}
++	else {
+ 		return ((gintsts.d32 & gintmsk.d32) & gintmsk_common.d32);
+-	else
+-		return 0;
++	}
+ 
+ }
+ 
+unchanged:
+--- linux-3.3.8.orig/drivers/usb/host/dwc_otg/dwc_otg_dbg.h	2013-05-22 09:46:53.735959795 -0400
++++ linux-3.3.8/drivers/usb/host/dwc_otg/dwc_otg_dbg.h	2013-05-22 10:02:10.815968199 -0400
+@@ -49,6 +49,7 @@
+ 	return old;
+ }
+ 
++#define DBG_USER	(0x1)
+ /** When debug level has the DBG_CIL bit set, display CIL Debug messages. */
+ #define DBG_CIL		(0x2)
+ /** When debug level has the DBG_CILV bit set, display CIL Verbose debug
+unchanged:
+--- linux-3.3.8.orig/drivers/usb/host/dwc_otg/dwc_otg_driver.c	2013-05-22 09:46:53.819959795 -0400
++++ linux-3.3.8/drivers/usb/host/dwc_otg/dwc_otg_driver.c	2013-05-22 10:02:10.819968199 -0400
+@@ -64,6 +64,8 @@
+ 
+ static const char dwc_driver_name[] = "dwc_otg";
+ 
++extern void* dummy_send;
++
+ extern int pcd_init(
+ #ifdef LM_INTERFACE
+ 			   struct lm_device *_dev
+@@ -238,6 +240,10 @@
+ 	.adp_enable = -1,
+ };
+ 
++//Global variable to switch the fiq fix on or off
++bool fiq_fix_enable = false;
++
++
+ /**
+  * This function shows the Driver Version.
+  */
+@@ -779,17 +785,33 @@
+                     _dev->resource->start,
+                     _dev->resource->end - _dev->resource->start + 1);
+ #if 1
+-        if (!request_mem_region(_dev->resource->start,
+-                                _dev->resource->end - _dev->resource->start + 1,
++        if (!request_mem_region(_dev->resource[0].start,
++                                _dev->resource[0].end - _dev->resource[0].start + 1,
+                                 "dwc_otg")) {
+           dev_dbg(&_dev->dev, "error reserving mapped memory\n");
+           retval = -EFAULT;
+           goto fail;
+         }
+ 
+-	dwc_otg_device->os_dep.base = ioremap_nocache(_dev->resource->start,
+-                                                      _dev->resource->end -
+-                                                      _dev->resource->start+1);
++	dwc_otg_device->os_dep.base = ioremap_nocache(_dev->resource[0].start,
++                                                      _dev->resource[0].end -
++                                                      _dev->resource[0].start+1);
++	if (fiq_fix_enable)
++	{
++		if (!request_mem_region(_dev->resource[1].start,
++	                                _dev->resource[1].end - _dev->resource[1].start + 1,
++	                                "dwc_otg")) {
++	          dev_dbg(&_dev->dev, "error reserving mapped memory\n");
++	          retval = -EFAULT;
++	          goto fail;
++	}
++
++		dwc_otg_device->os_dep.mphi_base = ioremap_nocache(_dev->resource[1].start,
++							    _dev->resource[1].end -
++							    _dev->resource[1].start + 1);
++		dummy_send = (void *) kmalloc(16, GFP_ATOMIC);
++	}
++
+ #else
+         {
+                 struct map_desc desc = {
+@@ -1063,6 +1085,7 @@
+ 		printk(KERN_ERR "%s retval=%d\n", __func__, retval);
+ 		return retval;
+ 	}
++	printk(KERN_DEBUG "dwc_otg: FIQ %s\n", fiq_fix_enable ? "enabled":"disabled");
+ 
+ 	error = driver_create_file(drv, &driver_attr_version);
+ #ifdef DEBUG
+@@ -1343,6 +1366,10 @@
+ module_param(microframe_schedule, bool, 0444);
+ MODULE_PARM_DESC(microframe_schedule, "Enable the microframe scheduler");
+ 
++
++module_param(fiq_fix_enable, bool, 0444);
++MODULE_PARM_DESC(fiq_fix_enable, "Enable the fiq fix");
++
+ /** @page "Module Parameters"
+  *
+  * The following parameters may be specified when starting the module.
+unchanged:
+--- linux-3.3.8.orig/drivers/usb/host/dwc_otg/dwc_otg_hcd.c	2013-05-22 09:46:53.735959795 -0400
++++ linux-3.3.8/drivers/usb/host/dwc_otg/dwc_otg_hcd.c	2013-05-22 10:02:10.819968199 -0400
+@@ -53,6 +53,8 @@
+ static int last_sel_trans_num_avail_hc_at_end = 0;
+ #endif /* DEBUG_HOST_CHANNELS */
+ 
++extern int g_next_sched_frame, g_np_count, g_np_sent;
++
+ dwc_otg_hcd_t *dwc_otg_hcd_alloc_hcd(void)
+ {
+ 	return DWC_ALLOC(sizeof(dwc_otg_hcd_t));
+@@ -407,6 +409,7 @@
+ }
+ #endif
+ 
++
+ /**
+  * HCD Callback function for Remote Wakeup.
+  *
+@@ -1330,6 +1333,8 @@
+ 				   &qh->qh_list_entry);
+ 		DWC_SPINUNLOCK_IRQRESTORE(channel_lock, flags);
+ 
++		g_np_sent++;
++
+ 		if (ret_val == DWC_OTG_TRANSACTION_NONE) {
+ 			ret_val = DWC_OTG_TRANSACTION_NON_PERIODIC;
+ 		} else {
+unchanged:
+--- linux-3.3.8.orig/drivers/usb/host/dwc_otg/dwc_otg_hcd.h	2013-05-22 09:46:53.739959795 -0400
++++ linux-3.3.8/drivers/usb/host/dwc_otg/dwc_otg_hcd.h	2013-05-22 10:02:10.819968199 -0400
+@@ -594,7 +594,7 @@
+ /** @name Interrupt Handler Functions */
+ /** @{ */
+ extern int32_t dwc_otg_hcd_handle_intr(dwc_otg_hcd_t * dwc_otg_hcd);
+-extern int32_t dwc_otg_hcd_handle_sof_intr(dwc_otg_hcd_t * dwc_otg_hcd);
++extern int32_t dwc_otg_hcd_handle_sof_intr(dwc_otg_hcd_t * dwc_otg_hcd, int32_t);
+ extern int32_t dwc_otg_hcd_handle_rx_status_q_level_intr(dwc_otg_hcd_t *
+ 							 dwc_otg_hcd);
+ extern int32_t dwc_otg_hcd_handle_np_tx_fifo_empty_intr(dwc_otg_hcd_t *
+unchanged:
+--- linux-3.3.8.orig/drivers/usb/host/dwc_otg/dwc_otg_hcd_if.h	2013-05-22 09:46:53.739959795 -0400
++++ linux-3.3.8/drivers/usb/host/dwc_otg/dwc_otg_hcd_if.h	2013-05-22 10:02:10.819968199 -0400
+@@ -113,6 +113,11 @@
+  */
+ extern int32_t dwc_otg_hcd_handle_intr(dwc_otg_hcd_t * dwc_otg_hcd);
+ 
++/** This function is used to handle the fast interrupt
++ *
++ */
++extern void __attribute__ ((naked)) dwc_otg_hcd_handle_fiq(void);
++
+ /**
+  * Returns private data set by
+  * dwc_otg_hcd_set_priv_data function.
+unchanged:
+--- linux-3.3.8.orig/drivers/usb/host/dwc_otg/dwc_otg_hcd_intr.c	2013-05-22 09:46:53.739959795 -0400
++++ linux-3.3.8/drivers/usb/host/dwc_otg/dwc_otg_hcd_intr.c	2013-05-22 10:02:10.819968199 -0400
+@@ -34,6 +34,11 @@
+ 
+ #include "dwc_otg_hcd.h"
+ #include "dwc_otg_regs.h"
++#include "dwc_otg_mphi_fix.h"
++
++#include <linux/jiffies.h>
++#include <mach/hardware.h>
++
+ 
+ extern bool microframe_schedule;
+ 
+@@ -41,36 +46,105 @@
+  * This file contains the implementation of the HCD Interrupt handlers.
+  */
+ 
++/*
++ * Some globals to communicate between the FIQ and INTERRUPT
++ */
++
++void * dummy_send;
++mphi_regs_t c_mphi_regs;
++int fiq_done, int_done;
++int g_next_sched_frame, g_np_count, g_np_sent, g_work_expected;
++static int mphi_int_count = 0 ;
++
++extern bool fiq_fix_enable;
++
++void __attribute__ ((naked)) dwc_otg_hcd_handle_fiq(void)
++{
++	gintsts_data_t gintsts;
++	hfnum_data_t hfnum;
++
++	/* entry takes care to store registers we will be treading on here */
++	asm __volatile__ (
++		"mov     ip, sp ;"
++		/* stash FIQ and normal regs */
++		"stmdb	sp!, {r0-r12,  lr};"
++		/* !! THIS SETS THE FRAME, adjust to > sizeof locals */
++		"sub     fp, ip, #256 ;"
++		);
++
++	fiq_done++;
++	gintsts.d32 = FIQ_READ_IO_ADDRESS(USB_BASE + 0x14) & FIQ_READ_IO_ADDRESS(USB_BASE + 0x18);
++	hfnum.d32 =   FIQ_READ_IO_ADDRESS(USB_BASE + 0x408);
++
++	if(gintsts.d32)
++	{
++		if(gintsts.b.sofintr && g_np_count == g_np_sent && dwc_frame_num_gt(g_next_sched_frame, hfnum.b.frnum))
++		{
++			/*
++			 * If np_count != np_sent that means we need to queue non-periodic (bulk) packets this packet
++			 * g_next_sched_frame is the next frame we have periodic packets for
++			 *
++			 * if neither of these are required for this frame then just clear the interrupt
++			 */
++			gintsts.d32 = 0;
++			gintsts.b.sofintr = 1;
++			FIQ_WRITE_IO_ADDRESS((USB_BASE + 0x14), gintsts.d32);
++
++			g_work_expected = 0;
++		}
++		else
++		{
++			g_work_expected = 1;
++			/* To enable the MPHI interrupt  (INT 32)
++			 */
++			FIQ_WRITE(  c_mphi_regs.outdda, (int) dummy_send);
++			FIQ_WRITE( c_mphi_regs.outddb, (1 << 29));
++
++			mphi_int_count++;
++			/* Clear the USB global interrupt so we don't just sit in the FIQ */
++			FIQ_MODIFY_IO_ADDRESS((USB_BASE + 0x8),1,0);
++
++		}
++	}
++	mb();
++
++	/* exit back to normal mode restoring everything */
++	asm __volatile__ (
++		/* return FIQ regs back to pristine state
++		 * and get normal regs back
++		 */
++		"ldmia	sp!, {r0-r12, lr};"
++
++		/* return */
++		"subs	pc, lr, #4;"
++	);
++}
++
+ /** This function handles interrupts for the HCD. */
+ int32_t dwc_otg_hcd_handle_intr(dwc_otg_hcd_t * dwc_otg_hcd)
+ {
+ 	int retval = 0;
++	static int last_time;
+ 
+ 	dwc_otg_core_if_t *core_if = dwc_otg_hcd->core_if;
+ 	gintsts_data_t gintsts;
++	hfnum_data_t hfnum;
++
+ #ifdef DEBUG
+ 	dwc_otg_core_global_regs_t *global_regs = core_if->core_global_regs;
+ 
+-        //GRAYG: debugging
+-        if (NULL == global_regs) {
+-                DWC_DEBUGPL(DBG_HCD, "**** NULL regs: dwc_otg_hcd=%p "
+-                            "core_if=%p\n",
+-                            dwc_otg_hcd, global_regs);
+-                return retval;
+-        }
+ #endif
+ 
+ 	/* Exit from ISR if core is hibernated */
+ 	if (core_if->hibernation_suspend == 1) {
+-		return retval;
++		goto exit_handler_routine;
+ 	}
+ 	DWC_SPINLOCK(dwc_otg_hcd->lock);
+ 	/* Check if HOST Mode */
+ 	if (dwc_otg_is_host_mode(core_if)) {
+ 		gintsts.d32 = dwc_otg_read_core_intr(core_if);
+ 		if (!gintsts.d32) {
+-			DWC_SPINUNLOCK(dwc_otg_hcd->lock);
+-			return 0;
++			goto exit_handler_routine;
+ 		}
+ #ifdef DEBUG
+ 		/* Don't print debug message in the interrupt handler on SOF */
+@@ -88,9 +162,14 @@
+ 				    "DWC OTG HCD Interrupt Detected gintsts&gintmsk=0x%08x core_if=%p\n",
+ 				    gintsts.d32, core_if);
+ #endif
+-
+-		if (gintsts.b.sofintr) {
+-			retval |= dwc_otg_hcd_handle_sof_intr(dwc_otg_hcd);
++		hfnum.d32 = DWC_READ_REG32(&dwc_otg_hcd->core_if->host_if->host_global_regs->hfnum);
++		if (gintsts.b.sofintr && g_np_count == g_np_sent && dwc_frame_num_gt(g_next_sched_frame, hfnum.b.frnum))
++		{
++			/* Note, we should never get here if the FIQ is doing it's job properly*/
++			retval |= dwc_otg_hcd_handle_sof_intr(dwc_otg_hcd, g_work_expected);
++		}
++		else if (gintsts.b.sofintr) {
++			retval |= dwc_otg_hcd_handle_sof_intr(dwc_otg_hcd, g_work_expected);
+ 		}
+ 		if (gintsts.b.rxstsqlvl) {
+ 			retval |=
+@@ -138,11 +217,37 @@
+ #endif
+ 
+ 	}
++
++exit_handler_routine:
++
++	if (fiq_fix_enable)
++	{
++		/* Clear the MPHI interrupt */
++		DWC_WRITE_REG32(c_mphi_regs.intstat, (1<<16));
++		if (mphi_int_count >= 60)
++		{
++			DWC_WRITE_REG32(c_mphi_regs.ctrl, ((1<<31) + (1<<16)));
++			DWC_WRITE_REG32(c_mphi_regs.ctrl, (1<<31));
++			mphi_int_count = 0;
++		}
++			int_done++;
++		if((jiffies / HZ) > last_time)
++		{
++			/* Once a second output the fiq and irq numbers, useful for debug */
++			last_time = jiffies / HZ;
++			DWC_DEBUGPL(DBG_USER, "int_done = %d fiq_done = %d\n", int_done, fiq_done);
++		}
++
++		/* Re-Enable FIQ interrupt from USB peripheral */
++		DWC_MODIFY_REG32((uint32_t *)IO_ADDRESS(USB_BASE + 0x8), 0 , 1);
++	}
++
+ 	DWC_SPINUNLOCK(dwc_otg_hcd->lock);
+ 	return retval;
+ }
+ 
+ #ifdef DWC_TRACK_MISSED_SOFS
++
+ #warning Compiling code to track missed SOFs
+ #define FRAME_NUM_ARRAY_SIZE 1000
+ /**
+@@ -182,13 +287,15 @@
+  * (micro)frame. Periodic transactions may be queued to the controller for the
+  * next (micro)frame.
+  */
+-int32_t dwc_otg_hcd_handle_sof_intr(dwc_otg_hcd_t * hcd)
++int32_t dwc_otg_hcd_handle_sof_intr(dwc_otg_hcd_t * hcd, int32_t work_expected)
+ {
+ 	hfnum_data_t hfnum;
+ 	dwc_list_link_t *qh_entry;
+ 	dwc_otg_qh_t *qh;
+ 	dwc_otg_transaction_type_e tr_type;
+ 	gintsts_data_t gintsts = {.d32 = 0 };
++	int did_something = 0;
++	int32_t next_sched_frame = -1;
+ 
+ 	hfnum.d32 =
+ 	    DWC_READ_REG32(&hcd->core_if->host_if->host_global_regs->hfnum);
+@@ -218,12 +325,30 @@
+ 			 */
+ 			DWC_LIST_MOVE_HEAD(&hcd->periodic_sched_ready,
+ 					   &qh->qh_list_entry);
++
++			did_something = 1;
++		}
++		else
++		{
++			if(next_sched_frame < 0 || dwc_frame_num_le(qh->sched_frame, next_sched_frame))
++			{
++				next_sched_frame = qh->sched_frame;
++			}
+ 		}
+ 	}
++
++	g_next_sched_frame = next_sched_frame;
++
+ 	tr_type = dwc_otg_hcd_select_transactions(hcd);
+ 	if (tr_type != DWC_OTG_TRANSACTION_NONE) {
+ 		dwc_otg_hcd_queue_transactions(hcd, tr_type);
++		did_something = 1;
+ 	}
++	if(work_expected && !did_something)
++		DWC_DEBUGPL(DBG_USER, "Nothing to do !! frame = %x, g_next_sched_frame = %x\n", (int) hfnum.b.frnum, g_next_sched_frame);
++	if(!work_expected && did_something)
++		DWC_DEBUGPL(DBG_USER, "Unexpected work done !! frame = %x, g_next_sched_frame = %x\n", (int) hfnum.b.frnum, g_next_sched_frame);
++
+ 
+ 	/* Clear interrupt */
+ 	gintsts.b.sofintr = 1;
+@@ -2102,5 +2227,4 @@
+ 
+ 	return retval;
+ }
+-
+ #endif /* DWC_DEVICE_ONLY */
+unchanged:
+--- linux-3.3.8.orig/drivers/usb/host/dwc_otg/dwc_otg_hcd_linux.c	2013-05-22 09:46:53.739959795 -0400
++++ linux-3.3.8/drivers/usb/host/dwc_otg/dwc_otg_hcd_linux.c	2013-05-22 10:02:10.819968199 -0400
+@@ -1,3 +1,4 @@
++
+ /* ==========================================================================
+  * $File: //dwh/usb_iip/dev/software/otg/linux/drivers/dwc_otg_hcd_linux.c $
+  * $Revision: #20 $
+@@ -50,6 +51,7 @@
+ #include <linux/dma-mapping.h>
+ #include <linux/version.h>
+ #include <asm/io.h>
++#include <asm/fiq.h>
+ #include <linux/usb.h>
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
+ #include <../drivers/usb/core/hcd.h>
+@@ -67,6 +69,8 @@
+ #include "dwc_otg_dbg.h"
+ #include "dwc_otg_driver.h"
+ #include "dwc_otg_hcd.h"
++#include "dwc_otg_mphi_fix.h"
++
+ /**
+  * Gets the endpoint number from a _bEndpointAddress argument. The endpoint is
+  * qualified with its direction (possible 32 endpoints per device).
+@@ -76,6 +80,8 @@
+ 
+ static const char dwc_otg_hcd_name[] = "dwc_otg_hcd";
+ 
++extern bool fiq_fix_enable;
++
+ /** @name Linux HC Driver API Functions */
+ /** @{ */
+ /* manage i/o requests, device state */
+@@ -366,6 +372,12 @@
+ 	.get_b_hnp_enable = _get_b_hnp_enable,
+ };
+ 
++static struct fiq_handler fh = {
++  .name = "usb_fiq",
++};
++static uint8_t fiqStack[1024];
++
++extern mphi_regs_t c_mphi_regs;
+ /**
+  * Initializes the HCD. This function allocates memory for and initializes the
+  * static parts of the usb_hcd and dwc_otg_hcd structures. It also registers the
+@@ -379,6 +391,7 @@
+ 	dwc_otg_device_t *otg_dev = DWC_OTG_BUSDRVDATA(_dev);
+ 	int retval = 0;
+         u64 dmamask;
++	struct pt_regs regs;
+ 
+ 	DWC_DEBUGPL(DBG_HCD, "DWC OTG HCD INIT otg_dev=%p\n", otg_dev);
+ 
+@@ -396,6 +409,18 @@
+         pci_set_consistent_dma_mask(_dev, dmamask);
+ #endif
+ 
++	if (fiq_fix_enable)
++	{
++		// Set up fiq
++		claim_fiq(&fh);
++		set_fiq_handler(__FIQ_Branch, 8);
++		memset(&regs,0,sizeof(regs));
++		regs.ARM_r8 = (long)dwc_otg_hcd_handle_fiq;
++		regs.ARM_r9 = (long)0;
++		regs.ARM_sp = (long)fiqStack + sizeof(fiqStack) - 4;
++		set_fiq_regs(&regs);
++		}
++
+ 	/*
+ 	 * Allocate memory for the base HCD plus the DWC OTG HCD.
+ 	 * Initialize the base HCD.
+@@ -415,6 +440,26 @@
+ 
+ 	hcd->regs = otg_dev->os_dep.base;
+ 
++	if (fiq_fix_enable)
++	{
++		//Set the mphi periph to  the required registers
++		c_mphi_regs.base    = otg_dev->os_dep.mphi_base;
++		c_mphi_regs.ctrl    = otg_dev->os_dep.mphi_base + 0x4c;
++		c_mphi_regs.outdda  = otg_dev->os_dep.mphi_base + 0x28;
++		c_mphi_regs.outddb  = otg_dev->os_dep.mphi_base + 0x2c;
++		c_mphi_regs.intstat = otg_dev->os_dep.mphi_base + 0x50;
++
++		//Enable mphi peripheral
++		writel((1<<31),c_mphi_regs.ctrl);
++#ifdef DEBUG
++		if (readl(c_mphi_regs.ctrl) & 0x80000000)
++			DWC_DEBUGPL(DBG_USER, "MPHI periph has been enabled\n");
++		else
++			DWC_DEBUGPL(DBG_USER, "MPHI periph has NOT been enabled\n");
++#endif
++		// Enable FIQ interrupt from USB peripheral
++		enable_fiq(INTERRUPT_VC_USB);
++	}
+ 	/* Initialize the DWC OTG HCD. */
+ 	dwc_otg_hcd = dwc_otg_hcd_alloc_hcd();
+ 	if (!dwc_otg_hcd) {
+unchanged:
+--- linux-3.3.8.orig/drivers/usb/host/dwc_otg/dwc_otg_hcd_queue.c	2013-05-22 09:46:53.751959795 -0400
++++ linux-3.3.8/drivers/usb/host/dwc_otg/dwc_otg_hcd_queue.c	2013-05-22 10:02:10.819968199 -0400
+@@ -572,6 +572,9 @@
+ 	return status;
+ }
+ 
++
++extern int g_next_sched_frame, g_np_count, g_np_sent;
++
+ /**
+  * Schedules an interrupt or isochronous transfer in the periodic schedule.
+  *
+@@ -630,8 +633,13 @@
+ 		DWC_LIST_INSERT_TAIL(&hcd->periodic_sched_ready, &qh->qh_list_entry);
+ 	}
+ 	else {
+-	/* Always start in the inactive schedule. */
+-	DWC_LIST_INSERT_TAIL(&hcd->periodic_sched_inactive, &qh->qh_list_entry);
++		if(DWC_LIST_EMPTY(&hcd->periodic_sched_inactive) || dwc_frame_num_le(qh->sched_frame, g_next_sched_frame))
++		{
++			g_next_sched_frame = qh->sched_frame;
++
++		}
++		/* Always start in the inactive schedule. */
++		DWC_LIST_INSERT_TAIL(&hcd->periodic_sched_inactive, &qh->qh_list_entry);
+ 	}
+ 
+ 	if (!microframe_schedule) {
+@@ -645,6 +653,7 @@
+ 	return status;
+ }
+ 
++
+ /**
+  * This function adds a QH to either the non periodic or periodic schedule if
+  * it is not already in the schedule. If the QH is already in the schedule, no
+@@ -667,6 +676,7 @@
+ 		/* Always start in the inactive schedule. */
+ 		DWC_LIST_INSERT_TAIL(&hcd->non_periodic_sched_inactive,
+ 				     &qh->qh_list_entry);
++		g_np_count++;
+ 	} else {
+ 		status = schedule_periodic(hcd, qh);
+ 		if ( !hcd->periodic_qh_count ) {
+@@ -767,6 +777,7 @@
+ 			if (sched_next_periodic_split) {
+ 
+ 				qh->sched_frame = frame_number;
++
+ 				if (dwc_frame_num_le(frame_number,
+ 						     dwc_frame_num_inc
+ 						     (qh->start_split_frame,
+@@ -815,6 +826,11 @@
+ 				DWC_LIST_MOVE_HEAD(&hcd->periodic_sched_ready,
+ 						   &qh->qh_list_entry);
+ 			} else {
++				if(!dwc_frame_num_le(g_next_sched_frame, qh->sched_frame))
++				{
++					g_next_sched_frame = qh->sched_frame;
++				}
++
+ 				DWC_LIST_MOVE_HEAD
+ 				    (&hcd->periodic_sched_inactive,
+ 				     &qh->qh_list_entry);
+unchanged:
+--- linux-3.3.8.orig/drivers/usb/host/dwc_otg/dwc_otg_os_dep.h	2013-05-22 09:46:53.739959795 -0400
++++ linux-3.3.8/drivers/usb/host/dwc_otg/dwc_otg_os_dep.h	2013-05-22 10:02:10.819968199 -0400
+@@ -97,6 +97,9 @@
+ 	/** Register offset for Diagnostic API */
+ 	uint32_t reg_offset;
+ 
++	/** Base address for MPHI peripheral */
++	void *mphi_base;
++
+ #ifdef LM_INTERFACE
+ 	struct lm_device *lmdev;
+ #elif  defined(PCI_INTERFACE)
+unchanged:
+--- linux-3.3.8.orig/drivers/usb/host/dwc_otg/Makefile	2013-05-22 09:46:53.743959795 -0400
++++ linux-3.3.8/drivers/usb/host/dwc_otg/Makefile	2013-05-22 10:02:10.815968199 -0400
+@@ -36,6 +36,7 @@
+ dwc_otg-objs	+= dwc_otg_pcd_linux.o dwc_otg_pcd.o dwc_otg_pcd_intr.o 
+ dwc_otg-objs	+= dwc_otg_hcd.o dwc_otg_hcd_linux.o dwc_otg_hcd_intr.o dwc_otg_hcd_queue.o dwc_otg_hcd_ddma.o
+ dwc_otg-objs	+= dwc_otg_adp.o
++dwc_otg-objs	+= dwc_otg_mphi_fix.o
+ ifneq ($(CFI),)
+ dwc_otg-objs	+= dwc_otg_cfi.o
+ endif
+unchanged:
+--- /dev/null
++++ b/drivers/usb/host/dwc_otg/dwc_otg_mphi_fix.h
+@@ -0,0 +1,36 @@
++#ifndef __DWC_OTG_MPHI_FIX_H__
++#define __DWC_OTG_MPHI_FIX_H__
++
++#define FIQ_WRITE_IO_ADDRESS(_addr_,_data_) *(volatile uint32_t *) IO_ADDRESS(_addr_) = _data_
++#define FIQ_READ_IO_ADDRESS(_addr_) *(volatile uint32_t *) IO_ADDRESS(_addr_) 
++#define FIQ_MODIFY_IO_ADDRESS(_addr_,_clear_,_set_) FIQ_WRITE_IO_ADDRESS(_addr_ , (FIQ_READ_IO_ADDRESS(_addr_)&~_clear_)|_set_)
++#define FIQ_WRITE(_addr_,_data_) *(volatile uint32_t *) _addr_ = _data_
++
++typedef struct {
++	volatile void* base;
++	volatile void* ctrl;
++	volatile void* outdda;
++	volatile void* outddb;
++	volatile void* intstat;
++} mphi_regs_t; 
++
++void dwc_debug_print_core_int_reg(gintsts_data_t gintsts, const char* function_name);
++void dwc_debug_core_int_mask(gintsts_data_t gintmsk, const char* function_name);
++void dwc_debug_otg_int(gotgint_data_t gotgint, const char* function_name);
++
++
++
++#ifdef DEBUG
++#define DWC_DBG_PRINT_CORE_INT(_arg_) dwc_debug_print_core_int_reg(_arg_,__func__)
++#define DWC_DBG_PRINT_CORE_INT_MASK(_arg_) dwc_debug_core_int_mask(_arg_,__func__)
++#define DWC_DBG_PRINT_OTG_INT(_arg_) dwc_debug_otg_int(_arg_,__func__)
++
++#else
++#define DWC_DBG_PRINT_CORE_INT(_arg_)
++#define DWC_DBG_PRINT_CORE_INT_MASK(_arg_)
++#define DWC_DBG_PRINT_OTG_INT(_arg_)
++
++
++#endif
++
++#endif
+unchanged:
+--- /dev/null
++++ b/drivers/usb/host/dwc_otg/dwc_otg_mphi_fix.c
+@@ -0,0 +1,113 @@
++#include "dwc_otg_regs.h"
++#include "dwc_otg_dbg.h"
++
++void dwc_debug_print_core_int_reg(gintsts_data_t gintsts, const char* function_name)
++{
++	DWC_DEBUGPL(DBG_USER,   "*** Debugging from within the %s  function: ***\n"
++				"curmode:     %1i    Modemismatch: %1i    otgintr:    %1i    sofintr:    %1i\n"
++				"rxstsqlvl:   %1i    nptxfempty  : %1i    ginnakeff:  %1i    goutnakeff: %1i\n"
++				"ulpickint:   %1i    i2cintr:      %1i    erlysuspend:%1i    usbsuspend: %1i\n"
++				"usbreset:    %1i    enumdone:     %1i    isooutdrop: %1i    eopframe:   %1i\n"
++				"restoredone: %1i    epmismatch:   %1i    inepint:    %1i    outepintr:  %1i\n"
++				"incomplisoin:%1i    incomplisoout:%1i    fetsusp:    %1i    resetdet:   %1i\n"
++				"portintr:    %1i    hcintr:       %1i    ptxfempty:  %1i    lpmtranrcvd:%1i\n"
++				"conidstschng:%1i    disconnect:   %1i    sessreqintr:%1i    wkupintr:   %1i\n",
++				function_name,
++				gintsts.b.curmode,
++				gintsts.b.modemismatch,
++				gintsts.b.otgintr,
++				gintsts.b.sofintr,
++				gintsts.b.rxstsqlvl,
++				gintsts.b.nptxfempty,
++				gintsts.b.ginnakeff,
++				gintsts.b.goutnakeff,
++				gintsts.b.ulpickint,
++				gintsts.b.i2cintr,
++				gintsts.b.erlysuspend,
++				gintsts.b.usbsuspend,
++				gintsts.b.usbreset,
++				gintsts.b.enumdone,
++				gintsts.b.isooutdrop,
++				gintsts.b.eopframe,
++				gintsts.b.restoredone,
++				gintsts.b.epmismatch,
++				gintsts.b.inepint,
++				gintsts.b.outepintr,
++				gintsts.b.incomplisoin,
++				gintsts.b.incomplisoout,
++				gintsts.b.fetsusp,
++				gintsts.b.resetdet,
++				gintsts.b.portintr,
++				gintsts.b.hcintr,
++				gintsts.b.ptxfempty,
++				gintsts.b.lpmtranrcvd,
++				gintsts.b.conidstschng,
++				gintsts.b.disconnect,
++				gintsts.b.sessreqintr,
++				gintsts.b.wkupintr);
++	return;
++}
++
++void dwc_debug_core_int_mask(gintmsk_data_t gintmsk, const char* function_name)
++{
++	DWC_DEBUGPL(DBG_USER,	"Interrupt Mask status (called from %s) :\n"
++				"modemismatch: %1i     otgintr:    %1i    sofintr:    %1i    rxstsqlvl:   %1i\n"
++				"nptxfempty:   %1i     ginnakeff:  %1i    goutnakeff: %1i    ulpickint:   %1i\n"
++				"i2cintr:      %1i     erlysuspend:%1i    usbsuspend: %1i    usbreset:    %1i\n"
++				"enumdone:     %1i     isooutdrop: %1i    eopframe:   %1i    restoredone: %1i\n"
++				"epmismatch:   %1i     inepintr:   %1i    outepintr:  %1i    incomplisoin:%1i\n"
++				"incomplisoout:%1i     fetsusp:    %1i    resetdet:   %1i    portintr:    %1i\n"
++				"hcintr:       %1i     ptxfempty:  %1i    lpmtranrcvd:%1i    conidstschng:%1i\n"
++				"disconnect:   %1i     sessreqintr:%1i    wkupintr:   %1i\n",
++				function_name,
++				gintmsk.b.modemismatch,
++				gintmsk.b.otgintr,
++				gintmsk.b.sofintr,
++				gintmsk.b.rxstsqlvl,
++				gintmsk.b.nptxfempty,
++				gintmsk.b.ginnakeff,
++				gintmsk.b.goutnakeff,
++				gintmsk.b.ulpickint,
++				gintmsk.b.i2cintr,
++				gintmsk.b.erlysuspend,
++				gintmsk.b.usbsuspend,
++				gintmsk.b.usbreset,
++				gintmsk.b.enumdone,
++				gintmsk.b.isooutdrop,
++				gintmsk.b.eopframe,
++				gintmsk.b.restoredone,
++				gintmsk.b.epmismatch,
++				gintmsk.b.inepintr,
++				gintmsk.b.outepintr,
++				gintmsk.b.incomplisoin,
++				gintmsk.b.incomplisoout,
++				gintmsk.b.fetsusp,
++				gintmsk.b.resetdet,
++				gintmsk.b.portintr,
++				gintmsk.b.hcintr,
++				gintmsk.b.ptxfempty,
++				gintmsk.b.lpmtranrcvd,
++				gintmsk.b.conidstschng,
++				gintmsk.b.disconnect,
++				gintmsk.b.sessreqintr,
++				gintmsk.b.wkupintr);
++	return;
++}
++ 
++void dwc_debug_otg_int(gotgint_data_t gotgint, const char* function_name)
++{
++	DWC_DEBUGPL(DBG_USER,	"otg int register (from %s function):\n"
++				"sesenddet:%1i    sesreqsucstschung:%2i    hstnegsucstschng:%1i\n"
++				"hstnegdet:%1i    adevtoutchng:     %2i    debdone:         %1i\n"
++				"mvic:     %1i\n",
++				function_name,
++				gotgint.b.sesenddet,
++				gotgint.b.sesreqsucstschng,
++				gotgint.b.hstnegsucstschng,
++				gotgint.b.hstnegdet,
++				gotgint.b.adevtoutchng,
++				gotgint.b.debdone,
++				gotgint.b.mvic);
++
++	return;
++}
+unchanged:
+--- a/drivers/usb/host/dwc_common_port/Makefile
++++ b/drivers/usb/host/dwc_common_port/Makefile
+@@ -30,9 +30,9 @@ endif
+ 
+ else
+ 
+-ifeq ($(KDIR),)
+-$(error Must give "KDIR=/path/to/kernel/source" on command line or in environment)
+-endif
++#ifeq ($(KDIR),)
++#$(error Must give "KDIR=/path/to/kernel/source" on command line or in environment)
++#endif
+ 
+ ifeq ($(ARCH),)
+ $(error Must give "ARCH=<arch>" on command line or in environment. Also, if \
+unchanged:
+--- b/drivers/usb/host/dwc_otg/dwc_otg_hcd.c
++++ b/drivers/usb/host/dwc_otg/dwc_otg_hcd.c
+@@ -527,6 +527,8 @@
+ {
+ 	dwc_otg_qh_t *qh;
+ 	dwc_otg_qtd_t *urb_qtd;
++	BUG_ON(!hcd);
++	BUG_ON(!dwc_otg_urb);
+ 
+ #ifdef DEBUG /* integrity checks (Broadcom) */
+ 
+@@ -543,14 +545,17 @@
+ 		return -DWC_E_INVALID;
+ 	}
+ 	urb_qtd = dwc_otg_urb->qtd;
++	BUG_ON(!urb_qtd);
+ 	if (urb_qtd->qh == NULL) { 
+ 		DWC_ERROR("**** DWC OTG HCD URB Dequeue with QTD with NULL Q handler\n");
+ 		return -DWC_E_INVALID;
+ 	}
+ #else
+ 	urb_qtd = dwc_otg_urb->qtd;
++	BUG_ON(!urb_qtd);
+ #endif
+ 	qh = urb_qtd->qh;
++	BUG_ON(!qh);
+ 	if (CHK_DEBUG_LEVEL(DBG_HCDV | DBG_HCD_URB)) {
+ 		if (urb_qtd->in_process) {
+ 			dump_channel_info(hcd, qh);
+@@ -822,6 +827,7 @@
+ 	} else if (dwc_otg_hcd->status_buf != NULL) {
+ 		DWC_FREE(dwc_otg_hcd->status_buf);
+ 	}
++	DWC_SPINLOCK_FREE(dwc_otg_hcd->channel_lock);
+ 	DWC_SPINLOCK_FREE(dwc_otg_hcd->lock);
+ 	/* Set core_if's lock pointer to NULL */
+ 	dwc_otg_hcd->core_if->lock = NULL;
+@@ -848,6 +854,7 @@
+ 	dwc_hc_t *channel;
+ 
+ 	hcd->lock = DWC_SPINLOCK_ALLOC();
++	hcd->channel_lock = DWC_SPINLOCK_ALLOC();
+         DWC_DEBUGPL(DBG_HCDV, "init of HCD %p given core_if %p\n",
+                     hcd, core_if);
+ 	if (!hcd->lock) {
+@@ -1248,7 +1255,7 @@
+ 	dwc_otg_qh_t *qh;
+ 	int num_channels;
+ 	dwc_irqflags_t flags;
+-	dwc_spinlock_t *channel_lock = DWC_SPINLOCK_ALLOC();
++	dwc_spinlock_t *channel_lock = hcd->channel_lock;
+ 	dwc_otg_transaction_type_e ret_val = DWC_OTG_TRANSACTION_NONE;
+ 
+ #ifdef DEBUG_SOF
+@@ -1307,6 +1314,22 @@
+ 		num_channels - hcd->periodic_channels) &&
+ 	       !DWC_CIRCLEQ_EMPTY(&hcd->free_hc_list)) {
+ 
++		qh = DWC_LIST_ENTRY(qh_ptr, dwc_otg_qh_t, qh_list_entry);
++
++		/*
++		 * Check to see if this is a NAK'd retransmit, in which case ignore for retransmission
++		 * we hold off on bulk retransmissions to reduce NAK interrupt overhead for
++		 * cheeky devices that just hold off using NAKs
++		 */
++		if (dwc_full_frame_num(qh->nak_frame) == dwc_full_frame_num(dwc_otg_hcd_get_frame_number(hcd))) {
++			// Make fiq interrupt run on next frame (i.e. 8 uframes)
++			g_next_sched_frame = ((qh->nak_frame + 8) & ~7) & DWC_HFNUM_MAX_FRNUM;
++			qh_ptr = DWC_LIST_NEXT(qh_ptr);
++			continue;
++		}
++		else
++			qh->nak_frame = 0xffff;
++
+ 		if (microframe_schedule) {
+ 				DWC_SPINLOCK_IRQSAVE(channel_lock, &flags);
+ 				if (hcd->available_host_channels < 1) {
+@@ -1319,7 +1342,6 @@
+ 				last_sel_trans_num_nonper_scheduled++;
+ #endif /* DEBUG_HOST_CHANNELS */
+ 		}
+-		qh = DWC_LIST_ENTRY(qh_ptr, dwc_otg_qh_t, qh_list_entry);
+ 
+ 		assign_and_init_hc(hcd, qh);
+ 
+@@ -1348,8 +1370,6 @@
+ #ifdef DEBUG_HOST_CHANNELS
+ 	last_sel_trans_num_avail_hc_at_end = hcd->available_host_channels;
+ #endif /* DEBUG_HOST_CHANNELS */
+-
+-	DWC_SPINLOCK_FREE(channel_lock);
+ 	return ret_val;
+ }
+ 
+unchanged:
+--- b/drivers/usb/host/dwc_otg/dwc_otg_hcd.h
++++ b/drivers/usb/host/dwc_otg/dwc_otg_hcd.h
+@@ -321,6 +321,11 @@
+ 	 */
+ 	uint16_t sched_frame;
+ 
++	/*
++	** Frame a NAK was received on this queue head, used to minimise NAK retransmission
++	*/
++	uint16_t nak_frame;
++
+ 	/** (micro)frame at which last start split was initialized. */
+ 	uint16_t start_split_frame;
+ 
+@@ -548,7 +553,7 @@
+ 
+ 	/*  */
+ 	dwc_spinlock_t *lock;
+-
++	dwc_spinlock_t *channel_lock;
+ 	/**
+ 	 * Private data that could be used by OS wrapper.
+ 	 */
+unchanged:
+--- a/drivers/usb/host/dwc_otg/dwc_otg_hcd_ddma.c
++++ b/drivers/usb/host/dwc_otg/dwc_otg_hcd_ddma.c
+@@ -276,7 +276,7 @@ void dump_frame_list(dwc_otg_hcd_t * hcd)
+ static void release_channel_ddma(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh)
+ {
+ 	dwc_irqflags_t flags;
+-	dwc_spinlock_t *channel_lock = DWC_SPINLOCK_ALLOC();
++	dwc_spinlock_t *channel_lock = hcd->channel_lock;
+ 
+ 	dwc_hc_t *hc = qh->channel;
+ 	if (dwc_qh_is_non_per(qh)) {
+@@ -306,7 +306,6 @@ static void release_channel_ddma(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh)
+ 		dwc_memset(qh->desc_list, 0x00,
+ 			   sizeof(dwc_otg_host_dma_desc_t) * max_desc_num(qh));
+ 	}
+-	DWC_SPINLOCK_FREE(channel_lock);
+ }
+ 
+ /** 
+unchanged:
+--- b/drivers/usb/host/dwc_otg/dwc_otg_hcd_intr.c
++++ b/drivers/usb/host/dwc_otg/dwc_otg_hcd_intr.c
+@@ -56,7 +56,12 @@
+ int g_next_sched_frame, g_np_count, g_np_sent, g_work_expected;
+ static int mphi_int_count = 0 ;
+ 
+-extern bool fiq_fix_enable;
++extern bool fiq_fix_enable, nak_holdoff_enable;
++
++hcchar_data_t nak_hcchar;
++hctsiz_data_t nak_hctsiz;
++hcsplt_data_t nak_hcsplt;
++int nak_count;
+ 
+ void __attribute__ ((naked)) dwc_otg_hcd_handle_fiq(void)
+ {
+@@ -230,7 +235,7 @@
+ 			DWC_WRITE_REG32(c_mphi_regs.ctrl, (1<<31));
+ 			mphi_int_count = 0;
+ 		}
+-			int_done++;
++		int_done++;
+ 		if((jiffies / HZ) > last_time)
+ 		{
+ 			/* Once a second output the fiq and irq numbers, useful for debug */
+@@ -922,7 +927,7 @@
+ 	dwc_otg_transaction_type_e tr_type;
+ 	int free_qtd;
+ 	dwc_irqflags_t flags;
+-	dwc_spinlock_t *channel_lock = DWC_SPINLOCK_ALLOC();
++	dwc_spinlock_t *channel_lock = hcd->channel_lock;
+ 
+ 	DWC_DEBUGPL(DBG_HCDV, "  %s: channel %d, halt_status %d, xfer_len %d\n",
+ 		    __func__, hc->hc_num, halt_status, hc->xfer_len);
+@@ -1009,7 +1014,6 @@
+ 	if (tr_type != DWC_OTG_TRANSACTION_NONE) {
+ 		dwc_otg_hcd_queue_transactions(hcd, tr_type);
+ 	}
+-	DWC_SPINLOCK_FREE(channel_lock);
+ }
+ 
+ /**
+@@ -1420,6 +1424,18 @@
+ 		    "NAK Received--\n", hc->hc_num);
+ 
+ 	/*
++	 * When we get bulk NAKs then remember this so we holdoff on this qh until
++	 * the beginning of the next frame
++	 */
++	switch(dwc_otg_hcd_get_pipe_type(&qtd->urb->pipe_info)) {
++		case UE_BULK:
++		//case UE_INTERRUPT:
++		//case UE_CONTROL:
++		if (nak_holdoff_enable)
++			hc->qh->nak_frame = dwc_otg_hcd_get_frame_number(hcd);
++	}
++
++	/*
+ 	 * Handle NAK for IN/OUT SSPLIT/CSPLIT transfers, bulk, control, and
+ 	 * interrupt.  Re-start the SSPLIT transfer.
+ 	 */
+unchanged:
+--- linux-3.3.8/arch/arm/configs/bcmrpi_defconfig	2013-05-22 10:14:03.079974726 -0400
++++ linux-3.3.8/arch/arm/configs/bcmrpi_defconfig	2013-05-22 11:14:15.208007828 -0400
+@@ -38,6 +38,12 @@
+ CONFIG_ZBOOT_ROM_BSS=0x0
+ CONFIG_CMDLINE="dwc_otg.lpm_enable=0 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 root=/dev/mmcblk0p2 rootfstype=ext3 rootwait"
+ CONFIG_KEXEC=y
++CONFIG_CPU_FREQ=y
++CONFIG_CPU_FREQ_STAT=m
++CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y
++CONFIG_CPU_FREQ_GOV_POWERSAVE=y
++CONFIG_CPU_FREQ_GOV_USERSPACE=y
++CONFIG_CPU_FREQ_GOV_CONSERVATIVE=y
+ CONFIG_CPU_IDLE=y
+ CONFIG_VFP=y
+ CONFIG_BINFMT_MISC=m
+@@ -143,6 +149,7 @@
+ CONFIG_RT73USB=m
+ CONFIG_RT2800USB=m
+ CONFIG_RT2800USB_RT53XX=y
++CONFIG_RT2800USB_UNKNOWN=y
+ CONFIG_RTL8192CU=m
+ CONFIG_WL1251=m
+ CONFIG_WL12XX_MENU=m
+@@ -216,6 +223,8 @@
+ CONFIG_RAW_DRIVER=y
+ CONFIG_GPIO_SYSFS=y
+ # CONFIG_HWMON is not set
++CONFIG_THERMAL=y
++CONFIG_THERMAL_BCM2835=y
+ CONFIG_WATCHDOG=y
+ CONFIG_BCM2708_WDT=m
+ # CONFIG_MFD_SUPPORT is not set
+@@ -393,6 +402,33 @@
+ CONFIG_LEDS_TRIGGER_DEFAULT_ON=m
+ CONFIG_RTC_CLASS=y
+ CONFIG_RTC_DRV_DS1307=m
++CONFIG_RTC_DRV_DS1374=m
++CONFIG_RTC_DRV_DS1672=m
++CONFIG_RTC_DRV_DS3232=m
++CONFIG_RTC_DRV_MAX6900=m
++CONFIG_RTC_DRV_RS5C372=m
++CONFIG_RTC_DRV_ISL1208=m
++CONFIG_RTC_DRV_ISL12022=m
++CONFIG_RTC_DRV_X1205=m
++CONFIG_RTC_DRV_PCF8563=m
++CONFIG_RTC_DRV_PCF8583=m
++CONFIG_RTC_DRV_M41T80=m
++CONFIG_RTC_DRV_BQ32K=m
++CONFIG_RTC_DRV_S35390A=m
++CONFIG_RTC_DRV_FM3130=m
++CONFIG_RTC_DRV_RX8581=m
++CONFIG_RTC_DRV_RX8025=m
++CONFIG_RTC_DRV_EM3027=m
++CONFIG_RTC_DRV_RV3029C2=m
++CONFIG_RTC_DRV_M41T93=m
++CONFIG_RTC_DRV_M41T94=m
++CONFIG_RTC_DRV_DS1305=m
++CONFIG_RTC_DRV_DS1390=m
++CONFIG_RTC_DRV_MAX6902=m
++CONFIG_RTC_DRV_R9701=m
++CONFIG_RTC_DRV_RS5C348=m
++CONFIG_RTC_DRV_DS3234=m
++CONFIG_RTC_DRV_PCF2123=m
+ CONFIG_UIO=m
+ CONFIG_UIO_PDRV=m
+ CONFIG_UIO_PDRV_GENIRQ=m
+unchanged:
+--- linux-3.3.8.orig/arch/arm/mach-bcm2708/include/mach/vcio.h	2013-05-22 09:46:53.775959795 -0400
++++ linux-3.3.8/arch/arm/mach-bcm2708/include/mach/vcio.h	2013-05-22 10:14:03.079974726 -0400
+@@ -27,17 +27,82 @@
+ #define BCM_VCIO_DRIVER_NAME "bcm2708_vcio"
+ 
+ /* Constants shared with the ARM identifying separate mailbox channels */
+-#define MBOX_CHAN_POWER   0 /* for use by the power management interface */
+-#define MBOX_CHAN_FB      1 /* for use by the frame buffer */
+-#define MBOX_CHAN_VUART   2 /* for use by the virtual UART */
+-#define MBOX_CHAN_VCHIQ   3 /* for use by the VCHIQ interface */
+-#define MBOX_CHAN_LEDS    4 /* for use by the leds interface */
+-#define MBOX_CHAN_BUTTONS 5 /* for use by the buttons interface */
+-#define MBOX_CHAN_TOUCH   6 /* for use by the touchscreen interface */
++#define MBOX_CHAN_POWER    0 /* for use by the power management interface */
++#define MBOX_CHAN_FB       1 /* for use by the frame buffer */
++#define MBOX_CHAN_VCHIQ    3 /* for use by the VCHIQ interface */
+ #define MBOX_CHAN_PROPERTY 8 /* for use by the property channel */
+-#define MBOX_CHAN_COUNT   9
++#define MBOX_CHAN_COUNT    9
++
++/* Mailbox property tags */
++enum {
++	VCMSG_PROPERTY_END               = 0x00000000,
++	VCMSG_GET_FIRMWARE_REVISION      = 0x00000001,
++	VCMSG_GET_BOARD_MODEL            = 0x00010001,
++	VCMSG_GET_BOARD_REVISION	 = 0x00020002,
++	VCMSG_GET_BOARD_MAC_ADDRESS	 = 0x00020003,
++	VCMSG_GET_BOARD_SERIAL		 = 0x00020004,
++	VCMSG_GET_ARM_MEMORY		 = 0x00020005,
++	VCMSG_GET_VC_MEMORY		 = 0x00020006,
++	VCMSG_GET_CLOCKS		 = 0x00020007,
++	VCMSG_GET_COMMAND_LINE           = 0x00050001,
++	VCMSG_GET_DMA_CHANNELS           = 0x00060001,
++	VCMSG_GET_POWER_STATE            = 0x00020001,
++	VCMSG_GET_TIMING		 = 0x00020002,
++	VCMSG_SET_POWER_STATE            = 0x00028001,
++	VCMSG_GET_CLOCK_STATE            = 0x00030001,
++	VCMSG_SET_CLOCK_STATE            = 0x00038001,
++	VCMSG_GET_CLOCK_RATE             = 0x00030002,
++	VCMSG_SET_CLOCK_RATE             = 0x00038002,
++	VCMSG_GET_VOLTAGE                = 0x00030003,
++	VCMSG_SET_VOLTAGE                = 0x00038003,
++	VCMSG_GET_MAX_CLOCK              = 0x00030004,
++	VCMSG_GET_MAX_VOLTAGE            = 0x00030005,
++	VCMSG_GET_TEMPERATURE            = 0x00030006,
++	VCMSG_GET_MIN_CLOCK              = 0x00030007,
++	VCMSG_GET_MIN_VOLTAGE            = 0x00030008,
++	VCMSG_GET_TURBO                  = 0x00030009,
++	VCMSG_SET_TURBO                  = 0x00038009,
++	VCMSG_SET_ALLOCATE_BUFFER        = 0x00040001,
++	VCMSG_SET_RELEASE_BUFFER         = 0x00048001,
++	VCMSG_SET_BLANK_SCREEN           = 0x00040002,
++	VCMSG_TST_BLANK_SCREEN           = 0x00044002,
++	VCMSG_GET_PHYSICAL_WIDTH_HEIGHT  = 0x00040003,
++	VCMSG_TST_PHYSICAL_WIDTH_HEIGHT  = 0x00044003,
++	VCMSG_SET_PHYSICAL_WIDTH_HEIGHT  = 0x00048003,
++	VCMSG_GET_VIRTUAL_WIDTH_HEIGHT   = 0x00040004,
++	VCMSG_TST_VIRTUAL_WIDTH_HEIGHT   = 0x00044004,
++	VCMSG_SET_VIRTUAL_WIDTH_HEIGHT   = 0x00048004,
++	VCMSG_GET_DEPTH                  = 0x00040005,
++	VCMSG_TST_DEPTH                  = 0x00044005,
++	VCMSG_SET_DEPTH                  = 0x00048005,
++	VCMSG_GET_PIXEL_ORDER            = 0x00040006,
++	VCMSG_TST_PIXEL_ORDER            = 0x00044006,
++	VCMSG_SET_PIXEL_ORDER            = 0x00048006,
++	VCMSG_GET_ALPHA_MODE             = 0x00040007,
++	VCMSG_TST_ALPHA_MODE             = 0x00044007,
++	VCMSG_SET_ALPHA_MODE             = 0x00048007,
++	VCMSG_GET_PITCH                  = 0x00040008,
++	VCMSG_TST_PITCH                  = 0x00044008,
++	VCMSG_SET_PITCH                  = 0x00048008,
++	VCMSG_GET_VIRTUAL_OFFSET         = 0x00040009,
++	VCMSG_TST_VIRTUAL_OFFSET         = 0x00044009,
++	VCMSG_SET_VIRTUAL_OFFSET         = 0x00048009,
++	VCMSG_GET_OVERSCAN               = 0x0004000a,
++	VCMSG_TST_OVERSCAN               = 0x0004400a,
++	VCMSG_SET_OVERSCAN               = 0x0004800a,
++	VCMSG_GET_PALETTE                = 0x0004000b,
++	VCMSG_TST_PALETTE                = 0x0004400b,
++	VCMSG_SET_PALETTE                = 0x0004800b,
++	VCMSG_GET_LAYER                  = 0x0004000c,
++	VCMSG_TST_LAYER                  = 0x0004400c,
++	VCMSG_SET_LAYER                  = 0x0004800c,
++	VCMSG_GET_TRANSFORM              = 0x0004000d,
++	VCMSG_TST_TRANSFORM              = 0x0004400d,
++	VCMSG_SET_TRANSFORM              = 0x0004800d,
++};
+ 
+ extern int /*rc*/ bcm_mailbox_read(unsigned chan, uint32_t *data28);
+ extern int /*rc*/ bcm_mailbox_write(unsigned chan, uint32_t data28);
++extern int /*rc*/ bcm_mailbox_property(void *data, int size);
+ 
+ #endif
+unchanged:
+--- linux-3.3.8.orig/arch/arm/mach-bcm2708/vcio.c	2013-05-22 09:46:53.691959794 -0400
++++ linux-3.3.8/arch/arm/mach-bcm2708/vcio.c	2013-05-22 10:14:03.079974726 -0400
+@@ -216,6 +216,40 @@
+ 	mbox_dev = dev;
+ }
+ 
++extern int bcm_mailbox_property(void *data, int size)
++{
++	uint32_t success;
++	dma_addr_t mem_bus;				/* the memory address accessed from videocore */
++	void *mem_kern;					/* the memory address accessed from driver */
++	int s = 0;
++
++	/* allocate some memory for the messages communicating with GPU */
++	mem_kern = dma_alloc_coherent(NULL, PAGE_ALIGN(size), &mem_bus, GFP_ATOMIC);
++	if (mem_kern) {
++		/* create the message */
++		memcpy(mem_kern, data, size);
++
++		/* send the message */
++		wmb();
++		s = bcm_mailbox_write(MBOX_CHAN_PROPERTY, (uint32_t)mem_bus);
++		if (s == 0) {
++			s = bcm_mailbox_read(MBOX_CHAN_PROPERTY, &success);
++		}
++		if (s == 0) {
++			/* copy the response */
++			rmb();
++			memcpy(data, mem_kern, size);
++		}
++		dma_free_coherent(NULL, PAGE_ALIGN(size), mem_kern, mem_bus);
++	} else {
++		s = -ENOMEM;
++	}
++	if (s != 0)
++		printk(KERN_ERR DRIVER_NAME ": %s failed (%d)\n", __func__, s);
++	return s;
++}
++EXPORT_SYMBOL_GPL(bcm_mailbox_property);
++
+ /* ----------------------------------------------------------------------
+  *	Platform Device for Mailbox
+  * -------------------------------------------------------------------- */
+diff -u linux-3.3.8/arch/arm/mach-bcm2708/vc_mem.c linux-3.3.8/arch/arm/mach-bcm2708/vc_mem.c
+--- linux-3.3.8/arch/arm/mach-bcm2708/vc_mem.c	2013-05-22 10:14:03.079974726 -0400
++++ linux-3.3.8/arch/arm/mach-bcm2708/vc_mem.c	2013-05-22 11:58:28.616032144 -0400
+@@ -36,7 +36,7 @@
+ #define DRIVER_NAME  "vc-mem"
+ 
+ // Uncomment to enable debug logging
+-#define ENABLE_DBG
++// #define ENABLE_DBG
+ 
+ #if defined(ENABLE_DBG)
+ #define LOG_DBG( fmt, ... )  printk( KERN_INFO fmt "\n", ##__VA_ARGS__ )
+@@ -77,6 +77,11 @@
+ EXPORT_SYMBOL(mm_vc_mem_size);
+ EXPORT_SYMBOL(mm_vc_mem_base);
+ 
++static uint phys_addr = 0;
++static uint mem_size = 0;
++static uint mem_base = 0;
++
++
+ /****************************************************************************
+ *
+ *   vc_mem_open
+@@ -111,64 +116,6 @@
+ 	return 0;
+ }
+ 
+-
+-/* tag part of the message */
+-struct vc_msg_tag {
+-	uint32_t tag_id;		/* the message id */
+-	uint32_t buffer_size;	/* size of the buffer (which in this case is always 8 bytes) */
+-	uint32_t data_size;		/* amount of data being sent or received */
+-	uint32_t base;		/* the address of memory base */
+-	uint32_t size;			/* the size of memory in bytes */
+-};
+-
+-struct vc_set_msg {
+-	uint32_t msg_size;			/* simply, sizeof(struct vc_msg) */
+-	uint32_t request_code;		/* holds various information like the success and number of bytes returned (refer to mailboxes wiki) */
+-	struct vc_msg_tag tag[2];	/* the array of tag structures above to make */
+-	uint32_t end_tag;			/* an end identifier, should be set to NULL */
+-};
+-
+-#define VCMSG_GET_ARM_MEMORY 0x00010005
+-#define VCMSG_GET_VC_MEMORY  0x00010006
+-
+-static void vc_mem_update(void)
+-{
+-	uint32_t success;
+-	dma_addr_t vc_mem;						/* the memory address accessed from videocore */
+-	struct vc_set_msg *get_mem;					/* the memory address accessed from driver */
+-
+-	/* allocate some memory for the messages to use throughout the lifetime of the driver, use the larger of the two message structures */
+-	get_mem = (struct vc_set_msg *)dma_alloc_coherent(NULL, PAGE_ALIGN(sizeof(struct vc_set_msg)), &vc_mem, GFP_ATOMIC); 
+-	/* clear any garbage */
+-	memset(get_mem, 0, sizeof(struct vc_set_msg));
+-	/* create the message */
+-	get_mem->msg_size = sizeof(struct vc_set_msg);
+-	get_mem->tag[0].tag_id = VCMSG_GET_VC_MEMORY;
+-	get_mem->tag[0].buffer_size = 8;
+-	get_mem->tag[0].data_size   = 0;
+-	get_mem->tag[1].tag_id = VCMSG_GET_ARM_MEMORY;
+-	get_mem->tag[1].buffer_size = 8;
+-	get_mem->tag[1].data_size   = 0;
+-
+-	/* send the message */
+-	wmb();
+-	bcm_mailbox_write(MBOX_CHAN_PROPERTY,(uint32_t)vc_mem);
+-	bcm_mailbox_read(MBOX_CHAN_PROPERTY, &success);
+-	rmb();
+-
+-	LOG_DBG("%s: resp %x, vcbase=%x vcsize=%x armbase=%x armsize=%x", __func__, get_mem->request_code, 
+-		get_mem->tag[0].base, get_mem->tag[0].size, get_mem->tag[1].base, get_mem->tag[1].size);
+-
+-	/* check we're all good */
+-	if (get_mem->request_code & 0x80000000) {
+-		mm_vc_mem_base = get_mem->tag[0].base;
+-		mm_vc_mem_size = get_mem->tag[0].size+get_mem->tag[1].size;
+-		mm_vc_mem_phys_addr = get_mem->tag[1].base;
+-	}
+-	dma_free_coherent(NULL, PAGE_ALIGN(sizeof(struct vc_set_msg)), (void *)get_mem, vc_mem);
+-}
+-
+-
+ /****************************************************************************
+ *
+ *   vc_mem_get_size
+@@ -178,7 +125,6 @@
+ static void
+ vc_mem_get_size(void)
+ {
+-	vc_mem_update();
+ }
+ 
+ /****************************************************************************
+@@ -190,7 +136,6 @@
+ static void
+ vc_mem_get_base(void)
+ {
+-	vc_mem_update();
+ }
+ 
+ /****************************************************************************
+@@ -202,7 +147,6 @@
+ int
+ vc_mem_get_current_size(void)
+ {
+-	vc_mem_get_size();
+ 	return mm_vc_mem_size;
+ }
+ 
+@@ -393,25 +337,26 @@
+ 
+ /****************************************************************************
+ *
+-*   vc_mem_connected_init
+-*
+-*   This function is called once the videocore has been connected.
++*   vc_mem_init
+ *
+ ***************************************************************************/
+ 
+-void
+-vc_mem_connected_init(void)
++static int __init
++vc_mem_init(void)
+ {
+ 	int rc = -EFAULT;
+ 	struct device *dev;
+ 
+ 	LOG_DBG("%s: called", __func__);
+ 
++	mm_vc_mem_phys_addr = phys_addr;
++	mm_vc_mem_size = mem_size;
++	mm_vc_mem_base = mem_base;
++
+ 	vc_mem_get_size();
+ 
+-	printk("vc-mem: mm_vc_mem_phys_addr = 0x%08lx\n", mm_vc_mem_phys_addr);
+-	printk("vc-mem: mm_vc_mem_size      = 0x%08x (%u MiB)\n",
+-	       mm_vc_mem_size, mm_vc_mem_size / (1024 * 1024));
++	printk("vc-mem: phys_addr:0x%08lx mem_base=0x%08x mem_size:0x%08x(%u MiB)\n",
++		mm_vc_mem_phys_addr, mm_vc_mem_base, mm_vc_mem_size, mm_vc_mem_size / (1024 * 1024));
+ 
+ 	if ((rc = alloc_chrdev_region(&vc_mem_devnum, 0, 1, DRIVER_NAME)) < 0) {
+ 		LOG_ERR("%s: alloc_chrdev_region failed (rc=%d)", __func__, rc);
+@@ -449,7 +394,7 @@
+ 	vc_mem_proc_entry->write_proc = vc_mem_proc_write;
+ 
+ 	vc_mem_inited = 1;
+-	return;
++	return 0;
+ 
+       out_device_destroy:
+ 	device_destroy(vc_mem_class, vc_mem_devnum);
+@@ -465,23 +410,7 @@
+ 	unregister_chrdev_region(vc_mem_devnum, 1);
+ 
+       out_err:
+-	return;
+-}
+-
+-/****************************************************************************
+-*
+-*   vc_mem_init
+-*
+-***************************************************************************/
+-
+-static int __init
+-vc_mem_init(void)
+-{
+-	printk(KERN_INFO "vc-mem: Videocore memory driver\n");
+-
+-	//vchiq_add_connected_callback(vc_mem_connected_init);
+-
+-	return 0;
++	return -1;
+ }
+ 
+ /****************************************************************************
+@@ -510,0 +440,5 @@
++
++module_param(phys_addr, uint, 0644);
++module_param(mem_size, uint, 0644);
++module_param(mem_base, uint, 0644);
++
+unchanged:
+--- linux-3.3.8.orig/drivers/cpufreq/Kconfig.arm	2012-06-01 03:16:13.000000000 -0400
++++ linux-3.3.8/drivers/cpufreq/Kconfig.arm	2013-05-22 10:16:03.671975831 -0400
+@@ -37,3 +37,11 @@
+ 	help
+ 	  This adds the CPUFreq driver for Samsung EXYNOS4210
+ 	  SoC (S5PV310 or S5PC210).
++
++config ARM_BCM2835_CPUFREQ
++	bool "BCM2835 Driver"
++	default y
++	help
++    	  This adds the CPUFreq driver for BCM2835
++
++	  If in doubt, say N.
+unchanged:
+--- linux-3.3.8.orig/drivers/cpufreq/Makefile	2012-06-01 03:16:13.000000000 -0400
++++ linux-3.3.8/drivers/cpufreq/Makefile	2013-05-22 10:17:36.715976684 -0400
+@@ -45,6 +45,7 @@
+ obj-$(CONFIG_ARM_EXYNOS_CPUFREQ)	+= exynos-cpufreq.o
+ obj-$(CONFIG_ARM_EXYNOS4210_CPUFREQ)	+= exynos4210-cpufreq.o
+ obj-$(CONFIG_ARCH_OMAP2PLUS)            += omap-cpufreq.o
++obj-$(CONFIG_ARM_BCM2835_CPUFREQ)	+= bcm2835-cpufreq.o
+ 
+ ##################################################################################
+ # PowerPC platform drivers
+unchanged:
+--- linux-3.3.8.orig/drivers/cpufreq/bcm2835-cpufreq.c	1969-12-31 19:00:00.000000000 -0500
++++ linux-3.3.8/drivers/cpufreq/bcm2835-cpufreq.c	2013-05-22 10:14:03.079974726 -0400
+@@ -0,0 +1,239 @@
++/*****************************************************************************
++* Copyright 2011 Broadcom Corporation.  All rights reserved.
++*
++* Unless you and Broadcom execute a separate written software license
++* agreement governing use of this software, this software is licensed to you
++* under the terms of the GNU General Public License version 2, available at
++* http://www.broadcom.com/licenses/GPLv2.php (the "GPL").
++*	
++* Notwithstanding the above, under no circumstances may you combine this
++* software in any way with any other Broadcom software provided under a
++* license other than the GPL, without Broadcom's express prior written
++* consent.
++*****************************************************************************/
++
++/*****************************************************************************
++* FILENAME: bcm2835-cpufreq.h
++* DESCRIPTION: This driver dynamically manages the CPU Frequency of the ARM
++* processor. Messages are sent to Videocore either setting or requesting the
++* frequency of the ARM in order to match an appropiate frequency to the current
++* usage of the processor. The policy which selects the frequency to use is
++* defined in the kernel .config file, but can be changed during runtime.
++*****************************************************************************/
++
++/* ---------- INCLUDES ---------- */
++#include <linux/kernel.h>
++#include <linux/init.h>
++#include <linux/module.h>
++#include <linux/cpufreq.h>
++#include <mach/vcio.h>
++
++/* ---------- DEFINES ---------- */
++/*#define CPUFREQ_DEBUG_ENABLE*/		/* enable debugging */
++#define MODULE_NAME "bcm2835-cpufreq"
++
++#define VCMSG_ID_ARM_CLOCK 0x000000003		/* Clock/Voltage ID's */
++
++/* debug printk macros */
++#ifdef CPUFREQ_DEBUG_ENABLE
++#define print_debug(fmt,...) pr_debug("%s:%s:%d: "fmt, MODULE_NAME, __func__, __LINE__, ##__VA_ARGS__)
++#else
++#define print_debug(fmt,...)
++#endif
++#define print_err(fmt,...) pr_err("%s:%s:%d: "fmt, MODULE_NAME, __func__,__LINE__, ##__VA_ARGS__)
++#define print_info(fmt,...) pr_info("%s: "fmt, MODULE_NAME, ##__VA_ARGS__)
++
++/* tag part of the message */
++struct vc_msg_tag {
++	uint32_t tag_id;		/* the message id */
++	uint32_t buffer_size;		/* size of the buffer (which in this case is always 8 bytes) */
++	uint32_t data_size;		/* amount of data being sent or received */
++	uint32_t dev_id;		/* the ID of the clock/voltage to get or set */
++	uint32_t val;			/* the value (e.g. rate (in Hz)) to set */
++};
++
++/* message structure to be sent to videocore */
++struct vc_msg {
++	uint32_t msg_size;		/* simply, sizeof(struct vc_msg) */
++	uint32_t request_code;		/* holds various information like the success and number of bytes returned (refer to mailboxes wiki) */
++	struct vc_msg_tag tag;		/* the tag structure above to make */
++	uint32_t end_tag;		/* an end identifier, should be set to NULL */
++};
++
++/* ---------- GLOBALS ---------- */
++static struct cpufreq_driver bcm2835_cpufreq_driver;	/* the cpufreq driver global */
++
++/*
++ ===============================================
++  clk_rate either gets or sets the clock rates.
++ ===============================================
++*/
++static uint32_t bcm2835_cpufreq_set_clock(int cur_rate, int arm_rate)
++{
++	int s, actual_rate=0;
++	struct vc_msg msg;
++	
++	/* wipe all previous message data */
++	memset(&msg, 0, sizeof msg);
++	
++	msg.msg_size = sizeof msg;
++			
++	msg.tag.tag_id = VCMSG_SET_CLOCK_RATE;
++	msg.tag.buffer_size = 8;
++	msg.tag.data_size = 8;   /* we're sending the clock ID and the new rates which is a total of 2 words */
++	msg.tag.dev_id = VCMSG_ID_ARM_CLOCK;
++	msg.tag.val = arm_rate * 1000;
++			
++	/* send the message */
++	s = bcm_mailbox_property(&msg, sizeof msg);
++	
++	/* check if it was all ok and return the rate in KHz */
++	if (s == 0 && (msg.request_code & 0x80000000))
++		actual_rate = msg.tag.val/1000;
++
++	print_debug("Setting new frequency = %d -> %d (actual %d)", cur_rate, arm_rate, actual_rate);	
++	return actual_rate;
++}
++
++static uint32_t bcm2835_cpufreq_get_clock(int tag)
++{
++	int s;
++	int arm_rate = 0;
++	struct vc_msg msg;
++	
++	/* wipe all previous message data */
++	memset(&msg, 0, sizeof msg);
++	
++	msg.msg_size = sizeof msg;
++	msg.tag.tag_id = tag;
++	msg.tag.buffer_size = 8;
++	msg.tag.data_size = 4; /* we're just sending the clock ID which is one word long */
++	msg.tag.dev_id = VCMSG_ID_ARM_CLOCK;
++	
++	/* send the message */
++	s = bcm_mailbox_property(&msg, sizeof msg);
++
++	/* check if it was all ok and return the rate in KHz */
++	if (s == 0 && (msg.request_code & 0x80000000))
++		arm_rate = msg.tag.val/1000;
++
++	print_debug("%s frequency = %d",
++		tag == VCMSG_GET_CLOCK_RATE ? "Current":
++		tag == VCMSG_GET_MIN_CLOCK ? "Min":
++		tag == VCMSG_GET_MAX_CLOCK ? "Max":
++		"Unexpected", arm_rate);
++	
++	return arm_rate;
++}
++
++/*
++ ====================================================
++  Module Initialisation registers the cpufreq driver
++ ====================================================
++*/
++static int __init bcm2835_cpufreq_module_init(void)
++{	
++	print_debug("IN");
++	return cpufreq_register_driver(&bcm2835_cpufreq_driver);
++}
++
++/*
++ =============
++  Module exit
++ =============
++*/
++static void __exit bcm2835_cpufreq_module_exit(void)
++{
++	print_debug("IN");
++	cpufreq_unregister_driver(&bcm2835_cpufreq_driver);
++	return;
++}
++
++/*
++ ==============================================================
++  Initialisation function sets up the CPU policy for first use
++ ==============================================================
++*/
++static int bcm2835_cpufreq_driver_init(struct cpufreq_policy *policy)
++{
++	/* measured value of how long it takes to change frequency */	
++	policy->cpuinfo.transition_latency = 355000; /* ns */
++
++	/* now find out what the maximum and minimum frequencies are */
++	policy->min = policy->cpuinfo.min_freq = bcm2835_cpufreq_get_clock(VCMSG_GET_MIN_CLOCK);
++	policy->max = policy->cpuinfo.max_freq = bcm2835_cpufreq_get_clock(VCMSG_GET_MAX_CLOCK);
++	policy->cur = bcm2835_cpufreq_get_clock(VCMSG_GET_CLOCK_RATE);
++	
++	print_info("min=%d max=%d cur=%d", policy->min, policy->max, policy->cur);
++	return 0;
++}
++
++/*
++ =================================================================================
++  Target function chooses the most appropriate frequency from the table to enable
++ =================================================================================
++*/
++
++static int bcm2835_cpufreq_driver_target(struct cpufreq_policy *policy, unsigned int target_freq, unsigned int relation)
++{
++	unsigned int target = target_freq;
++	unsigned int cur = policy->cur;
++	print_debug("%s: min=%d max=%d cur=%d target=%d",policy->governor->name,policy->min,policy->max,policy->cur,target_freq);
++	
++	/* if we are above min and using ondemand, then just use max */
++	if (strcmp("ondemand", policy->governor->name)==0 && target > policy->min)
++		target = policy->max;
++	/* if the frequency is the same, just quit */
++	if (target == policy->cur)
++		return 0;
++
++	/* otherwise were good to set the clock frequency */
++	policy->cur = bcm2835_cpufreq_set_clock(policy->cur, target);
++	
++	if (!policy->cur)
++	{
++		print_err("Error occurred setting a new frequency (%d)!", target);
++		policy->cur = bcm2835_cpufreq_get_clock(VCMSG_GET_CLOCK_RATE);
++		return -EINVAL;
++	}
++	print_info("Freq %d->%d (min=%d max=%d target=%d request=%d)", cur, policy->cur, policy->min, policy->max, target_freq, target);
++	return 0;
++}
++
++static unsigned int bcm2835_cpufreq_driver_get(unsigned int cpu)
++{
++	unsigned int actual_rate = bcm2835_cpufreq_get_clock(VCMSG_GET_CLOCK_RATE);
++	print_debug("%d", actual_rate);
++	return actual_rate;
++}
++
++/*
++ =================================================================================
++  Verify ensures that when a policy is changed, it is suitable for the CPU to use
++ =================================================================================
++*/
++
++static int bcm2835_cpufreq_driver_verify(struct cpufreq_policy *policy)
++{
++	print_info("switching to governor %s", policy->governor->name);
++	return 0;
++}
++
++
++/* the CPUFreq driver */
++static struct cpufreq_driver bcm2835_cpufreq_driver = {
++		.name   = "BCM2835 CPUFreq",
++		.owner  = THIS_MODULE,
++		.init   = bcm2835_cpufreq_driver_init,
++		.verify = bcm2835_cpufreq_driver_verify,
++		.target = bcm2835_cpufreq_driver_target,
++		.get    = bcm2835_cpufreq_driver_get
++};
++
++MODULE_AUTHOR("Dorian Peake and Dom Cobley");
++MODULE_DESCRIPTION("CPU frequency driver for BCM2835 chip");
++MODULE_LICENSE("GPL");
++
++module_init(bcm2835_cpufreq_module_init);
++module_exit(bcm2835_cpufreq_module_exit);
++
+unchanged:
+--- b/sound/arm/bcm2835.c
++++ b/sound/arm/bcm2835.c
+@@ -87,11 +87,6 @@
+ 	bcm2835_chip_t *chip;
+ 	struct snd_card *card;
+ 	int err;
+-	printk(KERN_INFO "### snd_bcm2835_alsa_probe %p ###", pdev);
+-
+-	printk
+-	    ("############ PROBING FOR bcm2835 ALSA device (%d):(%d) ###############\n",
+-	     dev, enable[dev]);
+ 
+ 	if (dev >= MAX_SUBSTREAMS)
+ 		return -ENODEV;
+@@ -104,7 +99,6 @@
+ 	if (dev > 0)
+ 		goto add_register_map;
+ 
+-	printk("Creating card...\n");
+ 	err = snd_card_create(index[dev], id[dev], THIS_MODULE, 0, &g_card);
+ 	if (err < 0)
+ 		goto out;
+@@ -114,7 +108,6 @@
+ 	strcpy(g_card->shortname, "bcm2835 ALSA");
+ 	sprintf(g_card->longname, "%s", g_card->shortname);
+ 
+-	printk("Creating device/chip ..\n");
+ 	err = snd_bcm2835_create(g_card, pdev, &chip);
+ 	if (err < 0) {
+ 		printk(KERN_ERR "Failed to create bcm2835 chip\n");
+@@ -128,7 +121,6 @@
+ 		goto out_bcm2835_new_pcm;
+ 	}
+ 
+-	printk("Adding controls ..\n");
+ 	err = snd_bcm2835_new_ctl(chip);
+ 	if (err < 0) {
+ 		printk(KERN_ERR "Failed to create new BCM2835 ctl\n");
+@@ -145,7 +137,6 @@
+ 	chip->pdev[dev] = pdev;
+ 
+ 	if (dev == 0) {
+-		printk("Registering card ....\n");
+ 		err = snd_card_register(card);
+ 		if (err < 0) {
+ 			printk(KERN_ERR
+@@ -153,9 +144,9 @@
+ 			goto out_card_register;
+ 		}
+ 		platform_set_drvdata(pdev, card);
+-		printk("bcm2835 ALSA CARD CREATED!\n");
++		printk(KERN_INFO "bcm2835 ALSA card created!\n");
+ 	} else {
+-		printk("bcm2835 ALSA CHIP CREATED!\n");
++		printk(KERN_INFO "bcm2835 ALSA chip created!\n");
+ 		platform_set_drvdata(pdev, (void *)dev);
+ 	}
+ 
+@@ -380,8 +371,6 @@
+ 		printk("Error registering bcm2835_alsa7_driver %d .\n", err);
+ 		goto unregister_6;
+ 	}
+-	printk(KERN_INFO "### BCM2835 ALSA driver init %s ### \n",
+-	       err ? "FAILED" : "OK");
+ 
+ 	return 0;
+ 
+unchanged:
+--- a/drivers/usb/host/dwc_otg/dwc_otg_driver.c
++++ b/drivers/usb/host/dwc_otg/dwc_otg_driver.c
+@@ -241,7 +241,10 @@ struct dwc_otg_driver_module_params {
+ };
+ 
+ //Global variable to switch the fiq fix on or off
+-bool fiq_fix_enable = false;
++bool fiq_fix_enable = true;
++
++//Global variable to switch the nak holdoff on or off
++bool nak_holdoff_enable = true;
+ 
+ 
+ /**
+@@ -1086,6 +1089,7 @@ static int __init dwc_otg_driver_init(void)
+ 		return retval;
+ 	}
+ 	printk(KERN_DEBUG "dwc_otg: FIQ %s\n", fiq_fix_enable ? "enabled":"disabled");
++	printk(KERN_DEBUG "dwc_otg: NAK holdoff %s\n", nak_holdoff_enable ? "enabled":"disabled");
+ 
+ 	error = driver_create_file(drv, &driver_attr_version);
+ #ifdef DEBUG
+@@ -1366,9 +1370,10 @@ static void __exit dwc_otg_driver_cleanup(void)
+ module_param(microframe_schedule, bool, 0444);
+ MODULE_PARM_DESC(microframe_schedule, "Enable the microframe scheduler");
+ 
+-
+ module_param(fiq_fix_enable, bool, 0444);
+ MODULE_PARM_DESC(fiq_fix_enable, "Enable the fiq fix");
++module_param(nak_holdoff_enable, bool, 0444);
++MODULE_PARM_DESC(nak_holdoff_enable, "Enable the NAK holdoff");
+ 
+ /** @page "Module Parameters"
+  *
+unchanged:
+--- a/drivers/usb/host/dwc_otg/dwc_otg_hcd_queue.c
++++ b/drivers/usb/host/dwc_otg/dwc_otg_hcd_queue.c
+@@ -181,6 +181,7 @@ void qh_init(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh, dwc_otg_hcd_urb_t * urb)
+ 	if (microframe_schedule)
+ 		qh->speed = dev_speed;
+ 
++	qh->nak_frame = 0xffff;
+ 
+ 	if (((dev_speed == USB_SPEED_LOW) ||
+ 	     (dev_speed == USB_SPEED_FULL)) &&
+@@ -764,6 +765,24 @@ void dwc_otg_hcd_qh_deactivate(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh,
+ 			       int sched_next_periodic_split)
+ {	
+ 	if (dwc_qh_is_non_per(qh)) {
++
++	dwc_otg_qh_t *qh_tmp;
++	dwc_list_link_t *qh_list;
++	DWC_LIST_FOREACH(qh_list, &hcd->non_periodic_sched_inactive)
++	{
++		qh_tmp = DWC_LIST_ENTRY(qh_list, struct dwc_otg_qh, qh_list_entry);
++		if(qh_tmp == qh)
++		{
++			/*
++			 *  FIQ is being disabled because this one nevers gets a np_count increment
++			 *  This is still not absolutely correct, but it should fix itself with
++			 *  just an unnecessary extra interrupt
++			 */
++			g_np_sent = g_np_count;
++		}
++	}
++
++
+ 		dwc_otg_hcd_qh_remove(hcd, qh);
+ 		if (!DWC_CIRCLEQ_EMPTY(&qh->qtd_list)) {
+ 			/* Add back to inactive non-periodic schedule. */
+unchanged:
+--- linux-3.3.8/drivers/hwmon/bcm2835-hwmon.c	2013-05-22 10:29:52.099983423 -0400
++++ linux-3.3.8/drivers/hwmon/bcm2835-hwmon.c	2013-05-22 11:05:05.960002794 -0400
+@@ -0,0 +1,219 @@
++/*****************************************************************************
++* Copyright 2011 Broadcom Corporation.  All rights reserved.
++*
++* Unless you and Broadcom execute a separate written software license
++* agreement governing use of this software, this software is licensed to you
++* under the terms of the GNU General Public License version 2, available at
++* http://www.broadcom.com/licenses/GPLv2.php (the "GPL").
++*
++* Notwithstanding the above, under no circumstances may you combine this
++* software in any way with any other Broadcom software provided under a
++* license other than the GPL, without Broadcom's express prior written
++* consent.
++*****************************************************************************/
++
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/init.h>
++#include <linux/hwmon.h>
++#include <linux/hwmon-sysfs.h>
++#include <linux/platform_device.h>
++#include <linux/sysfs.h>
++#include <mach/vcio.h>
++#include <linux/slab.h>
++#include <linux/err.h>
++
++#define MODULE_NAME "bcm2835_hwmon"
++
++/*#define HWMON_DEBUG_ENABLE*/
++
++#ifdef HWMON_DEBUG_ENABLE
++#define print_debug(fmt,...) printk(KERN_INFO "%s:%s:%d: "fmt"\n", MODULE_NAME, __func__, __LINE__, ##__VA_ARGS__)
++#else
++#define print_debug(fmt,...)
++#endif
++#define print_err(fmt,...) printk(KERN_ERR "%s:%s:%d: "fmt"\n", MODULE_NAME, __func__,__LINE__, ##__VA_ARGS__)
++#define print_info(fmt,...) printk(KERN_INFO "%s: "fmt"\n", MODULE_NAME, ##__VA_ARGS__)
++
++#define VC_TAG_GET_TEMP 0x00030006
++#define VC_TAG_GET_MAX_TEMP 0x0003000A
++
++/* --- STRUCTS --- */
++struct bcm2835_hwmon_data {
++	struct device *hwmon_dev;
++};
++
++/* tag part of the message */
++struct vc_msg_tag {
++	uint32_t tag_id;		/* the tag ID for the temperature */
++	uint32_t buffer_size;	/* size of the buffer (should be 8) */
++	uint32_t request_code;	/* identifies message as a request (should be 0) */
++	uint32_t id;			/* extra ID field (should be 0) */
++	uint32_t val;			/* returned value of the temperature */
++};
++
++/* message structure to be sent to videocore */
++struct vc_msg {
++	uint32_t msg_size;		/* simply, sizeof(struct vc_msg) */
++	uint32_t request_code;		/* holds various information like the success and number of bytes returned (refer to mailboxes wiki) */
++	struct vc_msg_tag tag;		/* the tag structure above to make */
++	uint32_t end_tag;		/* an end identifier, should be set to NULL */
++};
++
++typedef enum {
++	TEMP,
++	MAX_TEMP,
++} temp_type;
++
++/* --- PROTOTYPES --- */
++static ssize_t bcm2835_get_temp(struct device *dev, struct device_attribute *attr, char *buf);
++static ssize_t bcm2835_get_name(struct device *dev, struct device_attribute *attr, char *buf);
++
++/* --- GLOBALS --- */
++
++static struct bcm2835_hwmon_data *bcm2835_data;
++static struct platform_driver bcm2835_hwmon_driver;
++
++static SENSOR_DEVICE_ATTR(name, S_IRUGO,bcm2835_get_name,NULL,0);
++static SENSOR_DEVICE_ATTR(temp1_input,S_IRUGO,bcm2835_get_temp,NULL,TEMP);
++static SENSOR_DEVICE_ATTR(temp1_max,S_IRUGO,bcm2835_get_temp,NULL,MAX_TEMP);
++
++static struct attribute* bcm2835_attributes[] = {
++	&sensor_dev_attr_name.dev_attr.attr,
++	&sensor_dev_attr_temp1_input.dev_attr.attr,
++	&sensor_dev_attr_temp1_max.dev_attr.attr,
++	NULL,
++};
++
++static struct attribute_group bcm2835_attr_group = {
++	.attrs = bcm2835_attributes,
++};
++
++/* --- FUNCTIONS --- */
++
++static ssize_t bcm2835_get_name(struct device *dev, struct device_attribute *attr, char *buf)
++{
++	return sprintf(buf,"bcm2835_hwmon\n");
++}
++
++static ssize_t bcm2835_get_temp(struct device *dev, struct device_attribute *attr, char *buf)
++{
++	struct vc_msg msg;
++	int result;
++	uint temp = 0;
++	int index = ((struct sensor_device_attribute*)to_sensor_dev_attr(attr))->index;
++
++	print_debug("IN");
++
++	/* wipe all previous message data */
++	memset(&msg, 0, sizeof msg);
++
++	/* determine the message type */
++	if(index == TEMP)
++		msg.tag.tag_id = VC_TAG_GET_TEMP;
++	else if (index == MAX_TEMP)
++		msg.tag.tag_id = VC_TAG_GET_MAX_TEMP;
++	else
++	{
++		print_debug("Unknown temperature message!");
++		return -EINVAL;
++	}
++
++	msg.msg_size = sizeof msg;
++	msg.tag.buffer_size = 8;
++
++	/* send the message */
++	result = bcm_mailbox_property(&msg, sizeof msg);
++
++	/* check if it was all ok and return the rate in milli degrees C */
++	if (result == 0 && (msg.request_code & 0x80000000))
++		temp = (uint)msg.tag.val;
++	#ifdef HWMON_DEBUG_ENABLE
++	else
++		print_debug("Failed to get temperature!");
++	#endif
++	print_debug("Got temperature as %u",temp);
++	print_debug("OUT");
++	return sprintf(buf, "%u\n", temp);
++}
++
++
++static int bcm2835_hwmon_probe(struct platform_device *pdev)
++{
++	int err;
++
++	print_debug("IN");
++	print_debug("HWMON Driver has been probed!");
++
++	/* check that the device isn't null!*/
++	if(pdev == NULL)
++	{
++		print_debug("Platform device is empty!");
++		return -ENODEV;
++	}
++
++	/* allocate memory for neccessary data */
++	bcm2835_data = kzalloc(sizeof(struct bcm2835_hwmon_data),GFP_KERNEL);
++	if(!bcm2835_data)
++	{
++		print_debug("Unable to allocate memory for hwmon data!");
++		err = -ENOMEM;
++		goto kzalloc_error;
++	}
++
++	/* create the sysfs files */
++	if(sysfs_create_group(&pdev->dev.kobj, &bcm2835_attr_group))
++	{
++		print_debug("Unable to create sysfs files!");
++		err = -EFAULT;
++		goto sysfs_error;
++	}
++
++	/* register the hwmon device */
++	bcm2835_data->hwmon_dev = hwmon_device_register(&pdev->dev);
++	if (IS_ERR(bcm2835_data->hwmon_dev))
++	{
++		err = PTR_ERR(bcm2835_data->hwmon_dev);
++		goto hwmon_error;
++	}
++	print_debug("OUT");
++	return 0;
++
++	/* error goto's */
++	hwmon_error:
++	sysfs_remove_group(&pdev->dev.kobj, &bcm2835_attr_group);
++
++	sysfs_error:
++	kfree(bcm2835_data);
++
++	kzalloc_error:
++
++	return err;
++
++}
++
++static int bcm2835_hwmon_remove(struct platform_device *pdev)
++{
++	print_debug("IN");
++	hwmon_device_unregister(bcm2835_data->hwmon_dev);
++
++	sysfs_remove_group(&pdev->dev.kobj, &bcm2835_attr_group);
++	print_debug("OUT");
++	return 0;
++}
++
++/* Hwmon Driver */
++static struct platform_driver bcm2835_hwmon_driver = {
++	.probe = bcm2835_hwmon_probe,
++	.remove = bcm2835_hwmon_remove,
++	.driver = {
++				.name = "bcm2835_hwmon",
++				.owner = THIS_MODULE,
++			},
++};
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Dorian Peake");
++MODULE_DESCRIPTION("HW Monitor driver for bcm2835 chip");
++
++module_platform_driver(bcm2835_hwmon_driver);
+unchanged:
+--- linux-3.3.8/drivers/hwmon/Kconfig	2013-05-22 10:29:52.099983423 -0400
++++ linux-3.3.8/drivers/hwmon/Kconfig	2013-05-22 11:05:05.960002794 -0400
+@@ -1361,6 +1361,16 @@
+         help
+           Support for the A/D converter on MC13783 PMIC.
+ 
++config SENSORS_BCM2835
++	depends on THERMAL_BCM2835=n
++	tristate "Broadcom BCM2835 HWMON Driver"
++	help
++	  If you say yes here you get support for the hardware
++	  monitoring features of the BCM2835 Chip
++
++	  This driver can also be built as a module.  If so, the module
++	  will be called bcm2835-hwmon.
++
+ if ACPI
+ 
+ comment "ACPI drivers"
+unchanged:
+--- linux-3.3.8.orig/drivers/hwmon/Makefile	2012-06-01 03:16:13.000000000 -0400
++++ linux-3.3.8/drivers/hwmon/Makefile	2013-05-22 10:29:52.099983423 -0400
+@@ -125,6 +125,7 @@
+ obj-$(CONFIG_SENSORS_W83L786NG)	+= w83l786ng.o
+ obj-$(CONFIG_SENSORS_WM831X)	+= wm831x-hwmon.o
+ obj-$(CONFIG_SENSORS_WM8350)	+= wm8350-hwmon.o
++obj-$(CONFIG_SENSORS_BCM2835)	+= bcm2835-hwmon.o
+ 
+ obj-$(CONFIG_PMBUS)		+= pmbus/
+ 
+unchanged:
+--- linux-3.3.8/drivers/thermal/bcm2835-thermal.c	2013-05-22 10:29:52.099983423 -0400
++++ linux-3.3.8/drivers/thermal/bcm2835-thermal.c	2013-05-22 11:05:05.960002794 -0400
+@@ -0,0 +1,208 @@
++/*****************************************************************************
++* Copyright 2011 Broadcom Corporation.  All rights reserved.
++*
++* Unless you and Broadcom execute a separate written software license
++* agreement governing use of this software, this software is licensed to you
++* under the terms of the GNU General Public License version 2, available at
++* http://www.broadcom.com/licenses/GPLv2.php (the "GPL").
++*
++* Notwithstanding the above, under no circumstances may you combine this
++* software in any way with any other Broadcom software provided under a
++* license other than the GPL, without Broadcom's express prior written
++* consent.
++*****************************************************************************/
++
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/init.h>
++#include <linux/platform_device.h>
++#include <linux/slab.h>
++#include <linux/sysfs.h>
++#include <mach/vcio.h>
++#include <linux/thermal.h>
++
++
++/* --- DEFINITIONS --- */
++#define MODULE_NAME "bcm2835_thermal"
++
++/*#define THERMAL_DEBUG_ENABLE*/
++
++#ifdef THERMAL_DEBUG_ENABLE
++#define print_debug(fmt,...) printk(KERN_INFO "%s:%s:%d: "fmt"\n", MODULE_NAME, __func__, __LINE__, ##__VA_ARGS__)
++#else
++#define print_debug(fmt,...)
++#endif
++#define print_err(fmt,...) printk(KERN_ERR "%s:%s:%d: "fmt"\n", MODULE_NAME, __func__,__LINE__, ##__VA_ARGS__)
++#define print_info(fmt,...) printk(KERN_INFO "%s: "fmt"\n", MODULE_NAME, ##__VA_ARGS__)
++
++#define VC_TAG_GET_TEMP 0x00030006
++#define VC_TAG_GET_MAX_TEMP 0x0003000A
++
++typedef enum {
++	TEMP,
++	MAX_TEMP,
++} temp_type;
++
++/* --- STRUCTS --- */
++/* tag part of the message */
++struct vc_msg_tag {
++	uint32_t tag_id;		/* the tag ID for the temperature */
++	uint32_t buffer_size;	/* size of the buffer (should be 8) */
++	uint32_t request_code;	/* identifies message as a request (should be 0) */
++	uint32_t id;			/* extra ID field (should be 0) */
++	uint32_t val;			/* returned value of the temperature */
++};
++
++/* message structure to be sent to videocore */
++struct vc_msg {
++	uint32_t msg_size;		/* simply, sizeof(struct vc_msg) */
++	uint32_t request_code;		/* holds various information like the success and number of bytes returned (refer to mailboxes wiki) */
++	struct vc_msg_tag tag;		/* the tag structure above to make */
++	uint32_t end_tag;		/* an end identifier, should be set to NULL */
++};
++
++struct bcm2835_thermal_data {
++	struct thermal_zone_device *thermal_dev;
++	struct vc_msg msg;
++};
++
++/* --- PROTOTYPES --- */
++static int bcm2835_get_temp(struct thermal_zone_device *thermal_dev, unsigned long *);
++static int bcm2835_get_max_temp(struct thermal_zone_device *thermal_dev, int, unsigned long *);
++static int bcm2835_get_trip_type(struct thermal_zone_device *thermal_dev, int trip_num, enum thermal_trip_type *trip_type);
++static int bcm2835_get_mode(struct thermal_zone_device *thermal_dev, enum thermal_device_mode *dev_mode);
++
++/* --- GLOBALS --- */
++static struct bcm2835_thermal_data bcm2835_data;
++
++/* Thermal Device Operations */
++static struct thermal_zone_device_ops ops;
++
++/* --- FUNCTIONS --- */
++static int bcm2835_get_max_temp(struct thermal_zone_device *thermal_dev, int trip_num, unsigned long *temp)
++{
++	int result;
++
++	print_debug("IN");
++
++	/* wipe all previous message data */
++	memset(&bcm2835_data.msg, 0, sizeof bcm2835_data.msg);
++
++	/* prepare message */
++	bcm2835_data.msg.msg_size = sizeof bcm2835_data.msg;
++	bcm2835_data.msg.tag.buffer_size = 8;
++	bcm2835_data.msg.tag.tag_id = VC_TAG_GET_MAX_TEMP;
++
++	/* send the message */
++	result = bcm_mailbox_property(&bcm2835_data.msg, sizeof bcm2835_data.msg);
++
++	/* check if it was all ok and return the rate in milli degrees C */
++	if (result == 0 && (bcm2835_data.msg.request_code & 0x80000000))
++		*temp = (uint)bcm2835_data.msg.tag.val;
++	#ifdef THERMAL_DEBUG_ENABLE
++	else
++		print_debug("Failed to get temperature!");
++	#endif
++	print_debug("Got temperature as %u",(uint)*temp);
++	print_debug("OUT");
++	return 0;
++}
++
++static int bcm2835_get_temp(struct thermal_zone_device *thermal_dev, unsigned long *temp)
++{
++	int result;
++
++	print_debug("IN");
++
++	/* wipe all previous message data */
++	memset(&bcm2835_data.msg, 0, sizeof bcm2835_data.msg);
++
++	/* prepare message */
++	bcm2835_data.msg.msg_size = sizeof bcm2835_data.msg;
++	bcm2835_data.msg.tag.buffer_size = 8;
++	bcm2835_data.msg.tag.tag_id = VC_TAG_GET_TEMP;
++
++	/* send the message */
++	result = bcm_mailbox_property(&bcm2835_data.msg, sizeof bcm2835_data.msg);
++
++	/* check if it was all ok and return the rate in milli degrees C */
++	if (result == 0 && (bcm2835_data.msg.request_code & 0x80000000))
++		*temp = (uint)bcm2835_data.msg.tag.val;
++	#ifdef THERMAL_DEBUG_ENABLE
++	else
++		print_debug("Failed to get temperature!");
++	#endif
++	print_debug("Got temperature as %u",(uint)*temp);
++	print_debug("OUT");
++	return 0;
++}
++
++
++static int bcm2835_get_trip_type(struct thermal_zone_device * thermal_dev, int trip_num, enum thermal_trip_type *trip_type)
++{
++	*trip_type = THERMAL_TRIP_HOT;
++	return 0;
++}
++
++
++static int bcm2835_get_mode(struct thermal_zone_device *thermal_dev, enum thermal_device_mode *dev_mode)
++{
++	*dev_mode = THERMAL_DEVICE_ENABLED;
++	return 0;
++}
++
++
++static int bcm2835_thermal_probe(struct platform_device *pdev)
++{
++	print_debug("IN");
++	print_debug("THERMAL Driver has been probed!");
++
++	/* check that the device isn't null!*/
++	if(pdev == NULL)
++	{
++		print_debug("Platform device is empty!");
++		return -ENODEV;
++	}
++
++	if(!(bcm2835_data.thermal_dev = thermal_zone_device_register("bcm2835_thermal",	1, NULL, &ops,1,1,1000,1000)))
++	{
++		print_debug("Unable to register the thermal device!");
++		return -EFAULT;
++	}
++	return 0;
++}
++
++
++static int bcm2835_thermal_remove(struct platform_device *pdev)
++{
++	print_debug("IN");
++
++	thermal_zone_device_unregister(bcm2835_data.thermal_dev);
++
++	print_debug("OUT");
++
++	return 0;
++}
++
++static struct thermal_zone_device_ops ops  = {
++	.get_temp = bcm2835_get_temp,
++	.get_trip_temp = bcm2835_get_max_temp,
++	.get_trip_type = bcm2835_get_trip_type,
++	.get_mode = bcm2835_get_mode,
++};
++
++/* Thermal Driver */
++static struct platform_driver bcm2835_thermal_driver = {
++	.probe = bcm2835_thermal_probe,
++	.remove = bcm2835_thermal_remove,
++	.driver = {
++				.name = "bcm2835_thermal",
++				.owner = THIS_MODULE,
++			},
++};
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Dorian Peake");
++MODULE_DESCRIPTION("Thermal driver for bcm2835 chip");
++
++module_platform_driver(bcm2835_thermal_driver);
+unchanged:
+--- linux-3.3.8.orig/drivers/thermal/Kconfig	2012-06-01 03:16:13.000000000 -0400
++++ linux-3.3.8/drivers/thermal/Kconfig	2013-05-22 10:39:47.455988879 -0400
+@@ -18,3 +18,14 @@
+ 	depends on THERMAL
+ 	depends on HWMON=y || HWMON=THERMAL
+ 	default y
++
++if THERMAL
++
++config THERMAL_BCM2835
++	tristate "BCM2835 Thermal Driver"
++	help
++	  This will enable temperature monitoring for the Broadcom BCM2835
++	  chip. If built as a module, it will be called 'bcm2835-thermal'.
++
++endif # THERMAL_BCM2835
++
+unchanged:
+--- linux-3.3.8.orig/drivers/thermal/Makefile	2012-06-01 03:16:13.000000000 -0400
++++ linux-3.3.8/drivers/thermal/Makefile	2013-05-22 10:32:44.055984999 -0400
+@@ -3,3 +3,4 @@
+ #
+ 
+ obj-$(CONFIG_THERMAL)		+= thermal_sys.o
++obj-$(CONFIG_THERMAL_BCM2835)	+= bcm2835-thermal.o
+unchanged:
+--- a/drivers/cpufreq/bcm2835-cpufreq.c
++++ b/drivers/cpufreq/bcm2835-cpufreq.c
+@@ -196,7 +196,7 @@ static int bcm2835_cpufreq_driver_target(struct cpufreq_policy *policy, unsigned
+ 		policy->cur = bcm2835_cpufreq_get_clock(VCMSG_GET_CLOCK_RATE);
+ 		return -EINVAL;
+ 	}
+-	print_info("Freq %d->%d (min=%d max=%d target=%d request=%d)", cur, policy->cur, policy->min, policy->max, target_freq, target);
++	print_debug("Freq %d->%d (min=%d max=%d target=%d request=%d)", cur, policy->cur, policy->min, policy->max, target_freq, target);
+ 	return 0;
+ }
+ 
+unchanged:
+--- a/drivers/video/bcm2708_fb.c
++++ b/drivers/video/bcm2708_fb.c
+@@ -36,6 +36,12 @@
+ #include <linux/io.h>
+ #include <linux/dma-mapping.h>
+ 
++#ifdef BCM2708_FB_DEBUG
++#define print_debug(fmt,...) pr_debug("%s:%s:%d: "fmt, MODULE_NAME, __func__, __LINE__, ##__VA_ARGS__)
++#else
++#define print_debug(fmt,...)
++#endif
++
+ /* This is limited to 16 characters when displayed by X startup */
+ static const char *bcm2708_name = "BCM2708 FB";
+ 
+@@ -135,17 +141,15 @@ static int bcm2708_fb_check_var(struct fb_var_screeninfo *var,
+ {
+ 	/* info input, var output */
+ 	int yres;
+-	/* memory size in pixels */
+-	unsigned pixels = info->screen_size * 8 / var->bits_per_pixel;
+ 
+ 	/* info input, var output */
+-	pr_info("bcm2708_fb_check_var info(%p) %dx%d (%dx%d), %d, %d\n", info,
++	print_debug("bcm2708_fb_check_var info(%p) %dx%d (%dx%d), %d, %d\n", info,
+ 		info->var.xres, info->var.yres, info->var.xres_virtual,
+ 		info->var.yres_virtual, (int)info->screen_size,
+ 		info->var.bits_per_pixel);
+-	pr_info("bcm2708_fb_check_var var(%p) %dx%d (%dx%d), %d, %d\n", var,
++	print_debug("bcm2708_fb_check_var var(%p) %dx%d (%dx%d), %d\n", var,
+ 		var->xres, var->yres, var->xres_virtual, var->yres_virtual,
+-		var->bits_per_pixel, pixels);
++		var->bits_per_pixel);
+ 
+ 	if (!var->bits_per_pixel)
+ 		var->bits_per_pixel = 16;
+@@ -211,7 +215,7 @@ static int bcm2708_fb_set_par(struct fb_info *info)
+ 	fbinfo->base = 0;	/* filled in by VC */
+ 	fbinfo->pitch = 0;	/* filled in by VC */
+ 
+-	pr_info("bcm2708_fb_set_par info(%p) %dx%d (%dx%d), %d, %d\n", info,
++	print_debug("bcm2708_fb_set_par info(%p) %dx%d (%dx%d), %d, %d\n", info,
+ 		info->var.xres, info->var.yres, info->var.xres_virtual,
+ 		info->var.yres_virtual, (int)info->screen_size,
+ 		info->var.bits_per_pixel);
+@@ -251,7 +255,7 @@ static int bcm2708_fb_set_par(struct fb_info *info)
+ 			BUG();		/* what can we do here */
+ 		}
+ 	}
+-	pr_info
++	print_debug
+ 	    ("BCM2708FB: start = %p,%p width=%d, height=%d, bpp=%d, pitch=%d size=%d success=%d\n",
+ 	     (void *)fb->fb.screen_base, (void *)fb->fb.fix.smem_start,
+ 	     fbinfo->xres, fbinfo->yres, fbinfo->bpp,
+@@ -274,7 +278,7 @@ static int bcm2708_fb_setcolreg(unsigned int regno, unsigned int red,
+ {
+ 	struct bcm2708_fb *fb = to_bcm2708(info);
+ 
+-	/*pr_info("BCM2708FB: setcolreg %d:(%02x,%02x,%02x,%02x) %x\n", regno, red, green, blue, transp, fb->fb.fix.visual);*/
++	/*print_debug("BCM2708FB: setcolreg %d:(%02x,%02x,%02x,%02x) %x\n", regno, red, green, blue, transp, fb->fb.fix.visual);*/
+ 	if (fb->fb.var.bits_per_pixel <= 8) {
+ 		if (regno < 256) {
+ 			/* blue [0:4], green [5:10], red [11:15] */
+@@ -297,28 +301,28 @@ static int bcm2708_fb_setcolreg(unsigned int regno, unsigned int red,
+ 
+ static int bcm2708_fb_blank(int blank_mode, struct fb_info *info)
+ {
+-	/*pr_info("bcm2708_fb_blank\n"); */
++	/*print_debug("bcm2708_fb_blank\n"); */
+ 	return -1;
+ }
+ 
+ static void bcm2708_fb_fillrect(struct fb_info *info,
+ 				const struct fb_fillrect *rect)
+ {
+-	/* (is called) pr_info("bcm2708_fb_fillrect\n"); */
++	/* (is called) print_debug("bcm2708_fb_fillrect\n"); */
+ 	cfb_fillrect(info, rect);
+ }
+ 
+ static void bcm2708_fb_copyarea(struct fb_info *info,
+ 				const struct fb_copyarea *region)
+ {
+-	/*pr_info("bcm2708_fb_copyarea\n"); */
++	/*print_debug("bcm2708_fb_copyarea\n"); */
+ 	cfb_copyarea(info, region);
+ }
+ 
+ static void bcm2708_fb_imageblit(struct fb_info *info,
+ 				 const struct fb_image *image)
+ {
+-	/* (is called) pr_info("bcm2708_fb_imageblit\n"); */
++	/* (is called) print_debug("bcm2708_fb_imageblit\n"); */
+ 	cfb_imageblit(info, image);
+ }
+ 
+@@ -393,15 +397,15 @@ static int bcm2708_fb_register(struct bcm2708_fb *fb)
+ 
+ 	fb_set_var(&fb->fb, &fb->fb.var);
+ 
+-	pr_info("BCM2708FB: registering framebuffer (%dx%d@%d)\n", fbwidth,
++	print_debug("BCM2708FB: registering framebuffer (%dx%d@%d)\n", fbwidth,
+ 		fbheight, fbdepth);
+ 
+ 	ret = register_framebuffer(&fb->fb);
+-	pr_info("BCM2708FB: register framebuffer (%d)\n", ret);
++	print_debug("BCM2708FB: register framebuffer (%d)\n", ret);
+ 	if (ret == 0)
+ 		goto out;
+ 
+-	pr_info("BCM2708FB: cannot register framebuffer (%d)\n", ret);
++	print_debug("BCM2708FB: cannot register framebuffer (%d)\n", ret);
+ out:
+ 	return ret;
+ }
+unchanged:
+--- a/sound/arm/bcm2835-pcm.c
++++ b/sound/arm/bcm2835-pcm.c
+@@ -98,7 +98,7 @@ static int snd_bcm2835_playback_open(struct snd_pcm_substream *substream)
+ 
+ 	audio_info(" .. IN (%d)\n", substream->number);
+ 
+-	audio_warning("Alsa open (%d)\n", substream->number);
++	audio_info("Alsa open (%d)\n", substream->number);
+ 	idx = substream->number;
+ 
+ 	if (idx > MAX_SUBSTREAMS) {
+@@ -167,7 +167,7 @@ static int snd_bcm2835_playback_close(struct snd_pcm_substream *substream)
+ 	bcm2835_alsa_stream_t *alsa_stream = runtime->private_data;
+ 
+ 	audio_info(" .. IN\n");
+-	audio_warning("Alsa close\n");
++	audio_info("Alsa close\n");
+ 
+ 	/*
+ 	 * Call stop if it's still running. This happens when app
+unchanged:
+--- a/sound/arm/bcm2835-vchiq.c
++++ b/sound/arm/bcm2835-vchiq.c
+@@ -32,17 +32,10 @@
+ /* ---- Include Files -------------------------------------------------------- */
+ 
+ #include "interface/vchi/vchi.h"
+-#include "interface/vcos/vcos.h"
+-#include "interface/vcos/vcos_logging.h"
+ #include "vc_vchi_audioserv_defs.h"
+ 
+ /* ---- Private Constants and Types ------------------------------------------ */
+ 
+-/* VCOS logging category for this service */
+-#define VCOS_LOG_CATEGORY (&audio_log_category)
+-
+-/* Default VCOS logging level */
+-#define LOG_LEVEL  VCOS_LOG_WARN
+ /* Logging macros (for remapping to other logging mechanisms, i.e., printf) */
+ #ifdef AUDIO_DEBUG_ENABLE
+ 	#define LOG_ERR( fmt, arg... )   pr_err( "%s:%d " fmt, __func__, __LINE__, ##arg)
+@@ -50,26 +43,23 @@
+ 	#define LOG_INFO( fmt, arg... )  pr_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
+ 	#define LOG_DBG( fmt, arg... )   pr_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
+ #else
+-	#define LOG_ERR( fmt, arg... ) vcos_log_error( "%s:%d " fmt, __func__, __LINE__, ##arg)
+-	#define LOG_WARN( fmt, arg... ) vcos_log_warn( "%s:%d " fmt, __func__, __LINE__, ##arg)
+-	#define LOG_INFO( fmt, arg... ) vcos_log_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
+-	#define LOG_DBG( fmt, arg... ) vcos_log_info( "%s:%d " fmt, __func__, __LINE__, ##arg)
++	#define LOG_ERR( fmt, arg... )
++	#define LOG_WARN( fmt, arg... )
++	#define LOG_INFO( fmt, arg... )
++	#define LOG_DBG( fmt, arg... )
+ #endif
+ 
+ typedef struct opaque_AUDIO_INSTANCE_T {
+ 	uint32_t num_connections;
+ 	VCHI_SERVICE_HANDLE_T vchi_handle[VCHI_MAX_NUM_CONNECTIONS];
+-	VCOS_EVENT_T msg_avail_event;
+-	VCOS_MUTEX_T vchi_mutex;
++	struct semaphore msg_avail_event;
++	struct mutex vchi_mutex;
+ 	bcm2835_alsa_stream_t *alsa_stream;
+ 	int32_t result, got_result;
+ } AUDIO_INSTANCE_T;
+ 
+ /* ---- Private Variables ---------------------------------------------------- */
+ 
+-/* VCOS logging category for this service */
+-static VCOS_LOG_CAT_T audio_log_category;
+-
+ /* ---- Private Function Prototypes ------------------------------------------ */
+ 
+ /* ---- Private Functions ---------------------------------------------------- */
+@@ -186,7 +176,7 @@ static void audio_vchi_callback(void *param,
+ 		BUG_ON(instance->got_result);
+ 		instance->result = m.u.result.success;
+ 		instance->got_result = 1;
+-		vcos_event_signal(&instance->msg_avail_event);
++		up(&instance->msg_avail_event);
+ 	} else if (m.type == VC_AUDIO_MSG_TYPE_COMPLETE) {
+ 		irq_handler_t callback = (irq_handler_t) m.u.complete.callback;
+ 		LOG_DBG
+@@ -199,7 +189,7 @@ static void audio_vchi_callback(void *param,
+ 			LOG_DBG(" .. unexpected alsa_stream=%p, callback=%p\n",
+ 				alsa_stream, callback);
+ 		}
+-		vcos_event_signal(&instance->msg_avail_event);
++		up(&instance->msg_avail_event);
+ 	} else {
+ 		LOG_DBG(" .. unexpected m.type=%d\n", m.type);
+ 	}
+@@ -212,7 +202,7 @@ static AUDIO_INSTANCE_T *vc_vchi_audio_init(VCHI_INSTANCE_T vchi_instance,
+ {
+ 	uint32_t i;
+ 	AUDIO_INSTANCE_T *instance;
+-	VCOS_STATUS_T status;
++	int status;
+ 
+ 	LOG_DBG("%s: start", __func__);
+ 
+@@ -223,27 +213,16 @@ static AUDIO_INSTANCE_T *vc_vchi_audio_init(VCHI_INSTANCE_T vchi_instance,
+ 		return NULL;
+ 	}
+ 	/* Allocate memory for this instance */
+-	instance = vcos_malloc(sizeof(*instance), "audio_instance");
++	instance = kmalloc(sizeof(*instance), GFP_KERNEL);
++
+ 	memset(instance, 0, sizeof(*instance));
+ 
+ 	instance->num_connections = num_connections;
+ 	/* Create the message available event */
+-	status =
+-	    vcos_event_create(&instance->msg_avail_event, "audio_msg_avail");
+-	if (status != VCOS_SUCCESS) {
+-		LOG_ERR("%s: failed to create event (status=%d)", __func__,
+-			status);
++	sema_init(&instance->msg_avail_event,1);
+ 
+-		goto err_free_mem;
+-	}
+ 	/* Create a lock for exclusive, serialized VCHI connection access */
+-	status = vcos_mutex_create(&instance->vchi_mutex, "audio_vchi_mutex");
+-	if (status != VCOS_SUCCESS) {
+-		LOG_ERR("%s: failed to create event (status=%d)", __func__,
+-			status);
+-
+-		goto err_delete_event;
+-	}
++	mutex_init(&instance->vchi_mutex);
+ 	/* Open the VCHI service connections */
+ 	for (i = 0; i < num_connections; i++) {
+ 		SERVICE_CREATION_T params = {
+@@ -253,14 +232,14 @@ static AUDIO_INSTANCE_T *vc_vchi_audio_init(VCHI_INSTANCE_T vchi_instance,
+ 			0,	// tx fifo size (unused)
+ 			audio_vchi_callback,	// service callback
+ 			instance,	// service callback parameter
+-			VCOS_TRUE,	//TODO: remove VCOS_FALSE,   // unaligned bulk recieves
+-			VCOS_TRUE,	//TODO: remove VCOS_FALSE,   // unaligned bulk transmits
+-			VCOS_FALSE	// want crc check on bulk transfers
++			1,	//TODO: remove VCOS_FALSE,   // unaligned bulk recieves
++			1,	//TODO: remove VCOS_FALSE,   // unaligned bulk transmits
++			0	// want crc check on bulk transfers
+ 		};
+ 
+ 		status = vchi_service_open(vchi_instance, &params,
+ 					   &instance->vchi_handle[i]);
+-		if (status != VCOS_SUCCESS) {
++		if (status) {
+ 			LOG_ERR
+ 			    ("%s: failed to open VCHI service connection (status=%d)",
+ 			     __func__, status);
+@@ -278,13 +257,7 @@ static AUDIO_INSTANCE_T *vc_vchi_audio_init(VCHI_INSTANCE_T vchi_instance,
+ 		vchi_service_close(instance->vchi_handle[i]);
+ 	}
+ 
+-	vcos_mutex_delete(&instance->vchi_mutex);
+-
+-err_delete_event:
+-	vcos_event_delete(&instance->msg_avail_event);
+-
+-err_free_mem:
+-	vcos_free(instance);
++	kfree(instance);
+ 
+ 	return NULL;
+ }
+@@ -302,7 +275,11 @@ static int32_t vc_vchi_audio_deinit(AUDIO_INSTANCE_T * instance)
+ 	}
+ 
+ 	LOG_DBG(" .. about to lock (%d)\n", instance->num_connections);
+-	vcos_mutex_lock(&instance->vchi_mutex);
++	if(mutex_lock_interruptible(&instance->vchi_mutex))
++	{
++		LOG_DBG("Interrupted whilst waiting for lock on (%d)\n",instance->num_connections);
++		return -EINTR;
++	}
+ 
+ 	/* Close all VCHI service connections */
+ 	for (i = 0; i < instance->num_connections; i++) {
+@@ -318,16 +295,9 @@ static int32_t vc_vchi_audio_deinit(AUDIO_INSTANCE_T * instance)
+ 		}
+ 	}
+ 
+-	vcos_mutex_unlock(&instance->vchi_mutex);
++	mutex_unlock(&instance->vchi_mutex);
+ 
+-	vcos_mutex_delete(&instance->vchi_mutex);
+-
+-	vcos_event_delete(&instance->msg_avail_event);
+-
+-	vcos_free(instance);
+-
+-	/* Unregister the log category so we can add it back next time */
+-	vcos_log_unregister(&audio_log_category);
++	kfree(instance);
+ 
+ 	LOG_DBG(" .. OUT\n");
+ 
+@@ -371,10 +341,6 @@ static int bcm2835_audio_open_connection(bcm2835_alsa_stream_t * alsa_stream)
+ 		goto err_free_mem;
+ 	}
+ 
+-	/* Set up the VCOS logging */
+-	vcos_log_set_level(VCOS_LOG_CATEGORY, LOG_LEVEL);
+-	vcos_log_register("audio", VCOS_LOG_CATEGORY);
+-
+ 	/* Initialize an instance of the audio service */
+ 	instance = vc_vchi_audio_init(vchi_instance, &vchi_connection, 1);
+ 
+@@ -412,7 +378,11 @@ int bcm2835_audio_open(bcm2835_alsa_stream_t * alsa_stream)
+ 	}
+ 	instance = alsa_stream->instance;
+ 
+-	vcos_mutex_lock(&instance->vchi_mutex);
++	if(mutex_lock_interruptible(&instance->vchi_mutex))
++	{
++		LOG_DBG("Interrupted whilst waiting for lock on (%d)\n",instance->num_connections);
++		return -EINTR;
++	}
+ 	vchi_service_use(instance->vchi_handle[0]);
+ 
+ 	m.type = VC_AUDIO_MSG_TYPE_OPEN;
+@@ -434,7 +404,7 @@ int bcm2835_audio_open(bcm2835_alsa_stream_t * alsa_stream)
+ 
+ unlock:
+ 	vchi_service_release(instance->vchi_handle[0]);
+-	vcos_mutex_unlock(&instance->vchi_mutex);
++	mutex_unlock(&instance->vchi_mutex);
+ exit:
+ 	LOG_DBG(" .. OUT\n");
+ 	return ret;
+@@ -452,7 +422,11 @@ static int bcm2835_audio_set_ctls_chan(bcm2835_alsa_stream_t * alsa_stream,
+ 	LOG_INFO
+ 	    (" Setting ALSA dest(%d), volume(%d)\n", chip->dest, chip->volume);
+ 
+-	vcos_mutex_lock(&instance->vchi_mutex);
++	if(mutex_lock_interruptible(&instance->vchi_mutex))
++	{
++		LOG_DBG("Interrupted whilst waiting for lock on (%d)\n",instance->num_connections);
++		return -EINTR;
++	}
+ 	vchi_service_use(instance->vchi_handle[0]);
+ 
+ 	instance->got_result = 0;
+@@ -477,8 +451,7 @@ static int bcm2835_audio_set_ctls_chan(bcm2835_alsa_stream_t * alsa_stream,
+ 
+ 	/* We are expecting a reply from the videocore */
+ 	while (!instance->got_result) {
+-		success = vcos_event_wait(&instance->msg_avail_event);
+-		if (success != VCOS_SUCCESS) {
++		if (down_interruptible(&instance->msg_avail_event)) {
+ 			LOG_ERR("%s: failed on waiting for event (status=%d)",
+ 				__func__, success);
+ 
+@@ -498,7 +471,7 @@ static int bcm2835_audio_set_ctls_chan(bcm2835_alsa_stream_t * alsa_stream,
+ 
+ unlock:
+ 	vchi_service_release(instance->vchi_handle[0]);
+-	vcos_mutex_unlock(&instance->vchi_mutex);
++	mutex_unlock(&instance->vchi_mutex);
+ 
+ 	LOG_DBG(" .. OUT\n");
+ 	return ret;
+@@ -552,7 +525,11 @@ int bcm2835_audio_set_params(bcm2835_alsa_stream_t * alsa_stream,
+ 		return -EINVAL;
+ 	}
+ 
+-	vcos_mutex_lock(&instance->vchi_mutex);
++	if(mutex_lock_interruptible(&instance->vchi_mutex))
++	{
++		LOG_DBG("Interrupted whilst waiting for lock on (%d)\n",instance->num_connections);
++		return -EINTR;
++	}
+ 	vchi_service_use(instance->vchi_handle[0]);
+ 
+ 	instance->got_result = 0;
+@@ -578,8 +555,7 @@ int bcm2835_audio_set_params(bcm2835_alsa_stream_t * alsa_stream,
+ 
+ 	/* We are expecting a reply from the videocore */
+ 	while (!instance->got_result) {
+-		success = vcos_event_wait(&instance->msg_avail_event);
+-		if (success != VCOS_SUCCESS) {
++		if (down_interruptible(&instance->msg_avail_event)) {
+ 			LOG_ERR("%s: failed on waiting for event (status=%d)",
+ 				__func__, success);
+ 
+@@ -599,7 +575,7 @@ int bcm2835_audio_set_params(bcm2835_alsa_stream_t * alsa_stream,
+ 
+ unlock:
+ 	vchi_service_release(instance->vchi_handle[0]);
+-	vcos_mutex_unlock(&instance->vchi_mutex);
++	mutex_unlock(&instance->vchi_mutex);
+ 
+ 	LOG_DBG(" .. OUT\n");
+ 	return ret;
+@@ -622,7 +598,11 @@ static int bcm2835_audio_start_worker(bcm2835_alsa_stream_t * alsa_stream)
+ 	int ret;
+ 	LOG_DBG(" .. IN\n");
+ 
+-	vcos_mutex_lock(&instance->vchi_mutex);
++	if(mutex_lock_interruptible(&instance->vchi_mutex))
++	{
++		LOG_DBG("Interrupted whilst waiting for lock on (%d)\n",instance->num_connections);
++		return -EINTR;
++	}
+ 	vchi_service_use(instance->vchi_handle[0]);
+ 
+ 	m.type = VC_AUDIO_MSG_TYPE_START;
+@@ -644,7 +624,7 @@ static int bcm2835_audio_start_worker(bcm2835_alsa_stream_t * alsa_stream)
+ 
+ unlock:
+ 	vchi_service_release(instance->vchi_handle[0]);
+-	vcos_mutex_unlock(&instance->vchi_mutex);
++	mutex_unlock(&instance->vchi_mutex);
+ 	LOG_DBG(" .. OUT\n");
+ 	return ret;
+ }
+@@ -657,7 +637,11 @@ static int bcm2835_audio_stop_worker(bcm2835_alsa_stream_t * alsa_stream)
+ 	int ret;
+ 	LOG_DBG(" .. IN\n");
+ 
+-	vcos_mutex_lock(&instance->vchi_mutex);
++	if(mutex_lock_interruptible(&instance->vchi_mutex))
++	{
++		LOG_DBG("Interrupted whilst waiting for lock on (%d)\n",instance->num_connections);
++		return -EINTR;
++	}
+ 	vchi_service_use(instance->vchi_handle[0]);
+ 
+ 	m.type = VC_AUDIO_MSG_TYPE_STOP;
+@@ -680,7 +664,7 @@ static int bcm2835_audio_stop_worker(bcm2835_alsa_stream_t * alsa_stream)
+ 
+ unlock:
+ 	vchi_service_release(instance->vchi_handle[0]);
+-	vcos_mutex_unlock(&instance->vchi_mutex);
++	mutex_unlock(&instance->vchi_mutex);
+ 	LOG_DBG(" .. OUT\n");
+ 	return ret;
+ }
+@@ -695,7 +679,11 @@ int bcm2835_audio_close(bcm2835_alsa_stream_t * alsa_stream)
+ 
+ 	my_workqueue_quit(alsa_stream);
+ 
+-	vcos_mutex_lock(&instance->vchi_mutex);
++	if(mutex_lock_interruptible(&instance->vchi_mutex))
++	{
++		LOG_DBG("Interrupted whilst waiting for lock on (%d)\n",instance->num_connections);
++		return -EINTR;
++	}
+ 	vchi_service_use(instance->vchi_handle[0]);
+ 
+ 	m.type = VC_AUDIO_MSG_TYPE_CLOSE;
+@@ -712,8 +700,7 @@ int bcm2835_audio_close(bcm2835_alsa_stream_t * alsa_stream)
+ 		goto unlock;
+ 	}
+ 	while (!instance->got_result) {
+-		success = vcos_event_wait(&instance->msg_avail_event);
+-		if (success != VCOS_SUCCESS) {
++		if (down_interruptible(&instance->msg_avail_event)) {
+ 			LOG_ERR("%s: failed on waiting for event (status=%d)",
+ 				__func__, success);
+ 
+@@ -733,7 +720,7 @@ int bcm2835_audio_close(bcm2835_alsa_stream_t * alsa_stream)
+ 
+ unlock:
+ 	vchi_service_release(instance->vchi_handle[0]);
+-	vcos_mutex_unlock(&instance->vchi_mutex);
++	mutex_unlock(&instance->vchi_mutex);
+ 
+ 	/* Stop the audio service */
+ 	if (instance) {
+@@ -756,7 +743,11 @@ int bcm2835_audio_write(bcm2835_alsa_stream_t * alsa_stream, uint32_t count,
+ 
+ 	LOG_INFO(" Writing %d bytes from %p\n", count, src);
+ 
+-	vcos_mutex_lock(&instance->vchi_mutex);
++	if(mutex_lock_interruptible(&instance->vchi_mutex))
++	{
++		LOG_DBG("Interrupted whilst waiting for lock on (%d)\n",instance->num_connections);
++		return -EINTR;
++	}
+ 	vchi_service_use(instance->vchi_handle[0]);
+ 
+ 	m.type = VC_AUDIO_MSG_TYPE_WRITE;
+@@ -801,7 +792,7 @@ int bcm2835_audio_write(bcm2835_alsa_stream_t * alsa_stream, uint32_t count,
+ 
+ unlock:
+ 	vchi_service_release(instance->vchi_handle[0]);
+-	vcos_mutex_unlock(&instance->vchi_mutex);
++	mutex_unlock(&instance->vchi_mutex);
+ 	LOG_DBG(" .. OUT\n");
+ 	return ret;
+ }
+unchanged:
+--- linux-3.3.8.orig/drivers/mmc/host/sdhci.c	2013-05-22 09:46:53.847959796 -0400
++++ linux-3.3.8/drivers/mmc/host/sdhci.c	2013-05-22 11:25:26.968013984 -0400
+@@ -144,9 +144,9 @@
+ 	if(enable_llm)
+ 	{
+ 		local_irq_disable();
+-		enable_irq(host->irq);
+ 		if(host->second_irq)
+ 			enable_irq(host->second_irq);
++		enable_irq(host->irq);
+ 	}
+ #endif
+ 	spin_unlock(&host->lock);
+@@ -178,9 +178,9 @@
+ 	if(enable_llm)
+ 	{
+ 		local_irq_disable();
+-		enable_irq(host->irq);
+ 		if(host->second_irq)
+ 			enable_irq(host->second_irq);
++		enable_irq(host->irq);
+ 	}
+ #endif
+ 	spin_unlock_irqrestore(&host->lock,flags);
+@@ -294,9 +294,7 @@
+ 			return;
+ 		}
+ 		timeout--;
+-		sdhci_spin_enable_schedule(host);
+ 		mdelay(1);
+-		sdhci_spin_disable_schedule(host);
+ 	}
+ 
+ 	if (host->ops->platform_reset_exit)
+unchanged:
+--- linux-3.3.8.orig/arch/arm/mach-bcm2708/Makefile	2013-05-22 09:46:53.539959793 -0400
++++ linux-3.3.8/arch/arm/mach-bcm2708/Makefile	2013-05-22 11:35:39.780019600 -0400
+@@ -2,7 +2,7 @@
+ # Makefile for the linux kernel.
+ #
+ 
+-obj-$(CONFIG_MACH_BCM2708) 	+= clock.o bcm2708.o armctrl.o vcio.o power.o dma.o
++obj-$(CONFIG_MACH_BCM2708) 	+= clock.o bcm2708.o armctrl.o vcio.o power.o dma.o delay.o
+ obj-$(CONFIG_BCM2708_GPIO)	+= bcm2708_gpio.o
+ obj-$(CONFIG_BCM2708_VCMEM)	+= vc_mem.o
+ 
+unchanged:
+--- linux-3.3.8.orig/arch/arm/mach-bcm2708/delay.S	1969-12-31 19:00:00.000000000 -0500
++++ linux-3.3.8/arch/arm/mach-bcm2708/delay.S	2013-05-22 11:35:39.780019600 -0400
+@@ -0,0 +1,20 @@
++/*
++ *  linux/arch/arm/lib/delay.S
++ *
++ *  Copyright (C) 1995, 1996 Russell King
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++#include <linux/linkage.h>
++#include <asm/assembler.h>
++#include <asm/param.h>
++
++		.text
++@ Delay routine
++ENTRY(__delay)
++		subs	r0, r0, #1
++		bhi	__delay
++		mov	pc, lr
++ENDPROC(__delay)
+unchanged:
+--- linux-3.3.8.orig/drivers/i2c/busses/i2c-bcm2708.c	2013-05-22 09:46:53.687959794 -0400
++++ linux-3.3.8/drivers/i2c/busses/i2c-bcm2708.c	2013-05-22 11:53:53.468029622 -0400
+@@ -66,11 +66,15 @@
+ #define BSC_S_DONE		0x00000002
+ #define BSC_S_TA		0x00000001
+ 
+-#define I2C_CLOCK_HZ	100000 /* FIXME: get from DT */
+ #define I2C_TIMEOUT_MS	150
+ 
+ #define DRV_NAME	"bcm2708_i2c"
+ 
++static unsigned int baudrate = CONFIG_I2C_BCM2708_BAUDRATE;
++module_param(baudrate, uint, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
++MODULE_PARM_DESC(baudrate, "The I2C baudrate");
++
++
+ struct bcm2708_i2c {
+ 	struct i2c_adapter adapter;
+ 
+@@ -148,7 +152,7 @@
+ 	u32 c = BSC_C_I2CEN | BSC_C_INTD | BSC_C_ST | BSC_C_CLEAR_1;
+ 
+ 	bus_hz = clk_get_rate(bi->clk);
+-	cdiv = bus_hz / I2C_CLOCK_HZ;
++	cdiv = bus_hz / baudrate;
+ 
+ 	if (bi->msg->flags & I2C_M_RD)
+ 		c |= BSC_C_INTR | BSC_C_READ;
+@@ -331,8 +335,8 @@
+ 		goto out_free_irq;
+ 	}
+ 
+-	dev_info(&pdev->dev, "BSC%d Controller at 0x%08lx (irq %d)\n",
+-		pdev->id, (unsigned long)regs->start, irq);
++	dev_info(&pdev->dev, "BSC%d Controller at 0x%08lx (irq %d) (baudrate %dk)\n",
++		pdev->id, (unsigned long)regs->start, irq, baudrate/1000);
+ 
+ 	return 0;
+ 
+unchanged:
+--- linux-3.3.8.orig/drivers/i2c/busses/Kconfig	2013-05-22 09:46:53.687959794 -0400
++++ linux-3.3.8/drivers/i2c/busses/Kconfig	2013-05-22 11:53:53.468029622 -0400
+@@ -316,6 +316,17 @@
+ 	  support for the BCM2708. BSC is a Broadcom proprietary bus compatible
+ 	  with I2C/TWI/SMBus.
+ 
++config I2C_BCM2708_BAUDRATE
++    prompt "BCM2708 I2C baudrate"
++	depends on I2C_BCM2708
++    int
++    default 100000
++    help
++      Set the I2C baudrate. This will alter the default value. A
++      different baudrate can be set by using a module parameter as well. If
++      no parameter is provided when loading, this is the value that will be
++      used.
++
+ config I2C_BLACKFIN_TWI
+ 	tristate "Blackfin TWI I2C support"
+ 	depends on BLACKFIN
+unchanged:
+--- a/drivers/mmc/host/sdhci-bcm2708.c
++++ b/drivers/mmc/host/sdhci-bcm2708.c
+@@ -82,6 +82,8 @@
+ #define REG_EXRDFIFO_EN     0x80
+ #define REG_EXRDFIFO_CFG    0x84
+ 
++int cycle_delay=2;
++
+ /*****************************************************************************\
+  *									     *
+  * Debug								     *
+@@ -254,7 +256,7 @@ static void sdhci_bcm2708_raw_writel(struct sdhci_host *host, u32 val, int reg)
+ 		/* host->clock is the clock freq in Hz */
+ 		static hptime_t last_write_hpt;
+ 		hptime_t now = hptime();
+-		ns_2clk = 2000000000/host->clock;
++		ns_2clk = cycle_delay*1000000/(host->clock/1000);
+ 
+ 		if (now == last_write_hpt || now == last_write_hpt+1) {
+ 			 /* we can't guarantee any significant time has
+@@ -1517,6 +1519,7 @@ static void __exit sdhci_drv_exit(void)
+ module_param(sync_after_dma, bool, 0444);
+ module_param(missing_status, bool, 0444);
+ module_param(enable_llm, bool, 0444);
++module_param(cycle_delay, int, 0444);
+ 
+ MODULE_DESCRIPTION("Secure Digital Host Controller Interface platform driver");
+ MODULE_AUTHOR("Broadcom <info@broadcom.com>");
