@@ -1,6 +1,8 @@
---- package/iwinfo.orig/src/iwinfo_nl80211.c	2012-11-14 14:51:59.279459532 -0500
-+++ package/iwinfo/src/iwinfo_nl80211.c	2012-11-14 14:59:18.129642576 -0500
-@@ -1766,7 +1766,13 @@
+Index: package/iwinfo/src/iwinfo_nl80211.c
+===================================================================
+--- package/iwinfo/src/iwinfo_nl80211.c	(revision 36655)
++++ package/iwinfo/src/iwinfo_nl80211.c	(working copy)
+@@ -1940,7 +1940,13 @@
  				goto out;
  
  			if (!iwinfo_ifmac(res))
