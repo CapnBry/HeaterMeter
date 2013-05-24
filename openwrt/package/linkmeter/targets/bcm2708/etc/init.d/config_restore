@@ -72,7 +72,11 @@ fi
 # Mount the device if not already mounted
 MNT="/mnt/${DEV##/dev/}p4"
 [ -d "$MNT" ] || mkdir -p $MNT
-mount | grep ${DEV}p4 || mount -t ext4 ${DEV}p4 $MNT
+mount | grep ${DEV}p4 || mount -t ext4 -o rw,sync ${DEV}p4 $MNT
+
+# Mount the boot partition
+[ -d "/boot" ] || mkdir /boot
+mount -t vfat -o rw,sync ${DEV}p1 /boot
 
 if [ $RESTORE -ne 0 ] ; then
   if [ -f "$MNT/backup.tar.gz" ] ; then
@@ -86,7 +90,6 @@ fi
 
 if [ -d "$MNT/lost+found" ] ; then
   sysupgrade -b $MNT/backup.tar.gz
-  sync
 fi
 
 }
