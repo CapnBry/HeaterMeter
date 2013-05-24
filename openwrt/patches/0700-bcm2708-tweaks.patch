@@ -1,6 +1,43 @@
+Index: target/linux/brcm2708/image/Makefile
+===================================================================
+--- target/linux/brcm2708/image/Makefile	(revision 36655)
++++ target/linux/brcm2708/image/Makefile	(working copy)
+@@ -20,27 +20,20 @@
+ 
+ 	mkdosfs $(KDIR)/boot.img -C $(FAT32_BLOCKS)
+ 	# Raspberry Pi has no bootloader, instead the GPU loads and starts the kernel
+-	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm128_start.elf ::
+-	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm192_start.elf ::
+-	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm224_start.elf ::
+ 	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/bootcode.bin ::
+-	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/COPYING.linux ::
+-	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/LICENCE.broadcom ::
+-	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/loader.bin ::
+-	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm$(2)_start.elf ::start.elf  #Copy file for memory/gpu division
++	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/start.elf ::
++	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/fixup.dat ::
++	mcopy -i $(KDIR)/boot.img config.txt ::
+ 	mcopy -i $(KDIR)/boot.img cmdline.txt ::
+ 	mcopy -i $(KDIR)/boot.img $(KDIR)/Image ::kernel.img  # Copy OpenWrt built kernel
+-	./gen_rpi_sdcard_img.sh $(BIN_DIR)/$(IMG_PREFIX)-sdcard-vfat-$(1)_$(2).img $(KDIR)/boot.img $(KDIR)/root.$(1) \
++	./gen_rpi_sdcard_img.sh $(BIN_DIR)/$(IMG_PREFIX)-sdcard-vfat-$(1).img $(KDIR)/boot.img $(KDIR)/root.$(1) \
+ 		$(CONFIG_BRCM2708_SD_BOOT_PARTSIZE) $(CONFIG_TARGET_ROOTFS_PARTSIZE)
+ endef
+ 
+ define Image/Build
+ 	$(CP) $(KDIR)/root.$(1) $(BIN_DIR)/$(IMG_PREFIX)-$(1).img
+-	$(CP) $(KDIR)/Image $(BIN_DIR)/$(IMG_PREFIX)-Image
+ 
+-	$(call Image/Build/RaspberryPi,$(1),128)
+-	$(call Image/Build/RaspberryPi,$(1),192)
+-	$(call Image/Build/RaspberryPi,$(1),224)
++	$(call Image/Build/RaspberryPi,$(1))
+ endef
+ 
+ $(eval $(call BuildImage))
 Index: target/linux/brcm2708/image/gen_rpi_sdcard_img.sh
 ===================================================================
---- target/linux/brcm2708/image/gen_rpi_sdcard_img.sh	(revision 35471)
+--- target/linux/brcm2708/image/gen_rpi_sdcard_img.sh	(revision 36655)
 +++ target/linux/brcm2708/image/gen_rpi_sdcard_img.sh	(working copy)
 @@ -12,7 +12,7 @@
  BOOTFSSIZE="$4"
@@ -13,42 +50,51 @@ Index: target/linux/brcm2708/image/gen_rpi_sdcard_img.sh
  set `ptgen -o $OUTPUT -h $head -s $sect -l 4096 -t c -p ${BOOTFSSIZE}M -t 83 -p ${ROOTFSSIZE}M`
 Index: target/linux/brcm2708/image/cmdline.txt
 ===================================================================
---- target/linux/brcm2708/image/cmdline.txt	(revision 35471)
+--- target/linux/brcm2708/image/cmdline.txt	(revision 36655)
 +++ target/linux/brcm2708/image/cmdline.txt	(working copy)
 @@ -1 +1 @@
 -dwc_otg.lpm_enable=0 rpitestmode=1 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
-+dwc_otg.lpm_enable=0 rpitestmode=1 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
-Index: target/linux/brcm2708/image/Makefile
-===================================================================
---- target/linux/brcm2708/image/Makefile	(revision 35471)
-+++ target/linux/brcm2708/image/Makefile	(working copy)
-@@ -20,9 +20,9 @@
- 
- 	mkdosfs $(KDIR)/boot.img -C $(FAT32_BLOCKS)
- 	# Raspberry Pi has no bootloader, instead the GPU loads and starts the kernel
--	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm128_start.elf ::
--	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm192_start.elf ::
--	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm224_start.elf ::
-+	#mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm128_start.elf ::
-+	#mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm192_start.elf ::
-+	#mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm224_start.elf ::
- 	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/bootcode.bin ::
- 	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/COPYING.linux ::
- 	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/LICENCE.broadcom ::
-@@ -36,7 +36,7 @@
- 
- define Image/Build
- 	$(CP) $(KDIR)/root.$(1) $(BIN_DIR)/$(IMG_PREFIX)-$(1).img
--	$(CP) $(KDIR)/Image $(BIN_DIR)/$(IMG_PREFIX)-Image
-+	#$(CP) $(KDIR)/Image $(BIN_DIR)/$(IMG_PREFIX)-Image
- 
- 	$(call Image/Build/RaspberryPi,$(1),128)
- 	$(call Image/Build/RaspberryPi,$(1),192)
++dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
 Index: target/linux/brcm2708/config-3.3
 ===================================================================
---- target/linux/brcm2708/config-3.3	(revision 35471)
+--- target/linux/brcm2708/config-3.3	(revision 36655)
 +++ target/linux/brcm2708/config-3.3	(working copy)
-@@ -41,6 +41,7 @@
+@@ -1,8 +1,8 @@
+ # CONFIG_AIO is not set
+ CONFIG_ALIGNMENT_TRAP=y
+-# CONFIG_APM_EMULATION is not set
+ CONFIG_ARCH_BCM2708=y
+ CONFIG_ARCH_BINFMT_ELF_RANDOMIZE_PIE=y
++CONFIG_ARCH_HAS_CPUFREQ=y
+ CONFIG_ARCH_HAS_CPU_IDLE_WAIT=y
+ CONFIG_ARCH_NR_GPIO=0
+ CONFIG_ARCH_REQUIRE_GPIOLIB=y
+@@ -12,21 +12,18 @@
+ # CONFIG_ARCH_USES_GETTIMEOFFSET is not set
+ CONFIG_ARM=y
+ CONFIG_ARM_AMBA=y
+-CONFIG_ARM_CPU_SUSPEND=y
++CONFIG_ARM_BCM2835_CPUFREQ=y
++# CONFIG_ARM_CPU_SUSPEND is not set
+ # CONFIG_ARM_ERRATA_326103 is not set
+ # CONFIG_ARM_ERRATA_364296 is not set
+ CONFIG_ARM_ERRATA_411920=y
++# CONFIG_ARM_EXYNOS4210_CPUFREQ is not set
+ CONFIG_ARM_L1_CACHE_SHIFT=5
+ CONFIG_ARM_NR_BANKS=8
+ # CONFIG_ARM_SP805_WATCHDOG is not set
+ CONFIG_ARM_THUMB=y
+ CONFIG_ARM_UNWIND=y
+ CONFIG_AVERAGE=y
+-# CONFIG_BACKLIGHT_ADP8860 is not set
+-# CONFIG_BACKLIGHT_ADP8870 is not set
+-CONFIG_BACKLIGHT_CLASS_DEVICE=m
+-CONFIG_BACKLIGHT_GENERIC=m
+-CONFIG_BACKLIGHT_LCD_SUPPORT=y
+ CONFIG_BCM2708_GPIO=y
+ # CONFIG_BCM2708_NOL2CACHE is not set
+ CONFIG_BCM2708_VCHIQ=y
+@@ -41,6 +38,7 @@
  CONFIG_BLK_DEV_SD=y
  # CONFIG_CACHE_L2X0 is not set
  CONFIG_CLKDEV_LOOKUP=y
@@ -56,15 +102,51 @@ Index: target/linux/brcm2708/config-3.3
  CONFIG_CMDLINE="dwc_otg.lpm_enable=0 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 root=/dev/mmcblk0p2 rootfstype=ext3 rootwait"
  CONFIG_CMDLINE_FROM_BOOTLOADER=y
  CONFIG_CONFIGFS_FS=y
-@@ -80,6 +81,7 @@
- CONFIG_EXT4_FS=y
- CONFIG_EXT4_FS_POSIX_ACL=y
- CONFIG_EXT4_FS_SECURITY=y
-+CONFIG_FAT_FS=y
- CONFIG_FB=y
- CONFIG_FB_BCM2708=y
- CONFIG_FB_CFB_COPYAREA=y
-@@ -137,6 +139,7 @@
+@@ -54,14 +52,23 @@
+ CONFIG_CPU_COPY_V6=y
+ CONFIG_CPU_CP15=y
+ CONFIG_CPU_CP15_MMU=y
++CONFIG_CPU_FREQ=y
++# CONFIG_CPU_FREQ_DEFAULT_GOV_CONSERVATIVE is not set
++CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y
++# CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set
++# CONFIG_CPU_FREQ_DEFAULT_GOV_POWERSAVE is not set
++# CONFIG_CPU_FREQ_DEFAULT_GOV_USERSPACE is not set
++# CONFIG_CPU_FREQ_GOV_CONSERVATIVE is not set
++CONFIG_CPU_FREQ_GOV_ONDEMAND=y
++CONFIG_CPU_FREQ_GOV_PERFORMANCE=y
++CONFIG_CPU_FREQ_GOV_POWERSAVE=y
++# CONFIG_CPU_FREQ_GOV_USERSPACE is not set
++# CONFIG_CPU_FREQ_STAT is not set
++CONFIG_CPU_FREQ_TABLE=y
+ CONFIG_CPU_HAS_ASID=y
+ CONFIG_CPU_HAS_PMU=y
+ # CONFIG_CPU_ICACHE_DISABLE is not set
+-CONFIG_CPU_IDLE=y
+-CONFIG_CPU_IDLE_GOV_LADDER=y
+-CONFIG_CPU_IDLE_GOV_MENU=y
+ CONFIG_CPU_PABRT_V6=y
+-CONFIG_CPU_PM=y
+ CONFIG_CPU_TLB_V6=y
+ CONFIG_CPU_USE_DOMAINS=y
+ CONFIG_CPU_V6=y
+@@ -86,6 +93,7 @@
+ CONFIG_FB_CFB_FILLRECT=y
+ CONFIG_FB_CFB_IMAGEBLIT=y
+ # CONFIG_FB_WMT_GE_ROPS is not set
++CONFIG_FIQ=y
+ CONFIG_FIRMWARE_IN_KERNEL=y
+ # CONFIG_FONTS is not set
+ CONFIG_FONT_8x16=y
+@@ -95,7 +103,6 @@
+ CONFIG_FRAMEBUFFER_CONSOLE=y
+ # CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY is not set
+ # CONFIG_FRAMEBUFFER_CONSOLE_ROTATION is not set
+-CONFIG_FREEZER=y
+ CONFIG_FS_MBCACHE=y
+ CONFIG_FS_POSIX_ACL=y
+ CONFIG_GENERIC_ACL=y
+@@ -137,6 +144,7 @@
  CONFIG_HAVE_PERF_EVENTS=y
  CONFIG_HAVE_PROC_CPU=y
  CONFIG_HAVE_REGS_AND_STACK_ACCESS_API=y
@@ -72,85 +154,106 @@ Index: target/linux/brcm2708/config-3.3
  CONFIG_HAVE_SPARSE_IRQ=y
  CONFIG_HW_CONSOLE=y
  CONFIG_IKCONFIG=y
-@@ -151,8 +154,8 @@
+@@ -151,16 +159,6 @@
  CONFIG_KERNEL_GZIP=y
  # CONFIG_KERNEL_XZ is not set
  CONFIG_KTIME_SCALAR=y
-+# CONFIG_LCD_AMS369FG06 is not set
- CONFIG_LCD_CLASS_DEVICE=m
+-CONFIG_LCD_CLASS_DEVICE=m
 -# CONFIG_LCD_AMS369FG06 is not set
- # CONFIG_LCD_L4F00242T03 is not set
- # CONFIG_LCD_LD9040 is not set
- # CONFIG_LCD_LMS283GF05 is not set
-@@ -168,7 +171,6 @@
+-# CONFIG_LCD_L4F00242T03 is not set
+-# CONFIG_LCD_LD9040 is not set
+-# CONFIG_LCD_LMS283GF05 is not set
+-# CONFIG_LCD_LTV350QV is not set
+-# CONFIG_LCD_PLATFORM is not set
+-# CONFIG_LCD_S6E63M0 is not set
+-# CONFIG_LCD_TDO24M is not set
+-# CONFIG_LCD_VGG2432A4 is not set
+ CONFIG_LEDS_GPIO=y
+ # CONFIG_LEDS_TRIGGER_DEFAULT_ON is not set
+ # CONFIG_LEDS_TRIGGER_TIMER is not set
+@@ -168,7 +166,8 @@
  CONFIG_LOGO_LINUX_CLUT224=y
  # CONFIG_LOGO_LINUX_MONO is not set
  # CONFIG_LOGO_LINUX_VGA16 is not set
 -CONFIG_LOG_BUF_SHIFT=17
++# CONFIG_LZO_COMPRESS is not set
++# CONFIG_LZO_DECOMPRESS is not set
  CONFIG_MACH_BCM2708=y
  CONFIG_MAC_PARTITION=y
  CONFIG_MAGIC_SYSRQ=y
-@@ -182,13 +184,16 @@
- CONFIG_MMC_SDHCI_BCM2708_DMA=y
- CONFIG_MMC_SDHCI_IO_ACCESSORS=y
- CONFIG_MMC_SDHCI_PLTFM=y
-+CONFIG_MSDOS_FS=y
- # CONFIG_MTD is not set
- CONFIG_NEED_DMA_MAP_STATE=y
- CONFIG_NEED_MACH_MEMORY_H=y
- CONFIG_NEED_PER_CPU_KM=y
- CONFIG_NLS=y
- CONFIG_NLS_ASCII=y
-+CONFIG_NLS_CODEPAGE_437=y
- CONFIG_NLS_DEFAULT="utf8"
-+CONFIG_NLS_ISO8859_1=y
- CONFIG_NO_HZ=y
- CONFIG_OABI_COMPAT=y
- CONFIG_PAGEFLAGS_EXTENDED=y
-@@ -238,6 +243,7 @@
- CONFIG_USB_UAS=y
- CONFIG_USB_USBNET=y
- CONFIG_VECTORS_BASE=0xffff0000
-+CONFIG_VFAT_FS=y
+@@ -196,10 +195,6 @@
+ # CONFIG_PCI_SYSCALL is not set
+ # CONFIG_PDA_POWER is not set
+ CONFIG_PERF_USE_VMALLOC=y
+-CONFIG_PM=y
+-CONFIG_PM_CLK=y
+-# CONFIG_PM_DEBUG is not set
+-CONFIG_PM_SLEEP=y
+ CONFIG_POWER_SUPPLY=y
+ # CONFIG_PREEMPT_RCU is not set
+ CONFIG_PRINTK_TIME=y
+@@ -215,10 +210,10 @@
+ # CONFIG_SQUASHFS is not set
+ # CONFIG_STAGING is not set
+ # CONFIG_STRIP_ASM_SYMS is not set
+-CONFIG_SUSPEND=y
+-CONFIG_SUSPEND_FREEZER=y
+ CONFIG_SYS_SUPPORTS_APM_EMULATION=y
+ # CONFIG_TEXTSEARCH is not set
++CONFIG_THERMAL=y
++CONFIG_THERMAL_BCM2835=y
+ CONFIG_TMPFS_POSIX_ACL=y
+ CONFIG_UEVENT_HELPER_PATH=""
+ # CONFIG_UID16 is not set
+@@ -241,7 +236,6 @@
  CONFIG_VFP=y
  CONFIG_VT=y
  CONFIG_VT_CONSOLE=y
+-CONFIG_VT_CONSOLE_SLEEP=y
+ CONFIG_VT_HW_CONSOLE_BINDING=y
+ CONFIG_ZBOOT_ROM_BSS=0x0
+ CONFIG_ZBOOT_ROM_TEXT=0x0
+Index: target/linux/brcm2708/base-files/etc/config/network
+===================================================================
+--- target/linux/brcm2708/base-files/etc/config/network	(revision 36655)
++++ target/linux/brcm2708/base-files/etc/config/network	(working copy)
+@@ -9,5 +9,5 @@
+ config interface lan
+ 	option ifname	eth0
+ 	option proto	static
+-	option ipaddr	192.168.1.1
++	option ipaddr	192.168.200.1
+ 	option netmask	255.255.255.0
 Index: target/linux/brcm2708/base-files/etc/inittab
 ===================================================================
---- target/linux/brcm2708/base-files/etc/inittab	(revision 35471)
+--- target/linux/brcm2708/base-files/etc/inittab	(revision 36655)
 +++ target/linux/brcm2708/base-files/etc/inittab	(working copy)
 @@ -1,5 +1,5 @@
  ::sysinit:/etc/init.d/rcS S boot
  ::shutdown:/etc/init.d/rcS K shutdown
- tts/0::askfirst:/bin/ash --login
+-tts/0::askfirst:/bin/ash --login
 -ttyAMA0::askfirst:/bin/ash --login
++#tts/0::askfirst:/bin/ash --login
 +#ttyAMA0::askfirst:/bin/ash --login
  tty1::askfirst:/bin/ash --login
 Index: target/linux/brcm2708/Makefile
 ===================================================================
---- target/linux/brcm2708/Makefile	(revision 35471)
+--- target/linux/brcm2708/Makefile	(revision 36655)
 +++ target/linux/brcm2708/Makefile	(working copy)
-@@ -23,6 +23,7 @@
+@@ -23,6 +23,6 @@
  	Currently produces SD Card image for Raspberry Pi.
  endef
  
 -CFLAGS:=-pipe -march=armv6 -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=softfp -marm
-+#CFLAGS:=-pipe -march=armv6 -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=softfp -marm
 +CFLAGS:=-pipe -march=armv6zk -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard -marm
  
  $(eval $(call BuildTarget))
-Index: package/brcm2708-gpu-fw/Makefile
-===================================================================
---- package/brcm2708-gpu-fw/Makefile	(revision 35471)
-+++ package/brcm2708-gpu-fw/Makefile	(working copy)
-@@ -8,8 +8,8 @@
- include $(INCLUDE_DIR)/kernel.mk
- 
- PKG_NAME:=brcm2708-gpu-fw
--PKG_REV:=29ce6bcf278e7e79cd8a2b84c6aa9db9864ca91d
--PKG_VERSION:=20120529
-+PKG_REV:=02cda903bd918190acbde4acd5d63aa97ecd444f
-+PKG_VERSION:=20120819
- PKG_RELEASE:=1
- 
- PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
+--- /dev/null	2013-05-16 17:59:18.391419002 -0400
++++ target/linux/brcm2708/image/config.txt	2013-05-23 21:21:59.021133756 -0400
+@@ -0,0 +1,6 @@
++gpu_mem=32
++arm_freq=800
++arm_freq_min=700
++sdram_freq=400
++core_freq=250
++
