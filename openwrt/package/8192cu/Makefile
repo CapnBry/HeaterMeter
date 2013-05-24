@@ -39,7 +39,8 @@ define KernelPackage/8192cu/description
   This driver also includes a non 'compat-wireless' built version
   of cfg80211.ko so do not build with the kmod-cfg80211 or kmod-mac80211
   packages built into the image (they'll still have to be compiled as
-  modules though).
+  modules though). Enabling kmod-mac80211 as a module is required to
+  enable the nl80211 support in all the wireless tools.
 endef
 
 MAKE_OPTS:= \
