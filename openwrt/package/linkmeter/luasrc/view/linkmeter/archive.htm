@@ -5,9 +5,7 @@
 available for later review or continuation, the information can be "stashed"
 to storage. Using the stash command copies the current log file at the point
 it is stashed.</p>
-<p>Storage requirements are about 80KB per stash. If you do not have 
-additional storage available (via SD card) there should be enough space to
-store a handful of logs before running out of space.</p>
+<p>Storage requirements are about 80KB per stash.</p>
 <p>Reload this page after stashing to see the file in the stored list.</p>
 <form method="GET" action="<%=build_url("admin/lm/stashdb")%>">
   Filename: <input name="rrd" type="text" value="<%=os.date("%Y-%m-%d")%>" />
