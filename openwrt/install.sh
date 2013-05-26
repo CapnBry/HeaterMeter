@@ -8,7 +8,7 @@ if [ -z "$WRT_PATH" ] ; then
   echo "Usage: ./install.sh <target> <wrt path>"
   echo "    Target: BCM47XX or BCM2708 (case sensitive)"
   echo "BCM47XX - svn://svn.openwrt.org/openwrt/trunk@29665"
-  echo "BCM2708 - svn://svn.openwrt.org/openwrt/branches/attitude_adjustment"
+  echo "BCM2708 - svn://svn.openwrt.org/openwrt/tags/attitude_adjustment_12.09"
   exit 1
 fi
 
