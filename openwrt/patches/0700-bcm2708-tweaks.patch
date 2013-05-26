@@ -1,8 +1,20 @@
+Index: target/linux/brcm2708/Makefile
+===================================================================
+--- target/linux/brcm2708/Makefile	(revision 36720)
++++ target/linux/brcm2708/Makefile	(working copy)
+@@ -23,6 +23,6 @@
+ 	Currently produces SD Card image for Raspberry Pi.
+ endef
+ 
+-CFLAGS:=-pipe -march=armv6 -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=softfp -marm
++CFLAGS:=-pipe -march=armv6zk -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard -marm
+ 
+ $(eval $(call BuildTarget))
 Index: target/linux/brcm2708/image/Makefile
 ===================================================================
---- target/linux/brcm2708/image/Makefile	(revision 36655)
+--- target/linux/brcm2708/image/Makefile	(revision 36720)
 +++ target/linux/brcm2708/image/Makefile	(working copy)
-@@ -20,27 +20,20 @@
+@@ -20,27 +20,22 @@
  
  	mkdosfs $(KDIR)/boot.img -C $(FAT32_BLOCKS)
  	# Raspberry Pi has no bootloader, instead the GPU loads and starts the kernel
@@ -15,7 +27,9 @@ Index: target/linux/brcm2708/image/Makefile
 -	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/loader.bin ::
 -	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm$(2)_start.elf ::start.elf  #Copy file for memory/gpu division
 +	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/start.elf ::
++	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/start_cd.elf ::
 +	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/fixup.dat ::
++	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/fixup_cd.dat ::
 +	mcopy -i $(KDIR)/boot.img config.txt ::
  	mcopy -i $(KDIR)/boot.img cmdline.txt ::
  	mcopy -i $(KDIR)/boot.img $(KDIR)/Image ::kernel.img  # Copy OpenWrt built kernel
@@ -37,7 +51,7 @@ Index: target/linux/brcm2708/image/Makefile
  $(eval $(call BuildImage))
 Index: target/linux/brcm2708/image/gen_rpi_sdcard_img.sh
 ===================================================================
---- target/linux/brcm2708/image/gen_rpi_sdcard_img.sh	(revision 36655)
+--- target/linux/brcm2708/image/gen_rpi_sdcard_img.sh	(revision 36720)
 +++ target/linux/brcm2708/image/gen_rpi_sdcard_img.sh	(working copy)
 @@ -12,7 +12,7 @@
  BOOTFSSIZE="$4"
@@ -50,14 +64,14 @@ Index: target/linux/brcm2708/image/gen_rpi_sdcard_img.sh
  set `ptgen -o $OUTPUT -h $head -s $sect -l 4096 -t c -p ${BOOTFSSIZE}M -t 83 -p ${ROOTFSSIZE}M`
 Index: target/linux/brcm2708/image/cmdline.txt
 ===================================================================
---- target/linux/brcm2708/image/cmdline.txt	(revision 36655)
+--- target/linux/brcm2708/image/cmdline.txt	(revision 36720)
 +++ target/linux/brcm2708/image/cmdline.txt	(working copy)
 @@ -1 +1 @@
 -dwc_otg.lpm_enable=0 rpitestmode=1 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
 +dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
 Index: target/linux/brcm2708/config-3.3
 ===================================================================
---- target/linux/brcm2708/config-3.3	(revision 36655)
+--- target/linux/brcm2708/config-3.3	(revision 36720)
 +++ target/linux/brcm2708/config-3.3	(working copy)
 @@ -1,8 +1,8 @@
  # CONFIG_AIO is not set
@@ -215,7 +229,7 @@ Index: target/linux/brcm2708/config-3.3
  CONFIG_ZBOOT_ROM_TEXT=0x0
 Index: target/linux/brcm2708/base-files/etc/config/network
 ===================================================================
---- target/linux/brcm2708/base-files/etc/config/network	(revision 36655)
+--- target/linux/brcm2708/base-files/etc/config/network	(revision 36720)
 +++ target/linux/brcm2708/base-files/etc/config/network	(working copy)
 @@ -9,5 +9,5 @@
  config interface lan
@@ -226,7 +240,7 @@ Index: target/linux/brcm2708/base-files/etc/config/network
  	option netmask	255.255.255.0
 Index: target/linux/brcm2708/base-files/etc/inittab
 ===================================================================
---- target/linux/brcm2708/base-files/etc/inittab	(revision 36655)
+--- target/linux/brcm2708/base-files/etc/inittab	(revision 36720)
 +++ target/linux/brcm2708/base-files/etc/inittab	(working copy)
 @@ -1,5 +1,5 @@
  ::sysinit:/etc/init.d/rcS S boot
@@ -236,20 +250,8 @@ Index: target/linux/brcm2708/base-files/etc/inittab
 +#tts/0::askfirst:/bin/ash --login
 +#ttyAMA0::askfirst:/bin/ash --login
  tty1::askfirst:/bin/ash --login
-Index: target/linux/brcm2708/Makefile
-===================================================================
---- target/linux/brcm2708/Makefile	(revision 36655)
-+++ target/linux/brcm2708/Makefile	(working copy)
-@@ -23,6 +23,6 @@
- 	Currently produces SD Card image for Raspberry Pi.
- endef
- 
--CFLAGS:=-pipe -march=armv6 -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=softfp -marm
-+CFLAGS:=-pipe -march=armv6zk -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard -marm
- 
- $(eval $(call BuildTarget))
 --- /dev/null	2013-05-16 17:59:18.391419002 -0400
-+++ target/linux/brcm2708/image/config.txt	2013-05-23 21:21:59.021133756 -0400
++++ target/linux/brcm2708/image/config.txt	2013-05-26 08:44:37.559092647 -0400
 @@ -0,0 +1,6 @@
 +gpu_mem=32
 +arm_freq=800
