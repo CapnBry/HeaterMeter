@@ -204,11 +204,11 @@ function pidIntBar(target, val)
 function pidIntEvent(o)
 {
   $("#pidint").show('fast');
-  $("#pivb").html(o.b + "%"); pidIntBar("#pibb", o.b);
-  $("#pivp").html(o.p + "%"); pidIntBar("#pibp", o.p);
-  $("#pivi").html(o.i + "%"); pidIntBar("#pibi", o.i);
-  $("#pivd").html(o.d + "%"); pidIntBar("#pibd", o.d);
-  $("#pivdt").html(o.t + "&deg;");
+  $("#pivb").html(o.b.toFixed(1) + "%"); pidIntBar("#pibb", o.b);
+  $("#pivp").html(o.p.toFixed(1) + "%"); pidIntBar("#pibp", o.p);
+  $("#pivi").html(o.i.toFixed(1) + "%"); pidIntBar("#pibi", o.i);
+  $("#pivd").html(o.d.toFixed(1) + "%"); pidIntBar("#pibd", o.d);
+  $("#pivdt").html(o.t.toFixed(2) + "&deg;");
 }
 
 function legendClicked()
