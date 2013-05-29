@@ -59,7 +59,7 @@ void RFManager::freeStaleSources(void)
   for (unsigned char idx=0; idx<RF_SOURCE_COUNT; ++idx)
     if (_sources[idx].isStale())
     {
-      if (_callback) _callback(_sources[idx], Remove);
+      if (_callback) _callback(_sources[idx], RFEVENT_Remove);
       _sources[idx].setId(RFSOURCEID_NONE);
     }
 }
@@ -171,19 +171,19 @@ boolean RFManager::doWork(void)
         
       rf12_packet_t *pkt = (rf12_packet_t *)rf12_buf;
 
-      event e = Update;
+      unsigned char event = RFEVENT_Update;
       unsigned char srcId = ((pkt->byte0 & 0x0f) << 2) | (pkt->byte1 >> 6);
       unsigned char srcIdx = findSourceIdx(srcId);
       if (srcIdx == 0xff)
       {
         srcIdx = findFreeSourceIdx();
-        e = static_cast<event>(Add | Update);
+        event = RFEVENT_Add | RFEVENT_Update;
       }
       if (srcIdx != 0xff)
       {
         _sources[srcIdx].setId(srcId);
         if (_sources[srcIdx].update(pkt))
-          if (_callback) _callback(_sources[srcIdx], e);
+          if (_callback) _callback(_sources[srcIdx], event);
       }
     }  /* if crc ok */
     else if (_crcOk > 0)

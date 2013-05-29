@@ -66,11 +66,14 @@ private:
   unsigned char _rssi;
 };
 
+#define RFEVENT_Add    bit(1)
+#define RFEVENT_Remove bit(2)
+#define RFEVENT_Update bit(3)
+
 class RFManager
 {  
 public:
-  enum event { Add = 0x01, Remove = 0x02, Update = 0x04 };
-  typedef void (*event_callback)(RFSource&, event);
+  typedef void (*event_callback)(RFSource& source, unsigned char event);
 
   RFManager(const event_callback fn) :
     _callback(fn), _crcOk(0x80) {};

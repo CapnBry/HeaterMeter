@@ -29,7 +29,7 @@ static char g_SerialBuff[64];
 #endif /* HEATERMETER_SERIAL */
 
 #ifdef HEATERMETER_RFM12
-static void rfSourceNotify(RFSource &r, RFManager::event e); // prototype
+static void rfSourceNotify(RFSource &r, unsigned char event); // prototype
 static RFManager rfmanager(&rfSourceNotify);
 static unsigned char rfMap[TEMP_COUNT];
 #endif /* HEATERMETER_RFM12 */
@@ -930,14 +930,14 @@ static void outputRfStatus(void)
 }
 
 #ifdef HEATERMETER_RFM12
-static void rfSourceNotify(RFSource &r, RFManager::event e)
+static void rfSourceNotify(RFSource &r, unsigned char event)
 {
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
     if ((pid.Probes[i]->getProbeType() == PROBETYPE_RF12) &&
     ((rfMap[i] == RFSOURCEID_ANY) || (rfMap[i] == r.getId()))
     )
     {
-      if (e == RFManager::Remove)
+      if (event == RFEVENT_Remove)
         pid.Probes[i]->addAdcValue(0);
       else if (r.isNative())
         pid.Probes[i]->setTemperatureC(r.Value / 10.0f);
@@ -952,7 +952,7 @@ static void rfSourceNotify(RFSource &r, RFManager::event e)
       }
     } /* if probe is this source */
 
-  if (e & (RFManager::Add | RFManager::Remove))
+  if (event & (RFEVENT_Add | RFEVENT_Remove))
     outputRfStatus();
 }
 #endif /* HEATERMETER_RFM12 */
