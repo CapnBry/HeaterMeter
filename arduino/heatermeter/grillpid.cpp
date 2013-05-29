@@ -240,6 +240,22 @@ unsigned int GrillPid::countOfType(unsigned char probeType) const
   return retVal;  
 }
 
+unsigned char GrillPid::getOutputMax(void) const
+{
+  switch (_outputDevice)
+  {
+    case PIDOUTPUT_Fan:
+      return _maxFanSpeed;
+      break;
+
+    // In servo mode the "fan speed" always is 0-100 as in percent of open
+    case PIDOUTPUT_Servo:
+    default:
+      return 100;
+      break;
+  }
+}
+
 /* Calucluate the desired fan speed using the proportional–integral-derivative (PID) controller algorithm */
 inline void GrillPid::calcFanSpeed(void)
 {
@@ -262,8 +278,7 @@ inline void GrillPid::calcFanSpeed(void)
   _pidCurrent[PIDP] = Pid[PIDP] * error;
 
   // IIIII = fan speed percent per degree of accumulated error
-  // In servo mode the "fan speed" always is 0-100 as in percent of open
-  unsigned char max = (_outputDevice == PIDOUTPUT_Servo) ? 100 : _maxFanSpeed;
+  unsigned char max = getOutputMax();
   // anti-windup: Make sure we only adjust the I term while inside the proportional control range
   if ((error > 0 && lastFanSpeed < max) || (error < 0 && lastFanSpeed > 0))
     _pidCurrent[PIDI] += Pid[PIDI] * error;

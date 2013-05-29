@@ -178,6 +178,8 @@ public:
   unsigned char getFanSpeed() const { return _fanSpeed; }
   void setFanSpeed(int value);
   boolean getManualFanMode(void) const { return _manualFanMode; }
+  // return the maximum PID output for current output device
+  unsigned char getOutputMax(void) const;
   // Fan speed moving average
   float FanSpeedAvg;
   // Seconds remaining in the lid open countdown
@@ -188,10 +190,10 @@ public:
   unsigned int countOfType(unsigned char probeType) const;
   // true if FanSpeed > 0
   boolean isFanRunning(void) const { return _fanSpeed != 0; }
-  // true if fan is running at maximum speed
-  boolean isFanMaxed(void) const { return _fanSpeed >= _maxFanSpeed; }
+  // true if fan is running at maximum speed or servo wide open
+  boolean isOutputMaxed(void) const { return _fanSpeed >= getOutputMax(); }
   // true if temperature was >= setpoint since last set / lid event
-  boolean isPitTempReached(void) const { return _pitTemperatureReached; };
+  boolean isPitTempReached(void) const { return _pitTemperatureReached; }
   
   // Call this in loop()
   boolean doWork(void);

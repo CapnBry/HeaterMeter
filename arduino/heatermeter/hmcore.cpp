@@ -1142,7 +1142,7 @@ static void newTempsAvail(void)
 
   ledmanager.publish(LEDSTIMULUS_LidOpen, pid.isLidOpen());
   ledmanager.publish(LEDSTIMULUS_FanOn, pid.isFanRunning());
-  ledmanager.publish(LEDSTIMULUS_FanMax, pid.isFanMaxed());
+  ledmanager.publish(LEDSTIMULUS_FanMax, pid.isOutputMaxed());
   ledmanager.publish(LEDSTIMULUS_PitTempReached, pid.isPitTempReached());
 
 #ifdef HEATERMETER_RFM12
