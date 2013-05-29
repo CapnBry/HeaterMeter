@@ -60,7 +60,7 @@ Both Serial and Web
 /set?pnA=B - Set probe name A to string B.  B does not support URL encoding at this time.  Probe numbers are 0=pit 1=food1 2=food2 3=ambient
 /set?po=A,B,C,D - Set probe offsets to integers A, B, C, and D. Offsets can be omitted to retain their current values, such as po=,,,-2 to only set probe number 3's offset to -2
 /set?pcN=A,B,C,R,TRM - Set the probe coefficients and type for probe N.  A, B, and C are the Steinhart-Hart coeffieicents and R is the fixed side of the probe voltage divider.  A, B, C and R are floating point and can be specified in scienfific noation, e.g. 0.00023067434 -> 2.3067434e-4.  TRM is either the type of probe OR an RF map specifier.  If TRM is less than 128, it indicates a probe type.  Probe types are 0=Disabled, 1=Internal, 2=RFM12B.  Probe types of 128 and above are implicitly of type RFM12B and indicate the transmitter ID of the remote node (0-63) + 128. e.g. Transmitter ID 2 would be passed as 130. The value of 255 (transmitter ID 127) means "any" transmitter and can be used if only one transmitter is used.  Any of A,B,C,R,TRM set to blank will not be modified. Probe numbers are 0=pit 1=food1 2=food2 3=ambient
-/set?lb=A,B - Set the LCD backlight to A.  Range is 0 (off) to 255 (full)
+/set?lb=A,B,C[,C...] - Set display parameters.  A = LCD backlight Range is 0 (off) to 255 (full). B = Home screen mode 254=4-line 255=2-line 0, 1, 2, 3 = BigNum. C = Set LED config byte for Nth LED. See ledmanager.h::LedStimulus for values. High bit means invert.
 /set?ld=A,B,C - Set Lid Detect offset to A%, duration to B seconds. C is used to enable or disable a currently running lid detect mode. Non-zero will enter lid open mode, zero will disable lid open mode.
 /set?al=L,H[,L,H...] - Set probe alarms thresholds. Setting to a negative number will disable the alarm, setting to 0 will stop a ringing alarm and disarm it.
 /set?fn=L,H,I,O - Set the fan output parameters. L = min fan speed before "long PID" mode, H = max fan speed, I = Invert PWM polarity so that 100% actually outputs 0% and 0% outputs 100%, O = output mode (0 = Fan, 1 = Servo)
@@ -85,6 +85,8 @@ Alarm Indicator
 $HMAL,LowProbe0,HighProbe0[,...] (L or H suffix indicates ringing, negative values indicated disabled alarms)
 Fan Parameters
 $HMFN,Low,High,Invert (0=off 1=on),Output (0=Fan 1=Servo)
+Display Parameters
+$HMLB,LCDBacklight,LCDHomeMode,LED0,LED1,LED2,LED3
 Lid Detect Parameters
 $HMLD,Offset Percent,Lid Duration
 Debug Log Message

@@ -59,7 +59,9 @@ public:
   led_status_t Assignment[LED_COUNT];
   void publish(LedStimulus::Type t, LedAction::Type state);
   void doWork(void);
+  // LedConf is the one byte value that includes the stimulus and the invert bit
   void setLedConf(uint8_t led, uint8_t ledconf);
+  uint8_t getLedConf(uint8_t led) const { return (uint8_t)(Assignment[led].stimulus) | (Assignment[led].invert << 7); }
 
 private:
   uint32_t _blinkMillis;

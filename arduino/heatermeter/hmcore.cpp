@@ -34,7 +34,7 @@ static RFManager rfmanager(&rfSourceNotify);
 static unsigned char rfMap[TEMP_COUNT];
 #endif /* HEATERMETER_RFM12 */
 
-static void ledExecutor(uint8_t led, uint8_t on); // prototype
+static void ledExecutor(unsigned char led, unsigned char on); // prototype
 static LedManager ledmanager(&ledExecutor);
 
 static unsigned char g_AlarmId; // ID of alarm going off
@@ -64,7 +64,7 @@ static const struct __eeprom_data {
   boolean invertPwm;
   unsigned char homeDisplayMode;
   unsigned char pidOutputDevice;
-  unsigned char ledStimuli[LED_COUNT];
+  unsigned char ledConf[LED_COUNT];
 } DEFAULT_CONFIG[] PROGMEM = {
  {
   EEPROM_MAGIC,  // magic
@@ -185,7 +185,7 @@ static void storeProbeOffset(unsigned char probeIndex, int offset)
   if (ofs != 0)
   {
     pid.Probes[probeIndex]->Offset = offset;
-    eeprom_write_byte((uint8_t *)ofs, offset);
+    eeprom_write_byte((unsigned char *)ofs, offset);
   }  
 }
 
@@ -195,7 +195,7 @@ static void storeProbeType(unsigned char probeIndex, unsigned char probeType)
   if (ofs != 0)
   {
     pid.Probes[probeIndex]->setProbeType(probeType);
-    eeprom_write_byte((uint8_t *)ofs, probeType);
+    eeprom_write_byte((unsigned char *)ofs, probeType);
   }
 }
 
@@ -290,6 +290,15 @@ void storeLcdBacklight(unsigned char lcdBacklight)
 {
   setLcdBacklight(lcdBacklight);
   config_store_byte(lcdBacklight, lcdBacklight);
+}
+
+static void storeLedConf(unsigned char led, unsigned char ledConf)
+{
+  ledmanager.setLedConf(led, ledConf);
+
+  unsigned char *ofs = (unsigned char *)offsetof(__eeprom_data, ledConf);
+  ofs += led;
+  eeprom_write_byte(ofs, ledConf);
 }
 
 static void toneEnable(boolean enable)
@@ -654,6 +663,11 @@ void reportLcdParameters(void)
   SerialX.print(g_LcdBacklight, DEC);
   Serial_csv();
   SerialX.print(g_HomeDisplayMode, DEC);
+  for (unsigned char i=0; i<LED_COUNT; ++i)
+  {
+    Serial_csv();
+    SerialX.print(ledmanager.getLedConf(i), DEC);
+  }
   Serial_nl();
 }
 
@@ -670,6 +684,11 @@ void storeLcdParam(unsigned char idx, int val)
       // If we're in home, clear in case we're switching from 4 to 2
       if (isMenuHomeState())
         lcd.clear();
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+      storeLedConf(idx - 2, val);
       break;
   }
 }
@@ -1019,8 +1038,8 @@ static void eepromLoadBaseConfig(unsigned char forceDefault)
   g_HomeDisplayMode = config.base.homeDisplayMode;
   pid.setOutputDevice((GrillPidOutput::Type)config.base.pidOutputDevice);
 
-  for (uint8_t led = 0; led<LED_COUNT; ++led)
-    ledmanager.setLedConf(led, config.base.ledStimuli[led]);
+  for (unsigned char led = 0; led<LED_COUNT; ++led)
+    ledmanager.setLedConf(led, config.base.ledConf[led]);
 }
 
 static void eepromLoadProbeConfig(unsigned char forceDefault)
@@ -1068,7 +1087,7 @@ void eepromLoadConfig(unsigned char forceDefault)
 
 static void blinkLed(void)
 {
-  for (uint8_t led = 0; led<LED_COUNT; ++led)
+  for (unsigned char led = 0; led<LED_COUNT; ++led)
     ledmanager.setLedConf(led, (uint8_t)LedStimulus::Off | LEDSTIMULUS_INVERT);
 
   ledmanager.publish(LedStimulus::Off, LedAction::OneShot);
@@ -1136,11 +1155,11 @@ static void newTempsAvail(void)
 
 static void lcdDefineChars(void)
 {
-  for (uint8_t i=0; i<8; ++i)
+  for (unsigned char i=0; i<8; ++i)
     lcd.createChar_P(i, BIG_CHAR_PARTS + (i * 8));
 }
 
-static void ledExecutor(uint8_t led, uint8_t on)
+static void ledExecutor(unsigned char led, unsigned char on)
 {
   Debug_begin();
   SerialX.print(millis(), DEC);
