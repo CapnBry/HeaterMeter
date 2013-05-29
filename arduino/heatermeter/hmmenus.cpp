@@ -7,18 +7,14 @@ static state_t menuHome(button_t button);
 static state_t menuSetpoint(button_t button);
 static state_t menuProbename(button_t button);
 static state_t menuProbeOffset(button_t button);
-static state_t menuProbeSubmenu(button_t button);
 static state_t menuLidOpenOff(button_t button);
 static state_t menuLidOpenDur(button_t button);
 static state_t menuManualMode(button_t button);
 static state_t menuResetConfig(button_t button);
 static state_t menuMaxFanSpeed(button_t button);
-static state_t menuProbeAlarmOn(button_t button);
-static state_t menuProbeAlarmVal(button_t button);
 static state_t menuAlarmTriggered(button_t button);
 static state_t menuLcdBacklight(button_t button);
 static state_t menuToast(button_t button);
-static state_t menuAlarmAction(button_t button);
 
 static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_HOME_FOOD1, menuHome, 5 },
@@ -37,18 +33,6 @@ static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_RESETCONFIG, menuResetConfig, 10 },
   { ST_MAXFANSPEED, menuMaxFanSpeed, 10 },
   { ST_LCDBACKLIGHT, menuLcdBacklight, 10},
-#if 0
-  { ST_ALARM_ACTION, menuAlarmAction, 5 },
-  { ST_PROBESUB0, menuProbeSubmenu, 10 },
-  { ST_PROBESUB1, menuProbeSubmenu, 10 },
-  { ST_PROBESUB2, menuProbeSubmenu, 10 },
-  { ST_PROBESUB3, menuProbeSubmenu, 10 },
-  { ST_PROBENAME1, menuProbename, 10 },
-  { ST_PROBENAME2, menuProbename, 10 },
-  { ST_PROBENAME3, menuProbename, 10 },
-  { ST_PALARM1_H_ON, menuProbeAlarmOn, 10 },
-  { ST_PALARM1_H_VAL, menuProbeAlarmVal, 10 },
-#endif
   { ST_TOAST, menuToast, 20 },
   { 0, 0 },
 };
@@ -363,19 +347,6 @@ static state_t menuProbeOffset(button_t button)
   return ST_AUTO;
 }
 
-static state_t menuProbeSubmenu(button_t button)
-{
-  unsigned char probeIndex = Menus.getState() - ST_PROBESUB0;
-  if (button == BUTTON_ENTER)
-  {
-    menuProbenameLine(probeIndex);
-    lcd.setCursor(0, 1);  
-    lcdprint_P(PSTR("v probe config v"), false);
-  }
-  
-  return ST_AUTO;
-}
-
 static state_t menuLidOpenOff(button_t button)
 {
   if (button == BUTTON_ENTER)
@@ -457,57 +428,6 @@ static state_t menuMaxFanSpeed(button_t button)
   }
   
   menuNumberEdit(button, 5, 0, 100, PSTR("speed %3d%%"));
-  return ST_AUTO;
-}
-
-static state_t menuProbeAlarmOn(button_t button)
-{
-  // This function works for both low and high so determine which we're being called for
-  unsigned char highOrLow;
-  if (Menus.getState() >= ST_PALARM0_H_ON && Menus.getState() <= ST_PALARM3_H_ON)
-    highOrLow = ST_PALARM0_H_ON;
-  else
-    highOrLow = ST_PALARM0_L_ON;
-    
-  unsigned char probeIndex = Menus.getState() - highOrLow;
-  if (button == BUTTON_ENTER)
-  {
-    menuProbenameLine(probeIndex);
-    editInt = pid.Probes[probeIndex]->Alarms.Thresholds[ST_PALARM0_H_ON - highOrLow] > 0;
-  }
-  else if (button == BUTTON_LEAVE)
-  {
-    boolean val = (editInt != 0);
-    int t = pid.Probes[probeIndex]->Alarms.Thresholds[ST_PALARM0_H_ON - highOrLow];
-    if ((val && t < 0) || (!val && t > 0))
-    {
-      pid.Probes[probeIndex]->Alarms.Thresholds[ST_PALARM0_H_ON - highOrLow] = -t;
-      // TODO: Store the value in EEPROM
-    }
-  }
-
-  menuBooleanEdit(button, (highOrLow == ST_PALARM0_H_ON) ? PSTR("High alarm? ") : PSTR("Low alarm? "));
-  return ST_AUTO;
-}
-
-static state_t menuProbeAlarmVal(button_t button)
-{
-  // This function works for both low and high so determine which we're being called for
-  unsigned char highOrLow;
-  if (Menus.getState() >= ST_PALARM0_H_VAL && Menus.getState() <= ST_PALARM3_H_VAL)
-    highOrLow = ST_PALARM0_H_VAL;
-  else
-    highOrLow = ST_PALARM0_L_VAL;
-    
-  unsigned char probeIndex = Menus.getState() - highOrLow;
-  if (button == BUTTON_ENTER)
-  {
-    menuProbenameLine(probeIndex);
-    editInt = pid.Probes[probeIndex]->Alarms.Thresholds[ST_PALARM0_H_VAL - highOrLow] ;
-  }
-  
-  menuNumberEdit(button, 5, 0, 1000, 
-    (highOrLow == ST_PALARM0_H_VAL) ? PSTR("High Alrm %4d"DEGREE"%c") : PSTR("Low Alrm %5d"DEGREE"%c"));
   return ST_AUTO;
 }
 
