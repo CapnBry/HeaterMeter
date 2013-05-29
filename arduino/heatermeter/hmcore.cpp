@@ -1006,7 +1006,7 @@ static void eepromLoadBaseConfig(unsigned char forceDefault)
 #ifdef HEATERMETER_RFM12
   memcpy(rfMap, config.rfMap, sizeof(rfMap));
 #endif
-  pid.setUnits(config.pidUnits == 'C' ? 'C' : 'F');
+  pid.setUnits(config.pidUnits);
   pid.setMinFanSpeed(config.minFanSpeed);
   pid.setMaxFanSpeed(config.maxFanSpeed);
   pid.setInvertPwm(config.invertPwm);
@@ -1025,7 +1025,7 @@ static void eepromLoadProbeConfig(unsigned char forceDefault)
   eeprom_read_block(&magic, (void *)(EEPROM_PROBE_START-sizeof(magic)), sizeof(magic));
   if (magic != EEPROM_MAGIC)
   {
-    forceDefault = true;
+    forceDefault = 1;
     eeprom_write_word((uint16_t *)(EEPROM_PROBE_START-sizeof(magic)), EEPROM_MAGIC);
   }
     

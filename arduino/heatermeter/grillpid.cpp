@@ -530,9 +530,10 @@ void GrillPid::setUnits(char units)
   switch (units)
   {
     case 'C':
-    case 'F':
     case 'R':
       _units = units;
       break;
+    default:
+      _units = 'F';
   }
 }
