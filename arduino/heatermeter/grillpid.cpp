@@ -263,7 +263,7 @@ inline void GrillPid::calcFanSpeed(void)
 
   // IIIII = fan speed percent per degree of accumulated error
   // In servo mode the "fan speed" always is 0-100 as in percent of open
-  unsigned char max = (_outputDevice == GrillPidOutput::Servo) ? 100 : _maxFanSpeed;
+  unsigned char max = (_outputDevice == PIDOUTPUT_Servo) ? 100 : _maxFanSpeed;
   // anti-windup: Make sure we only adjust the I term while inside the proportional control range
   if ((error > 0 && lastFanSpeed < max) || (error < 0 && lastFanSpeed > 0))
     _pidCurrent[PIDI] += Pid[PIDI] * error;
@@ -288,7 +288,7 @@ inline void GrillPid::commitFanSpeed(void)
 
   calcExpMovingAverage(FANSPEED_AVG_SMOOTH, &FanSpeedAvg, _fanSpeed);
 
-  if (_outputDevice == GrillPidOutput::Fan)
+  if (_outputDevice == PIDOUTPUT_Fan)
   {
     /* For anything above _minFanSpeed, do a nomal PWM write.
        For below _minFanSpeed we use a "long pulse PWM", where
@@ -345,7 +345,7 @@ inline void GrillPid::commitFanSpeed(void)
 #endif
 }
 
-void GrillPid::setOutputDevice(GrillPidOutput::Type outputDevice)
+void GrillPid::setOutputDevice(unsigned char outputDevice)
 {
   TIMSK1 = 0;
   // Fast PWM Timer with TOP=ICR1 with no OC1x output
@@ -353,17 +353,17 @@ void GrillPid::setOutputDevice(GrillPidOutput::Type outputDevice)
 
   switch (outputDevice)
   {
-    case GrillPidOutput::Default:
-    case GrillPidOutput::Fan:
-      _outputDevice = GrillPidOutput::Fan;
+    case PIDOUTPUT_Default:
+    case PIDOUTPUT_Fan:
+      _outputDevice = PIDOUTPUT_Fan;
       // 64 prescaler
       TCCR1B = bit(WGM13) | bit(WGM12) | bit(CS11) | bit(CS10);
       // 511 TOP to be close to original 488Hz and allows OCR1B to be set to
       // 512 to prevent COMB_vect from firing (which means no LOW when at 100%)
       ICR1 = 511;
       break;
-    case GrillPidOutput::Servo:
-      _outputDevice = GrillPidOutput::Servo;
+    case PIDOUTPUT_Servo:
+      _outputDevice = PIDOUTPUT_Servo;
       // 8 prescaler gives us down to 30Hz with 0.5usec resolution
       TCCR1B = bit(WGM13) | bit(WGM12) | bit(CS11);
       // TOP = servo refresh

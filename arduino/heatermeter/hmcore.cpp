@@ -82,7 +82,7 @@ static const struct __eeprom_data {
   100,  // max fan speed
   false, // invert PWM
   0xff,  // 2-line home
-  GrillPidOutput::Fan,   // Pid output device
+  PIDOUTPUT_Fan,  // Pid output device
   { LEDSTIMULUS_RfReceive, LEDSTIMULUS_LidOpen, LEDSTIMULUS_FanOn, LEDSTIMULUS_Off },
 }
 };
@@ -282,7 +282,7 @@ static void storeInvertPwm(unsigned char invertPwm)
 
 static void storePidOutputDevice(unsigned char pidOutputDevice)
 {
-  pid.setOutputDevice((GrillPidOutput::Type)pidOutputDevice);
+  pid.setOutputDevice(pidOutputDevice);
   config_store_byte(pidOutputDevice, pidOutputDevice);
 }
 
@@ -1034,7 +1034,7 @@ static void eepromLoadBaseConfig(unsigned char forceDefault)
   pid.setMaxFanSpeed(config.base.maxFanSpeed);
   pid.setInvertPwm(config.base.invertPwm);
   g_HomeDisplayMode = config.base.homeDisplayMode;
-  pid.setOutputDevice((GrillPidOutput::Type)config.base.pidOutputDevice);
+  pid.setOutputDevice(config.base.pidOutputDevice);
 
   for (unsigned char led = 0; led<LED_COUNT; ++led)
     ledmanager.setAssignment(led, config.base.ledConf[led]);

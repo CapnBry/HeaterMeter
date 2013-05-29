@@ -109,14 +109,10 @@ public:
 #define PIDI 2
 #define PIDD 3
 
-struct GrillPidOutput
-{
-  typedef enum {
-    Default = 0xff,
-    Fan = 0,
-    Servo = 1
-  } Type;
-};
+// For GrillPid::OutputDevice
+#define PIDOUTPUT_Default  255
+#define PIDOUTPUT_Fan      0
+#define PIDOUTPUT_Servo    1
 
 class GrillPid
 {
@@ -137,7 +133,7 @@ private:
   unsigned char _maxFanSpeed;
   unsigned char _minFanSpeed;
   boolean _invertPwm;
-  GrillPidOutput::Type _outputDevice;
+  unsigned char _outputDevice;
   
   void calcFanSpeed(void);
   void commitFanSpeed(void);
@@ -173,9 +169,9 @@ public:
   // Reverse the PWM output, i.e. 100% writes 0 to the output
   boolean getInvertPwm(void) const { return _invertPwm; }
   void setInvertPwm(boolean value) { _invertPwm = value; }
-  // Sets the type of device connected to the output pin
-  GrillPidOutput::Type getOutputDevice(void) const { return _outputDevice; }
-  void setOutputDevice(GrillPidOutput::Type outputDevice);
+  // Sets the type of device connected to the output pin GRILLPIDOUTPUT_*
+  unsigned char getOutputDevice(void) const { return _outputDevice; }
+  void setOutputDevice(unsigned char outputDevice);
   
   /* Runtime Data */
   // Current fan speed in percent, setting this will put the fan into manual mode
