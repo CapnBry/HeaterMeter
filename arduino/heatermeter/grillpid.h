@@ -192,6 +192,8 @@ public:
   unsigned int countOfType(unsigned char probeType) const;
   // true if FanSpeed > 0
   boolean isFanRunning(void) const { return _fanSpeed != 0; }
+  // true if fan is running at maximum speed
+  boolean isFanMaxed(void) const { return _fanSpeed >= _maxFanSpeed; }
   // true if temperature was >= setpoint since last set / lid event
   boolean isPitTempReached(void) const { return _pitTemperatureReached; };
   
