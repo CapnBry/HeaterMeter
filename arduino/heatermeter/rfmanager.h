@@ -69,9 +69,9 @@ private:
   unsigned char _rssi;
 };
 
-#define RFEVENT_Add    bit(1)
+#define RFEVENT_Add    bit(0)
+#define RFEVENT_Update bit(1)
 #define RFEVENT_Remove bit(2)
-#define RFEVENT_Update bit(3)
 
 class RFManager
 {  
