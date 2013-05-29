@@ -3,9 +3,9 @@
 
 #define LED_BLINK_MILLIS 750
 
-void LedManager::publish(uint8_t stimulus, uint8_t action)
+void LedManager::publish(unsigned char stimulus, unsigned char action)
 {
-  for (uint8_t i=0; i<LED_COUNT; ++i)
+  for (unsigned char i=0; i<LED_COUNT; ++i)
   {
     led_status_t &a = _leds[i];
     if ((a.stimulus & LEDSTIMULUS_MASK) == stimulus)
@@ -13,8 +13,8 @@ void LedManager::publish(uint8_t stimulus, uint8_t action)
       a.triggered = action;
       if (action != LEDACTION_OneShot)
       {
-        uint8_t invert = a.stimulus >> 7;
-        uint8_t invertedState = invert ^ action;
+        unsigned char invert = a.stimulus >> 7;
+        unsigned char invertedState = invert ^ action;
 
         if (invertedState != a.on)
         {
@@ -33,7 +33,7 @@ void LedManager::doWork(void)
   _blinkMillis = millis();
 
   ++_blinkCount;
-  for (uint8_t i=0; i<LED_COUNT; ++i)
+  for (unsigned char i=0; i<LED_COUNT; ++i)
   {
     led_status_t &a = _leds[i];
     boolean stateChanged = false;
@@ -61,7 +61,7 @@ void LedManager::doWork(void)
   } /* LED_COUNT */
 }
 
-void LedManager::setAssignment(uint8_t led, uint8_t stimulus)
+void LedManager::setAssignment(unsigned char led, unsigned char stimulus)
 {
   _leds[led].stimulus = stimulus;
   if (_leds[led].on = LEDACTION_OnSteady)

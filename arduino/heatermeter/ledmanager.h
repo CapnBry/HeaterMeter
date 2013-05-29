@@ -2,8 +2,6 @@
 #ifndef __LEDMANAGER_H__
 #define __LEDMANAGER_H__
 
-#include <inttypes.h>
-
 #define LEDSTIMULUS_INVERT 0x80
 #define LEDSTIMULUS_MASK   0x7f
 #define LEDSTIMULUS_Off       0
@@ -27,32 +25,32 @@
 
 #define LED_COUNT 4
 
-typedef void (*led_executor_t)(uint8_t led, uint8_t on);
-
 typedef struct tagLedStatus
 {
   // config
-  uint8_t stimulus;    // LEDSTIMULUS_* and possible LEDSTIMULUS_INVERT
+  unsigned char stimulus;    // LEDSTIMULUS_* and possible LEDSTIMULUS_INVERT
   // state
-  uint8_t triggered;   // LEDACTION_*
-  uint8_t on;          // LEDACTION_*
+  unsigned char triggered;   // LEDACTION_*
+  unsigned char on;          // LEDACTION_*
 } led_status_t;
 
 class LedManager
 {
 public:
+  typedef void (*led_executor_t)(unsigned char led, unsigned char on);
+
   LedManager(const led_executor_t executor) :
     _executor(executor) { }
 
-  void publish(uint8_t stimulus, uint8_t action);
+  void publish(unsigned char stimulus, unsigned char action);
   void doWork(void);
-  void setAssignment(uint8_t led, uint8_t ledconf);
-  uint8_t getAssignment(uint8_t led) const { return _leds[led].stimulus; }
+  void setAssignment(unsigned char led, unsigned char ledconf);
+  unsigned char getAssignment(unsigned char led) const { return _leds[led].stimulus; }
 
 private:
   led_status_t _leds[LED_COUNT];
-  uint32_t _blinkMillis;
-  uint8_t _blinkCount;
+  unsigned long _blinkMillis;
+  unsigned char _blinkCount;
   led_executor_t _executor;
 };
 
