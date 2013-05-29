@@ -294,7 +294,7 @@ void storeLcdBacklight(unsigned char lcdBacklight)
 
 static void storeLedConf(unsigned char led, unsigned char ledConf)
 {
-  ledmanager.setLedConf(led, ledConf);
+  ledmanager.setAssignment(led, (LedStimulus::Type)ledConf);
 
   unsigned char *ofs = (unsigned char *)offsetof(__eeprom_data, ledConf);
   ofs += led;
@@ -666,7 +666,7 @@ void reportLcdParameters(void)
   for (unsigned char i=0; i<LED_COUNT; ++i)
   {
     Serial_csv();
-    SerialX.print(ledmanager.getLedConf(i), DEC);
+    SerialX.print(ledmanager.getAssignment(i), DEC);
   }
   Serial_nl();
 }
@@ -1039,7 +1039,7 @@ static void eepromLoadBaseConfig(unsigned char forceDefault)
   pid.setOutputDevice((GrillPidOutput::Type)config.base.pidOutputDevice);
 
   for (unsigned char led = 0; led<LED_COUNT; ++led)
-    ledmanager.setLedConf(led, config.base.ledConf[led]);
+    ledmanager.setAssignment(led, (LedStimulus::Type)config.base.ledConf[led]);
 }
 
 static void eepromLoadProbeConfig(unsigned char forceDefault)
@@ -1087,9 +1087,8 @@ void eepromLoadConfig(unsigned char forceDefault)
 
 static void blinkLed(void)
 {
-  for (unsigned char led = 0; led<LED_COUNT; ++led)
-    ledmanager.setLedConf(led, (uint8_t)LedStimulus::Off | LEDSTIMULUS_INVERT);
-
+  // This function only works the first time, when all the LEDs are assigned to
+  // LedStimulus::Off, and OneShot turns them on for one blink
   ledmanager.publish(LedStimulus::Off, LedAction::OneShot);
   ledmanager.doWork();
 }
@@ -1161,12 +1160,6 @@ static void lcdDefineChars(void)
 
 static void ledExecutor(unsigned char led, unsigned char on)
 {
-  Debug_begin();
-  SerialX.print(millis(), DEC);
-  SerialX.print(F(" LED ")); SerialX.print(led, DEC);
-  SerialX.print('='); SerialX.print(on, DEC);
-  Debug_end();
-  
   switch (led)
   {
     case 0:

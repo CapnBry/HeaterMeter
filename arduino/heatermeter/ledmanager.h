@@ -44,7 +44,6 @@ typedef struct tagLedStatus
 {
   // config
   LedStimulus::Type stimulus;
-  uint8_t invert;
   // state
   LedAction::Type triggered;
   LedAction::Type on;
@@ -56,14 +55,13 @@ public:
   LedManager(const led_executor_t executor) :
     _executor(executor) { }
 
-  led_status_t Assignment[LED_COUNT];
   void publish(LedStimulus::Type t, LedAction::Type state);
   void doWork(void);
-  // LedConf is the one byte value that includes the stimulus and the invert bit
-  void setLedConf(uint8_t led, uint8_t ledconf);
-  uint8_t getLedConf(uint8_t led) const { return (uint8_t)(Assignment[led].stimulus) | (Assignment[led].invert << 7); }
+  void setAssignment(uint8_t led, LedStimulus::Type ledconf);
+  LedStimulus::Type getAssignment(uint8_t led) const { return _leds[led].stimulus; }
 
 private:
+  led_status_t _leds[LED_COUNT];
   uint32_t _blinkMillis;
   uint8_t _blinkCount;
   led_executor_t _executor;
