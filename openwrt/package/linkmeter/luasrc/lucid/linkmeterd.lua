@@ -225,7 +225,7 @@ local function segProbeCoeffs(line)
 end
 
 local function segLcdBacklight(line)
-  return segConfig(line, {"lb", "lbn"})
+  return segConfig(line, {"lb", "lbn", "le0", "le1", "le2", "le3"})
 end
 
 local function segRfUpdate(line)

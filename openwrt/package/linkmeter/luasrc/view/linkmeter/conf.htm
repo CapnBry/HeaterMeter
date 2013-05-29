@@ -307,7 +307,7 @@ function updateConfigUrl(divname, h)
       aValues.push(k + "=" + encodeURIComponent(h[k]));
   }
   
-  csvItems(h, aValues, "lb", ["lb", "lbn"]);
+  csvItems(h, aValues, "lb", ["lb", "lbn", "le0", "le1", "le2"]);
   csvItems(h, aValues, "ld", ["lo", "ld"]);
   csvItems(h, aValues, "po", ["po0", "po1", "po2", "po3"]);
   csvItems(h, aValues, "fn", ["fmin", "fmax", "finv", "fout"]);
@@ -523,16 +523,46 @@ time they are restarted.</div>
 </fieldset>
 
 <fieldset class="cbi-section" id="cbi-lm-lcd">
-<legend>LCD Display</legend>
-  Backlight <input type="text" maxlength="3" id="lb" style="width: 2em;"/>%
-  <select id="lbn" style="width: 13em;">
-    <option value="255">2-line Home</option>
-    <option value="254">4-line Home</option>
-    <option value="0">Large Home: Probe 0</option>
-    <option value="1">Large Home: Probe 1</option>
-    <option value="2">Large Home: Probe 2</option>
-    <option value="3">Large Home: Probe 3</option>
-  </select>
+<legend>LCD / LED Display</legend>
+  <div class="cbi-value">
+    Backlight <input type="text" maxlength="3" id="lb" style="width: 2em;"/>%
+    <select id="lbn" style="width: 13em;">
+      <option value="255">2-line Home</option>
+      <option value="254">4-line Home</option>
+      <option value="0">Large Home: Probe 0</option>
+      <option value="1">Large Home: Probe 1</option>
+      <option value="2">Large Home: Probe 2</option>
+      <option value="3">Large Home: Probe 3</option>
+    </select>
+  </div>
+  <div class="cbi-value">
+  <ul class="rfnodes">
+<% for i=0,2 do %>
+    <li>
+    LED #<%=i%>
+    <input type="checkbox"/><label> Invert</label>
+    <br/>
+    <select id="le<%=i%>" style="width: 13em;">
+      <option value="0">Off</option>
+      <option value="1">Alarm 0 Low</option>
+      <option value="2">Alarm 0 High</option>
+      <option value="3">Alarm 1 Low</option>
+      <option value="4">Alarm 1 High</option>
+      <option value="5">Alarm 2 Low</option>
+      <option value="6">Alarm 2 High</option>
+      <option value="7">Alarm 3 Low</option>
+      <option value="8">Alarm 3 High</option>
+      <option value="9">RF Data Received</option>
+      <option value="10">Lid Open</option>
+      <option value="11">Fan speed > 0%</option>
+      <option value="12">Pit Temperature Reached</option>
+      <option value="13">Fan speed = Max</option>
+      <option value="255">Unset</option>
+    </select>
+    </li>
+<% end %>
+  </ul>
+  </div>
 </fieldset>
 
 <fieldset class="cbi-section" id="cbi-lm-lid">
