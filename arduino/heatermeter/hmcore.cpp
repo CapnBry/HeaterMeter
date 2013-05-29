@@ -987,72 +987,81 @@ static void checkAlarms(void)
 
 static void eepromLoadBaseConfig(unsigned char forceDefault)
 {
-  struct __eeprom_data config;
-  eeprom_read_block(&config, 0, sizeof(config));
-  forceDefault = forceDefault || config.magic != EEPROM_MAGIC;
+  // The compiler likes to join eepromLoadBaseConfig and eepromLoadProbeConfig s
+  // this union saves stack space by reusing the same memory area for both structs
+  union {
+    struct __eeprom_data base;
+    struct __eeprom_probe probe;
+  } config;
+
+  eeprom_read_block(&config.base, 0, sizeof(__eeprom_data));
+  forceDefault = forceDefault || config.base.magic != EEPROM_MAGIC;
   if (forceDefault != 0)
   {
-    memcpy_P(&config, &DEFAULT_CONFIG[forceDefault - 1], sizeof(__eeprom_data));
-    eeprom_write_block(&config, 0, sizeof(__eeprom_data));  
+    memcpy_P(&config.base, &DEFAULT_CONFIG[forceDefault - 1], sizeof(__eeprom_data));
+    eeprom_write_block(&config.base, 0, sizeof(__eeprom_data));
   }
   
-  pid.setSetPoint(config.setPoint);
-  pid.LidOpenOffset = config.lidOpenOffset;
-  pid.setLidOpenDuration(config.lidOpenDuration);
-  memcpy(pid.Pid, config.pidConstants, sizeof(config.pidConstants));
-  if (config.manualMode)
+  pid.setSetPoint(config.base.setPoint);
+  pid.LidOpenOffset = config.base.lidOpenOffset;
+  pid.setLidOpenDuration(config.base.lidOpenDuration);
+  memcpy(pid.Pid, config.base.pidConstants, sizeof(config.base.pidConstants));
+  if (config.base.manualMode)
     pid.setFanSpeed(0);
-  setLcdBacklight(config.lcdBacklight);
+  setLcdBacklight(config.base.lcdBacklight);
 #ifdef HEATERMETER_RFM12
-  memcpy(rfMap, config.rfMap, sizeof(rfMap));
+  memcpy(rfMap, config.base.rfMap, sizeof(rfMap));
 #endif
-  pid.setUnits(config.pidUnits);
-  pid.setMinFanSpeed(config.minFanSpeed);
-  pid.setMaxFanSpeed(config.maxFanSpeed);
-  pid.setInvertPwm(config.invertPwm);
-  g_HomeDisplayMode = config.homeDisplayMode;
-  pid.setOutputDevice((GrillPidOutput::Type)config.pidOutputDevice);
+  pid.setUnits(config.base.pidUnits);
+  pid.setMinFanSpeed(config.base.minFanSpeed);
+  pid.setMaxFanSpeed(config.base.maxFanSpeed);
+  pid.setInvertPwm(config.base.invertPwm);
+  g_HomeDisplayMode = config.base.homeDisplayMode;
+  pid.setOutputDevice((GrillPidOutput::Type)config.base.pidOutputDevice);
 
   for (uint8_t led = 0; led<LED_COUNT; ++led)
-    ledmanager.setLedConf(led, config.ledStimuli[led]);
+    ledmanager.setLedConf(led, config.base.ledStimuli[led]);
 }
 
 static void eepromLoadProbeConfig(unsigned char forceDefault)
 {
-  unsigned int magic;
+  // The compiler likes to join eepromLoadBaseConfig and eepromLoadProbeConfig s
+  // this union saves stack space by reusing the same memory area for both structs
+  union {
+    struct __eeprom_data base;
+    struct __eeprom_probe probe;
+  } config;
+
   // instead of this use below because we don't have eeprom_read_word linked yet
   //magic = eeprom_read_word((uint16_t *)(EEPROM_PROBE_START-sizeof(magic))); 
-  eeprom_read_block(&magic, (void *)(EEPROM_PROBE_START-sizeof(magic)), sizeof(magic));
-  if (magic != EEPROM_MAGIC)
+  eeprom_read_block(&config.base, (void *)(EEPROM_PROBE_START-sizeof(config.base.magic)), sizeof(config.base.magic));
+  if (config.base.magic != EEPROM_MAGIC)
   {
     forceDefault = 1;
-    eeprom_write_word((uint16_t *)(EEPROM_PROBE_START-sizeof(magic)), EEPROM_MAGIC);
+    eeprom_write_word((uint16_t *)(EEPROM_PROBE_START-sizeof(config.base.magic)), EEPROM_MAGIC);
   }
     
-  struct  __eeprom_probe config;
   struct  __eeprom_probe *p;
   p = (struct  __eeprom_probe *)(EEPROM_PROBE_START);
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
     if (forceDefault != 0)
     {
-      memcpy_P(&config, &DEFAULT_PROBE_CONFIG, sizeof( __eeprom_probe));
+      memcpy_P(&config.probe, &DEFAULT_PROBE_CONFIG, sizeof( __eeprom_probe));
       // Hardcoded to change the last character of the string instead of [strlen(config.name)-1]
-      config.name[6] = '0' + i;
-      eeprom_write_block(&config, p, sizeof(__eeprom_probe));
+      config.probe.name[6] = '0' + i;
+      eeprom_write_block(&config.probe, p, sizeof(__eeprom_probe));
     }
     else
-      eeprom_read_block(&config, p, sizeof(__eeprom_probe));
+      eeprom_read_block(&config.probe, p, sizeof(__eeprom_probe));
 
-    pid.Probes[i]->loadConfig(&config);
+    pid.Probes[i]->loadConfig(&config.probe);
     ++p;
   }  /* for i<TEMP_COUNT */
 }
 
 void eepromLoadConfig(unsigned char forceDefault)
 {
-  // These are separated into two functions to prevent needing stack
-  // space for both a __eeprom_data and __eeprom_probe structure
   eepromLoadBaseConfig(forceDefault);
   eepromLoadProbeConfig(forceDefault);
 }
@@ -1138,7 +1147,7 @@ static void ledExecutor(uint8_t led, uint8_t on)
   SerialX.print(F(" LED ")); SerialX.print(led, DEC);
   SerialX.print('='); SerialX.print(on, DEC);
   Debug_end();
-
+  
   switch (led)
   {
     case 0:
