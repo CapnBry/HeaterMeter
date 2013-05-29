@@ -83,7 +83,7 @@ static const struct __eeprom_data {
   false, // invert PWM
   0xff,  // 2-line home
   GrillPidOutput::Fan,   // Pid output device
-  { LedStimulus::RfReceive, LedStimulus::LidOpen, LedStimulus::FanOn, LedStimulus::Off },
+  { LEDSTIMULUS_RfReceive, LEDSTIMULUS_LidOpen, LEDSTIMULUS_FanOn, LEDSTIMULUS_Off },
 }
 };
 
@@ -294,7 +294,7 @@ void storeLcdBacklight(unsigned char lcdBacklight)
 
 static void storeLedConf(unsigned char led, unsigned char ledConf)
 {
-  ledmanager.setAssignment(led, (LedStimulus::Type)ledConf);
+  ledmanager.setAssignment(led, ledConf);
 
   unsigned char *ofs = (unsigned char *)offsetof(__eeprom_data, ledConf);
   ofs += led;
@@ -993,10 +993,8 @@ static void checkAlarms(void)
 #endif
         Menus.setState(ST_HOME_ALARM);
       }
-      ledmanager.publish(
-        (LedStimulus::Type)(LedStimulus::Alarm0L + MAKE_ALARM_ID(i, j)),
-        (LedAction::Type)(pid.Probes[i]->Alarms.Ringing[j])
-      );
+      ledmanager.publish(LEDSTIMULUS_Alarm0L + MAKE_ALARM_ID(i, j),
+        pid.Probes[i]->Alarms.Ringing[j]);
     }
 
   // No alarms ringing, return to HOME
@@ -1039,7 +1037,7 @@ static void eepromLoadBaseConfig(unsigned char forceDefault)
   pid.setOutputDevice((GrillPidOutput::Type)config.base.pidOutputDevice);
 
   for (unsigned char led = 0; led<LED_COUNT; ++led)
-    ledmanager.setAssignment(led, (LedStimulus::Type)config.base.ledConf[led]);
+    ledmanager.setAssignment(led, config.base.ledConf[led]);
 }
 
 static void eepromLoadProbeConfig(unsigned char forceDefault)
@@ -1089,7 +1087,7 @@ static void blinkLed(void)
 {
   // This function only works the first time, when all the LEDs are assigned to
   // LedStimulus::Off, and OneShot turns them on for one blink
-  ledmanager.publish(LedStimulus::Off, LedAction::OneShot);
+  ledmanager.publish(LEDSTIMULUS_Off, LEDACTION_OneShot);
   ledmanager.doWork();
 }
 
@@ -1142,10 +1140,10 @@ static void newTempsAvail(void)
   if (g_LogPidInternals)
     pid.pidStatus();
 
-  ledmanager.publish(LedStimulus::LidOpen, (LedAction::Type)pid.isLidOpen());
-  ledmanager.publish(LedStimulus::FanOn, (LedAction::Type)pid.isFanRunning());
-  ledmanager.publish(LedStimulus::FanMax, (LedAction::Type)pid.isFanMaxed());
-  ledmanager.publish(LedStimulus::PitTempReached, (LedAction::Type)pid.isPitTempReached());
+  ledmanager.publish(LEDSTIMULUS_LidOpen, pid.isLidOpen());
+  ledmanager.publish(LEDSTIMULUS_FanOn, pid.isFanRunning());
+  ledmanager.publish(LEDSTIMULUS_FanMax, pid.isFanMaxed());
+  ledmanager.publish(LEDSTIMULUS_PitTempReached, pid.isPitTempReached());
 
 #ifdef HEATERMETER_RFM12
   rfmanager.sendUpdate(pid.getFanSpeed());
@@ -1221,7 +1219,7 @@ void hmcoreLoop(void)
 
 #ifdef HEATERMETER_RFM12
   if (rfmanager.doWork())
-    ledmanager.publish(LedStimulus::RfReceive, LedAction::OneShot);
+    ledmanager.publish(LEDSTIMULUS_RfReceive, LEDACTION_OneShot);
 #endif /* HEATERMETER_RFM12 */
 
   Menus.doWork();

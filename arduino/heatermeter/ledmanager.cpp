@@ -3,18 +3,18 @@
 
 #define LED_BLINK_MILLIS 750
 
-void LedManager::publish(LedStimulus::Type t, LedAction::Type state)
+void LedManager::publish(uint8_t stimulus, uint8_t action)
 {
   for (uint8_t i=0; i<LED_COUNT; ++i)
   {
     led_status_t &a = _leds[i];
-    if ((a.stimulus & LEDSTIMULUS_MASK) == t)
+    if ((a.stimulus & LEDSTIMULUS_MASK) == stimulus)
     {
-      a.triggered = state;
-      if (state != LedAction::OneShot)
+      a.triggered = action;
+      if (action != LEDACTION_OneShot)
       {
         uint8_t invert = a.stimulus >> 7;
-        LedAction::Type invertedState = (LedAction::Type)(invert ^ (uint8_t)state);
+        uint8_t invertedState = invert ^ action;
 
         if (invertedState != a.on)
         {
@@ -40,18 +40,18 @@ void LedManager::doWork(void)
 
     if (_blinkCount & 1)
     {
-      if (a.triggered == LedAction::OneShot)
+      if (a.triggered == LEDACTION_OneShot)
       {
-        a.on = LedAction::OneShot;
-        a.triggered = LedAction::Off;
+        a.on = LEDACTION_OneShot;
+        a.triggered = LEDACTION_Off;
         stateChanged = true;
       }
     }
     else
     {
-      if (a.on == LedAction::OneShot)
+      if (a.on == LEDACTION_OneShot)
       {
-        a.on = LedAction::Off;
+        a.on = LEDACTION_Off;
         stateChanged = true;
       }
     } /* !_blinkState */
@@ -61,9 +61,9 @@ void LedManager::doWork(void)
   } /* LED_COUNT */
 }
 
-void LedManager::setAssignment(uint8_t led, LedStimulus::Type stimulus)
+void LedManager::setAssignment(uint8_t led, uint8_t stimulus)
 {
   _leds[led].stimulus = stimulus;
-  if (_leds[led].on = LedAction::OnSteady)
-    _executor(led, LedAction::Off);
+  if (_leds[led].on = LEDACTION_OnSteady)
+    _executor(led, LEDACTION_Off);
 }
