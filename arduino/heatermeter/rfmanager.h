@@ -16,6 +16,10 @@
 // This should be large enough to allow the remote node to sleep
 #define RF_STALE_TIME (3 * 60 * 1000UL)
 
+#define RFSOURCEFLAG_LowBattery   bit(0)
+#define RFSOURCEFLAG_RecentReset  bit(1)
+#define RFSOURCEFLAG_NativeItPlus bit(2)
+
 typedef struct tagRf12Packet
 {
   // 4 bits = "9"
@@ -36,7 +40,6 @@ typedef struct tagRf12Packet
 class RFSource
 {
 public:
-  enum flag { LowBattery = bit(0), RecentReset = bit(1), NativeItPlus = bit(2) };
   RFSource(void) : _id(RFSOURCEID_NONE) {};
   
   // The 6 bitID of the remote node (0-63)
@@ -49,9 +52,9 @@ public:
   unsigned char getRssi(void) const { return _rssi; }
 
   // true if last packet had the low battery flag
-  boolean isBatteryLow(void) const { return _flags & LowBattery; }
+  boolean isBatteryLow(void) const { return _flags & RFSOURCEFLAG_LowBattery; }
   // true if last packet indicated IT+, that value = degrees C * 10
-  boolean isNative(void) const { return _flags & NativeItPlus; }
+  boolean isNative(void) const { return _flags & RFSOURCEFLAG_NativeItPlus; }
   boolean isFree(void) const { return _id == RFSOURCEID_NONE; }
   boolean isStale(void) const { return !isFree() && ((millis() - _lastReceive) > RF_STALE_TIME); }
 

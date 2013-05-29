@@ -17,12 +17,12 @@ boolean RFSource::update(rf12_packet_t *pkt)
 
   unsigned char newFlags = 0;
   if ((pkt->byte1 & 0x20) != 0)
-    newFlags |= RecentReset;
+    newFlags |= RFSOURCEFLAG_RecentReset;
   if ((pkt->hygro & 0x80) != 0)
-    newFlags |= LowBattery;
+    newFlags |= RFSOURCEFLAG_LowBattery;
    /* Hygro value of 6A=NoHygro 7D=Secondary Unit?(TX25U) 7F=lmremote */
   if ((pkt->hygro & 0x7f) < 0x7f)
-    newFlags |= NativeItPlus;
+    newFlags |= RFSOURCEFLAG_NativeItPlus;
   _flags = newFlags;
   _rssi = rf12_rssi();
 
