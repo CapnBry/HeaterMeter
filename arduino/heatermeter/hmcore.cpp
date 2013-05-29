@@ -34,7 +34,7 @@ static RFManager rfmanager(&rfSourceNotify);
 static unsigned char rfMap[TEMP_COUNT];
 #endif /* HEATERMETER_RFM12 */
 
-static void ledExecutor(uint8_t led, bool on); // prototype
+static void ledExecutor(uint8_t led, uint8_t on); // prototype
 static LedManager ledmanager(&ledExecutor);
 
 static unsigned char g_AlarmId; // ID of alarm going off
@@ -64,7 +64,9 @@ static const struct __eeprom_data {
   boolean invertPwm;
   unsigned char homeDisplayMode;
   unsigned char pidOutputDevice;
+  unsigned char ledStimuli[LED_COUNT];
 } DEFAULT_CONFIG[] PROGMEM = {
+ {
   EEPROM_MAGIC,  // magic
   225,  // setpoint
   6,    // lid open offset %
@@ -81,6 +83,8 @@ static const struct __eeprom_data {
   false, // invert PWM
   0xff,  // 2-line home
   GrillPidOutput::Fan,   // Pid output device
+  { LedStimulus::RfReceive, LedStimulus::LidOpen, LedStimulus::FanOn, LedStimulus::Off },
+}
 };
 
 // EEPROM address of the start of the probe structs, the 2 bytes before are magic
@@ -961,6 +965,7 @@ static void checkAlarms(void)
 {
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
     for (unsigned char j=ALARM_IDX_LOW; j<=ALARM_IDX_HIGH; ++j)
+    {
       if (pid.Probes[i]->Alarms.Ringing[j])
       {
         g_AlarmId = MAKE_ALARM_ID(i, j);
@@ -968,8 +973,12 @@ static void checkAlarms(void)
         reportAlarmLimits();
 #endif
         Menus.setState(ST_HOME_ALARM);
-        return;
       }
+      ledmanager.publish(
+        (LedStimulus::Type)(LedStimulus::Alarm0L + MAKE_ALARM_ID(i, j)),
+        (LedAction::Type)(pid.Probes[i]->Alarms.Ringing[j])
+      );
+    }
 
   // No alarms ringing, return to HOME
   if (Menus.getState() == ST_HOME_ALARM)
@@ -994,23 +1003,25 @@ static void eepromLoadBaseConfig(unsigned char forceDefault)
   if (config.manualMode)
     pid.setFanSpeed(0);
   setLcdBacklight(config.lcdBacklight);
-  pid.setUnits(config.pidUnits == 'C' ? 'C' : 'F');
-  pid.setMaxFanSpeed(config.maxFanSpeed);
-  pid.setMinFanSpeed(config.minFanSpeed);
-  pid.setInvertPwm(config.invertPwm);
-  pid.setOutputDevice((GrillPidOutput::Type)config.pidOutputDevice);
-  g_HomeDisplayMode = config.homeDisplayMode;
-  
 #ifdef HEATERMETER_RFM12
   memcpy(rfMap, config.rfMap, sizeof(rfMap));
 #endif
+  pid.setUnits(config.pidUnits == 'C' ? 'C' : 'F');
+  pid.setMinFanSpeed(config.minFanSpeed);
+  pid.setMaxFanSpeed(config.maxFanSpeed);
+  pid.setInvertPwm(config.invertPwm);
+  g_HomeDisplayMode = config.homeDisplayMode;
+  pid.setOutputDevice((GrillPidOutput::Type)config.pidOutputDevice);
+
+  for (uint8_t led = 0; led<LED_COUNT; ++led)
+    ledmanager.setLedConf(led, config.ledStimuli[led]);
 }
 
 static void eepromLoadProbeConfig(unsigned char forceDefault)
 {
   unsigned int magic;
   // instead of this use below because we don't have eeprom_read_word linked yet
-  // magic = eeprom_read_word((uint16_t *)(EEPROM_PROBE_START-sizeof(magic))); 
+  //magic = eeprom_read_word((uint16_t *)(EEPROM_PROBE_START-sizeof(magic))); 
   eeprom_read_block(&magic, (void *)(EEPROM_PROBE_START-sizeof(magic)), sizeof(magic));
   if (magic != EEPROM_MAGIC)
   {
@@ -1048,11 +1059,11 @@ void eepromLoadConfig(unsigned char forceDefault)
 
 static void blinkLed(void)
 {
-  pinMode(PIN_WIRELESS_LED, OUTPUT);
-  digitalWrite(PIN_WIRELESS_LED, HIGH);
-  delay(100);
-  digitalWrite(PIN_WIRELESS_LED, LOW);
-  delay(50);
+  for (uint8_t led = 0; led<LED_COUNT; ++led)
+    ledmanager.setLedConf(led, (uint8_t)LedStimulus::Off | LEDSTIMULUS_INVERT);
+
+  ledmanager.publish(LedStimulus::Off, LedAction::OneShot);
+  ledmanager.doWork();
 }
 
 #ifdef HEATERMETER_SERIAL
@@ -1104,9 +1115,10 @@ static void newTempsAvail(void)
   if (g_LogPidInternals)
     pid.pidStatus();
 
-  ledmanager.publish(LidOpen, pid.isLidOpen());
-  ledmanager.publish(FanOn, pid.isFanRunning());
-  ledmanager.publish(PitTempReached, pid.isPitTempReached());
+  ledmanager.publish(LedStimulus::LidOpen, (LedAction::Type)pid.isLidOpen());
+  ledmanager.publish(LedStimulus::FanOn, (LedAction::Type)pid.isFanRunning());
+  ledmanager.publish(LedStimulus::FanMax, (LedAction::Type)pid.isFanMaxed());
+  ledmanager.publish(LedStimulus::PitTempReached, (LedAction::Type)pid.isPitTempReached());
 
 #ifdef HEATERMETER_RFM12
   rfmanager.sendUpdate(pid.getFanSpeed());
@@ -1119,7 +1131,7 @@ static void lcdDefineChars(void)
     lcd.createChar_P(i, BIG_CHAR_PARTS + (i * 8));
 }
 
-static void ledExecutor(uint8_t led, bool on)
+static void ledExecutor(uint8_t led, uint8_t on)
 {
   Debug_begin();
   SerialX.print(millis(), DEC);
@@ -1140,7 +1152,7 @@ static void ledExecutor(uint8_t led, bool on)
 
 void hmcoreSetup(void)
 {
-  // BLINK 1: Booted
+  pinMode(PIN_WIRELESS_LED, OUTPUT);
   blinkLed();
   
 #ifdef HEATERMETER_SERIAL
@@ -1178,15 +1190,6 @@ void hmcoreSetup(void)
 #endif
 
   Menus.setState(ST_HOME_NOPROBES);
-
-  // BLINK 2: Initialization complete
-  blinkLed();
-  ledmanager.Assignment[0].stimulus = FanOn;
-  ledmanager.Assignment[0].action = Steady;
-  ledmanager.Assignment[1].stimulus = PitTempReached;
-  ledmanager.Assignment[1].action = Steady;
-  ledmanager.Assignment[2].stimulus = RfReceive;
-  ledmanager.Assignment[2].action = OneShot;
 }
 
 void hmcoreLoop(void)
@@ -1197,7 +1200,7 @@ void hmcoreLoop(void)
 
 #ifdef HEATERMETER_RFM12
   if (rfmanager.doWork())
-    ledmanager.publish(RfReceive, true);
+    ledmanager.publish(LedStimulus::RfReceive, LedAction::OneShot);
 #endif /* HEATERMETER_RFM12 */
 
   Menus.doWork();
