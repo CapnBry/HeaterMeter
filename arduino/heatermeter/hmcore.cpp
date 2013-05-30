@@ -1148,6 +1148,7 @@ static void newTempsAvail(void)
   if (g_LogPidInternals)
     pid.pidStatus();
 
+  ledmanager.publish(LEDSTIMULUS_Off, LEDACTION_Off);
   ledmanager.publish(LEDSTIMULUS_LidOpen, pid.isLidOpen());
   ledmanager.publish(LEDSTIMULUS_FanOn, pid.isFanRunning());
   ledmanager.publish(LEDSTIMULUS_FanMax, pid.isOutputMaxed());
