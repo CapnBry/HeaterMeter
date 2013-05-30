@@ -64,6 +64,6 @@ void LedManager::doWork(void)
 void LedManager::setAssignment(unsigned char led, unsigned char stimulus)
 {
   _leds[led].stimulus = stimulus;
-  if (_leds[led].on = LEDACTION_OnSteady)
+  if (_leds[led].on == LEDACTION_OnSteady)
     _executor(led, LEDACTION_Off);
 }
