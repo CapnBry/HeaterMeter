@@ -11,7 +11,7 @@ void LedManager::publish(unsigned char stimulus, unsigned char action)
     if ((a.stimulus & LEDSTIMULUS_MASK) == stimulus)
     {
       a.triggered = action;
-      if (action != LEDACTION_OneShot)
+      if (a.on != LEDACTION_OneShot && action != LEDACTION_OneShot)
       {
         unsigned char invert = a.stimulus >> 7;
         unsigned char invertedState = invert ^ action;
