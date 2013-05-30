@@ -701,6 +701,7 @@ static void reportProbeCoeffs(void)
 
 static void reportAlarmLimits(void)
 {
+#ifdef HEATERMETER_SERIAL
   print_P(PSTR("HMAL"));
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
@@ -713,6 +714,7 @@ static void reportAlarmLimits(void)
     if (a.getHighRinging()) Serial_char('H');
   }
   Serial_nl();
+#endif
 }
 
 static void reportFanParams(void)
@@ -982,23 +984,29 @@ static void tone_doWork(void)
 
 static void checkAlarms(void)
 {
+  boolean anyRinging = false;
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
+  {
     for (unsigned char j=ALARM_IDX_LOW; j<=ALARM_IDX_HIGH; ++j)
     {
-      if (pid.Probes[i]->Alarms.Ringing[j])
+      boolean ringing = pid.Probes[i]->Alarms.Ringing[j];
+      unsigned char alarmId = MAKE_ALARM_ID(i, j);
+      if (ringing)
       {
-        g_AlarmId = MAKE_ALARM_ID(i, j);
-#ifdef HEATERMETER_SERIAL
-        reportAlarmLimits();
-#endif
-        Menus.setState(ST_HOME_ALARM);
+        anyRinging = true;
+        g_AlarmId = alarmId;
       }
-      ledmanager.publish(LEDSTIMULUS_Alarm0L + MAKE_ALARM_ID(i, j),
-        pid.Probes[i]->Alarms.Ringing[j]);
+      ledmanager.publish(LEDSTIMULUS_Alarm0L + alarmId, ringing);
     }
+  }
 
-  // No alarms ringing, return to HOME
-  if (Menus.getState() == ST_HOME_ALARM)
+  if (anyRinging)
+  {
+    reportAlarmLimits();
+    Menus.setState(ST_HOME_ALARM);
+  }
+  else if (Menus.getState() == ST_HOME_ALARM)
+    // No alarms ringing, return to HOME
     Menus.setState(ST_HOME_FOOD1);
 }
 
