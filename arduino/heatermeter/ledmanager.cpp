@@ -1,6 +1,6 @@
 #include "ledmanager.h"
 
-#define LED_BLINK_MILLIS 750
+#define LED_BLINK_MILLIS 500U
 
 void LedManager::publish(unsigned char stimulus, unsigned char action)
 {
