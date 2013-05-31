@@ -743,8 +743,18 @@ function plotToPng(plot, background)
 
 function saveAsPng()
 {
-  if (lastPlot)
-    $("#dl").attr("src", plotToPng(lastPlot, "#fff"));
+    if (lastPlot)
+        $("#dl").attr("src", plotToPng(lastPlot, "#fff"));
+}
+
+function togglePng()
+{
+    var a, b;
+    if ($("#dl").is(":visible"))
+    { a = "#png"; b = "#graph"; }
+    else
+    { a = "#graph"; b = "#png"; }
+    $(a).fadeOut('fast', function () { $(b).fadeIn('fast'); });
 }
 
 </script>
@@ -792,12 +802,11 @@ div.pipip { position: absolute; left: 50%; top: 0; width: 1px; height: 100%;
 <div style="background: #000; padding: 10px;">
     <div class="content">
 <% if rrd then fname = rrd:sub(1, -5) .. ".png"; fshort = nixio.fs.basename(fname) %>
-      <h2 onclick="$('#dl').slideToggle('fast');">
+      <h2 onclick="togglePng();">
         <img src="<%=resource%>/picture_save.png" alt="save" title="Save graph image">
         <%=fname%>
         <img src="<%=resource%>/picture_save.png" alt="save" title="Save graph image">
       </h2>
-      <img id="dl" alt="<%=fshort%>" style="display: none;">
 <% else %>
       <div style="font-family: Trebuchet MS; background: #000 url('<%=resource%>/fire.png') repeat-x scroll left bottom;"><div style="background: rgba(76,135,199,0.5);">
         <div style="color: #bbb; font-size: 28pt;">Current <span id="pn0">Pit</span></div>
@@ -867,6 +876,7 @@ div.pipip { position: absolute; left: 50%; top: 0; width: 1px; height: 100%;
       </div></div>
 <% end %>
       <div style="position: relative;">
+        <div id="png" style="display: none; height: 350px; margin: 8px auto 0px auto;"><img id="dl" alt="<%=fshort%>"></div>
         <div id="graph" style="height: 350px; width: 700px; margin: 8px auto 0px auto;"></div>
         <div id="graph_overview" style="height: 90px; width: 700px; margin-left: auto; margin-right: auto;"></div>
         <div id="loadindic" style="display: none; position: relative; top: -320px; z-index: 2;"><img src="<%=resource%>/loading.gif" style="width: 126px; height: 22px;"></div>
