@@ -234,7 +234,7 @@ function refreshGraphData()
     });
     
     var params = {nancnt: range};
-    <% if rrd then write("params.rrd = '"..rrd.."';") end %>
+    <% if rrd then write("params.rrd = '"..rrd.."'; graphOpts.canvas = true;") end %>
     $.ajax({
         type: "GET",
         url: "<%=build_url("lm/hist")%>",
@@ -470,6 +470,7 @@ function updateGraph()
     {
         lastPlot = $.plot($("#graph"), graphData, graphOpts);
     }
+    <% if rrd then write("saveAsPng();") end %>
 }
 
 function addFanGraphPoint(time, value)
@@ -725,6 +726,27 @@ function updateProbeEstimates()
         degPerHour(i);
 }
 
+function plotToPng(plot, background)
+{
+    var csrc = plot.getCanvas();
+    var c = document.createElement("canvas");
+    var ctx = c.getContext("2d");
+    c.width = csrc.width;
+    c.height = csrc.height;
+
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(csrc, 0, 0);
+
+    return c.toDataURL("image/png");
+}
+
+function saveAsPng()
+{
+  if (lastPlot)
+    $("#dl").attr("src", plotToPng(lastPlot, "#fff"));
+}
+
 </script>
 
 <style type="text/css">
@@ -769,8 +791,13 @@ div.pipip { position: absolute; left: 50%; top: 0; width: 1px; height: 100%;
 <body>
 <div style="background: #000; padding: 10px;">
     <div class="content">
-<% if rrd then %>
-      <h2><%=rrd%></h2>
+<% if rrd then fname = rrd:sub(1, -5) .. ".png"; fshort = nixio.fs.basename(fname) %>
+      <h2 onclick="$('#dl').slideToggle('fast');">
+        <img src="<%=resource%>/picture_save.png" alt="save" title="Save graph image">
+        <%=fname%>
+        <img src="<%=resource%>/picture_save.png" alt="save" title="Save graph image">
+      </h2>
+      <img id="dl" alt="<%=fshort%>" style="display: none;">
 <% else %>
       <div style="font-family: Trebuchet MS; background: #000 url('<%=resource%>/fire.png') repeat-x scroll left bottom;"><div style="background: rgba(76,135,199,0.5);">
         <div style="color: #bbb; font-size: 28pt;">Current <span id="pn0">Pit</span></div>
