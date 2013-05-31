@@ -73,7 +73,7 @@
       <ForcedIncludeFiles>C:\Users\bmayland\Documents\heatermeter\arduino\heatermeter\Visual Micro\.heatermeter.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
       <WholeProgramOptimization>false</WholeProgramOptimization>
-      <PreprocessorDefinitions>ARDUINO=103;__AVR_ATmega328P__;F_CPU=16000000L;__AVR__;HM_BOARD_REV=%27B%27;__cplusplus;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__AVR_ATmega328P__;ARDUINO=103;__AVR__;F_CPU=16000000L;HM_BOARD_REV=%27B%27;__cplusplus;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -103,6 +103,7 @@
     <None Include="heatermeter.ino">
       <FileType>CppCode</FileType>
     </None>
+    <None Include="README.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bigchars.h">

@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="heatermeter.ino" />
+    <None Include="README.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bigchars.h">
