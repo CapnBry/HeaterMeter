@@ -1,5 +1,4 @@
 #include "ledmanager.h"
-#include <Arduino.h>
 
 #define LED_BLINK_MILLIS 750
 
@@ -28,8 +27,9 @@ void LedManager::publish(unsigned char stimulus, unsigned char action)
 
 void LedManager::doWork(void)
 {
-  if ((_blinkMillis > 0) && (millis() - _blinkMillis < LED_BLINK_MILLIS))
+  if (_hasRunOnce && (millis() - _blinkMillis < LED_BLINK_MILLIS))
     return;
+  _hasRunOnce = true;
   _blinkMillis = millis();
 
   ++_blinkCount;

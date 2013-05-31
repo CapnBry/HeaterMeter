@@ -2,6 +2,8 @@
 #ifndef __LEDMANAGER_H__
 #define __LEDMANAGER_H__
 
+#include <Arduino.h>
+
 #define LEDSTIMULUS_INVERT 0x80
 #define LEDSTIMULUS_MASK   0x7f
 #define LEDSTIMULUS_Off       0
@@ -51,6 +53,7 @@ private:
   led_status_t _leds[LED_COUNT];
   unsigned long _blinkMillis;
   unsigned char _blinkCount;
+  boolean _hasRunOnce;
   led_executor_t _executor;
 };
 
