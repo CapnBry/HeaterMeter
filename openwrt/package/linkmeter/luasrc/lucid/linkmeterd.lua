@@ -692,6 +692,23 @@ function segmentCall(line)
   end
 end
 
+local lastAvrUpdate
+function lmdTick()
+  if serialPolle and not hmConfig then
+    if not lastAvrUpdate then
+      lastAvrUpdate = os.time()
+      nixio.syslog("warning", "No response from HeaterMeter, running avrupdate")
+      lmdStop()
+      if os.execute("/usr/bin/avrupdate") ~= 0 then
+        nixio.syslog("err", "avrupdate failed")
+      else
+        nixio.syslog("inco", "avrupdate succeeded")
+      end
+      lmdStart()
+    end
+  end
+end
+
 function prepare_daemon(config, server)
   local ipcfd = nixio.socket("unix", "dgram")
   if not ipcfd then
@@ -719,6 +736,8 @@ function prepare_daemon(config, server)
       end
     end
   }) 
+  
+  server.register_tick(lmdTick)
   
   return lmdStart()
 end

@@ -1,6 +1,7 @@
 #!/bin/sh
 
 . $IPKG_INSTROOT/lib/functions.sh
+EXITCODE=0
 
 platform_setup_DEFAULT() {
   DUDE_OPTS="-b 115200"
@@ -28,6 +29,7 @@ platform_setup_BCM2708() {
       ;;
     "")
       echo " ERROR"
+      EXITCODE=19
       ;;
     *)
       echo " OK"
@@ -44,7 +46,7 @@ platform_setup() {
   
   echo LinkMeter platform is $PLATFORM
   eval "platform_setup_$PLATFORM" 2> /dev/null || \
-    eval "platform_setup_DEFAULT"
+    platform_setup_DEFAULT
 }
 
 HEX="$1"
@@ -64,21 +66,26 @@ echo
 
 platform_setup
 
-if [ -f "$HEX" ] ; then
-  MD5=`md5sum $HEX`
-  echo "                          $MD5"
+if [ $EXITCODE -eq 0 ] ; then
+  if [ -f "$HEX" ] ; then
+    MD5=`md5sum $HEX`
+    echo "                          $MD5"
 
-  hmdude $DUDE_OPTS -U$HEX 2>&1
-  if [ $? -eq 0 ] ; then
-    echo Update successful
-    [ "$HEX" == "/tmp/hm.hex" ] && rm $HEX
+    hmdude $DUDE_OPTS -U$HEX 2>&1
+    EXITCODE=$?
+    if [ $EXITCODE -eq 0 ] ; then
+      echo Update successful
+      [ "$HEX" == "/tmp/hm.hex" ] && rm $HEX
+    else
+      echo Update failed
+    fi
   else
-    echo Update failed
+    [ -n "$HEX" ] && echo No input file $HEX
   fi
-else
-  [ -n "$HEX" ] && echo No input file $HEX
 fi
 
 echo -n "Starting LinkMeter "
 lmclient LMDC,1
+
+exit $EXITCODE
 
