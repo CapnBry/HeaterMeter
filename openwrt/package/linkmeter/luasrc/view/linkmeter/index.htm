@@ -227,6 +227,12 @@ function refreshGraphData()
     $("#graphtt").fadeOut();
     $("#rangeselect").prop("disabled", true);
     $("#loadindic").show();
+    if (lastOverviewPlot)
+    {
+      lastOverviewPlot.clearSelection(true);
+      graphOpts.xaxis.min = null;
+      graphOpts.xaxis.max = null;
+    }
     graphLoaded = false;
 
     $.each(graphData, function() {
@@ -266,12 +272,18 @@ function showFanChanged()
     updateGraph();
 }
 
+function doPlot()
+{
+    lastPlot = $.plot($("#graph"), graphData, graphOpts);
+    <% if rrd then write("saveAsPng(lastPlot);") end %>
+}
+
 function updateGraphRanges(from, to)
 {
     $("#graphtt").fadeOut();
     graphOpts.xaxis.min = from;
     graphOpts.xaxis.max = to;
-    $.plot($("#graph"), graphData, graphOpts);
+    doPlot();
 }
 
 function overviewSelected(event, ranges)
@@ -457,20 +469,17 @@ function updateGraph()
         selectedArea = lastOverviewPlot.getSelection();
     if (selectedArea && selectedArea.xaxis.to == lastOverviewPlot.getAxes().xaxis.max)
         extendSelection = true;
-        
+    if (selectedArea)
+      lastOverviewPlot.clearSelection(false); 
+      
     lastOverviewPlot = $.plot($("#graph_overview"), graphData, graphOpts2);
     
     if (extendSelection)
         selectedArea.xaxis.to = lastOverviewPlot.getAxes().xaxis.max;
     if (selectedArea)
-        lastOverviewPlot.setSelection(selectedArea, !extendSelection);
-
-    // if we extended selection then it would have been redrawn by the event
-    if (!extendSelection)
-    {
-        lastPlot = $.plot($("#graph"), graphData, graphOpts);
-    }
-    <% if rrd then write("saveAsPng();") end %>
+        lastOverviewPlot.setSelection(selectedArea);
+    else
+        doPlot();
 }
 
 function addFanGraphPoint(time, value)
@@ -741,10 +750,9 @@ function plotToPng(plot, background)
     return c.toDataURL("image/png");
 }
 
-function saveAsPng()
+function saveAsPng(p)
 {
-    if (lastPlot)
-        $("#dl").attr("src", plotToPng(lastPlot, "#fff"));
+    $("#dl").attr("src", plotToPng(p, "#fff"));
 }
 
 function togglePng()
