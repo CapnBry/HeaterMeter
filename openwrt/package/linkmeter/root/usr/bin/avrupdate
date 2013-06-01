@@ -8,8 +8,16 @@ platform_setup_DEFAULT() {
 }
 
 platform_setup_BCM2708() {
-  insmod spidev 2> /dev/null
-  insmod spi-bcm2708 2> /dev/null
+  lsmod | grep spi_bcm2708 > /dev/null || {
+    echo Loading SPI modules...
+    insmod spidev
+    insmod spi-bcm2708
+    CNT=5
+    while [ ! -c /dev/spidev0.0 -a $CNT -gt 0 ] ; do
+      sleep 1
+      CNT=$((CNT-1))
+    done
+  }
   
   FUSES=`hmdude -v -b 128 -P/dev/spidev0.0 |\
      sed -n 's/^Low: 0x\(..\) High: 0x\(..\) Ext: 0x\(..\).*/\1\2\3/p'`

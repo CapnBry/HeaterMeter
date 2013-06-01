@@ -656,6 +656,26 @@ local function registerStreamingStatus(fn)
   statusListeners[#statusListeners + 1] = fn
 end
 
+local lucid_server
+local lmdStartTime
+local function lmdTick()
+  if os.time() - lmdStartTime > 10 then
+    if serialPolle and not hmConfig then
+      nixio.syslog("warning", "No response from HeaterMeter, running avrupdate")
+      lmdStop()
+      if os.execute("/usr/bin/avrupdate") ~= 0 then
+        nixio.syslog("err", "avrupdate failed")
+      else
+        nixio.syslog("info", "avrupdate OK")
+      end
+      lmdStart()
+    end
+    
+    lucid_server.unregister_tick(lmdTick)
+    lucid_server = nil
+  end
+end
+
 local segmentMap = {
   ["$HMAL"] = segAlarmLimits,
   ["$HMFN"] = segFanParams,
@@ -692,23 +712,6 @@ function segmentCall(line)
   end
 end
 
-local lastAvrUpdate
-function lmdTick()
-  if serialPolle and not hmConfig then
-    if not lastAvrUpdate then
-      lastAvrUpdate = os.time()
-      nixio.syslog("warning", "No response from HeaterMeter, running avrupdate")
-      lmdStop()
-      if os.execute("/usr/bin/avrupdate") ~= 0 then
-        nixio.syslog("err", "avrupdate failed")
-      else
-        nixio.syslog("inco", "avrupdate succeeded")
-      end
-      lmdStart()
-    end
-  end
-end
-
 function prepare_daemon(config, server)
   local ipcfd = nixio.socket("unix", "dgram")
   if not ipcfd then
@@ -736,7 +739,9 @@ function prepare_daemon(config, server)
       end
     end
   }) 
-  
+
+  lucid_server = server  
+  lmdStartTime = os.time()
   server.register_tick(lmdTick)
   
   return lmdStart()
