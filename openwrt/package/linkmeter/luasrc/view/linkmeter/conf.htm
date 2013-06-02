@@ -118,7 +118,7 @@ function configHashToForm()
     if (elem == null)
       continue;
     var val = configHash[k];
-      
+
     if (isProbeId(k, "pcurr"))
     {
       if (val != null)
@@ -150,6 +150,15 @@ function configHashToForm()
         .prop("checked", val > 0);
     else if (k == "finv")
       elem.prop("checked", val != 0);
+    else if (isProbeId(k, "le"))
+    {
+      $("#les" + k.substr(2))
+        .change(configElemChange)
+        .val(val & 0x7f);
+      $("#lei" + k.substr(2))
+        .change(configElemChange)
+        .prop("checked", val & 0x80);
+    }
     elem.change(configElemChange);
   }
 }
@@ -205,6 +214,14 @@ function configElemChange()
   {
     name = "#pale" + name.substr(3);
     $(name).prop("checked", $(this).val() > 0);
+  }
+  else if (isProbeId(name, "les") || isProbeId(name, "lei"))
+  {
+    var target = "#le" + name.substr(3);
+    var val = $("#les" + name.substr(3)).val();
+    if ($("#lei" + name.substr(3)).is(":checked"))
+      val |= 0x80;
+    $(target).val(val);
   }
   updateUpdateUrl();
 }
@@ -408,7 +425,7 @@ function ifrmHide()
   .pconfig { vertical-align: top; width: 25%; }
   .ptitle { padding: 4px; text-align: center; font-size: large; }
   .pcurr { text-align: center; color: #ccc; font-size: small; }
-  td.pconfig label { width: 4em; float: left; }
+  td.pconfig label { width: 4em; display: inline-block; }
   .pnum0 { background: #e73; }
   .pnum1 { background: #6c3; }
   .pnum2 { background: #297; }
@@ -420,6 +437,11 @@ function ifrmHide()
   ul#rfnodes { list-style-type: none; margin-left: 0 !important; }
   ul#rfnodes li { float: left; border: 1px dotted #bbb;
     margin-right: 1em; padding-right: 0.5em; }
+  ul.led { list-style-type: none; margin-left: 0 !important; }
+  ul.led li { display: inline-block; margin-right: 10px; position: relative; }
+  ul.led label { position: absolute; right: 0; }
+  div.circle { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    border: 1px solid gray; }
   #pcppopup { position: absolute; left: 0px; top: 0px; width: 100%; background: #f5f5f5; border: 2px solid #333; font-size: x-small; display: none; text-align: left; }
   #dialog-overlay { width: 100%; height: 100%; position: fixed; 
     top: 0px; left: 0px; display: none; background-color: #000; 
@@ -453,8 +475,7 @@ You can store a configuration by bookmarking the "Full configuration" link.</p>
 <div class="ptitle pnum<%=i%>">Probe <%=i%></div>
 <div class="pcurr" id="pcurr<%=i%>"></div>
 <div class="cbi-value"><label>Name</label><input type="text" maxlength="12" class="pn" id="pn<%=i%>"/></div>
-<div class="cbi-value"><label>Type</label>
-<select class="pt" id="pt<%=i%>">
+<div class="cbi-value"><label>Type</label><select class="pt" id="pt<%=i%>">
   <option value="0">Disabled</option>
   <option value="1">Internal</option>
   <option value="2">RF12 Wireless</option>
@@ -471,19 +492,19 @@ You can store a configuration by bookmarking the "Full configuration" link.</p>
   <div class="cbi-value">
     <label>Low</label>
     <input type="text" maxlength="4" id="pall<%=i%>" style="width: 3em;"/>
-    <input type="checkbox" id="palel<%=i%>" class="pale"> On</input>
+    <label><input type="checkbox" id="palel<%=i%>" class="pale"/> On</label>
   </div>
   <div class="cbi-value">
     <label>High</label>
     <input type="text" maxlength="4" id="palh<%=i%>" style="width: 3em;"/>
-    <input type="checkbox" id="paleh<%=i%>" class="pale"> On</input>
+    <label><input type="checkbox" id="paleh<%=i%>" class="pale"/> On</label>
   </div>
 </div>
 <div id="prf<%=i%>" style="display: none;">
   <div><b>RF12 Configuration</b></div>
   <div class="cbi-value"><label>Node</label>
     <input type="text" maxlength="3" id="prfn<%=i%>" style="width: 2em;"/>
-    <input type="checkbox" id="prfa<%=i%>" class="prfa"> Any</input>
+    <label><input type="checkbox" id="prfa<%=i%>" class="prfa"/> Any</label>
   </div>
 </div>
 </td>
@@ -518,7 +539,7 @@ time they are restarted.</div>
     <span class="fout-1">pulse duration</span>
     <input type="text" maxlength="3" id="fmin" style="width: 2em;"/><span class="fout-0">% max</span><span class="fout-1"> -</span>
     <input type="text" maxlength="3" id="fmax" style="width: 2em;"/><span class="fout-0">%</span><span class="fout-1">x10 usec (e.g. 150=1500us)</span>
-    <input type="checkbox" id="finv"/><label for="finv"> Invert output</label>
+    <label><input type="checkbox" id="finv"/> Invert output</label>
   </div>
 </fieldset>
 
@@ -526,7 +547,7 @@ time they are restarted.</div>
 <legend>LCD / LED Display</legend>
   <div class="cbi-value">
     Backlight <input type="text" maxlength="3" id="lb" style="width: 2em;"/>%
-    <select id="lbn" style="width: 13em;">
+    <select id="lbn" style="width: 12em;">
       <option value="255">2-line Home</option>
       <option value="254">4-line Home</option>
       <option value="0">Large Home: Probe 0</option>
@@ -535,14 +556,16 @@ time they are restarted.</div>
       <option value="3">Large Home: Probe 3</option>
     </select>
   </div>
-  <div class="cbi-value">
-  <ul class="rfnodes">
-<% for i=0,2 do %>
-    <li>
-    LED #<%=i%>
-    <input type="checkbox"/><label> Invert</label>
+  <div class="cbi-value"> 
+  <ul class="led">
+<% for i=0,2 do 
+    local clr = (i == 0) and "red" or (i == 1) and "gold" or "greenyellow" %>
+    <li><div class="circle" style="background: <%=clr%>"></div>
+    LED <%=i+1%>
+    <label>Invert <input type="checkbox" id="lei<%=i%>"/></label>
     <br/>
-    <select id="le<%=i%>" style="width: 13em;">
+    <input type="hidden" id="le<%=i%>"/>
+    <select id="les<%=i%>" style="width: 11em;">
       <option value="0">Off</option>
       <option value="1">Alarm 0 Low</option>
       <option value="2">Alarm 0 High</option>
@@ -555,7 +578,7 @@ time they are restarted.</div>
       <option value="9">RF Data Received</option>
       <option value="10">Lid Open</option>
       <option value="11">Fan speed > 0%</option>
-      <option value="12">Pit Temperature Reached</option>
+      <option value="12">Pit Temp Reached</option>
       <option value="13">Fan speed = Max</option>
       <option value="255">Unset</option>
     </select>
