@@ -78,7 +78,9 @@ mount | grep ${DEV}p4 || mount -t ext4 -o rw,sync ${DEV}p4 $MNT
 [ -d "/boot" ] || mkdir /boot
 mount -t vfat -o rw,sync ${DEV}p1 /boot
 
-if [ $RESTORE -ne 0 ] && [ ! -f /boot/norestore.txt ] ; then
+if grep -i norestore /proc/cmdline > /dev/null ; then
+  echo Skipping system backup restore (NORESTORE specified)
+elif [ $RESTORE -ne 0 ] ; then
   if [ -f "$MNT/backup.tar.gz" ] ; then
     echo Restoring system backup...
     sysupgrade -r $MNT/backup.tar.gz
