@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
-# OpenWrt version: Attitude Adjustment (r36652)
-# Fri May 24 10:20:46 2013
+# OpenWrt version: Attitude Adjustment (r36422)
+# Thu May 30 14:41:23 2013
 #
 CONFIG_HAVE_DOT_CONFIG=y
 # CONFIG_TARGET_ppc40x is not set
@@ -682,7 +682,7 @@ CONFIG_BUSYBOX_CONFIG_CUT=y
 CONFIG_BUSYBOX_CONFIG_DD=y
 CONFIG_BUSYBOX_CONFIG_FEATURE_DD_SIGNAL_HANDLING=y
 # CONFIG_BUSYBOX_CONFIG_FEATURE_DD_THIRD_STATUS_LINE is not set
-# CONFIG_BUSYBOX_CONFIG_FEATURE_DD_IBS_OBS is not set
+CONFIG_BUSYBOX_CONFIG_FEATURE_DD_IBS_OBS=y
 CONFIG_BUSYBOX_CONFIG_DF=y
 # CONFIG_BUSYBOX_CONFIG_FEATURE_DF_FANCY is not set
 CONFIG_BUSYBOX_CONFIG_DIRNAME=y
@@ -1370,7 +1370,7 @@ CONFIG_PACKAGE_avahi-daemon=y
 # CONFIG_PACKAGE_crda is not set
 # CONFIG_PACKAGE_etherwake is not set
 # CONFIG_PACKAGE_genl is not set
-CONFIG_PACKAGE_hostapd=y
+# CONFIG_PACKAGE_hostapd is not set
 # CONFIG_PACKAGE_hostapd-mini is not set
 # CONFIG_PACKAGE_hostapd-utils is not set
 # CONFIG_PACKAGE_httping is not set
@@ -1395,17 +1395,15 @@ CONFIG_PACKAGE_iw=y
 # CONFIG_PACKAGE_tc is not set
 # CONFIG_PACKAGE_vnstat is not set
 # CONFIG_PACKAGE_wpa-cli is not set
-CONFIG_PACKAGE_wpa-supplicant=y
+# CONFIG_PACKAGE_wpa-supplicant is not set
 # CONFIG_WPA_SUPPLICANT_NO_TIMESTAMP_CHECK is not set
-# CONFIG_WPA_SUPPLICANT_INTERNAL is not set
-CONFIG_WPA_SUPPLICANT_OPENSSL=y
 # CONFIG_WPA_RFKILL_SUPPORT is not set
 CONFIG_WPA_MSG_MIN_PRIORITY=3
 # CONFIG_DRIVER_WEXT_SUPPORT is not set
 CONFIG_DRIVER_11N_SUPPORT=y
 # CONFIG_PACKAGE_wpa-supplicant-mini is not set
 # CONFIG_PACKAGE_wpad is not set
-# CONFIG_PACKAGE_wpad-mini is not set
+CONFIG_PACKAGE_wpad-mini=y
 # CONFIG_PACKAGE_wprobe-export is not set
 # CONFIG_PACKAGE_wprobe-util is not set
 # CONFIG_PACKAGE_wshaper is not set
@@ -2008,6 +2006,10 @@ CONFIG_PACKAGE_kmod-cfg80211=m
 # CONFIG_PACKAGE_kmod-libertas-sd is not set
 # CONFIG_PACKAGE_kmod-libertas-usb is not set
 CONFIG_PACKAGE_kmod-mac80211=m
+
+#
+# Configuration
+#
 # CONFIG_PACKAGE_MAC80211_DEBUGFS is not set
 # CONFIG_PACKAGE_MAC80211_MESH is not set
 # CONFIG_PACKAGE_kmod-mac80211-hwsim is not set
