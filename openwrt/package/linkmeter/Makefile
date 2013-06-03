@@ -3,7 +3,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=linkmeter
-PKG_RELEASE:=7
+PKG_RELEASE:=8
 
 PKG_BUILD_PARALLEL:=1
 
