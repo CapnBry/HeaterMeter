@@ -182,8 +182,9 @@ end
           
 local function segConfig(line, names, numeric)
   local vals = segSplit(line)
-  if #vals < #names then return end
   for i, v in ipairs(names) do
+    if i > #vals then break end
+
     if v ~= "" then
       if numeric then
         hmConfig[v] = tonumber(vals[i])
