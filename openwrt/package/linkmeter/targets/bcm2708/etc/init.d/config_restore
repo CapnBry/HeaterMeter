@@ -79,7 +79,7 @@ mount | grep ${DEV}p4 || mount -t ext4 -o rw,sync ${DEV}p4 $MNT
 mount -t vfat -o rw,sync ${DEV}p1 /boot
 
 if grep -i norestore /proc/cmdline > /dev/null ; then
-  echo Skipping system backup restore (NORESTORE specified)
+  echo "Skipping system backup restore (NORESTORE specified)"
 elif [ $RESTORE -ne 0 ] ; then
   if [ -f "$MNT/backup.tar.gz" ] ; then
     echo Restoring system backup...
