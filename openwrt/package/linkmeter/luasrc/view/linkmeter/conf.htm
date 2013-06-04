@@ -152,6 +152,7 @@ function configHashToForm()
       elem.prop("checked", val != 0);
     else if (isProbeId(k, "le"))
     {
+      if (val == 255) val = 127;
       $("#les" + k.substr(2))
         .change(configElemChange)
         .val(val & 0x7f);
@@ -580,7 +581,7 @@ time they are restarted.</div>
       <option value="11">Fan speed > 0%</option>
       <option value="12">Pit Temp Reached</option>
       <option value="13">Fan speed = Max</option>
-      <option value="255">Unset</option>
+      <option value="127">Unset</option>
     </select>
     </li>
 <% end %>
