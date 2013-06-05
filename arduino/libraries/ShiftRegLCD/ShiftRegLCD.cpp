@@ -196,6 +196,10 @@ void ShiftRegLCDBase::createChar_P(uint8_t location, const prog_char *p) {
 
 void ShiftRegLCDBase::digitalWrite(uint8_t pin, uint8_t val)
 {
+  // Only 2 pins (0 and 1) available
+  if (pin > 1)
+    return;
+
   pin = 1 << pin;
   if (val)
     _auxPins |= pin;
