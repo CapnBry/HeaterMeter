@@ -313,19 +313,35 @@ local function checkIpUpdate()
 end
 
 local lastStateUpdate
-local spareUpdates = 0
-local skippedUpdates = 99
+local spareUpdates
+local skippedUpdates
+local function unthrottleUpdates()
+  -- Forces the next two segStateUpdate()s to be unthrottled, which
+  -- can be used to make sure any data changed is pushed out to clients
+  -- instead of being eaten by the throttle. Send 2 because the first one
+  -- is likely to be mid-period already
+  skippedUpdates = 99
+  spareUpdates = 2
+end
+
 local function throttleUpdate(line)
-  -- SLOW: If (line) is the same, only every third update
+  -- Max updates that can be sent in a row
+  local MAX_SEQUENTIAL = 2
+  -- Max updates that will be skipped in a row
+  local MAX_THROTTLED = 4
+
+  -- SLOW: If (line) is the same, only every fifth update
   -- NORMAL: If (line) is different, only every second update
-  -- Exception: If (line) is different following a SLOW period, do not skip that line
+  -- Exception: If (line) is different during a SLOW period, do not skip that line
   -- In:  A B C D E E E E F G H
   -- Out: A   C   E     E F   H
   if line == lastStateUpdate then
     if skippedUpdates >= 2 then
-      spareUpdates = 1
+      if spareUpdates < (MAX_SEQUENTIAL-1) then
+        spareUpdates = spareUpdates + 1
+      end
     end
-    if skippedUpdates < 4 then
+    if skippedUpdates < MAX_THROTTLED then
       skippedUpdates = skippedUpdates + 1
       return true
     end
@@ -335,7 +351,7 @@ local function throttleUpdate(line)
         skippedUpdates = skippedUpdates + 1
         return true
       else
-        spareUpdates = 0
+        spareUpdates = spareUpdates - 1
       end
     end
   end
@@ -413,8 +429,8 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
     nixio.syslog("warning", "Alarm stopped")
     alarmType = "null"
   end
-  
-  skippedUpdates = 99 -- force the next update    
+
+  unthrottleUpdates() -- force the next update
   JSON_TEMPLATE[22+(probeIdx*11)] = alarmType
   broadcastStatus(function ()
     return ('event: alarm\ndata: {"atype":%s,"p":%d,"pn":"%s","c":%s,"t":%s}\n\n'):format(
@@ -501,6 +517,7 @@ local function initHmVars()
   for _,v in pairs(JSON_TEMPLATE_SRC) do
     JSON_TEMPLATE[#JSON_TEMPLATE+1] = v
   end
+  unthrottleUpdates()
 end
 
 local function lmdStart()
@@ -554,6 +571,8 @@ local function segLmSet(line)
   if not serialPolle then return "ERR" end
   -- Replace the $LMST,k,v with /set?k=v
   serialPolle.fd:write(line:gsub("^%$LMST,(%w+),(.*)", "\n/set?%1=%2\n"))
+  -- Let the next updates come immediately to make it seem more responsive
+  unthrottleUpdates()
   return "OK"
 end
 
