@@ -1000,6 +1000,7 @@ static void checkAlarms(void)
     }
   }
 
+  ledmanager.publish(LEDSTIMULUS_AlarmAny, anyRinging);
   if (anyRinging)
   {
     reportAlarmLimits();
