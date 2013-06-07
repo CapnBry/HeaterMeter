@@ -15,6 +15,9 @@ module "luci.lucid.linkmeterd"
 local serialPolle
 local statusListeners = {}
 local lastHmUpdate
+local lastAutoback
+local autobackActivePeriod
+local autobackInactivePeriod
 local unkProbe
 
 local rfMap = {}
@@ -26,8 +29,17 @@ local hmConfig
 local segmentCall
 
 local RRD_FILE = uci.cursor():get("lucid", "linkmeter", "rrd_file")
+local RRD_AUTOBACK = "/root/autobackup.rrd"
 
 local function rrdCreate()
+  local status, last = pcall(rrd.last, RRD_AUTOBACK)
+  if status then
+    last = tonumber(last)
+    if last and last <= os.time() then
+      return nixio.fs.copy(RRD_AUTOBACK, RRD_FILE)
+    end
+  end
+
  return rrd.create(
    RRD_FILE,
    "--step", "2",
@@ -312,6 +324,19 @@ local function checkIpUpdate()
   end
 end
 
+local function checkAutobackup(now, vals)
+  -- vals is the last status update
+  local pit = tonumber(vals[2])
+  if (autobackActivePeriod ~= 0 and pit and pit > 150 and
+    now - lastAutoBackup > (autobackActivePeriod * 60)) or
+    (autobackInactivePeriod ~= 0 and
+    now - lastAutoBackup > (autobackInactivePeriod * 60)) then
+    nixio.fs.copy(RRD_FILE, RRD_AUTOBACK)
+
+    lastAutoBackup = now
+  end
+end
+
 local lastStateUpdate
 local spareUpdates
 local skippedUpdates
@@ -406,6 +431,7 @@ local function segStateUpdate(line)
         checkIpUpdate()
         lastIpCheck = time
       end
+      checkAutobackup(time, vals)
     end
 end
 
@@ -525,6 +551,8 @@ local function lmdStart()
   local cfg = uci.cursor()
   local SERIAL_DEVICE = cfg:get("lucid", "linkmeter", "serial_device")
   local SERIAL_BAUD = cfg:get("lucid", "linkmeter", "serial_baud")
+  autobackActivePeriod = tonumber(cfg:get("lucid", "linkmeter", "autoback_active")) or 0
+  autobackInactivePeriod = tonumber(cfg:get("lucid", "linkmeter", "autoback_inactive")) or 0
   
   initHmVars() 
   if os.execute("/bin/stty -F " .. SERIAL_DEVICE .. " raw -echo " .. SERIAL_BAUD) ~= 0 then
@@ -538,6 +566,7 @@ local function lmdStart()
   serialfd:setblocking(false) 
 
   lastHmUpdate = os.time()
+  lastAutoBackup = lastHmUpdate
   nixio.umask("0022")
   -- Create database
   if not nixio.fs.access(RRD_FILE) then
