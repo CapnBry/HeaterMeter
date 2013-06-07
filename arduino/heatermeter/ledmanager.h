@@ -20,6 +20,7 @@
 #define LEDSTIMULUS_FanOn     11
 #define LEDSTIMULUS_PitTempReached 12
 #define LEDSTIMULUS_FanMax    13
+#define LEDSTIMULUS_AlarmAny  14
 
 #define LEDACTION_Off         0 // Must be == false
 #define LEDACTION_OnSteady    1 // Must be == true
