@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=rrdtool
 PKG_VERSION:=1.4.5
-PKG_RELEASE:=LM2
+PKG_RELEASE:=LM3
 
 PKG_SOURCE_URL:=http://oss.oetiker.ch/rrdtool/pub/
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz

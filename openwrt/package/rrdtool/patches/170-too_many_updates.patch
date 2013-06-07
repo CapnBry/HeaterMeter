@@ -1,0 +1,14 @@
+--- rrdtool-1.4.5/src/rrd_update.c.orig	2013-06-07 14:09:38.574143372 -0400
++++ rrdtool-1.4.5/src/rrd_update.c	2013-06-07 14:10:11.014144168 -0400
+@@ -1433,8 +1433,9 @@ static int update_all_cdp_prep(
+             proc_pdp_cnt % rrd->rra_def[rra_idx].pdp_cnt;
+         skip_update[rra_idx] = 0;
+         if (start_pdp_offset <= elapsed_pdp_st) {
+-            rra_step_cnt[rra_idx] = (elapsed_pdp_st - start_pdp_offset) /
+-                rrd->rra_def[rra_idx].pdp_cnt + 1;
++            rra_step_cnt[rra_idx] = min((elapsed_pdp_st - start_pdp_offset) /
++                rrd->rra_def[rra_idx].pdp_cnt + 1,
++                rrd->rra_def[rra_idx].row_cnt);
+         } else {
+             rra_step_cnt[rra_idx] = 0;
+         }
