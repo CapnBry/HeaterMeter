@@ -11,12 +11,16 @@ HARDWARE_MODEL=`echo "_, model = luci.sys.sysinfo(); print(model)" | lua -lluci.
 if [ "$HARDWARE_MODEL" = "BCM2708" ] ; then
   SERIAL_DEVICE="/dev/ttyAMA0"
   STASHPATH="/mnt/mmcblk0p4/stash"
+  AUTOBACK_ACTIVE=5
+  AUTOBACK_INACTIVE=60
   LUCID_THREADS=10
   LUCID_HTTPS=1
   LUCI_CCACHE=1
 else
   SERIAL_DEVICE="/dev/ttyS1"
   STASHPATH="/root"
+  AUTOBACK_ACTIVE=0
+  AUTOBACK_INACTIVE=0
   LUCID_THREADS=2
   LUCID_HTTPS=0
   LUCI_CCACHE=0
@@ -38,6 +42,8 @@ uci_set_nomodify lucid.linkmeter.serial_device $SERIAL_DEVICE
 uci_set_nomodify lucid.linkmeter.serial_baud 38400
 uci_set_nomodify lucid.linkmeter.rrd_file /tmp/hm.rrd
 uci_set_nomodify lucid.linkmeter.stashpath $STASHPATH
+uci_set_nomodify lucid.linkmeter.autoback_active $AUTOBACK_ACTIVE
+uci_set_nomodify lucid.linkmeter.autoback_inactive $AUTOBACK_INACTIVE
 
 uci commit lucid
 
