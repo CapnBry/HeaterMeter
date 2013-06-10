@@ -1038,7 +1038,7 @@ static void eepromLoadBaseConfig(unsigned char forceDefault)
 #ifdef HEATERMETER_RFM12
   memcpy(rfMap, config.base.rfMap, sizeof(rfMap));
 #endif
-  pid.setUnits(config.base.pidUnits);
+  pid.setUnits(config.base.pidUnits == 'C' ? 'C' : 'F');
   pid.setMinFanSpeed(config.base.minFanSpeed);
   pid.setMaxFanSpeed(config.base.maxFanSpeed);
   pid.setInvertPwm(config.base.invertPwm);
