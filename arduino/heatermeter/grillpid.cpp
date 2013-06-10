@@ -544,14 +544,10 @@ void GrillPid::setUnits(char units)
 {
   switch (units)
   {
-    // Might be NULL if coming from setting the temperature to xx\0 instead of xxC\0
-    case '\0':
-      break;
     case 'C':
+    case 'F':
     case 'R':
       _units = units;
       break;
-    default:
-      _units = 'F';
   }
 }
