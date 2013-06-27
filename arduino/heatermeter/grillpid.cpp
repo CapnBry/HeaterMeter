@@ -172,7 +172,14 @@ void TempProbe::calcTemp(void)
   {
     unsigned int ADCval = _accumulator / _accumulatedCount;
     _accumulatedCount = 0;
-  
+
+    // Units 'A' = ADC value
+    if (pid.getUnits() == 'A')
+    {
+      Temperature = ADCval;
+      return;
+    }
+
     if (ADCval != 0)  // Vout >= MAX is reduced in readTemp()
     {
       float R, T;
@@ -544,6 +551,7 @@ void GrillPid::setUnits(char units)
 {
   switch (units)
   {
+    case 'A':
     case 'C':
     case 'F':
     case 'R':
