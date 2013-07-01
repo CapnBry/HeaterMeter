@@ -575,8 +575,8 @@ static int spi_upload_file(void)
   }
 
   if (baud == 0)
-    baud = 2048;
-  baud *= 1024;
+    baud = 2000;
+  baud *= 1000;
 
   if ((rc = ioctl(port_fd, SPI_IOC_WR_MODE, &mode)) == -1)
   {
