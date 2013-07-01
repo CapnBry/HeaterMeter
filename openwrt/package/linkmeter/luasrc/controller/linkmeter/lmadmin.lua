@@ -110,8 +110,9 @@ function action_stashdb()
     local lm = LmClient()
     lm:query("$LMDC,0", true) -- stop serial process
     if resetting == "1" then
+      nixio.fs.unlink("/root/autobackup.rrd")
       result = nixio.fs.unlink(RRD_FILE)
-      http.write("Resetting "..RRD_FILE)
+      http.write("Removing autobackup\nResetting "..RRD_FILE)
     else
       result = nixio.fs.copy(stashfile, RRD_FILE)
       http.write("Restoring "..stashfile.." to "..RRD_FILE)
