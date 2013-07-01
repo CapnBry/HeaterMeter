@@ -73,4 +73,8 @@ if [ "$INSTAL_PARAM" = "new" ] ; then
   [ "$HARDWARE_MODEL" = "BCM2708" ] && \
     [ -x "/etc/init.d/dnsmasq" ] && \
     /etc/init.d/dnsmasq disable
+
+  # LuCI's fixtime makes the time jump forward twice and the time is never right
+  [ -x "/etc/init.d/luci_fixtime" ] && \
+    /etc/init.d/luci_fixtime disable
 fi
