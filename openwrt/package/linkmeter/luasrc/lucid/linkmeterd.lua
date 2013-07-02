@@ -38,6 +38,8 @@ local function rrdCreate()
     if last and last <= os.time() then
       return nixio.fs.copy(RRD_AUTOBACK, RRD_FILE)
     end
+  else
+    nixio.syslog("err", "RRD last failed:"..last)
   end
 
  return rrd.create(
@@ -327,7 +329,7 @@ end
 local function checkAutobackup(now, vals)
   -- vals is the last status update
   local pit = tonumber(vals[2])
-  if (autobackActivePeriod ~= 0 and pit and pit > 150 and
+  if (autobackActivePeriod ~= 0 and pit and
     now - lastAutoBackup > (autobackActivePeriod * 60)) or
     (autobackInactivePeriod ~= 0 and
     now - lastAutoBackup > (autobackInactivePeriod * 60)) then
