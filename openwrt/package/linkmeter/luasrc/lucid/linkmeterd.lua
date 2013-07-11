@@ -328,7 +328,7 @@ end
 
 local function checkAutobackup(now, vals)
   -- vals is the last status update
-  local pit = tonumber(vals[2])
+  local pit = tonumber(vals[3])
   if (autobackActivePeriod ~= 0 and pit and
     now - lastAutoBackup > (autobackActivePeriod * 60)) or
     (autobackInactivePeriod ~= 0 and
