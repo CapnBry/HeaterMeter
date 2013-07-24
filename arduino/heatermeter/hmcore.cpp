@@ -2,6 +2,7 @@
 #include "Arduino.h"
 #include <avr/eeprom.h>
 #include <avr/wdt.h>
+#include <avr/power.h>
 
 #include "hmcore.h"
 
@@ -1198,7 +1199,7 @@ void hmcoreSetup(void)
   // Disable Digital Input on ADC pins
   DIDR0 = bit(ADC5D) | bit(ADC4D) | bit(ADC3D) | bit(ADC2D) | bit(ADC1D) | bit(ADC0D);
   // And other unused units
-  PRR = bit(PRTWI);
+  power_twi_disable();
 
   // Switch the pin mode first to INPUT with internal pullup
   // to take it to 5V before setting the mode to OUTPUT. 
