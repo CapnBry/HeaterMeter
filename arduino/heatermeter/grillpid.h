@@ -144,8 +144,7 @@ private:
   void commitPidOutput(void);
 public:
   GrillPid(unsigned char const fanPin, unsigned char const servoPin);
-  void init(void) const // Normal counting, 8 prescale, INT on COMPB
-    { TCCR1A = 0; TCCR1B = bit(CS11); TIMSK1 = bit(OCIE1B); }
+  void init(void) const;
 
   TempProbe *Probes[TEMP_COUNT];
 

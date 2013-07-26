@@ -10,6 +10,11 @@
 #include "grillpid.h"
 #include "strings.h"
 
+#if HM_BOARD_REV == 'A'
+#else
+#define GRILLPID_SERVO
+#endif
+
 extern const GrillPid pid;
 
 // The time (ms) of the measurement period
@@ -32,6 +37,7 @@ extern const GrillPid pid;
 // LERP percentage o into the unsigned range [A,B]. B - A must be < 6,553
 #define mappct(o, a, b)  (((b - a) * (unsigned int)o / 100) + a)
 
+#if defined(GRILLPID_SERVO)
 ISR(TIMER1_COMPB_vect)
 {
   // < Servo refresh means time to turn off output
@@ -48,6 +54,7 @@ ISR(TIMER1_COMPB_vect)
     TCNT1 = 0;
   }
 }
+#endif
 
 static void calcExpMovingAverage(const float smooth, float *currAverage, float newValue)
 {
@@ -228,7 +235,19 @@ GrillPid::GrillPid(const unsigned char fanPin, const unsigned char servoPin) :
     _fanPin(fanPin), _servoPin(servoPin), _periodCounter(0x80), _units('F'), FanSpeedAvg(NAN)
 {
   //pinMode(_fanPin, OUTPUT); // handled by analogWrite
+#if defined(GRILLPID_SERVO)
   pinMode(_servoPin, OUTPUT);
+#endif
+}
+
+void GrillPid::init(void) const
+{
+#if defined(GRILLPID_SERVO)
+  // Normal counting, 8 prescale, INT on COMPB
+  TCCR1A = 0;
+  TCCR1B = bit(CS11);
+  TIMSK1 = bit(OCIE1B);
+#endif
 }
 
 unsigned int GrillPid::countOfType(unsigned char probeType) const
@@ -316,6 +335,7 @@ inline void GrillPid::commitFanOutput(void)
 
 inline void GrillPid::commitServoOutput(void)
 {
+#if defined(GRILLPID_SERVO)
   unsigned char output;
   if (bit_is_set(_invertOutput, INVERT_SERVO))
     output = 100 - _pidOutput;
@@ -327,6 +347,7 @@ inline void GrillPid::commitServoOutput(void)
   // What a dumbass thing to do! Store the value we want to put in OCR1B in ICR1
   // The value is pulled from here on the next interrupt cycle
   ICR1 = uSecToTicks(10U * output);
+#endif
 }
 
 inline void GrillPid::commitPidOutput(void)
