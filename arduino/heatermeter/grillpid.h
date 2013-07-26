@@ -109,20 +109,21 @@ public:
 #define PIDI 2
 #define PIDD 3
 
-// For GrillPid::OutputDevice
-#define PIDOUTPUT_Default  255
-#define PIDOUTPUT_Fan      0
-#define PIDOUTPUT_Servo    1
+// Indexes into invertOutput bitfield
+#define INVERT_FAN   0
+#define INVERT_SERVO 1
 
 class GrillPid
 {
 private:
-  const unsigned char _blowerPin;
-  unsigned char _fanSpeed;
+  unsigned char const _fanPin;
+  unsigned char const _servoPin;
+
+  unsigned char _pidOutput;
   unsigned long _lastTempRead;
   boolean _pitTemperatureReached;
   int _setPoint;
-  boolean _manualFanMode;
+  boolean _manualOutputMode;
   unsigned char _periodCounter;
   // Counter used for "long PWM" mode
   unsigned char _longPwmTmr;
@@ -132,18 +133,25 @@ private:
   char _units;
   unsigned char _maxFanSpeed;
   unsigned char _minFanSpeed;
-  boolean _invertPwm;
-  unsigned char _outputDevice;
+  unsigned char _maxServoPos;
+  unsigned char _minServoPos;
+
+  unsigned char _invertOutput;
   
-  void calcFanSpeed(void);
-  void commitFanSpeed(void);
+  void calcPidOutput(void);
+  void commitFanOutput(void);
+  void commitServoOutput(void);
+  void commitPidOutput(void);
 public:
-  GrillPid(const unsigned char blowerPin);
-  
+  GrillPid(unsigned char const fanPin, unsigned char const servoPin);
+  void init(void) const // Normal counting, 8 prescale, INT on COMPB
+    { TCCR1A = 0; TCCR1B = bit(CS11); TIMSK1 = bit(OCIE1B); }
+
   TempProbe *Probes[TEMP_COUNT];
-  
+
   /* Configuration */
-  unsigned char getBlowerPin(void) const { return _blowerPin; }
+  unsigned char const getFanPin(void) const { return _fanPin; }
+  unsigned char const getServoPin(void) const { return _servoPin; }
   int getSetPoint(void) const { return _setPoint; }
   void setSetPoint(int value); 
   char getUnits(void) const { return _units; }
@@ -158,28 +166,35 @@ public:
   // The PID constants
   float Pid[4];
   void setPidConstant(unsigned char idx, float value);
+
+  // Fan Speed
   // The maximum fan speed percent that will be used in automatic mode
-  // In Servo output maxfanspeed is the duration of the maximum pulse in 10x uSec (240 = 2400us)
   unsigned char getMaxFanSpeed(void) const { return _maxFanSpeed; }
   void setMaxFanSpeed(unsigned char value) { _maxFanSpeed = value; }
   // The minimum fan speed percent before converting to "long PID" (SRTP) mode
-  // In Servo output minfanspeed is the duration of the minumum pulse in 10x uSec (54 = 540us)
   unsigned char getMinFanSpeed(void) const { return _minFanSpeed; }
   void setMinFanSpeed(unsigned char value) { _minFanSpeed = value; }
-  // Reverse the PWM output, i.e. 100% writes 0 to the output
-  boolean getInvertPwm(void) const { return _invertPwm; }
-  void setInvertPwm(boolean value) { _invertPwm = value; }
-  // Sets the type of device connected to the output pin GRILLPIDOUTPUT_*
-  unsigned char getOutputDevice(void) const { return _outputDevice; }
-  void setOutputDevice(unsigned char outputDevice);
+
+  // Servo timing
+  // The duration (in 10x usec) for the maxium servo position
+  unsigned char getMaxServoPos(void) const { return _maxServoPos; }
+  void setMaxServoPos(unsigned char value) { _maxServoPos = value; }
+  // The duration (in 10x usec) for the minimum servo position
+  unsigned char getMinServoPos(void) const { return _minServoPos; }
+  void setMinServoPos(unsigned char value) { _minServoPos = value; }
+
+  // Reverse the outputs, i.e. 100% writes 0 to the output
+  void setInvertOutput(unsigned char value) { _invertOutput = value; }
+  unsigned char getInvertOutput(void) const { return _invertOutput; }
   
   /* Runtime Data */
-  // Current fan speed in percent, setting this will put the fan into manual mode
-  unsigned char getFanSpeed() const { return _fanSpeed; }
-  void setFanSpeed(int value);
-  boolean getManualFanMode(void) const { return _manualFanMode; }
-  // return the maximum PID output for current output device
-  unsigned char getOutputMax(void) const;
+  // Current PID output in percent, setting this will turn on manual output mode
+  unsigned char getPidOutput() const { return _pidOutput; }
+  void setPidOutput(int value);
+  // Current fan speed in percent
+  unsigned char getFanSpeed(void) const;
+
+  boolean getManualOutputMode(void) const { return _manualOutputMode; }
   // Fan speed moving average
   float FanSpeedAvg;
   // Seconds remaining in the lid open countdown
@@ -188,10 +203,10 @@ public:
   // true if any probe has a non-zero temperature
   boolean isAnyFoodProbeActive(void) const;
   unsigned int countOfType(unsigned char probeType) const;
-  // true if FanSpeed > 0
-  boolean isFanRunning(void) const { return _fanSpeed != 0; }
+  // true if PidOutput > 0
+  boolean isOutputActive(void) const { return _pidOutput != 0; }
   // true if fan is running at maximum speed or servo wide open
-  boolean isOutputMaxed(void) const { return _fanSpeed >= getOutputMax(); }
+  boolean isOutputMaxed(void) const { return _pidOutput >= 100; }
   // true if temperature was >= setpoint since last set / lid event
   boolean isPitTempReached(void) const { return _pitTemperatureReached; }
   

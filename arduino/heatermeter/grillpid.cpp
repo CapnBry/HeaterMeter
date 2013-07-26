@@ -29,29 +29,24 @@ extern const GrillPid pid;
 // For this calculation to work, ccpm()/8 must return a round number
 #define uSecToTicks(x) ((unsigned int)(clockCyclesPerMicrosecond() / 8) * x)
 
-//#define TIMER1_DEBUG
-#if defined(TIMER1_DEBUG)
-static bool ovf;
-static unsigned int rst;
-#endif
+// LERP percentage o into the unsigned range [A,B]. B - A must be < 6,553
+#define mappct(o, a, b)  (((b - a) * (unsigned int)o / 100) + a)
 
 ISR(TIMER1_COMPB_vect)
 {
-#if defined(TIMER1_DEBUG)
-  rst = TCNT1;
-#endif
-  // In fan mode at 100% the COMPB interrupt never fires, so it is always safe
-  // to set the pin LOW
-  digitalWrite(pid.getBlowerPin(), LOW);
-}
-
-ISR(TIMER1_OVF_vect)
-{
-#if defined(TIMER1_DEBUG)
-  ovf = true;
-#endif
-  if (OCR1B != 0)
-    digitalWrite(pid.getBlowerPin(), HIGH);
+  // < Servo refresh means time to turn off output
+  if (TCNT1 < uSecToTicks(SERVO_REFRESH))
+  {
+    digitalWrite(pid.getServoPin(), LOW);
+    OCR1B = uSecToTicks(SERVO_REFRESH);
+  }
+  // Otherwise this is the end of the refresh period, start again
+  else
+  {
+    digitalWrite(pid.getServoPin(), HIGH);
+    OCR1B = ICR1;
+    TCNT1 = 0;
+  }
 }
 
 static void calcExpMovingAverage(const float smooth, float *currAverage, float newValue)
@@ -229,13 +224,11 @@ void TempProbe::setTemperatureC(float T)
   }
 }
 
-GrillPid::GrillPid(const unsigned char blowerPin) :
-    _blowerPin(blowerPin), _periodCounter(0x80), _units('F'), FanSpeedAvg(NAN)
+GrillPid::GrillPid(const unsigned char fanPin, const unsigned char servoPin) :
+    _fanPin(fanPin), _servoPin(servoPin), _periodCounter(0x80), _units('F'), FanSpeedAvg(NAN)
 {
-  pinMode(_blowerPin, OUTPUT);
-  // To prevent the wrong thing from happening by default, all output is disabled
-  // until setOutputDevice is called for the first time
-  //setOutputDevice(GrillPidOutput::Fan);
+  //pinMode(_fanPin, OUTPUT); // handled by analogWrite
+  pinMode(_servoPin, OUTPUT);
 }
 
 unsigned int GrillPid::countOfType(unsigned char probeType) const
@@ -247,27 +240,11 @@ unsigned int GrillPid::countOfType(unsigned char probeType) const
   return retVal;  
 }
 
-unsigned char GrillPid::getOutputMax(void) const
+/* Calucluate the desired output percentage using the proportional–integral-derivative (PID) controller algorithm */
+inline void GrillPid::calcPidOutput(void)
 {
-  switch (_outputDevice)
-  {
-    case PIDOUTPUT_Fan:
-      return _maxFanSpeed;
-      break;
-
-    // In servo mode the "fan speed" always is 0-100 as in percent of open
-    case PIDOUTPUT_Servo:
-    default:
-      return 100;
-      break;
-  }
-}
-
-/* Calucluate the desired fan speed using the proportional–integral-derivative (PID) controller algorithm */
-inline void GrillPid::calcFanSpeed(void)
-{
-  unsigned char lastFanSpeed = _fanSpeed;
-  _fanSpeed = 0;
+  unsigned char lastOutput = _pidOutput;
+  _pidOutput = 0;
 
   // If the pit probe is registering 0 degrees, don't jack the fan up to MAX
   if (!Probes[TEMP_PIT]->hasTemperature())
@@ -285,9 +262,8 @@ inline void GrillPid::calcFanSpeed(void)
   _pidCurrent[PIDP] = Pid[PIDP] * error;
 
   // IIIII = fan speed percent per degree of accumulated error
-  unsigned char max = getOutputMax();
   // anti-windup: Make sure we only adjust the I term while inside the proportional control range
-  if ((error > 0 && lastFanSpeed < max) || (error < 0 && lastFanSpeed > 0))
+  if ((error > 0 && lastOutput < 100) || (error < 0 && lastOutput > 0))
     _pidCurrent[PIDI] += Pid[PIDI] * error;
 
   // DDDDD = fan speed percent per degree of change over TEMPPROBE_AVG_SMOOTH period
@@ -296,105 +272,67 @@ inline void GrillPid::calcFanSpeed(void)
   _pidCurrent[PIDB] = Pid[PIDB];
 
   int control = _pidCurrent[PIDB] + _pidCurrent[PIDP] + _pidCurrent[PIDI] + _pidCurrent[PIDD];
-  if (control >= max)
-    _fanSpeed = max;
-  else if (control > 0)
-    _fanSpeed = control;
+  _pidOutput = constrain(control, 0, 100);
 }
 
-inline void GrillPid::commitFanSpeed(void)
+unsigned char GrillPid::getFanSpeed(void) const
+{
+  return (unsigned int)_pidOutput * _maxFanSpeed / 100;
+}
+
+inline void GrillPid::commitFanOutput(void)
 {
   /* Long PWM period is 10 sec */
   const unsigned int LONG_PWM_PERIOD = 10000;
   const unsigned int PERIOD_SCALE = (LONG_PWM_PERIOD / TEMP_MEASURE_PERIOD);
 
-  calcExpMovingAverage(FANSPEED_AVG_SMOOTH, &FanSpeedAvg, _fanSpeed);
+  unsigned char fanSpeed = getFanSpeed();
+  calcExpMovingAverage(FANSPEED_AVG_SMOOTH, &FanSpeedAvg, fanSpeed);
 
-  if (_outputDevice == PIDOUTPUT_Fan)
-  {
-    /* For anything above _minFanSpeed, do a nomal PWM write.
-       For below _minFanSpeed we use a "long pulse PWM", where
-       the pulse is 10 seconds in length.  For each percent we are
-       emulating, run the fan for one interval. */
-    unsigned char output;
-    if (_fanSpeed >= _minFanSpeed)
-    {
-      output = _fanSpeed;
-      _longPwmTmr = 0;
-    }
-    else
-    {
-      // Simple PWM, ON for first [FanSpeed] intervals then OFF
-      // for the remainder of the period
-      if (((PERIOD_SCALE * _fanSpeed / _minFanSpeed) > _longPwmTmr))
-        output = _minFanSpeed;
-      else
-        output = 0;
-
-      if (++_longPwmTmr > (PERIOD_SCALE - 1))
-        _longPwmTmr = 0;
-    }  /* long PWM */
-
-    if (_invertPwm)
-      output = _maxFanSpeed - output;
-    OCR1B = (unsigned int)output * 512 / 100;
-  }
+  /* For anything above _minFanSpeed, do a nomal PWM write.
+     For below _minFanSpeed we use a "long pulse PWM", where
+     the pulse is 10 seconds in length.  For each percent we are
+     emulating, run the fan for one interval. */
+  if (fanSpeed >= _minFanSpeed)
+    _longPwmTmr = 0;
   else
   {
-    // GrillPidOutput::Servo
-    unsigned char output;
-    if (_invertPwm)
-      output = 100 - _fanSpeed;
+    // Simple PWM, ON for first [FanSpeed] intervals then OFF
+    // for the remainder of the period
+    if (((PERIOD_SCALE * fanSpeed / _minFanSpeed) > _longPwmTmr))
+      fanSpeed = _minFanSpeed;
     else
-      output = _fanSpeed;
-    // Get the output speed in 10x usec by LERPing between min and max
-    output = ((_maxFanSpeed - _minFanSpeed) * (unsigned int)output / 100) + _minFanSpeed;
-    OCR1B = uSecToTicks(10U * output);
-  }
+      fanSpeed = 0;
 
-#if defined(TIMER1_DEBUG)
-  SerialX.print("HMLG,0,");
-  SerialX.print(" ICR1="); SerialX.print(ICR1, DEC);
-  SerialX.print(" OCR1B="); SerialX.print(OCR1B, DEC);
-  SerialX.print(" TCCR1A=x"); SerialX.print(TCCR1A, HEX);
-  SerialX.print(" TCCR1B=x"); SerialX.print(TCCR1B, HEX);
-  SerialX.print(" TCCR1C=x"); SerialX.print(TCCR1C, HEX);
-  SerialX.print(" TIMSK1=x"); SerialX.print(TIMSK1, HEX);
-  if (ovf) { ovf = false; SerialX.print(" ovf"); }
-  if (rst) { SerialX.print(' '); SerialX.print(rst, DEC); rst = 0; }
-  if (bit_is_set(TIFR1, TOV1)) { SerialX.print(" TOV1"); TIFR1 = bit(TOV1); }
-  SerialX.nl();
-#endif
+    if (++_longPwmTmr > (PERIOD_SCALE - 1))
+      _longPwmTmr = 0;
+  }  /* long PWM */
+
+  if (bit_is_set(_invertOutput, INVERT_FAN))
+    fanSpeed = _maxFanSpeed - fanSpeed;
+
+  analogWrite(_fanPin, mappct(fanSpeed, 0, 255));
 }
 
-void GrillPid::setOutputDevice(unsigned char outputDevice)
+inline void GrillPid::commitServoOutput(void)
 {
-  TIMSK1 = 0;
-  // Fast PWM Timer with TOP=ICR1 with no OC1x output
-  TCCR1A = bit(WGM11);
+  unsigned char output;
+  if (bit_is_set(_invertOutput, INVERT_SERVO))
+    output = 100 - _pidOutput;
+  else
+    output = _pidOutput;
 
-  switch (outputDevice)
-  {
-    case PIDOUTPUT_Default:
-    case PIDOUTPUT_Fan:
-      _outputDevice = PIDOUTPUT_Fan;
-      // 64 prescaler
-      TCCR1B = bit(WGM13) | bit(WGM12) | bit(CS11) | bit(CS10);
-      // 511 TOP to be close to original 488Hz and allows OCR1B to be set to
-      // 512 to prevent COMB_vect from firing (which means no LOW when at 100%)
-      ICR1 = 511;
-      break;
-    case PIDOUTPUT_Servo:
-      _outputDevice = PIDOUTPUT_Servo;
-      // 8 prescaler gives us down to 30Hz with 0.5usec resolution
-      TCCR1B = bit(WGM13) | bit(WGM12) | bit(CS11);
-      // TOP = servo refresh
-      ICR1 = uSecToTicks(SERVO_REFRESH);
-      break;
-  }
+  // Get the output speed in 10x usec by LERPing between min and max
+  output = mappct(output, _minServoPos, _maxServoPos);
+  // What a dumbass thing to do! Store the value we want to put in OCR1B in ICR1
+  // The value is pulled from here on the next interrupt cycle
+  ICR1 = uSecToTicks(10U * output);
+}
 
-  // Interrupt on overflow, and OCB
-  TIMSK1 = bit(OCIE1B) | bit(TOIE1);
+inline void GrillPid::commitPidOutput(void)
+{
+  commitFanOutput();
+  commitServoOutput();
 }
 
 boolean GrillPid::isAnyFoodProbeActive(void) const
@@ -417,20 +355,15 @@ void GrillPid::setSetPoint(int value)
 {
   _setPoint = value;
   _pitTemperatureReached = false;
-  _manualFanMode = false;
+  _manualOutputMode = false;
   _pidCurrent[PIDI] = 0.0f;
   LidOpenResumeCountdown = 0;
 }
 
-void GrillPid::setFanSpeed(int value)
+void GrillPid::setPidOutput(int value)
 {
-  _manualFanMode = true;
-  if (value < 0)
-    _fanSpeed = 0;
-  else if (value > 100)
-    _fanSpeed = 100;
-  else
-    _fanSpeed = value;
+  _manualOutputMode = true;
+  _pidOutput = constrain(value, 0, 100);
 }
 
 void GrillPid::setLidOpenDuration(unsigned int value)
@@ -489,11 +422,11 @@ boolean GrillPid::doWork(void)
   for (unsigned char i=0; i<TEMP_COUNT; i++)
     Probes[i]->calcTemp();
 
-  if (!_manualFanMode)
+  if (!_manualOutputMode)
   {
-    // Always calculate the fan speed
-    // calFanSpeed() will bail if it isn't supposed to be in control
-    calcFanSpeed();
+    // Always calculate the output
+    // calcPidOutput() will bail if it isn't supposed to be in control
+    calcPidOutput();
     
     int pitTemp = (int)Probes[TEMP_PIT]->Temperature;
     if ((pitTemp >= _setPoint) &&
@@ -524,7 +457,7 @@ boolean GrillPid::doWork(void)
       resetLidOpenResumeCountdown();
     }
   }   /* if !manualFanMode */
-  commitFanSpeed();
+  commitPidOutput();
 
   _periodCounter = 0;  
   return true;

@@ -267,7 +267,7 @@ static state_t menuHome(button_t button)
     updateDisplay();
   }
   // In manual fan mode Up is +5% Down is -5% and Left is -1%
-  else if (pid.getManualFanMode())
+  else if (pid.getManualOutputMode())
   {
     char offset;
     if (button == BUTTON_UP)
@@ -279,7 +279,7 @@ static state_t menuHome(button_t button)
     else
       return ST_AUTO;
 
-    pid.setFanSpeed(pid.getFanSpeed() + offset);
+    pid.setPidOutput(pid.getPidOutput() + offset);
     updateDisplay();
     return ST_NONE;
   }
@@ -384,14 +384,14 @@ static state_t menuManualMode(button_t button)
   if (button == BUTTON_ENTER)
   {
     lcdprint_P(PSTR("Manual fan mode"), true);
-    editInt = pid.getManualFanMode();    
+    editInt = pid.getManualOutputMode();
   }
   else if (button == BUTTON_LEAVE)
   {
     // Check to see if it is different because the setPoint 
     // field stores either the setPoint or manual mode
     boolean manual = (editInt != 0); 
-    if (manual != pid.getManualFanMode())
+    if (manual != pid.getManualOutputMode())
       storeSetPoint(manual ? 0 : pid.getSetPoint());
   }
   menuBooleanEdit(button, NULL);

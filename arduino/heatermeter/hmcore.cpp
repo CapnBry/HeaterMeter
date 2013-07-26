@@ -17,10 +17,10 @@ static TempProbe probe0(PIN_PIT);
 static TempProbe probe1(PIN_FOOD1);
 static TempProbe probe2(PIN_FOOD2);
 static TempProbe probe3(PIN_AMB);
-GrillPid pid(PIN_BLOWER);
+GrillPid pid(PIN_BLOWER, PIN_SERVO);
 
 #ifdef SHIFTREGLCD_NATIVE
-ShiftRegLCD lcd(PIN_LCD_DATA, PIN_LCD_CLK, TWO_WIRE, 2); 
+ShiftRegLCD lcd(PIN_SERVO, PIN_LCD_CLK, TWO_WIRE, 2);
 #else
 ShiftRegLCD lcd(PIN_LCD_CLK, 2);
 #endif /* SHIFTREGLCD_NATIVE */
@@ -62,10 +62,12 @@ static const struct __eeprom_data {
   char pidUnits;
   unsigned char minFanSpeed;  // in percent
   unsigned char maxFanSpeed;  // in percent
-  boolean invertPwm;
+  unsigned char invertPidOutput;
   unsigned char homeDisplayMode;
-  unsigned char pidOutputDevice;
+  unsigned char unused;
   unsigned char ledConf[LED_COUNT];
+  unsigned char minServoPos;  // in percent
+  unsigned char maxServoPos;  // in percent
 } DEFAULT_CONFIG[] PROGMEM = {
  {
   EEPROM_MAGIC,  // magic
@@ -81,10 +83,12 @@ static const struct __eeprom_data {
   'F',  // Units
   10,   // min fan speed  
   100,  // max fan speed
-  false, // invert PWM
-  0xff,  // 2-line home
-  PIDOUTPUT_Fan,  // Pid output device
+  0x00, // invert PID output bitmask
+  0xff, // 2-line home
+  0xff, // unused
   { LEDSTIMULUS_RfReceive, LEDSTIMULUS_LidOpen, LEDSTIMULUS_FanOn, LEDSTIMULUS_Off },
+  110, // min servo pos = 1100us
+  185  // mas servo pos = 1850us
 }
 };
 
@@ -166,7 +170,7 @@ void storeSetPoint(int sp)
   }
   else
   {
-    pid.setFanSpeed(-sp);
+    pid.setPidOutput(-sp);
     isManualMode = true;
   }
 
@@ -275,16 +279,22 @@ static void storeMaxFanSpeed(unsigned char maxFanSpeed)
   config_store_byte(maxFanSpeed, maxFanSpeed);
 }
 
-static void storeInvertPwm(unsigned char invertPwm)
+static void storeMinServoPos(unsigned char minServoPos)
 {
-  pid.setInvertPwm(invertPwm);
-  config_store_byte(invertPwm, invertPwm);
+  pid.setMinServoPos(minServoPos);
+  config_store_byte(minServoPos, minServoPos);
 }
 
-static void storePidOutputDevice(unsigned char pidOutputDevice)
+static void storeMaxServoPos(unsigned char maxServoPos)
 {
-  pid.setOutputDevice(pidOutputDevice);
-  config_store_byte(pidOutputDevice, pidOutputDevice);
+  pid.setMaxServoPos(maxServoPos);
+  config_store_byte(maxServoPos, maxServoPos);
+}
+
+static void storeInvertPidOutput(unsigned char invertPidOutput)
+{
+  pid.setInvertOutput(invertPidOutput);
+  config_store_byte(invertPidOutput, invertPidOutput);
 }
 
 void storeLcdBacklight(unsigned char lcdBacklight)
@@ -417,7 +427,7 @@ void updateDisplay(void)
 
     /* Default Pit / Fan Speed first line */
     int pitTemp = pid.Probes[TEMP_PIT]->Temperature;
-    if (!pid.getManualFanMode() && pitTemp == 0)
+    if (!pid.getManualOutputMode() && pitTemp == 0)
       memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
     else if (pid.LidOpenResumeCountdown > 0)
       snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE"%c Lid%3u"),
@@ -425,7 +435,7 @@ void updateDisplay(void)
     else
     {
       char c1,c2;
-      if (pid.getManualFanMode())
+      if (pid.getManualOutputMode())
       {
         c1 = '^';  // LCD_ARROWUP
         c2 = '^';  // LCD_ARROWDN
@@ -725,9 +735,11 @@ static void reportFanParams(void)
   Serial_csv();
   SerialX.print(pid.getMaxFanSpeed(), DEC);
   Serial_csv();
-  SerialX.print((unsigned char)pid.getInvertPwm(), DEC);
+  SerialX.print(pid.getMinServoPos(), DEC);
   Serial_csv();
-  SerialX.print((unsigned char)pid.getOutputDevice(), DEC);
+  SerialX.print(pid.getMaxServoPos(), DEC);
+  Serial_csv();
+  SerialX.print((unsigned char)pid.getInvertOutput(), DEC);
   Serial_nl();
 }
 
@@ -839,10 +851,13 @@ static void storeFanParams(unsigned char idx, int val)
       storeMaxFanSpeed(val);
       break;
     case 2:
-      storeInvertPwm((boolean)val);
+      storeMinServoPos(val);
       break;
     case 3:
-      storePidOutputDevice(val);
+      storeMaxServoPos(val);
+      break;
+    case 4:
+      storeInvertPidOutput(val);
       break;
   }
 }
@@ -1034,7 +1049,7 @@ static void eepromLoadBaseConfig(unsigned char forceDefault)
   pid.setLidOpenDuration(config.base.lidOpenDuration);
   memcpy(pid.Pid, config.base.pidConstants, sizeof(config.base.pidConstants));
   if (config.base.manualMode)
-    pid.setFanSpeed(0);
+    pid.setPidOutput(0);
   setLcdBacklight(config.base.lcdBacklight);
 #ifdef HEATERMETER_RFM12
   memcpy(rfMap, config.base.rfMap, sizeof(rfMap));
@@ -1042,9 +1057,10 @@ static void eepromLoadBaseConfig(unsigned char forceDefault)
   pid.setUnits(config.base.pidUnits == 'C' ? 'C' : 'F');
   pid.setMinFanSpeed(config.base.minFanSpeed);
   pid.setMaxFanSpeed(config.base.maxFanSpeed);
-  pid.setInvertPwm(config.base.invertPwm);
+  pid.setInvertOutput(config.base.invertPidOutput);
   g_HomeDisplayMode = config.base.homeDisplayMode;
-  pid.setOutputDevice(config.base.pidOutputDevice);
+  pid.setMinServoPos(config.base.minServoPos);
+  pid.setMaxServoPos(config.base.maxServoPos);
 
   for (unsigned char led = 0; led<LED_COUNT; ++led)
     ledmanager.setAssignment(led, config.base.ledConf[led]);
@@ -1152,7 +1168,7 @@ static void newTempsAvail(void)
 
   ledmanager.publish(LEDSTIMULUS_Off, LEDACTION_Off);
   ledmanager.publish(LEDSTIMULUS_LidOpen, pid.isLidOpen());
-  ledmanager.publish(LEDSTIMULUS_FanOn, pid.isFanRunning());
+  ledmanager.publish(LEDSTIMULUS_FanOn, pid.isOutputActive());
   ledmanager.publish(LEDSTIMULUS_FanMax, pid.isOutputMaxed());
   ledmanager.publish(LEDSTIMULUS_PitTempReached, pid.isPitTempReached());
 
@@ -1212,6 +1228,7 @@ void hmcoreSetup(void)
   pid.Probes[TEMP_FOOD1] = &probe1;
   pid.Probes[TEMP_FOOD2] = &probe2;
   pid.Probes[TEMP_AMB] = &probe3;
+  pid.init();
 
   eepromLoadConfig(0);
   lcdDefineChars();
