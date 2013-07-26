@@ -109,9 +109,15 @@ public:
 #define PIDI 2
 #define PIDD 3
 
-// Indexes into invertOutput bitfield
-#define INVERT_FAN   0
-#define INVERT_SERVO 1
+// Indexes into outputFlags bitfield
+// Invert the fan PWM - pidOutput=100 would generate no PWM pulses
+#define PIDFLAG_INVERT_FAN    0
+// Invert servo direction - scale from max to min rather than min to max
+#define PIDFLAG_INVERT_SERVO  1
+// Fan only runs (at max) when pidOutput=100 (max)
+#define PIDFLAG_FAN_ONLY_MAX  2
+// Servo opens (to max) when pidOutput>0 (any output)
+#define PIDFLAG_SERVO_ANY_MAX 3
 
 class GrillPid
 {
@@ -136,7 +142,7 @@ private:
   unsigned char _maxServoPos;
   unsigned char _minServoPos;
 
-  unsigned char _invertOutput;
+  unsigned char _outputFlags;
   
   void calcPidOutput(void);
   void commitFanOutput(void);
@@ -182,9 +188,9 @@ public:
   unsigned char getMinServoPos(void) const { return _minServoPos; }
   void setMinServoPos(unsigned char value) { _minServoPos = value; }
 
-  // Reverse the outputs, i.e. 100% writes 0 to the output
-  void setInvertOutput(unsigned char value) { _invertOutput = value; }
-  unsigned char getInvertOutput(void) const { return _invertOutput; }
+  // Collection of PIDFLAG_*
+  void setOutputFlags(unsigned char value) { _outputFlags = value; }
+  unsigned char getOutputFlags(void) const { return _outputFlags; }
   
   /* Runtime Data */
   // Current PID output in percent, setting this will turn on manual output mode

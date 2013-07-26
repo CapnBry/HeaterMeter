@@ -62,7 +62,7 @@ static const struct __eeprom_data {
   char pidUnits;
   unsigned char minFanSpeed;  // in percent
   unsigned char maxFanSpeed;  // in percent
-  unsigned char invertPidOutput;
+  unsigned char pidOutputFlags;
   unsigned char homeDisplayMode;
   unsigned char unused;
   unsigned char ledConf[LED_COUNT];
@@ -83,7 +83,7 @@ static const struct __eeprom_data {
   'F',  // Units
   10,   // min fan speed  
   100,  // max fan speed
-  0x00, // invert PID output bitmask
+  0x00, // PID output flags bitmask
   0xff, // 2-line home
   0xff, // unused
   { LEDSTIMULUS_RfReceive, LEDSTIMULUS_LidOpen, LEDSTIMULUS_FanOn, LEDSTIMULUS_Off },
@@ -291,10 +291,10 @@ static void storeMaxServoPos(unsigned char maxServoPos)
   config_store_byte(maxServoPos, maxServoPos);
 }
 
-static void storeInvertPidOutput(unsigned char invertPidOutput)
+static void storeInvertPidOutput(unsigned char pidOutputFlags)
 {
-  pid.setInvertOutput(invertPidOutput);
-  config_store_byte(invertPidOutput, invertPidOutput);
+  pid.setOutputFlags(pidOutputFlags);
+  config_store_byte(pidOutputFlags, pidOutputFlags);
 }
 
 void storeLcdBacklight(unsigned char lcdBacklight)
@@ -739,7 +739,7 @@ static void reportFanParams(void)
   Serial_csv();
   SerialX.print(pid.getMaxServoPos(), DEC);
   Serial_csv();
-  SerialX.print((unsigned char)pid.getInvertOutput(), DEC);
+  SerialX.print(pid.getOutputFlags(), DEC);
   Serial_nl();
 }
 
@@ -1057,7 +1057,7 @@ static void eepromLoadBaseConfig(unsigned char forceDefault)
   pid.setUnits(config.base.pidUnits == 'C' ? 'C' : 'F');
   pid.setMinFanSpeed(config.base.minFanSpeed);
   pid.setMaxFanSpeed(config.base.maxFanSpeed);
-  pid.setInvertOutput(config.base.invertPidOutput);
+  pid.setOutputFlags(config.base.pidOutputFlags);
   g_HomeDisplayMode = config.base.homeDisplayMode;
   pid.setMinServoPos(config.base.minServoPos);
   pid.setMaxServoPos(config.base.maxServoPos);

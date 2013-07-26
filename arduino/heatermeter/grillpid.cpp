@@ -296,6 +296,8 @@ inline void GrillPid::calcPidOutput(void)
 
 unsigned char GrillPid::getFanSpeed(void) const
 {
+  if (bit_is_set(_outputFlags, PIDFLAG_FAN_ONLY_MAX) && _pidOutput < 100)
+    return 0;
   return (unsigned int)_pidOutput * _maxFanSpeed / 100;
 }
 
@@ -327,7 +329,7 @@ inline void GrillPid::commitFanOutput(void)
       _longPwmTmr = 0;
   }  /* long PWM */
 
-  if (bit_is_set(_invertOutput, INVERT_FAN))
+  if (bit_is_set(_outputFlags, PIDFLAG_INVERT_FAN))
     fanSpeed = _maxFanSpeed - fanSpeed;
 
   analogWrite(_fanPin, mappct(fanSpeed, 0, 255));
@@ -337,10 +339,13 @@ inline void GrillPid::commitServoOutput(void)
 {
 #if defined(GRILLPID_SERVO)
   unsigned char output;
-  if (bit_is_set(_invertOutput, INVERT_SERVO))
-    output = 100 - _pidOutput;
+  if (bit_is_set(_outputFlags, PIDFLAG_SERVO_ANY_MAX) && _pidOutput > 0)
+    output = 100;
   else
     output = _pidOutput;
+
+  if (bit_is_set(_outputFlags, PIDFLAG_INVERT_SERVO))
+    output = 100 - _pidOutput;
 
   // Get the output speed in 10x usec by LERPing between min and max
   output = mappct(output, _minServoPos, _maxServoPos);
