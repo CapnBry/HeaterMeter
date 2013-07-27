@@ -137,9 +137,6 @@ function configHashToForm()
       
     if (isProbeId(k, "pt"))
       elem.trigger("change");
-    else if (k == "fout")
-      elem.change(configElemChange)
-      .trigger("change");
     else if (isProbeId(k, "prfn"))
       $("#prfa" + k.substr(4))
         .change(configElemChange)
@@ -148,8 +145,6 @@ function configHashToForm()
       $("#pale" + k.substr(3))
         .change(configElemChange)
         .prop("checked", val > 0);
-    else if (k == "finv")
-      elem.prop("checked", val != 0);
     else if (isProbeId(k, "le"))
     {
       if (val == 255) val = 127;
@@ -160,6 +155,13 @@ function configHashToForm()
         .change(configElemChange)
         .prop("checked", val & 0x80);
     }
+    else if (k == "oflag")
+      setupCheckboxBitmask(k, val);
+    else if (k == "smin" || k == "smax")
+      $("#" + k + "X")
+        .val(val * 10)
+        .change(configElemChange);
+
     elem.change(configElemChange);
   }
 }
@@ -179,12 +181,6 @@ function configElemChange()
       if (values.length >= 4)
         $("#pcr"+name).val(values[3]);
     }
-  }
-  else if (name == "fout")
-  {
-    $(".fout-0").hide();
-    $(".fout-1").hide();
-    $(".fout-" + this.value).show();
   }
   else if (isProbeId(name, "prfa"))
   {
@@ -224,7 +220,34 @@ function configElemChange()
       val |= 0x80;
     $(target).val(val);
   }
+  else if (isProbeId(name, "oflag"))
+  {
+    var idx = +name.substr(5);
+    var val = $("#oflag").val();
+    if ($(this).is(":checked"))
+      val |= (1 << idx);
+    else
+      val &= ~(1 << idx);
+    $("#oflag").val(val);
+  }
+  else if (name == "sminX" || name == "smaxX")
+    $("#" + name.substr(0, 4))
+      .val(Math.round($(this).val() / 10));
+
   updateUpdateUrl();
+}
+
+function setupCheckboxBitmask(k, v)
+{
+  for (i=0; i<8; ++i)
+  {
+    var elem = $("#" + k + i)
+    if (elem)
+    {
+      elem.change(configElemChange)
+        .prop("checked", v & (1 << i));
+    }
+  }
 }
 
 function configToForm()
@@ -262,8 +285,6 @@ function configChangedHash()
     var val = elem.val();
     if (isProbeId(k, "prfn") && val == "")
       val = null;
-    else if (k == "finv")
-      val = elem.is(":checked") ? 1 : 0;
     if (val != configHash[k])
       r[k] = val;
   }
@@ -328,9 +349,9 @@ function updateConfigUrl(divname, h)
   csvItems(h, aValues, "lb", ["lb", "lbn", "le0", "le1", "le2"]);
   csvItems(h, aValues, "ld", ["lo", "ld"]);
   csvItems(h, aValues, "po", ["po0", "po1", "po2", "po3"]);
-  csvItems(h, aValues, "fn", ["fmin", "fmax", "finv", "fout"]);
   csvItems(h, aValues, "al", ["pall0", "palh0", "pall1", "palh1",
     "pall2", "palh2", "pall3", "palh3"]);
+  csvItems(h, aValues, "fn", ["fmin", "fmax", "smin", "smax", "oflag"]);
   for (var i=0; i<4; ++i)
     csvItems(h, aValues, "pc"+i, ["pca"+i, "pcb"+i, "pcc"+i, "pcr"+i, 
       function () { return getProbeTypeForSend(h, i); } ]);
@@ -524,7 +545,7 @@ time they are restarted.</div>
 </fieldset>
 
 <fieldset class="cbi-section" id="cbi-lm-pid">
-<legend>PID Tuning Parameters</legend>
+<legend>PID Output Parameters</legend>
   <div class="cbi-value">
     Bias <input type="text" maxlength="12" id="pidb" style="width: 5em;"/>
     Proportional <input type="text" maxlength="12" id="pidp" style="width: 5em;"/>
@@ -532,15 +553,22 @@ time they are restarted.</div>
     Derivative <input type="text" maxlength="12" id="pidd" style="width: 5em;"/>
   </div>
   <div class="cbi-value">
-    <select id="fout" style="width: 5em;">
-      <option value="0">Fan</option>
-      <option value="1">Servo</option>
-    </select>
-    <span class="fout-0">speed min</span>
-    <span class="fout-1">pulse duration</span>
-    <input type="text" maxlength="3" id="fmin" style="width: 2em;"/><span class="fout-0">% max</span><span class="fout-1"> -</span>
-    <input type="text" maxlength="3" id="fmax" style="width: 2em;"/><span class="fout-0">%</span><span class="fout-1">x10 usec (e.g. 150=1500us)</span>
-    <label><input type="checkbox" id="finv"/> Invert output</label>
+    <input type="hidden" id="oflag"/>
+    Fan speed
+    min <input type="text" maxlength="3" id="fmin" style="width: 2em;"/>% max
+      <input type="text" maxlength="3" id="fmax" style="width: 2em;"/>%
+    <label><input type="checkbox" id="oflag0"/> Invert output</label>
+    <label><input type="checkbox" id="oflag2"/> On at max only</label>
+    </ul>
+  </div>
+  <div class="cbi-value">
+    Servo pulse duration
+    <input type="hidden" id="smin"/>
+      <input type="text" maxlength="4" id="sminX" style="width: 3em;"/>us -
+    <input type="hidden" id="smax"/>
+      <input type="text" maxlength="4" id="smaxX" style="width: 3em;"/>us
+    <label><input type="checkbox" id="oflag1"/> Invert output</label>
+    <label><input type="checkbox" id="oflag3"/> Full open/close only</label>
   </div>
 </fieldset>
 
