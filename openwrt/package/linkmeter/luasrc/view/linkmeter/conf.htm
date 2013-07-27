@@ -375,7 +375,11 @@ function updateConfigUrl(divname, h)
     elem.html(s);
   }
   else
+  {
     elem.html("none");
+    if (divname == "#updateurl")
+      $(':button[name="cbi.apply"]').off("click");
+  }
 }
 
 function coeffClick(probeId, idx)
