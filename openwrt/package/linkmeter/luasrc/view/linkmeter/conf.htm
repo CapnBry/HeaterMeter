@@ -459,6 +459,7 @@ function ifrmHide()
   .pcpreset { font-size: x-small; text-align: center; position: relative; }
   .rfstatus { float: left; width: 16px; height: 16px; 
     background-image: url('<%=resource%>/rf.png'); }
+  div.cbi-value-last { border-bottom: none; }
   a.nodest { text-decoration: none; }
   ul#rfnodes { list-style-type: none; margin-left: 0 !important; }
   ul#rfnodes li { float: left; border: 1px dotted #bbb;
@@ -528,7 +529,7 @@ You can store a configuration by bookmarking the "Full configuration" link.</p>
 </div>
 <div id="prf<%=i%>" style="display: none;">
   <div><b>RF12 Configuration</b></div>
-  <div class="cbi-value"><label>Node</label>
+  <div class="cbi-value cbi-value-last"><label>Node</label>
     <input type="text" maxlength="3" id="prfn<%=i%>" style="width: 2em;"/>
     <label><input type="checkbox" id="prfa<%=i%>" class="prfa"/> Any</label>
   </div>
@@ -565,7 +566,7 @@ time they are restarted.</div>
     <label><input type="checkbox" id="oflag2"/> On at max only</label>
     </ul>
   </div>
-  <div class="cbi-value">
+  <div class="cbi-value cbi-value-last">
     Servo pulse duration
     <input type="hidden" id="smin"/>
       <input type="text" maxlength="4" id="sminX" style="width: 3em;"/>us -
@@ -589,7 +590,7 @@ time they are restarted.</div>
       <option value="3">Large Home: Probe 3</option>
     </select>
   </div>
-  <div class="cbi-value"> 
+  <div class="cbi-value cbi-value-last">
   <ul class="led">
 <% for i=0,2 do 
     local clr = (i == 0) and "red" or (i == 1) and "gold" or "greenyellow" %>
