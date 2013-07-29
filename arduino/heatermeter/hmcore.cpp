@@ -87,8 +87,8 @@ static const struct __eeprom_data {
   0xff, // 2-line home
   0xff, // unused
   { LEDSTIMULUS_RfReceive, LEDSTIMULUS_LidOpen, LEDSTIMULUS_FanOn, LEDSTIMULUS_Off },
-  110, // min servo pos = 1100us
-  185  // mas servo pos = 1850us
+  60, // min servo pos = 600us
+  250  // max servo pos = 2500us
 }
 };
 
