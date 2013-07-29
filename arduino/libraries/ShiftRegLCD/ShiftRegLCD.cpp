@@ -277,6 +277,7 @@ void ShiftRegLCDNative::send4bits(uint8_t value) const
 
 void ShiftRegLCDNative::updateAuxPins(void) const
 {
+  if ( _two_wire ) shiftOut ( _srdata_pin, _srclock_pin, MSBFIRST, 0x00 ); // clear shiftregister
   shiftOut( _srdata_pin, _srclock_pin, MSBFIRST, _auxPins);
 }
 
