@@ -23,7 +23,7 @@ extern const GrillPid pid;
 #define TEMP_AVG_COUNT 8
 // 2/(1+Number of samples used in the exponential moving average)
 #define TEMPPROBE_AVG_SMOOTH (2.0f/(1.0f+60.0f))
-#define FANSPEED_AVG_SMOOTH (2.0f/(1.0f+240.0f))
+#define PIDOUTPUT_AVG_SMOOTH (2.0f/(1.0f+240.0f))
 // Once entering LID OPEN mode, the minimum number of seconds to stay in
 // LID OPEN mode before autoresuming due to temperature returning to setpoint 
 #define LIDOPEN_MIN_AUTORESUME 30
@@ -232,7 +232,7 @@ void TempProbe::setTemperatureC(float T)
 }
 
 GrillPid::GrillPid(const unsigned char fanPin, const unsigned char servoPin) :
-    _fanPin(fanPin), _servoPin(servoPin), _periodCounter(0x80), _units('F'), FanSpeedAvg(NAN)
+    _fanPin(fanPin), _servoPin(servoPin), _periodCounter(0x80), _units('F'), PidOutputAvg(NAN)
 {
   //pinMode(_fanPin, OUTPUT); // handled by analogWrite
 #if defined(GRILLPID_SERVO)
@@ -308,8 +308,6 @@ inline void GrillPid::commitFanOutput(void)
   const unsigned int PERIOD_SCALE = (LONG_PWM_PERIOD / TEMP_MEASURE_PERIOD);
 
   unsigned char fanSpeed = getFanSpeed();
-  calcExpMovingAverage(FANSPEED_AVG_SMOOTH, &FanSpeedAvg, fanSpeed);
-
   /* For anything above _minFanSpeed, do a nomal PWM write.
      For below _minFanSpeed we use a "long pulse PWM", where
      the pulse is 10 seconds in length.  For each percent we are
@@ -357,6 +355,7 @@ inline void GrillPid::commitServoOutput(void)
 
 inline void GrillPid::commitPidOutput(void)
 {
+  calcExpMovingAverage(PIDOUTPUT_AVG_SMOOTH, &PidOutputAvg, _pidOutput);
   commitFanOutput();
   commitServoOutput();
 }
@@ -419,9 +418,9 @@ void GrillPid::status(void) const
     Serial_csv();
   }
 
-  SerialX.print(getFanSpeed(), DEC);
+  SerialX.print(getPidOutput(), DEC);
   Serial_csv();
-  SerialX.print((int)FanSpeedAvg, DEC);
+  SerialX.print((int)PidOutputAvg, DEC);
   Serial_csv();
   SerialX.print(LidOpenResumeCountdown, DEC);
 }
@@ -478,7 +477,7 @@ boolean GrillPid::doWork(void)
     // Note that the code assumes we're not currently counting down
     else if (_pitTemperatureReached && 
       (((_setPoint-pitTemp)*100/_setPoint) >= (int)LidOpenOffset) &&
-      ((int)FanSpeedAvg < 90))
+      ((int)PidOutputAvg < 90))
     {
       resetLidOpenResumeCountdown();
     }

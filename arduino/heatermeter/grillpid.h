@@ -200,8 +200,8 @@ public:
   unsigned char getFanSpeed(void) const;
 
   boolean getManualOutputMode(void) const { return _manualOutputMode; }
-  // Fan speed moving average
-  float FanSpeedAvg;
+  // PID output moving average
+  float PidOutputAvg;
   // Seconds remaining in the lid open countdown
   unsigned int LidOpenResumeCountdown;
   boolean isLidOpen(void) const { return LidOpenResumeCountdown != 0; }

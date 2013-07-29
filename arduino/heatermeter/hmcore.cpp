@@ -446,7 +446,7 @@ void updateDisplay(void)
         c2 = ']';
       }
       snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE"%c %c%3u%%%c"),
-        pitTemp, pid.getUnits(), c1, pid.getFanSpeed(), c2);
+        pitTemp, pid.getUnits(), c1, pid.getPidOutput(), c2);
     }
 
     lcd.print(buffer);
@@ -1173,7 +1173,7 @@ static void newTempsAvail(void)
   ledmanager.publish(LEDSTIMULUS_PitTempReached, pid.isPitTempReached());
 
 #ifdef HEATERMETER_RFM12
-  rfmanager.sendUpdate(pid.getFanSpeed());
+  rfmanager.sendUpdate(pid.getPidOutput());
 #endif
 }
 
