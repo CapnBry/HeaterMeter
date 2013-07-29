@@ -11,6 +11,7 @@ fi
 
 DEV="/dev/mmcblk0"
 RESTORE=0
+IS_DEFAULT=0
 PARTED="$PARTED -m -s $DEV unit s"
 SECTORS=`$PARTED p | grep ^${DEV} | cut -d':' -f 2 | cut -d's' -f 1`
 
@@ -20,6 +21,7 @@ SECTORS=`$PARTED p | grep ^${DEV} | cut -d':' -f 2 | cut -d's' -f 1`
 # If there's not already a partition 4, create one
 if ! $PARTED p 4 > /dev/null 2>&1 ; then
   P3CREATED=0
+  IS_DEFAULT=1
   echo No partition 4 found on $SECTORS sector device
   
   # If any other partition extends to the end of the device, forget it
@@ -77,6 +79,11 @@ mount | grep ${DEV}p4 || mount -t ext4 -o rw,sync ${DEV}p4 $MNT
 # Mount the boot partition
 [ -d "/boot" ] || mkdir /boot
 mount -t vfat -o rw,sync ${DEV}p1 /boot
+
+# If this is a fresh system, store the default configuration
+if [ $IS_DEFAULT -eq 1 -a -d "$MNT/lost+found" ] ; then
+  sysupgrade -b $MNT/default-config.tar.gz
+fi
 
 if grep -i norestore /proc/cmdline > /dev/null ; then
   echo "Skipping system backup restore (NORESTORE specified)"
