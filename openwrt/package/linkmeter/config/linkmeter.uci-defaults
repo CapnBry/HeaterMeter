@@ -58,7 +58,7 @@ ALARMS="/usr/share/linkmeter/alarm-"
 grep $ALARMS /etc/sysupgrade.conf > /dev/null || \
   echo "${ALARMS}*" >> /etc/sysupgrade.conf
 
-if [ "$INSTAL_PARAM" = "new" ] ; then
+if [ "$INSTALL_PARAM" = "new" ] ; then
   uci set luci.ccache.enable=$LUCI_CCACHE
   uci commit luci
 
