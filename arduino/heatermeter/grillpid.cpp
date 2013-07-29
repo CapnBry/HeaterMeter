@@ -50,7 +50,7 @@ ISR(TIMER1_COMPB_vect)
   else
   {
     digitalWrite(pid.getServoPin(), HIGH);
-    OCR1B = ICR1;
+    OCR1B = pid.getServoOutput();
     TCNT1 = 0;
   }
 }
@@ -347,9 +347,8 @@ inline void GrillPid::commitServoOutput(void)
 
   // Get the output speed in 10x usec by LERPing between min and max
   output = mappct(output, _minServoPos, _maxServoPos);
-  // What a dumbass thing to do! Store the value we want to put in OCR1B in ICR1
-  // The value is pulled from here on the next interrupt cycle
-  ICR1 = uSecToTicks(10U * output);
+  // Servo output is actually set on the next interrupt cycle
+  _servoOutput = uSecToTicks(10U * output);
 #endif
 }
 
