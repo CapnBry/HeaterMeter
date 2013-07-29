@@ -1,15 +1,34 @@
-Index: target/linux/brcm2708/Makefile
+Index: target/linux/brcm2708/image/config.txt
 ===================================================================
---- target/linux/brcm2708/Makefile	(revision 36720)
-+++ target/linux/brcm2708/Makefile	(working copy)
-@@ -23,6 +23,6 @@
- 	Currently produces SD Card image for Raspberry Pi.
- endef
+--- target/linux/brcm2708/image/config.txt	(revision 0)
++++ target/linux/brcm2708/image/config.txt	(working copy)
+@@ -0,0 +1,6 @@
++gpu_mem=32
++arm_freq=800
++arm_freq_min=700
++sdram_freq=400
++core_freq=250
++
+Index: target/linux/brcm2708/image/gen_rpi_sdcard_img.sh
+===================================================================
+--- target/linux/brcm2708/image/gen_rpi_sdcard_img.sh	(revision 36720)
++++ target/linux/brcm2708/image/gen_rpi_sdcard_img.sh	(working copy)
+@@ -12,7 +12,7 @@
+ BOOTFSSIZE="$4"
+ ROOTFSSIZE="$5"
  
--CFLAGS:=-pipe -march=armv6 -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=softfp -marm
-+CFLAGS:=-pipe -march=armv6zk -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard -marm
+-head=4
++head=255
+ sect=63
  
- $(eval $(call BuildTarget))
+ set `ptgen -o $OUTPUT -h $head -s $sect -l 4096 -t c -p ${BOOTFSSIZE}M -t 83 -p ${ROOTFSSIZE}M`
+Index: target/linux/brcm2708/image/cmdline.txt
+===================================================================
+--- target/linux/brcm2708/image/cmdline.txt	(revision 36720)
++++ target/linux/brcm2708/image/cmdline.txt	(working copy)
+@@ -1 +1 @@
+-dwc_otg.lpm_enable=0 rpitestmode=1 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
++dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
 Index: target/linux/brcm2708/image/Makefile
 ===================================================================
 --- target/linux/brcm2708/image/Makefile	(revision 36720)
@@ -49,26 +68,6 @@ Index: target/linux/brcm2708/image/Makefile
  endef
  
  $(eval $(call BuildImage))
-Index: target/linux/brcm2708/image/gen_rpi_sdcard_img.sh
-===================================================================
---- target/linux/brcm2708/image/gen_rpi_sdcard_img.sh	(revision 36720)
-+++ target/linux/brcm2708/image/gen_rpi_sdcard_img.sh	(working copy)
-@@ -12,7 +12,7 @@
- BOOTFSSIZE="$4"
- ROOTFSSIZE="$5"
- 
--head=4
-+head=255
- sect=63
- 
- set `ptgen -o $OUTPUT -h $head -s $sect -l 4096 -t c -p ${BOOTFSSIZE}M -t 83 -p ${ROOTFSSIZE}M`
-Index: target/linux/brcm2708/image/cmdline.txt
-===================================================================
---- target/linux/brcm2708/image/cmdline.txt	(revision 36720)
-+++ target/linux/brcm2708/image/cmdline.txt	(working copy)
-@@ -1 +1 @@
--dwc_otg.lpm_enable=0 rpitestmode=1 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
-+dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
 Index: target/linux/brcm2708/config-3.3
 ===================================================================
 --- target/linux/brcm2708/config-3.3	(revision 36720)
@@ -227,17 +226,81 @@ Index: target/linux/brcm2708/config-3.3
  CONFIG_VT_HW_CONSOLE_BINDING=y
  CONFIG_ZBOOT_ROM_BSS=0x0
  CONFIG_ZBOOT_ROM_TEXT=0x0
+Index: target/linux/brcm2708/base-files/lib/upgrade/platform.sh
+===================================================================
+--- target/linux/brcm2708/base-files/lib/upgrade/platform.sh	(revision 0)
++++ target/linux/brcm2708/base-files/lib/upgrade/platform.sh	(working copy)
+@@ -0,0 +1,51 @@
++USE_REFRESH=1
++RAMFS_COPY_BIN=/usr/sbin/partprobe
++
++platform_check_image() {
++	[ "$ARGC" -gt 1 ] && return 1
++
++	case "$(get_magic_word "$1")" in
++		0000) return 0;;
++		*)
++			echo "Invalid image type"
++			return 1
++		;;
++	esac
++}
++
++platform_refresh_partitions() {
++	partprobe /dev/mmcblk0
++}
++
++platform_copy_config() {
++	# remounting corrupts the filesystem, rely on config_restore
++	return 0
++	mount -t ext4 -o ro,noatime /dev/mmcblk0p2 /mnt && \
++	  mount -t ext4 -o remount,rw,noatime /dev/mmcblk0p2 /mnt && \
++	  cp -af "$CONF_TAR" /mnt/ && \
++	  umount /mnt
++}
++
++platform_do_upgrade() {
++	sync
++	# If not saving the configuration, wipe the config partition
++	[ $SAVE_CONFIG -eq 0 -a -b /dev/mmcblk0p4 ] && {
++  	  # Should do mkfs.ext4 here but isn't on ramdisk
++  	  dd if=/dev/zero of=/dev/mmcblk0p4 bs=1M count=1 conv=fsync
++	}
++	dd if=/dev/zero of=/dev/mmcblk0 bs=4M count=10 conv=fsync
++	get_image "$@" | dd of=/dev/mmcblk0 bs=4M conv=fsync
++	sleep 1
++}
++
++bcm2708_umount_all() {
++	cd /tmp
++	echo powersave > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
++	lmclient LMDC,0
++	umount /dev/mmcblk0p1
++	umount /dev/mmcblk0p4
++	umount /sys/kernel/debug
++}
++
++append sysupgrade_pre_upgrade bcm2708_umount_all
++
 Index: target/linux/brcm2708/base-files/etc/config/network
 ===================================================================
 --- target/linux/brcm2708/base-files/etc/config/network	(revision 36720)
 +++ target/linux/brcm2708/base-files/etc/config/network	(working copy)
-@@ -9,5 +9,5 @@
- config interface lan
+@@ -6,8 +6,12 @@
+ 	option ipaddr	127.0.0.1
+ 	option netmask	255.0.0.0
+ 
+-config interface lan
++config interface fallback
  	option ifname	eth0
  	option proto	static
 -	option ipaddr	192.168.1.1
 +	option ipaddr	192.168.200.1
  	option netmask	255.255.255.0
++
++config interface lan
++	option ifname	eth0
++	option proto	dhcp
 Index: target/linux/brcm2708/base-files/etc/inittab
 ===================================================================
 --- target/linux/brcm2708/base-files/etc/inittab	(revision 36720)
@@ -250,12 +313,15 @@ Index: target/linux/brcm2708/base-files/etc/inittab
 +#tts/0::askfirst:/bin/ash --login
 +#ttyAMA0::askfirst:/bin/ash --login
  tty1::askfirst:/bin/ash --login
---- /dev/null	2013-05-16 17:59:18.391419002 -0400
-+++ target/linux/brcm2708/image/config.txt	2013-05-26 08:44:37.559092647 -0400
-@@ -0,0 +1,6 @@
-+gpu_mem=32
-+arm_freq=800
-+arm_freq_min=700
-+sdram_freq=400
-+core_freq=250
-+
+Index: target/linux/brcm2708/Makefile
+===================================================================
+--- target/linux/brcm2708/Makefile	(revision 36720)
++++ target/linux/brcm2708/Makefile	(working copy)
+@@ -23,6 +23,6 @@
+ 	Currently produces SD Card image for Raspberry Pi.
+ endef
+ 
+-CFLAGS:=-pipe -march=armv6 -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=softfp -marm
++CFLAGS:=-pipe -march=armv6zk -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard -marm
+ 
+ $(eval $(call BuildTarget))
