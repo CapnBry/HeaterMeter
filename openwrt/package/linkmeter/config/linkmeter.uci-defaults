@@ -69,10 +69,11 @@ if [ "$INSTALL_PARAM" = "new" ] ; then
   [ "$HARDWARE_MODEL" = "BCM2708" ] && \
     /etc/init.d/config_restore enable
 
-  # New install, disable dnsmasq by default
-  [ "$HARDWARE_MODEL" = "BCM2708" ] && \
-    [ -x "/etc/init.d/dnsmasq" ] && \
-    /etc/init.d/dnsmasq disable
+  # New install, disable dhcp on the lan interface
+  if [ "$HARDWARE_MODEL" = "BCM2708" ] ; then
+    uci set dhcp.lan.ignore=1
+    uci commit dhcp
+  fi
 
   # LuCI's fixtime makes the time jump forward twice and the time is never right
   [ -x "/etc/init.d/luci_fixtime" ] && \
