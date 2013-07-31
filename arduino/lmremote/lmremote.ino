@@ -243,9 +243,9 @@ static bool optimalSleep(void)
       Serial.print(" r "); Serial.println(recvTime);
       Serial.flush();
 #endif
-      // double the window every N packets lost
+      // double the window every N/2 packets lost
       ++lost;
-      if (lost % 2 == 0 && _recvWindow < MAX_RECV_WIN)
+      if (lost % 2 == 1 && _recvWindow < MAX_RECV_WIN)
         _recvWindow *= 2;
 
       return false;
