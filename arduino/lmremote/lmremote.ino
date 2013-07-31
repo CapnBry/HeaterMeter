@@ -2,7 +2,11 @@
 #include <avr/sleep.h>
 #include <rf12_itplus.h>
 
-// Enabling LMREMOTE_SERIAL also disables several power saving features
+// Power down CPU as much as possible, and attempt to sync receiver at exact
+// transmit time. Can't be used with LMREMOTE_SERIAL
+// Or if an output is defined (fan/servo)
+#define MINIMAL_POWER_MODE
+// Enabling LMREMOTE_SERIAL also disables MINIMAL_POWER_MODE
 #define LMREMOTE_SERIAL 38400
 
 // Base Idenfier for the RFM12B (0-63)
@@ -45,11 +49,15 @@ const unsigned char _pinProbeSupply = 4;
 #define HYGRO_LMREMOTE_KEY 0x7F
 
 #ifdef LMREMOTE_SERIAL
-  #define SLEEPMODE_TX    1
-  #define SLEEPMODE_ADC   SLEEP_MODE_IDLE
-#else
+#undef MINIMAL_POWER_MODE
+#endif
+
+#if defined(MINIMAL_POWER_MODE)
   #define SLEEPMODE_TX    2
   #define SLEEPMODE_ADC   SLEEP_MODE_ADC
+#else
+  #define SLEEPMODE_TX    1
+  #define SLEEPMODE_ADC   SLEEP_MODE_IDLE
 #endif
 
 #define RECV_CYCLE_TIME  5000    // expected receive cycle, millisecond
@@ -67,13 +75,6 @@ static unsigned int _recvCycleAct;
 static unsigned int _recvWindow;
 static unsigned long _recvLast;
 static bool _recvSynced;
-
-static volatile bool _adcBusy;
-static volatile bool _watchdogWaiting;
-
-// The WDT is used solely to wake us from sleep
-ISR(WDT_vect) { _watchdogWaiting = false; }
-ISR(ADC_vect) { _adcBusy = false; }
 
 static bool packetReceived(unsigned char nodeId, unsigned int val)
 {
@@ -107,6 +108,9 @@ static bool rf12_doWork(void)
   return false;
 }
 
+static volatile bool _adcBusy;
+ISR(ADC_vect) { _adcBusy = false; }
+
 static unsigned int analogReadSleep(unsigned char pin)
 {
   _adcBusy = true;
@@ -117,6 +121,11 @@ static unsigned int analogReadSleep(unsigned char pin)
     sleep_mode();
   return ADC;
 }
+
+// The WDT is used solely to wake us from sleep
+#if defined(MINIMAL_POWER_MODE)
+static volatile bool _watchdogWaiting;
+ISR(WDT_vect) { _watchdogWaiting = false; }
 
 static void sleepPeriod(uint8_t wdt_period)
 {
@@ -140,7 +149,7 @@ static void sleepPeriod(uint8_t wdt_period)
   sleep_disable();
 }
 
-static void sleep(unsigned int msec)
+static void sleepPwrDown(unsigned int msec)
 // Code copied from Sleepy::loseSomeSleep(), jeelib
 {
   unsigned int msleft = msec;
@@ -169,10 +178,28 @@ static void sleep(unsigned int msec)
     timer0_millis += msec - msleft;
 #endif
 }
+#endif
+
+static void sleepIdle(unsigned int msec)
+{
+  unsigned long start = millis();
+  set_sleep_mode(SLEEP_MODE_IDLE);
+  while (millis() - start < msec)
+    sleep_mode();
+}
+
+static void sleep(unsigned int msec)
+{
+#if defined(MINIMAL_POWER_MODE)
+  sleepPwrDown(msec);
+#else
+  sleepIdle(msec);
+#endif /* SLEEP_MODE_PWR_DOWN */
+}
 
 static void resetEstimate(void)
 {
-#if _DEBUG
+#if defined(LMREMOTE_SERIAL) && defined(_DEBUG)
   Serial.print(F("Resetting Estimate\n"));
 #endif
   _recvCycleAct = RECV_CYCLE_TIME;
@@ -196,10 +223,6 @@ static bool optimalSleep(void)
     return false;
   }
 
-  // double the window every N packets lost
-  if (lost > 0 && lost % 2 == 0 && _recvWindow < MAX_RECV_WIN)
-    _recvWindow *= 2;
-
   unsigned long predict = _recvLast + (lost + 1) * _recvCycleAct;
   unsigned int sleepDur =  predict - _recvWindow - millis();
   sleep(sleepDur);
@@ -211,7 +234,7 @@ static bool optimalSleep(void)
     recvTime = millis();
     if ((long)(recvTime - timeout) >= 0)
     {
-#if _DEBUG
+#if defined(LMREMOTE_SERIAL) && defined(_DEBUG)
       Serial.print(" f "); Serial.print(lost);
       Serial.print(" s "); Serial.print(sleepDur);
       Serial.print(" e "); Serial.print(_recvCycleAct);
@@ -220,6 +243,11 @@ static bool optimalSleep(void)
       Serial.print(" r "); Serial.println(recvTime);
       Serial.flush();
 #endif
+      // double the window every N packets lost
+      ++lost;
+      if (lost % 2 == 0 && _recvWindow < MAX_RECV_WIN)
+        _recvWindow *= 2;
+
       return false;
     }
   } while (!rf12_doWork());
@@ -231,7 +259,7 @@ static bool optimalSleep(void)
     _recvCycleAct = newEst;
   _recvLast = recvTime;
 
-#if _DEBUG
+#if defined(LMREMOTE_SERIAL) && defined(_DEBUG)
   Serial.print(" n "); Serial.print(lost);
   Serial.print(" e "); Serial.print(_recvCycleAct);
   Serial.print(" E "); Serial.print(newEst);
@@ -419,10 +447,10 @@ void setup(void)
 
 #ifdef LMREMOTE_SERIAL
   PRR &= ~bit(PRUSART0);
-  Serial.begin(LMREMOTE_SERIAL); Serial.println("$UCID,lmremote"); delay(10);
+  Serial.begin(LMREMOTE_SERIAL); Serial.println("$UCID,lmremote"); Serial.flush();
 #endif
 
-  rf12_initialize(1, _rfBand);
+  rf12_initialize(_rfBand);
   // Crystal 1.66MHz Low Battery Detect 2.2V
   rf12_control(0xC040);
 
@@ -441,7 +469,7 @@ void loop(void)
     checkTemps();
 
 #ifdef LMREMOTE_SERIAL
-  Serial.flush(); delay(2);
+  Serial.flush();
 #endif
 
   if (_recvLast == 0)
