@@ -1,0 +1,45 @@
+--- luci-0.11.1/modules/admin-full/luasrc/controller/admin/system.lua.orig	2013-07-27 09:58:33.042494066 -0400
++++ luci-0.11.1/modules/admin-full/luasrc/controller/admin/system.lua	2013-07-27 09:58:38.290494195 -0400
+@@ -263,12 +263,16 @@
+ 			luci.template.render("admin_system/applyreboot")
+ 			luci.sys.reboot()
+ 		end
+-	elseif luci.http.formvalue("image") or luci.http.formvalue("step") then
++	elseif luci.http.formvalue("image") or luci.http.formvalue("step") or 
++		luci.http.formvalue("imageurl") then
+ 		--
+ 		-- Initiate firmware flash
+ 		--
+ 		local step = tonumber(luci.http.formvalue("step") or 1)
+ 		if step == 1 then
++			if luci.http.formvalue("imageurl") then
++				os.execute("wget -O %s %s" % {image_tmp, luci.http.formvalue("imageurl")})
++			end
+ 			if image_supported() then
+ 				luci.template.render("admin_system/upgrade", {
+ 					checksum = image_checksum(),
+--- luci-0.11.1/modules/admin-full/luasrc/view/admin_system/flashops.htm.orig	2013-07-27 09:59:21.186495247 -0400
++++ luci-0.11.1/modules/admin-full/luasrc/view/admin_system/flashops.htm	2013-07-27 09:59:24.646495332 -0400
+@@ -72,13 +72,20 @@
+ 							<input type="checkbox" name="keep" id="keep" checked="checked" />
+ 						</div>
+ 					</div>
+-					<div class="cbi-value cbi-value-last<% if image_invalid then %> cbi-value-error<% end %>">
+-						<label class="cbi-value-title" for="image"><%:Image%>:</label>
++					<div class="cbi-value <% if image_invalid then %> cbi-value-error<% end %>">
++						<label class="cbi-value-title" for="image"><%:Image file%>:</label>
+ 						<div class="cbi-value-field">
+ 							<input type="file" name="image" id="image" />
+ 							<input type="submit" class="cbi-button cbi-input-apply" value="<%:Flash image...%>" />
+ 						</div>
+ 					</div>
++					<div class="cbi-value cbi-value-last<% if image_invalid then %> cbi-value-error<% end %>">
++						<label class="cbi-value-title" for="image"><%:Image URL (.gz)%>:</label>
++						<div class="cbi-value-field">
++							<input type="text" name="imageurl" id="imageurl" />
++							<input type="submit" class="cbi-button cbi-input-apply" value="<%:Download and flash image...%>" />
++						</div>
++					</div>
+ 				</div>
+ 				<% if image_invalid then %>
+ 					<div class="cbi-section-error"><%:The uploaded image file does not contain a supported format. Make sure that you choose the generic image format for your platform. %></div>
