@@ -343,7 +343,7 @@ inline void GrillPid::commitServoOutput(void)
     output = _pidOutput;
 
   if (bit_is_set(_outputFlags, PIDFLAG_INVERT_SERVO))
-    output = 100 - _pidOutput;
+    output = 100 - output;
 
   // Get the output speed in 10x usec by LERPing between min and max
   output = mappct(output, _minServoPos, _maxServoPos);
