@@ -1,0 +1,46 @@
+diff -Nurp src/os_dep/linux/ioctl_cfg80211.c /home/bmayland/tmp/8192new/os_dep/linux/ioctl_cfg80211.c
+--- src/os_dep/linux/ioctl_cfg80211.c	2013-03-02 20:14:41.797843131 -0500
++++ /home/bmayland/tmp/8192new/os_dep/linux/ioctl_cfg80211.c	2013-06-06 11:20:11.451774909 -0400
+@@ -898,7 +898,7 @@ static int rtw_cfg80211_set_encryption(s
+ 
+ _func_enter_;
+ 
+-	printk("%s\n", __func__);
++	DBG_8192C("%s\n", __func__);
+ 
+ 	param->u.crypt.err = 0;
+ 	param->u.crypt.alg[IEEE_CRYPT_ALG_NAME_LEN - 1] = '\0';
+@@ -1101,7 +1101,7 @@ _func_enter_;
+ 
+ exit:
+ 
+-	printk("%s, ret=%d\n", __func__, ret);
++	DBG_8192C("%s, ret=%d\n", __func__, ret);
+ 	
+ 	if (pwep) {
+ 		rtw_mfree((u8 *)pwep,wep_total_len);		
+@@ -1129,18 +1129,18 @@ static int cfg80211_rtw_add_key(struct w
+ 	struct mlme_priv *pmlmepriv = &padapter->mlmepriv;
+ 	
+ 	
+-	printk("%s, Adding key for %pM\n", __func__, mac_addr);
++	DBG_8192C("%s, Adding key for %pM\n", __func__, mac_addr);
+ 
+-	printk("cipher=0x%x\n", params->cipher);
++	DBG_8192C("cipher=0x%x\n", params->cipher);
+ 
+-	printk("key_len=0x%x\n", params->key_len);
++	DBG_8192C("key_len=0x%x\n", params->key_len);
+ 
+-	printk("seq_len=0x%x\n", params->seq_len);
++	DBG_8192C("seq_len=0x%x\n", params->seq_len);
+ 
+-	printk("key_index=%d\n", key_index);
++	DBG_8192C("key_index=%d\n", key_index);
+ 
+ #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37))
+-	printk("pairwise=%d\n", pairwise);
++	DBG_8192C("pairwise=%d\n", pairwise);
+ #endif	// (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37))
+ 
+ 
