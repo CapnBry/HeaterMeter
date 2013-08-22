@@ -14,8 +14,13 @@ function index()
   entry({"admin", "lm", "set"}, call("action_set"))
   
   if node.inreq and nixio.fs.access("/usr/share/linkmeter/alarm") then
-    entry({"admin", "lm", "alarms"}, form("linkmeter/alarms"), "Alarm Scripts", 30)
+    entry({"admin", "lm", "alarm"}, template("linkmeter/alarm"), "Alarms", 30)
+    entry({"admin", "lm", "alarms"}, form("linkmeter/alarms"), "Alarm Scripts", 35)
   end
+
+  -- home and lighthome displays have both auth (under admin) and guest pages
+  entry({"lm", "light"}, call("action_light_index"))
+  entry({"admin", "lm", "light"}, call("action_light_index"))
 end
 
 function action_fw()
@@ -191,4 +196,21 @@ function action_set()
   end
   lm:close()
   http.write("Done!")
+end
+
+function action_light_index()
+  require "lmclient"
+  local json = require("luci.json")
+  local result, err = LmClient():query("$LMSU")
+  if result then
+      local lm = json.decode(result)
+      luci.template.render("linkmeter/light", {
+        lm = lm,
+        lmraw = result,
+        build_url = luci.dispatcher.build_url,
+        authuser = luci.dispatcher.context.authuser
+      })
+  else
+    luci.dispatcher.error500("Stauts read failed: " .. err or "Unknown")
+  end
 end

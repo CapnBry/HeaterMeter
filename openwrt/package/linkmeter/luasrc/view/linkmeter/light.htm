@@ -24,16 +24,24 @@
 <div class="title"><div>HeaterMeter</div><div id="utime"><%=os.date("%X", lm.time)%>UTC</div></div>
 <ul>
 <%- for i=1,#lm.temps do %>
-<li>
-  <div class="t"><%=
+<li><div class="t"><%=
     lm.temps[i].c and ("%.1f&deg;"):format(lm.temps[i].c) or "Off"
-  %></div><div class="n"><%=lm.temps[i].n%></div>
-</li>
+  %></div><div class="n"><%=lm.temps[i].n%></div></li>
 <%- end %>
 <li><div class="t"><%=lm.fan.c%>%</div><div class="n">Fan</div></li>
 </ul>
+<%- if authuser == "root" then %>
+<form action="<%=build_url("admin/lm/set")%>" method="POST">
+  <label>Setpoint <input type="text" name="sp" value="<%=lm.set%>" size="4" /></label>
+  <input type="submit" value="Set" />
+</form>
+<% else %>
 <div>Setpoint <%=lm.set%>&deg;</div>
+<% end -%>
 <div>Lid <%=lm.lid == 0 and "closed" or "open"%></div>
+<%- if authuser ~= "root" then %>
+<a href="<%=build_url("admin/lm/light")%>">Login</a>
+<%- end %>
 <script>
   var d = new Date(<%=lm.time * 1000%>);
   document.getElementById("utime").innerHTML = d.toLocaleTimeString();
