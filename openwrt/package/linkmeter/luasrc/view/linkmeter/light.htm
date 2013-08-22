@@ -2,7 +2,7 @@
 <html>
 <head>
  <meta charset="UTF-8">
- <meta http-equiv="refresh" content="30">
+ <meta http-equiv="refresh" content="<%= authuser == "root" and "30" or "10" %>">
  <meta name="viewport" content="width=320">
  <title>HeaterMeter BBQ Control</title>
  <style>
@@ -37,12 +37,9 @@
   <input type="submit" value="Set" />
 </form>
 <% else %>
-<div>Setpoint <%=lm.set%>&deg;</div>
+<div><a href="<%=build_url("admin/lm/light")%>">Setpoint</a> <%=lm.set%>&deg;</div>
 <% end -%>
 <div>Lid <%=lm.lid == 0 and "closed" or "open"%></div>
-<%- if authuser ~= "root" then %>
-<a href="<%=build_url("admin/lm/light")%>">Login</a>
-<%- end %>
 <script>
   var d = new Date(<%=lm.time * 1000%>);
   document.getElementById("utime").innerHTML = d.toLocaleTimeString();
