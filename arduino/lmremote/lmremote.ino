@@ -15,24 +15,24 @@
 const char _rfNodeBaseId = 0;
 // RFM12B band RF12_433MHZ, RF12_868MHZ, RF12_915MHZ
 const unsigned char _rfBand = RF12_915MHZ;
-// How many seconds to delay between measurements
+// How many seconds to delay between temperature measurements
 const unsigned char _sleepInterval = 2;
-// Analog pins to read. This is a bitfield, LSB is analog 0
+// Analog pins to read. This is a bitfield, LSB is analog 5
 const unsigned char _enabledProbePins = 0x01;
 // Analog pin connected to source power.  Set to 0xff to disable sampling
 const unsigned char _pinBattery = 0xff;
 // Digital pins for LEDs, 0xff to disable
 const unsigned char _pinLedRx = 0xff;
 const unsigned char _pinLedTx = 0xff;
-const unsigned char _pinLedRxSearch = 0xff;
-const unsigned char _pinLedRxConverge = 6;
-const unsigned char _pinLedRxLocked = 7;
+const unsigned char _pinLedRxSearch = 4;   // ATmega pin 6
+const unsigned char _pinLedRxConverge = 5; // ATmega pin 11
+const unsigned char _pinLedRxLocked = 9;   // ATmega pin 15
 // Digital pin used for sourcing power to the probe dividers
-const unsigned char _pinProbeSupply = 4;
+const unsigned char _pinProbeSupply = 7;   // ATmega pin 13
 // Digital pin used for fan output, must support PWM, 0xff to disable
-const unsigned char _pinOutputFan = 5;
+const unsigned char _pinOutputFan = 3;     // ATmega pin 5
 // Digital pin used for servo output, 0xff to disable
-const unsigned char _pinOutputServo = 8;
+const unsigned char _pinOutputServo = 8;   // ATmega pin 14
 // Percentage (integer) of VCC where the battery is considered low (33% = 1.1V)
 #define BATTERY_LOW_PCT 33
 // Number of seconds to keep the "recent/new" bit set
@@ -226,7 +226,7 @@ static void rfSetRecvState(const unsigned char state)
 {
 #if defined(LMREMOTE_SERIAL) && defined(_DEBUG)
   Serial.print(millis(), DEC);
-  Serial.print(F("rfSetRecvState ")); Serial.println(state, DEC);
+  Serial.print(F(" rfSetRecvState ")); Serial.println(state, DEC);
 #endif
   _recvState = state;
 
@@ -451,7 +451,8 @@ static void checkTemps(void)
 
     for (unsigned char o=0; o<OVERSAMPLE_COUNT[TEMP_OVERSAMPLE_BITS]; ++o)
     {
-      unsigned int adc = analogReadSleep(pin);
+      // 'Pins' 0-5 are actually wired starting at A5 down to A0
+      unsigned int adc = analogReadSleep(5 - pin);
       if (adc == 0 || adc >= 1023)
       {
         oversampled_adc = 0;
