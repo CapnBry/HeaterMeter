@@ -82,7 +82,6 @@ const unsigned char _pinOutputServo = 8;   // ATmega pin 14
 
 static unsigned int _previousReads[RF_PINS_PER_SOURCE];
 static unsigned long _tempReadLast;
-static unsigned int _loopCnt;
 static unsigned char _sameCount;
 static unsigned char _isRecent = BYTE1_RECENT_BOOT;
 static unsigned char _isBattLow;
@@ -277,6 +276,8 @@ static bool optimalSleep(void)
     recvTime = millis();
     if (recvTime - wakeTime > (_recvWindow * 2))
     {
+      rf12_sleep(RF12_SLEEP);
+
 #if defined(LMREMOTE_SERIAL) && defined(_DEBUG)
       Serial.print(" f "); Serial.print(_recvLost);
       //Serial.print(" s "); Serial.print(sleepDur);
@@ -290,10 +291,14 @@ static bool optimalSleep(void)
       ++_recvLost;
       if (_recvLost > 10)
         rfResetEstimate();
-      else if (_recvLost % 2 == 1 && _recvWindow < MAX_RECV_WIN)
-        _recvWindow *= 2;
+      else
+      {
+        if (_recvLost % 2 == 1 && _recvWindow < MAX_RECV_WIN)
+          _recvWindow *= 2;
+        if (_recvState == RECVSTATE_LOCKED)
+          rfSetRecvState(RECVSTATE_CONVERGING);
+      }
 
-      rf12_sleep(RF12_SLEEP);
       return false;
     }
   } while (!rf12_doWork());
@@ -426,6 +431,8 @@ static void stabilizeAdc(void)
 static void checkTemps(void)
 {
   _tempReadLast = millis();
+  if (_enabledProbePins == 0)
+    return;
 
   const unsigned char OVERSAMPLE_COUNT[] = {1, 4, 16, 64};  // 4^n
   boolean modified = false;
