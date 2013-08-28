@@ -244,24 +244,21 @@ static void rfSetRecvState(const unsigned char state)
     case RECVSTATE_SEARCHING:
       if (_pinLedRxSearch != 0xff) digitalWriteFast(_pinLedRxSearch, HIGH);
       // If we're offline disable the blower/servo output
+      _recvCycleAct = RECV_CYCLE_TIME;
+      _recvWindow = MAX_RECV_WIN;
+      _recvLast = 0;
+      _recvLost = 0;
       setOutputPercent(0);
-      break;
+      break; /* SEARCHING */
+
     case RECVSTATE_CONVERGING:
       if (_pinLedRxConverge != 0xff) digitalWriteFast(_pinLedRxConverge, HIGH);
       break;
+
     case RECVSTATE_LOCKED:
       if (_pinLedRxLocked != 0xff) digitalWriteFast(_pinLedRxLocked, HIGH);
       break;
   }
-}
-
-static void rfResetEstimate(void)
-{
-  _recvCycleAct = RECV_CYCLE_TIME;
-  _recvWindow = MAX_RECV_WIN;
-  _recvLast = 0;
-  _recvLost = 0;
-  rfSetRecvState(RECVSTATE_SEARCHING);
 }
 
 static void rfContinueSearch(void)
@@ -297,7 +294,7 @@ static bool optimalSleep(void)
 #endif
       ++_recvLost;
       if (_recvLost > 8)
-        rfResetEstimate();
+        rfSetRecvState(RECVSTATE_SEARCHING);
       else
       {
         // double the window every lost packet
@@ -571,7 +568,7 @@ void setup(void)
 
   // Force a transmit on next read
   memset(_previousReads, 0xff, sizeof(_previousReads));
-  rfResetEstimate();
+  rfSetRecvState(RECVSTATE_SEARCHING);
 }
 
 void loop(void)
