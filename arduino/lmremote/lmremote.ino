@@ -248,7 +248,7 @@ static void rfSetRecvState(const unsigned char state)
   }
 }
 
-static void resetEstimate(void)
+static void rfResetEstimate(void)
 {
   _recvCycleAct = RECV_CYCLE_TIME;
   _recvWindow = MAX_RECV_WIN;
@@ -289,7 +289,7 @@ static bool optimalSleep(void)
       // double the window every N/2 packets lost
       ++_recvLost;
       if (_recvLost > 10)
-        resetEstimate();
+        rfResetEstimate();
       else if (_recvLost % 2 == 1 && _recvWindow < MAX_RECV_WIN)
         _recvWindow *= 2;
 
@@ -556,7 +556,7 @@ void setup(void)
 
   // Force a transmit on next read
   memset(_previousReads, 0xff, sizeof(_previousReads));
-  resetEstimate();
+  rfResetEstimate();
 }
 
 void loop(void)
