@@ -57,8 +57,8 @@ const unsigned char _pinOutputServo = 8;   // ATmega pin 14
 #define HYGRO_LMREMOTE_KEY 0x7F
 
 #define RECV_CYCLE_TIME  5000    // expected receive cycle, millisecond
-#define MIN_RECV_WIN     8       // minimum window size, power of 2
-#define MAX_RECV_WIN     512     // maximum window size, power of 2
+#define MIN_RECV_WIN     8       // minimum window size (ms), power of 2
+#define MAX_RECV_WIN     128     // maximum window size (ms), power of 2
 
 #ifdef LMREMOTE_SERIAL
 #undef MINIMAL_POWER_MODE
@@ -287,13 +287,13 @@ static bool optimalSleep(void)
       Serial.print(" r "); Serial.println(recvTime);
       Serial.flush();
 #endif
-      // double the window every N/2 packets lost
       ++_recvLost;
-      if (_recvLost > 10)
+      if (_recvLost > 8)
         rfResetEstimate();
       else
       {
-        if (_recvLost % 2 == 1 && _recvWindow < MAX_RECV_WIN)
+        // double the window every lost packet
+        if (_recvWindow < MAX_RECV_WIN)
           _recvWindow *= 2;
         if (_recvState == RECVSTATE_LOCKED)
           rfSetRecvState(RECVSTATE_CONVERGING);
