@@ -1,6 +1,7 @@
 #include <avr/wdt.h>
 #include <avr/sleep.h>
 #include <rf12_itplus.h>
+#include <digitalWriteFast.h>
 
 // Power down CPU as much as possible, and attempt to sync receiver at exact
 // transmit time. Can't be used with LMREMOTE_SERIAL
@@ -19,12 +20,19 @@ const unsigned char _sleepInterval = 2;
 // Analog pins to read. This is a bitfield, LSB is analog 0
 const unsigned char _enabledProbePins = 0x01;
 // Analog pin connected to source power.  Set to 0xff to disable sampling
-const unsigned char _pinBattery = 1;
+const unsigned char _pinBattery = 0xff;
 // Digital pins for LEDs, 0xff to disable
 const unsigned char _pinLedRx = 0xff;
-const unsigned char _pinLedTx = 0xff; //9
+const unsigned char _pinLedTx = 0xff;
+const unsigned char _pinLedRxSearch = 0xff;
+const unsigned char _pinLedRxConverge = 6;
+const unsigned char _pinLedRxLocked = 7;
 // Digital pin used for sourcing power to the probe dividers
 const unsigned char _pinProbeSupply = 4;
+// Digital pin used for fan output, must support PWM, 0xff to disable
+const unsigned char _pinOutputFan = 5;
+// Digital pin used for servo output, 0xff to disable
+const unsigned char _pinOutputServo = 8;
 // Percentage (integer) of VCC where the battery is considered low (33% = 1.1V)
 #define BATTERY_LOW_PCT 33
 // Number of seconds to keep the "recent/new" bit set
@@ -48,6 +56,10 @@ const unsigned char _pinProbeSupply = 4;
 #define HYGRO_SECOND_PROBE 0x7D
 #define HYGRO_LMREMOTE_KEY 0x7F
 
+#define RECV_CYCLE_TIME  5000    // expected receive cycle, millisecond
+#define MIN_RECV_WIN     8       // minimum window size, power of 2
+#define MAX_RECV_WIN     512     // maximum window size, power of 2
+
 #ifdef LMREMOTE_SERIAL
 #undef MINIMAL_POWER_MODE
 #endif
@@ -60,9 +72,13 @@ const unsigned char _pinProbeSupply = 4;
   #define SLEEPMODE_ADC   SLEEP_MODE_IDLE
 #endif
 
-#define RECV_CYCLE_TIME  5000    // expected receive cycle, millisecond
-#define MIN_RECV_WIN     8       // minimum window size, power of 2
-#define MAX_RECV_WIN     512     // maximum window size, power of 2
+#ifndef digitalWriteFast
+#define digitalWriteFast digitalWrite
+#endif
+
+#define WAKETASK_RFRECEIVE   0
+#define WAKETASK_TEMPERATURE 1
+#define WAKETASK_RFSEARCH    2
 
 static unsigned int _previousReads[RF_PINS_PER_SOURCE];
 static unsigned long _tempReadLast;
@@ -71,10 +87,17 @@ static unsigned char _sameCount;
 static unsigned char _isRecent = BYTE1_RECENT_BOOT;
 static unsigned char _isBattLow;
 
+#define RECVSTATE_SEARCHING  0
+#define RECVSTATE_CONVERGING 1
+#define RECVSTATE_LOCKED     2
+
 static unsigned int _recvCycleAct;
 static unsigned int _recvWindow;
 static unsigned long _recvLast;
-static bool _recvSynced;
+static unsigned char _recvLost;
+static unsigned char _recvState;
+
+#define mappct(o, a, b)  (((b - a) * (unsigned int)o / 100) + a)
 
 static bool packetReceived(unsigned char nodeId, unsigned int val)
 {
@@ -90,7 +113,9 @@ static bool packetReceived(unsigned char nodeId, unsigned int val)
 
   if (nodeId != NODEID_MASTER)
     return false;
+
   // val contains requested fan speed percent
+  if (_pinOutputFan != 0xff) analogWrite(_pinOutputFan, mappct(val, 0, 255));
   return true;
 }
 
@@ -98,13 +123,13 @@ static bool rf12_doWork(void)
 {
   if (rf12_recvDone() && rf12_crc == 0)
   {
-    if (_pinLedRx != 0xff) digitalWrite(_pinLedRx, HIGH);
+    if (_pinLedRx != 0xff) digitalWriteFast(_pinLedRx, HIGH);
 
     unsigned char nodeId = ((rf12_buf[0] & 0x0f) << 2) | (rf12_buf[1] >> 6);
     unsigned int val = (rf12_buf[1] & 0x0f) << 8 | rf12_buf[2];
     return packetReceived(nodeId, val);
   }
-  if (_pinLedRx != 0xff) digitalWrite(_pinLedRx, LOW);
+  if (_pinLedRx != 0xff) digitalWriteFast(_pinLedRx, LOW);
   return false;
 }
 
@@ -194,84 +219,107 @@ static void sleep(unsigned int msec)
   sleepPwrDown(msec);
 #else
   sleepIdle(msec);
-#endif /* SLEEP_MODE_PWR_DOWN */
+#endif /* MINIMAL_POWER_MODE */
+}
+
+static void rfSetRecvState(const unsigned char state)
+{
+#if defined(LMREMOTE_SERIAL) && defined(_DEBUG)
+  Serial.print(millis(), DEC);
+  Serial.print(F("rfSetRecvState ")); Serial.println(state, DEC);
+#endif
+  _recvState = state;
+
+  if (_pinLedRxSearch != 0xff) digitalWriteFast(_pinLedRxSearch, LOW);
+  if (_pinLedRxConverge != 0xff) digitalWriteFast(_pinLedRxConverge, LOW);
+  if (_pinLedRxLocked != 0xff) digitalWriteFast(_pinLedRxLocked, LOW);
+
+  switch (state)
+  {
+    case RECVSTATE_SEARCHING:
+      if (_pinLedRxSearch != 0xff) digitalWriteFast(_pinLedRxSearch, HIGH);
+      break;
+    case RECVSTATE_CONVERGING:
+      if (_pinLedRxConverge != 0xff) digitalWriteFast(_pinLedRxConverge, HIGH);
+      break;
+    case RECVSTATE_LOCKED:
+      if (_pinLedRxLocked != 0xff) digitalWriteFast(_pinLedRxLocked, HIGH);
+      break;
+  }
 }
 
 static void resetEstimate(void)
 {
-#if defined(LMREMOTE_SERIAL) && defined(_DEBUG)
-  Serial.print(F("Resetting Estimate\n"));
-#endif
   _recvCycleAct = RECV_CYCLE_TIME;
   _recvWindow = MAX_RECV_WIN;
-  _recvSynced = false;
+  _recvLast = 0;
+  _recvLost = 0;
+  rfSetRecvState(RECVSTATE_SEARCHING);
+}
 
-  unsigned long start = millis();
-  while (!rf12_doWork())
-    if (millis() - start > RECV_CYCLE_TIME)
-      return;
+static void rfContinueSearch(void)
+{
+  if (!rf12_doWork())
+    return;
+
   _recvLast = millis();
+  rfSetRecvState(RECVSTATE_CONVERGING);
 }
 
 static bool optimalSleep(void)
 // Code adapted from jeelib/examples/syncRecv optimalSleep()
 {
-  unsigned char lost = (millis() - _recvLast + _recvCycleAct / 2) / _recvCycleAct;
-  if (lost > 10)
-  {
-    resetEstimate();
-    return false;
-  }
-
-  unsigned long predict = _recvLast + (lost + 1) * _recvCycleAct;
-  unsigned int sleepDur =  predict - _recvWindow - millis();
-  sleep(sleepDur);
+  unsigned long wakeTime = millis();
   rf12_sleep(RF12_WAKEUP);
 
   unsigned long recvTime;
-  unsigned long timeout = predict + _recvWindow;
   do {
     recvTime = millis();
-    if ((long)(recvTime - timeout) >= 0)
+    if (recvTime - wakeTime > (_recvWindow * 2))
     {
 #if defined(LMREMOTE_SERIAL) && defined(_DEBUG)
-      Serial.print(" f "); Serial.print(lost);
-      Serial.print(" s "); Serial.print(sleepDur);
+      Serial.print(" f "); Serial.print(_recvLost);
+      //Serial.print(" s "); Serial.print(sleepDur);
       Serial.print(" e "); Serial.print(_recvCycleAct);
       Serial.print(" w "); Serial.print(_recvWindow);
-      Serial.print(" p "); Serial.print(predict);
+      //Serial.print(" p "); Serial.print(predict);
       Serial.print(" r "); Serial.println(recvTime);
       Serial.flush();
 #endif
       // double the window every N/2 packets lost
-      ++lost;
-      if (lost % 2 == 1 && _recvWindow < MAX_RECV_WIN)
+      ++_recvLost;
+      if (_recvLost > 10)
+        resetEstimate();
+      else if (_recvLost % 2 == 1 && _recvWindow < MAX_RECV_WIN)
         _recvWindow *= 2;
 
+      rf12_sleep(RF12_SLEEP);
       return false;
     }
   } while (!rf12_doWork());
+  rf12_sleep(RF12_SLEEP);
 
-  unsigned int newEst = (recvTime - _recvLast) / (lost + 1);
-  if (_recvSynced)
+  unsigned int newEst = (recvTime - _recvLast) / (_recvLost + 1);
+  if (_recvState == RECVSTATE_LOCKED)
     _recvCycleAct = (4 * _recvCycleAct + newEst + 3) / 5; // 5-fold smoothing
   else
     _recvCycleAct = newEst;
   _recvLast = recvTime;
 
 #if defined(LMREMOTE_SERIAL) && defined(_DEBUG)
-  Serial.print(" n "); Serial.print(lost);
+  Serial.print(" n "); Serial.print(_recvLost);
   Serial.print(" e "); Serial.print(_recvCycleAct);
   Serial.print(" E "); Serial.print(newEst);
   Serial.print(" w "); Serial.print(_recvWindow);
-  Serial.print(" p "); Serial.print(predict);
+  //Serial.print(" p "); Serial.print(predict);
   Serial.print(" r "); Serial.println(recvTime);
 #endif
 
   if (_recvWindow > MIN_RECV_WIN)
     _recvWindow /= 2;
-  else
-    _recvSynced = true;
+  else if (_recvState != RECVSTATE_LOCKED)
+    rfSetRecvState(RECVSTATE_LOCKED);
+  _recvLost = 0;
 
   return true;
 }
@@ -291,7 +339,7 @@ static void updateBatteryLow(void)
     battPct = (adcSum * 100UL) / (1024 * BATREAD_COUNT);
 
 #ifdef LMREMOTE_SERIAL
-    Serial.print("Battery %: "); Serial.print(battPct, DEC); Serial.print('\n');
+    Serial.print(F("Battery %: ")); Serial.print(battPct, DEC); Serial.print('\n');
 #endif
 
     if (battPct < BATTERY_LOW_PCT)
@@ -327,7 +375,7 @@ static void newTempsAvailable(void)
   ADCSRA &= ~bit(ADEN);
   if (_isRecent && (millis() > RECENT_EXPIRE_SECS))
   {
-    //Serial.print("No longer recent\n");
+    //Serial.println(F("No longer recent"));
     _isRecent = 0;
   }
 
@@ -344,19 +392,19 @@ static void newTempsAvailable(void)
   rf12_sleep(RF12_SLEEP);
   if (_pinLedTx != 0xff)
   {
-    digitalWrite(_pinLedTx, HIGH);
+    digitalWriteFast(_pinLedTx, HIGH);
     sleep(16);
-    digitalWrite(_pinLedTx, LOW);
+    digitalWriteFast(_pinLedTx, LOW);
   }
 }
 
 static void stabilizeAdc(void)
 {
   const unsigned char INTERNAL_REF = 0b1110;
-  unsigned int last;
+  int last;
   unsigned char totalCnt = 0;
   unsigned char sameCnt = 0;
-  unsigned int curr = analogReadSleep(INTERNAL_REF);
+  int curr = analogReadSleep(INTERNAL_REF);
   // Reads the adc a bunch of times until the value settles
   // Usually you hear "discard the first few ADC readings after sleep"
   // but this seems a bit more scientific as we wait for the AREF cap to charge
@@ -368,7 +416,7 @@ static void stabilizeAdc(void)
 #endif
     last = curr;
     curr = analogReadSleep(INTERNAL_REF);
-    if (last == curr)
+    if (abs(last - curr) < 2)
       ++sameCnt;
     else
       sameCnt = 0;
@@ -377,20 +425,22 @@ static void stabilizeAdc(void)
 
 static void checkTemps(void)
 {
+  _tempReadLast = millis();
+
   const unsigned char OVERSAMPLE_COUNT[] = {1, 4, 16, 64};  // 4^n
   boolean modified = false;
   unsigned int oversampled_adc = 0;
 
 #ifdef LMREMOTE_SERIAL
   Serial.print(millis(), DEC);
-  Serial.print(" Checking temps: ");
+  Serial.print(F(" Checking temps: "));
 #endif
 
   // Enable the ADC
   ADCSRA |= bit(ADEN);
   // The probe themistor voltage dividers are normally powered down
   // to save power, using digital lines to supply Vcc to them.
-  digitalWrite(_pinProbeSupply, HIGH);
+  digitalWriteFast(_pinProbeSupply, HIGH);
   // Wait for AREF capacitor to charge
   stabilizeAdc();
 
@@ -418,7 +468,7 @@ static void checkTemps(void)
       modified = true;
     _previousReads[pin] = oversampled_adc;
   }
-  digitalWrite(_pinProbeSupply, LOW);
+  digitalWriteFast(_pinProbeSupply, LOW);
 
 #ifdef LMREMOTE_SERIAL
   Serial.print('\n');
@@ -433,8 +483,50 @@ static void checkTemps(void)
     ++_sameCount;
   // Disable the ADC
   ADCSRA &= ~bit(ADEN);
+}
 
-  _tempReadLast = millis();
+static unsigned char scheduleSleep(void)
+{
+  // Need millis to remain constant through this function to prevent overflow
+  unsigned long m = millis();
+  unsigned long durTemperature;
+  unsigned long durRfReceive;
+  unsigned long rfInterval;
+
+  // Check 1: If past due for a temp check do that immediately
+  durTemperature = m - _tempReadLast;
+  if (durTemperature > (_sleepInterval * 1000UL))
+    return WAKETASK_TEMPERATURE;
+
+  // Check 2: Run balls to the wall when searching for signal
+  if (_recvState == RECVSTATE_SEARCHING)
+    return WAKETASK_RFSEARCH;
+
+  // Check 3: Past due for Rf receive, we may have missed the packet already
+  // but run the receive task to let the logic there adjust
+  rfInterval = (_recvLost + 1) * _recvCycleAct - _recvWindow;
+  durRfReceive = m - _recvLast;
+  if (durRfReceive > rfInterval)
+    return WAKETASK_RFRECEIVE;
+
+  // We now know that both of our events are in the future so it is ok to subtract
+  unsigned int sleepDur;
+  unsigned char retVal;
+  durTemperature = (_sleepInterval * 1000U) - durTemperature;
+  durRfReceive = rfInterval - durRfReceive;
+  if (durTemperature < durRfReceive)
+  {
+    sleepDur = durTemperature;
+    retVal = WAKETASK_TEMPERATURE;
+  }
+  else
+  {
+    sleepDur = durRfReceive;
+    retVal = WAKETASK_RFRECEIVE;
+  }
+
+  sleep(sleepDur);
+  return retVal;
 }
 
 void setup(void)
@@ -447,38 +539,42 @@ void setup(void)
 
 #ifdef LMREMOTE_SERIAL
   PRR &= ~bit(PRUSART0);
-  Serial.begin(LMREMOTE_SERIAL); Serial.println("$UCID,lmremote"); Serial.flush();
+  Serial.begin(LMREMOTE_SERIAL); Serial.println("$UCID,lmremote," __DATE__ " " __TIME__); Serial.flush();
 #endif
 
   rf12_initialize(_rfBand);
   // Crystal 1.66MHz Low Battery Detect 2.2V
   rf12_control(0xC040);
-
   if (_pinLedRx != 0xff) pinMode(_pinLedRx, OUTPUT);
   if (_pinLedTx != 0xff) pinMode(_pinLedTx, OUTPUT);
+  if (_pinLedRxSearch != 0xff) pinMode(_pinLedRxSearch, OUTPUT);
+  if (_pinLedRxConverge != 0xff) pinMode(_pinLedRxConverge, OUTPUT);
+  if (_pinLedRxLocked != 0xff) pinMode(_pinLedRxLocked, OUTPUT);
 
   pinMode(_pinProbeSupply, OUTPUT);
 
   // Force a transmit on next read
   memset(_previousReads, 0xff, sizeof(_previousReads));
+  resetEstimate();
 }
 
 void loop(void)
 {
-  if (_loopCnt % 2 == 0)
-    checkTemps();
-
 #ifdef LMREMOTE_SERIAL
   Serial.flush();
 #endif
 
-  if (_recvLast == 0)
-    resetEstimate();
-  else
-    optimalSleep();
-  rf12_sleep(RF12_SLEEP);
-
-  ++_loopCnt;
+  unsigned char wakeTask = scheduleSleep();
+  switch (wakeTask)
+  {
+    case WAKETASK_RFRECEIVE:
+      optimalSleep();
+      break;
+    case WAKETASK_TEMPERATURE:
+      checkTemps();
+      break;
+    case WAKETASK_RFSEARCH:
+      rfContinueSearch();
+      break;
+  }
 }
-
-
