@@ -25,10 +25,10 @@ typedef struct tagRf12Packet
   // 4 bits = "9"
   // 6 bits of ID
   // 1 bit Reset flag (set for first few hours after poweron)
-  // 1 bit native flag (0 for IT+ transmitterm, 1 for lmremote)
+  // 1 bit "aux probe" flag sent by TX25U and other dual input transmitters
   // 12 bits of data, either BCD (IT+) or raw analog read (lmremote)
-  // 1 bit low battery inticator
-  // 7 bits hygrometer
+  // 1 bit low battery indicator
+  // 7 bits hygrometer, or aux probe (0x7D), or lmremote (0x7F)
   // 8 bit CRC
   unsigned char byte0;
   unsigned char byte1;
