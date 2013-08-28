@@ -98,6 +98,12 @@ static unsigned char _recvState;
 
 #define mappct(o, a, b)  (((b - a) * (unsigned int)o / 100) + a)
 
+static void setOutputPercent(unsigned char val)
+{
+  if (_pinOutputFan != 0xff) analogWrite(_pinOutputFan, mappct(val, 0, 255));
+  // TODO: Servo
+}
+
 static bool packetReceived(unsigned char nodeId, unsigned int val)
 {
 #if LMREMOTE_SERIAL
@@ -114,7 +120,7 @@ static bool packetReceived(unsigned char nodeId, unsigned int val)
     return false;
 
   // val contains requested fan speed percent
-  if (_pinOutputFan != 0xff) analogWrite(_pinOutputFan, mappct(val, 0, 255));
+  setOutputPercent(val);
   return true;
 }
 
@@ -237,6 +243,8 @@ static void rfSetRecvState(const unsigned char state)
   {
     case RECVSTATE_SEARCHING:
       if (_pinLedRxSearch != 0xff) digitalWriteFast(_pinLedRxSearch, HIGH);
+      // If we're offline disable the blower/servo output
+      setOutputPercent(0);
       break;
     case RECVSTATE_CONVERGING:
       if (_pinLedRxConverge != 0xff) digitalWriteFast(_pinLedRxConverge, HIGH);
