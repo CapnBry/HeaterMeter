@@ -3,6 +3,7 @@
 #define __GRILLPID_H__
 
 #include "Arduino.h"
+#include "grillpid_conf.h"
 
 #define TEMP_PIT    0
 #define TEMP_FOOD1  1
@@ -18,9 +19,6 @@
 #define PROBETYPE_RF12     2  // RFM12B wireless
 
 #define STEINHART_COUNT 4
-
-// Use oversample/decimation to increase ADC resolution to 2^(10+n) bits n=[0..3]
-#define TEMP_OVERSAMPLE_BITS 3
 
 struct __eeprom_probe
 {
@@ -126,7 +124,7 @@ private:
   unsigned char const _servoPin;
 
   unsigned char _pidOutput;
-  unsigned long _lastTempRead;
+  unsigned long _lastWorkMillis;
   boolean _pitTemperatureReached;
   int _setPoint;
   boolean _manualOutputMode;
@@ -201,6 +199,7 @@ public:
   unsigned char getFanSpeed(void) const;
   // Current servo output in TIMER1 ticks
   unsigned int getServoOutput(void) const { return _servoOutput; }
+  unsigned long getLastWorkMillis(void) const { return _lastWorkMillis; }
 
   boolean getManualOutputMode(void) const { return _manualOutputMode; }
   // PID output moving average

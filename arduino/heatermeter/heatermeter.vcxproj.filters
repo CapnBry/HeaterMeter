@@ -55,6 +55,9 @@
     <ClInclude Include="ledmanager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="grillpid_conf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="grillpid.cpp">

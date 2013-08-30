@@ -1,35 +1,15 @@
 // HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net> 
-// GrillPid uses TIMER1 COMPB and OVF vectors, as well as modifies the waveform
-// generation mode of TIMER1. Blower output pin does not need to be a hardware
-// PWM pin.
-// Fan output is 489Hz fast PWM
+// GrillPid uses TIMER1 COMPB vector, as well as modifies the waveform
+// generation mode of TIMER1. Blower output pin needs to be a hardware PWM pin.
+// Fan output is 489Hz phase-correct PWM
 // Servo output is 50Hz pulse duration
 #include <math.h>
 #include <string.h>
 
-#include "grillpid.h"
 #include "strings.h"
-
-#if HM_BOARD_REV == 'A'
-#else
-#define GRILLPID_SERVO
-#endif
+#include "grillpid.h"
 
 extern const GrillPid pid;
-
-// The time (ms) of the measurement period
-#define TEMP_MEASURE_PERIOD 1000
-// The temperatures are averaged over 1, 2, 4 or 8 samples per period
-#define TEMP_AVG_COUNT 8
-// 2/(1+Number of samples used in the exponential moving average)
-#define TEMPPROBE_AVG_SMOOTH (2.0f/(1.0f+60.0f))
-#define PIDOUTPUT_AVG_SMOOTH (2.0f/(1.0f+240.0f))
-// Once entering LID OPEN mode, the minimum number of seconds to stay in
-// LID OPEN mode before autoresuming due to temperature returning to setpoint 
-#define LIDOPEN_MIN_AUTORESUME 30
-
-// Servo refresh period in usec, 20000 usec = 20ms = 50Hz
-#define SERVO_REFRESH          20000
 
 // For this calculation to work, ccpm()/8 must return a round number
 #define uSecToTicks(x) ((unsigned int)(clockCyclesPerMicrosecond() / 8) * x)
@@ -405,6 +385,7 @@ void GrillPid::setPidConstant(unsigned char idx, float value)
 
 void GrillPid::status(void) const
 {
+#if defined(GRILLPID_SERIAL_ENABLED)
   SerialX.print(getSetPoint(), DEC);
   Serial_csv();
 
@@ -422,6 +403,7 @@ void GrillPid::status(void) const
   SerialX.print((int)PidOutputAvg, DEC);
   Serial_csv();
   SerialX.print(LidOpenResumeCountdown, DEC);
+#endif
 }
 
 boolean GrillPid::doWork(void)
@@ -430,11 +412,12 @@ boolean GrillPid::doWork(void)
   
   // If this is the first invocation, force an immediate read and temperature 
   // update to display a value as soon as possible after booting
-  unsigned int elapsed = m - _lastTempRead;
+  unsigned int elapsed = m - _lastWorkMillis;
   if (elapsed < (TEMP_MEASURE_PERIOD / TEMP_AVG_COUNT))
     return false;
-  _lastTempRead = m;
+  _lastWorkMillis = m;
 
+#if defined(GRILLPID_CALC_TEMP)
   for (unsigned char i=0; i<TEMP_COUNT; i++)
     if (Probes[i]->getProbeType() == PROBETYPE_INTERNAL)
       Probes[i]->readTemp();
@@ -442,6 +425,7 @@ boolean GrillPid::doWork(void)
   ++_periodCounter;
   if (_periodCounter < TEMP_AVG_COUNT)
     return false;
+  _periodCounter = 0;
     
   for (unsigned char i=0; i<TEMP_COUNT; i++)
     Probes[i]->calcTemp();
@@ -481,14 +465,15 @@ boolean GrillPid::doWork(void)
       resetLidOpenResumeCountdown();
     }
   }   /* if !manualFanMode */
-  commitPidOutput();
+#endif
 
-  _periodCounter = 0;  
+  commitPidOutput();
   return true;
 }
 
 void GrillPid::pidStatus(void) const
 {
+#if defined(GRILLPID_SERIAL_ENABLED)
   TempProbe const* const pit = Probes[TEMP_PIT];
   if (pit->hasTemperature())
   {
@@ -502,6 +487,7 @@ void GrillPid::pidStatus(void) const
     SerialX.print(pit->Temperature - pit->TemperatureAvg, 2);
     Serial_nl();
   }
+#endif
 }
 
 void GrillPid::setUnits(char units)
