@@ -25,9 +25,6 @@
     <ClInclude Include="flashfiles.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="grillpid.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="hmcore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -58,11 +55,11 @@
     <ClInclude Include="grillpid_conf.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="grillpid.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="grillpid.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="hmcore.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -79,6 +76,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ledmanager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="grillpid.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

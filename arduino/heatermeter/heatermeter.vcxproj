@@ -69,7 +69,7 @@
       <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>C:\Arduino\arduino-1.0.3\hardware\arduino\cores\arduino;C:\Arduino\arduino-1.0.3\hardware\arduino\variants\standard;C:\Users\bmayland\Documents\Arduino\libraries\ShiftRegLCD;C:\Users\bmayland\Documents\Arduino\libraries\ShiftRegLCD\utility;C:\Users\bmayland\Documents\Arduino\libraries\rf12_itplus;C:\Users\bmayland\Documents\Arduino\libraries\rf12_itplus\utility;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\include\;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\include\avr\;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\;c:\arduino\arduino-1.0.3\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Arduino\arduino-1.0.3\hardware\arduino\cores\arduino;C:\Arduino\arduino-1.0.3\hardware\arduino\variants\standard;C:\Users\bmayland\Documents\heatermeter\arduino\libraries\ShiftRegLCD;C:\Users\bmayland\Documents\heatermeter\arduino\libraries\ShiftRegLCD\utility;C:\Users\bmayland\Documents\heatermeter\arduino\libraries\rf12_itplus;C:\Users\bmayland\Documents\heatermeter\arduino\libraries\rf12_itplus\utility;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\include\;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\include\avr\;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\;c:\arduino\arduino-1.0.3\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>C:\Users\bmayland\Documents\heatermeter\arduino\heatermeter\Visual Micro\.heatermeter.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
       <WholeProgramOptimization>false</WholeProgramOptimization>
@@ -107,39 +107,39 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bigchars.h">
-      <FileType>CppCode</FileType>
+      <FileType>CppHeader</FileType>
     </ClInclude>
     <ClInclude Include="flashfiles.h">
-      <FileType>CppCode</FileType>
+      <FileType>CppHeader</FileType>
     </ClInclude>
-    <ClInclude Include="grillpid.h">
-      <FileType>CppCode</FileType>
+    <ClInclude Include="grillpid.h" />
+    <ClInclude Include="grillpid_conf.h">
+      <FileType>CppHeader</FileType>
     </ClInclude>
-    <ClInclude Include="grillpid_conf.h" />
     <ClInclude Include="hmcore.h">
-      <FileType>CppCode</FileType>
+      <FileType>CppHeader</FileType>
     </ClInclude>
     <ClInclude Include="hmmenus.h">
-      <FileType>CppCode</FileType>
+      <FileType>CppHeader</FileType>
     </ClInclude>
     <ClInclude Include="ledmanager.h">
-      <FileType>CppCode</FileType>
+      <FileType>CppHeader</FileType>
     </ClInclude>
     <ClInclude Include="menus.h">
-      <FileType>CppCode</FileType>
+      <FileType>CppHeader</FileType>
     </ClInclude>
     <ClInclude Include="rfmanager.h">
-      <FileType>CppCode</FileType>
+      <FileType>CppHeader</FileType>
     </ClInclude>
     <ClInclude Include="serialxor.h">
-      <FileType>CppCode</FileType>
+      <FileType>CppHeader</FileType>
     </ClInclude>
     <ClInclude Include="strings.h">
-      <FileType>CppCode</FileType>
+      <FileType>CppHeader</FileType>
     </ClInclude>
     <ClInclude Include="Visual Micro\.heatermeter.vsarduino.h" />
     <ClInclude Include="wishieldconf.h">
-      <FileType>CppCode</FileType>
+      <FileType>CppHeader</FileType>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
