@@ -224,6 +224,9 @@ void GrillPid::init(void) const
 {
 #if defined(GRILLPID_SERVO)
   // Normal counting, 8 prescale, INT on COMPB
+  // If GrillPid is constructed statically this can't be done in the constructor
+  // because the Arduino core init is called after the constructor and will set
+  // the values back to the default
   TCCR1A = 0;
   TCCR1B = bit(CS11);
   TIMSK1 = bit(OCIE1B);
