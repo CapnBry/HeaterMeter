@@ -41,10 +41,10 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>C:\Arduino\arduino-1.0.3\hardware\arduino\cores\arduino;C:\Arduino\arduino-1.0.3\hardware\arduino\variants\standard;C:\Users\bmayland\Documents\Arduino\libraries\rf12_itplus;C:\Users\bmayland\Documents\Arduino\libraries\rf12_itplus\utility;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\include\;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\include\avr\;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\;c:\arduino\arduino-1.0.3\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <ForcedIncludeFiles>C:\Users\bmayland\Documents\Arduino\lmremote\Visual Micro\.lmremote.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <AdditionalIncludeDirectories>C:\Arduino\arduino-1.0.3\hardware\arduino\cores\arduino;C:\Arduino\arduino-1.0.3\hardware\arduino\variants\standard;C:\Users\bmayland\Documents\heatermeter\arduino\libraries\rf12_itplus;C:\Users\bmayland\Documents\heatermeter\arduino\libraries\rf12_itplus\utility;C:\Users\bmayland\Documents\Arduino\libraries\digitalWriteFast;C:\Users\bmayland\Documents\Arduino\libraries\digitalWriteFast\utility;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\include\;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\include\avr\;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\;c:\arduino\arduino-1.0.3\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>C:\Users\bmayland\Documents\heatermeter\arduino\lmremote\Visual Micro\.lmremote.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
-      <PreprocessorDefinitions>_DEBUG=1;ARDUINO=103;__AVR_ATmega328P__;F_CPU=16000000L;__AVR__;__cplusplus;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__AVR_ATmega328P__;_DEBUG=1;ARDUINO=103;__AVR__;F_CPU=16000000L;__cplusplus;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -53,9 +53,14 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>C:\Arduino\arduino-1.0.3\hardware\arduino\cores\arduino;C:\Arduino\arduino-1.0.3\hardware\arduino\variants\standard;C:\Users\bmayland\Documents\Arduino\libraries\rf12_itplus;C:\Users\bmayland\Documents\Arduino\libraries\rf12_itplus\utility;C:\Users\bmayland\Documents\Arduino\libraries\digitalWriteFast;C:\Users\bmayland\Documents\Arduino\libraries\digitalWriteFast\utility;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\include\;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\include\avr\;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\;c:\arduino\arduino-1.0.3\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>C:\Users\bmayland\Documents\heatermeter\arduino\lmremote\Visual Micro\.lmremote.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <PreprocessorDefinitions>__AVR_ATmega328P__;ARDUINO=103;__AVR__;F_CPU=16000000L;__cplusplus;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -69,14 +74,20 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="grillpid.h" />
+    <ClInclude Include="grillpid_conf.h" />
+    <ClInclude Include="strings.h" />
     <ClInclude Include="Visual Micro\.lmremote.vsarduino.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="grillpid.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties arduino.upload.port="COM5" />
+      <UserProperties arduino.upload.port="COM3" arduino.board.name="uno" arduino.board.desc="Arduino Uno" arduino.board.property_bag="name=Arduino Uno&#xD;&#xA;upload.protocol=arduino&#xD;&#xA;upload.maximum_size=32256&#xD;&#xA;upload.speed=115200&#xD;&#xA;bootloader.low_fuses=0xff&#xD;&#xA;bootloader.high_fuses=0xde&#xD;&#xA;bootloader.extended_fuses=0x05&#xD;&#xA;bootloader.path=optiboot&#xD;&#xA;bootloader.file=optiboot_atmega328.hex&#xD;&#xA;bootloader.unlock_bits=0x3F&#xD;&#xA;bootloader.lock_bits=0x0F&#xD;&#xA;build.mcu=atmega328p&#xD;&#xA;build.f_cpu=16000000L&#xD;&#xA;build.core=arduino&#xD;&#xA;build.variant=standard&#xD;&#xA;runtime.ide.path=C:\Arduino\arduino-1.0.3&#xD;&#xA;build.system.path=C:\Arduino\arduino-1.0.3\hardware\arduino\system&#xD;&#xA;software=ARDUINO&#xD;&#xA;runtime.ide.version=103&#xD;&#xA;vm.core.include=arduino.h&#xD;&#xA;vm.boardsource.path=C:\Arduino\arduino-1.0.3\hardware\arduino&#xD;&#xA;vm.boardsource.name=boards.txt&#xD;&#xA;vm.platformname.name=&#xD;&#xA;" arduino.build.mcu="atmega328p" arduino.build.f_cpu="16000000L" arduino.build.core="arduino" arduino.upload.protocol="arduino" arduino.upload.speed="115200" arduino.upload.maximum_size="32256" />
     </VisualStudio>
   </ProjectExtensions>
 </Project>

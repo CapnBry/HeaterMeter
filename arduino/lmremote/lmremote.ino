@@ -2,6 +2,7 @@
 #include <avr/sleep.h>
 #include <rf12_itplus.h>
 #include <digitalWriteFast.h>
+#include "grillpid.h"
 
 // Power down CPU as much as possible, and attempt to sync receiver at exact
 // transmit time. Can't be used with LMREMOTE_SERIAL
@@ -37,10 +38,8 @@ const unsigned char _pinOutputServo = 8;   // ATmega pin 14
 #define BATTERY_LOW_PCT 33
 // Number of seconds to keep the "recent/new" bit set
 #define RECENT_EXPIRE_SECS 1800
-// Number of oversampling bits when measuring temperature [0-2]
-#define TEMP_OVERSAMPLE_BITS 1
 
-#define RF_PINS_PER_SOURCE 6 
+#define RF_PINS_PER_SOURCE 6
 #define PIN_DISABLED(pin) ((_enabledProbePins & (1 << pin)) == 0)
 
 // Bits used in output packet
@@ -76,9 +75,10 @@ const unsigned char _pinOutputServo = 8;   // ATmega pin 14
 #define digitalWriteFast digitalWrite
 #endif
 
-#define WAKETASK_RFRECEIVE   0
-#define WAKETASK_TEMPERATURE 1
-#define WAKETASK_RFSEARCH    2
+#define WAKETASK_COUNT       3
+#define WAKETASK_TEMPERATURE 0
+#define WAKETASK_PIDOUTPUT   1
+#define WAKETASK_RFRECEIVE   2
 
 static unsigned int _previousReads[RF_PINS_PER_SOURCE];
 static unsigned long _tempReadLast;
@@ -96,12 +96,21 @@ static unsigned long _recvLast;
 static unsigned char _recvLost;
 static unsigned char _recvState;
 
-#define mappct(o, a, b)  (((b - a) * (unsigned int)o / 100) + a)
+extern "C" GrillPid pid(_pinOutputFan, _pinOutputServo);
+
+static void setupPidOutput(void)
+{
+  pid.setMinFanSpeed(10);
+  pid.setMaxFanSpeed(100);
+  pid.setMinServoPos(1200);
+  pid.setMaxServoPos(1600);
+  pid.setOutputFlags(PIDFLAG_INVERT_SERVO);
+}
 
 static void setOutputPercent(unsigned char val)
 {
-  if (_pinOutputFan != 0xff) analogWrite(_pinOutputFan, mappct(val, 0, 255));
-  // TODO: Servo
+  if (_pinOutputFan != 0xff || _pinOutputServo != 0xff)
+    pid.setPidOutput(val);
 }
 
 static bool packetReceived(unsigned char nodeId, unsigned int val)
@@ -270,9 +279,15 @@ static void rfContinueSearch(void)
   rfSetRecvState(RECVSTATE_CONVERGING);
 }
 
-static bool optimalSleep(void)
+static void rfReceive(void)
 // Code adapted from jeelib/examples/syncRecv optimalSleep()
 {
+  if (_recvState == RECVSTATE_SEARCHING)
+  {
+    rfContinueSearch();
+    return;
+  }
+
   unsigned long wakeTime = millis();
   rf12_sleep(RF12_WAKEUP);
 
@@ -304,7 +319,7 @@ static bool optimalSleep(void)
           rfSetRecvState(RECVSTATE_CONVERGING);
       }
 
-      return false;
+      return;
     }
   } while (!rf12_doWork());
   rf12_sleep(RF12_SLEEP);
@@ -330,8 +345,6 @@ static bool optimalSleep(void)
   else if (_recvState != RECVSTATE_LOCKED)
     rfSetRecvState(RECVSTATE_LOCKED);
   _recvLost = 0;
-
-  return true;
 }
 
 static void updateBatteryLow(void)
@@ -452,7 +465,7 @@ static void checkTemps(void)
   ADCSRA |= bit(ADEN);
   // The probe themistor voltage dividers are normally powered down
   // to save power, using digital lines to supply Vcc to them.
-  digitalWriteFast(_pinProbeSupply, HIGH);
+  if (_pinProbeSupply != 0xff) digitalWriteFast(_pinProbeSupply, HIGH);
   // Wait for AREF capacitor to charge
   stabilizeAdc();
 
@@ -481,7 +494,7 @@ static void checkTemps(void)
       modified = true;
     _previousReads[pin] = oversampled_adc;
   }
-  digitalWriteFast(_pinProbeSupply, LOW);
+  if (_pinProbeSupply != 0xff) digitalWriteFast(_pinProbeSupply, LOW);
 
 #ifdef LMREMOTE_SERIAL
   Serial.print('\n');
@@ -502,43 +515,39 @@ static unsigned char scheduleSleep(void)
 {
   // Need millis to remain constant through this function to prevent overflow
   unsigned long m = millis();
-  unsigned long durTemperature;
-  unsigned long durRfReceive;
-  unsigned long rfInterval;
+  unsigned long dur[WAKETASK_COUNT];
+  unsigned int interval[WAKETASK_COUNT];
 
-  // Check 1: If past due for a temp check do that immediately
-  durTemperature = m - _tempReadLast;
-  if (durTemperature > (_sleepInterval * 1000UL))
-    return WAKETASK_TEMPERATURE;
+  dur[WAKETASK_TEMPERATURE] = _tempReadLast;
+  interval[WAKETASK_TEMPERATURE] = _sleepInterval * 1000U;
 
-  // Check 2: Run balls to the wall when searching for signal
+  dur[WAKETASK_RFRECEIVE] = _recvLast;
   if (_recvState == RECVSTATE_SEARCHING)
-    return WAKETASK_RFSEARCH;
-
-  // Check 3: Past due for Rf receive, we may have missed the packet already
-  // but run the receive task to let the logic there adjust
-  rfInterval = (_recvLost + 1) * _recvCycleAct - _recvWindow;
-  durRfReceive = m - _recvLast;
-  if (durRfReceive > rfInterval)
-    return WAKETASK_RFRECEIVE;
-
-  // We now know that both of our events are in the future so it is ok to subtract
-  unsigned int sleepDur;
-  unsigned char retVal;
-  durTemperature = (_sleepInterval * 1000U) - durTemperature;
-  durRfReceive = rfInterval - durRfReceive;
-  if (durTemperature < durRfReceive)
-  {
-    sleepDur = durTemperature;
-    retVal = WAKETASK_TEMPERATURE;
-  }
+    interval[WAKETASK_RFRECEIVE] = 0;
   else
+    interval[WAKETASK_RFRECEIVE] = (_recvLost + 1) * _recvCycleAct - _recvWindow;
+
+  dur[WAKETASK_PIDOUTPUT] = pid.getLastWorkMillis();
+  interval[WAKETASK_PIDOUTPUT] = TEMP_MEASURE_PERIOD;
+
+  /* check to see if any task is past due */
+  for (unsigned char task=0; task<WAKETASK_COUNT; ++task)
   {
-    sleepDur = durRfReceive;
-    retVal = WAKETASK_RFRECEIVE;
+    dur[task] = m - dur[task];
+    if (dur[task] > interval[task])
+      return task;
   }
 
-  sleep(sleepDur);
+  // We now know that all of our events are in the future so it is ok to subtract
+  unsigned char retVal = WAKETASK_TEMPERATURE;
+  for (unsigned char task=0; task<WAKETASK_COUNT; ++task)
+  {
+    dur[task] = interval[task] - dur[task];
+    if (dur[task] < dur[retVal])
+      retVal = task;
+  }
+
+  sleep(dur[retVal]);
   return retVal;
 }
 
@@ -564,11 +573,12 @@ void setup(void)
   if (_pinLedRxConverge != 0xff) pinMode(_pinLedRxConverge, OUTPUT);
   if (_pinLedRxLocked != 0xff) pinMode(_pinLedRxLocked, OUTPUT);
 
-  pinMode(_pinProbeSupply, OUTPUT);
+  if (_pinProbeSupply != 0xff) pinMode(_pinProbeSupply, OUTPUT);
 
   // Force a transmit on next read
   memset(_previousReads, 0xff, sizeof(_previousReads));
   rfSetRecvState(RECVSTATE_SEARCHING);
+  setupPidOutput();
 }
 
 void loop(void)
@@ -581,13 +591,13 @@ void loop(void)
   switch (wakeTask)
   {
     case WAKETASK_RFRECEIVE:
-      optimalSleep();
+      rfReceive();
       break;
     case WAKETASK_TEMPERATURE:
       checkTemps();
       break;
-    case WAKETASK_RFSEARCH:
-      rfContinueSearch();
+    case WAKETASK_PIDOUTPUT:
+      pid.doWork();
       break;
   }
 }
