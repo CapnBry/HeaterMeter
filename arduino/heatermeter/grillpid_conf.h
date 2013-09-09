@@ -1,5 +1,15 @@
 // HeaterMeter Copyright 2013 Bryan Mayland <bmayland@capnbry.net> 
 
+#define GRILLPID_CALC_TEMP
+#define GRILLPID_SERIAL_ENABLED
+#define GRILLPID_SERVO_ENABLED
+
+#define TEMP_PIT    0
+#define TEMP_FOOD1  1
+#define TEMP_FOOD2  2
+#define TEMP_AMB    3
+#define TEMP_COUNT  4
+
 // Use oversample/decimation to increase ADC resolution to 2^(10+n) bits n=[0..3]
 #define TEMP_OVERSAMPLE_BITS 3
 
@@ -17,10 +27,6 @@
 // Servo refresh period in usec, 20000 usec = 20ms = 50Hz
 #define SERVO_REFRESH          20000
 
-#define GRILLPID_CALC_TEMP
-#define GRILLPID_SERIAL_ENABLED
-
 #if HM_BOARD_REV == 'A'
-#else
-#define GRILLPID_SERVO
+  #undef GRILLPID_SERVO_ENABLED
 #endif

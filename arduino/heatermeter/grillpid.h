@@ -5,12 +5,6 @@
 #include "Arduino.h"
 #include "grillpid_conf.h"
 
-#define TEMP_PIT    0
-#define TEMP_FOOD1  1
-#define TEMP_FOOD2  2
-#define TEMP_AMB    3
-#define TEMP_COUNT  4
-
 #define PROBE_NAME_SIZE 13
 
 // Probe types used in probeType config

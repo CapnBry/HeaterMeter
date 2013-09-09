@@ -17,7 +17,7 @@ extern const GrillPid pid;
 // LERP percentage o into the unsigned range [A,B]. B - A must be < 6,553
 #define mappct(o, a, b)  (((b - a) * (unsigned int)o / 100) + a)
 
-#if defined(GRILLPID_SERVO)
+#if defined(GRILLPID_SERVO_ENABLED)
 ISR(TIMER1_COMPB_vect)
 {
   // < Servo refresh means time to turn off output
@@ -215,14 +215,14 @@ GrillPid::GrillPid(const unsigned char fanPin, const unsigned char servoPin) :
     _fanPin(fanPin), _servoPin(servoPin), _periodCounter(0x80), _units('F'), PidOutputAvg(NAN)
 {
   //pinMode(_fanPin, OUTPUT); // handled by analogWrite
-#if defined(GRILLPID_SERVO)
+#if defined(GRILLPID_SERVO_ENABLED)
   pinMode(_servoPin, OUTPUT);
 #endif
 }
 
 void GrillPid::init(void) const
 {
-#if defined(GRILLPID_SERVO)
+#if defined(GRILLPID_SERVO_ENABLED)
   // Normal counting, 8 prescale, INT on COMPB
   // If GrillPid is constructed statically this can't be done in the constructor
   // because the Arduino core init is called after the constructor and will set
@@ -318,7 +318,7 @@ inline void GrillPid::commitFanOutput(void)
 
 inline void GrillPid::commitServoOutput(void)
 {
-#if defined(GRILLPID_SERVO)
+#if defined(GRILLPID_SERVO_ENABLED)
   unsigned char output;
   if (bit_is_set(_outputFlags, PIDFLAG_SERVO_ANY_MAX) && _pidOutput > 0)
     output = 100;
