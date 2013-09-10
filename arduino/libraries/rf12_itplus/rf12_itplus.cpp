@@ -418,19 +418,17 @@ void rf12_initialize (uint8_t band) {
     switch (band)
     {
         case RF12_868MHZ: rf12_xfer(0xA67C); break;// FREQUENCY 868.300MHz
-        case RF12_915MHZ: rf12_xfer(0xA7D0); break;// FREQUENCY 915.000MHz
+        case RF12_915MHZ: rf12_xfer(0xA7D3); break;// FREQUENCY 915.025MHz
         default: rf12_xfer(0xA640); // ???
     }
-    //rf12_xfer(0xC606); // approx 49.2 Kbps, i.e. 10000/29/(1+6) Kbps
     rf12_xfer(0xC613); // DATA RATE 17.241 kbps
     rf12_xfer(0x94A2); // VDI,FAST,134kHz,0dBm,-91dBm
     rf12_xfer(0xC2AC); // AL,!ml,DIG,DQD4 
     rf12_xfer(0xCA83); // FIFO8,2-SYNC,!ff,DR 
     rf12_xfer(0xCE00 | TX29_GROUP); // SYNC=2DXX； 
-    rf12_xfer(0xC483); // @PWR,NO RSTRIC,!st,!fi,OE,EN 
-    rf12_xfer(0x9850); // !mp,90kHz,MAX OUT 
-    //rf12_xfer(0xCC77); // OB1,OB0,LPX,!ddy,DDIT,BW0
-    rf12_xfer(0xCC76); // OB1,OB0,LPX,!ddyDDIT,!BW0
+    rf12_xfer(0xC4B7); // On VDF,TightRestrict,!strobe,Fine,OE,EN
+    rf12_xfer(0x9830); // 60kHz,positive
+    rf12_xfer(0xCC76); // OB1,OB0,!delay,dither,86.2kbit bandwidth
     rf12_xfer(0xE000); // NOT USE 
     rf12_xfer(0xC800); // NOT USE 
     rf12_xfer(0xC000); // 1.00MHz,2.2V
