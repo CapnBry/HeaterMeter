@@ -565,8 +565,6 @@ void setup(void)
 #endif
 
   rf12_initialize(_rfBand);
-  // Crystal 1.66MHz Low Battery Detect 2.2V
-  rf12_control(0xC040);
   if (_pinLedRx != 0xff) pinMode(_pinLedRx, OUTPUT);
   if (_pinLedTx != 0xff) pinMode(_pinLedTx, OUTPUT);
   if (_pinLedRxSearch != 0xff) pinMode(_pinLedRxSearch, OUTPUT);
