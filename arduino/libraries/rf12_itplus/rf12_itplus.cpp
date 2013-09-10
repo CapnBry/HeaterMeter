@@ -91,11 +91,11 @@
 #endif 
 
 // RF12 command codes
-#define RF_RECEIVER_ON  0x82DD
-#define RF_XMITTER_ON   0x823D
-#define RF_IDLE_MODE    0x820D
-#define RF_SLEEP_MODE   0x8205
-#define RF_WAKEUP_MODE  0x8207
+#define RF_RECEIVER_ON  0x82D9
+#define RF_XMITTER_ON   0x8239
+#define RF_IDLE_MODE    0x8209
+#define RF_SLEEP_MODE   0x8201
+#define RF_WAKEUP_MODE  0x8203
 #define RF_TXREG_WRITE  0xB800
 #define RF_RX_FIFO_READ 0xB000
 #define RF_WAKEUP_TIMER 0xE000
@@ -429,10 +429,11 @@ void rf12_initialize (uint8_t band) {
     rf12_xfer(0xCE00 | TX29_GROUP); // SYNC=2DXX； 
     rf12_xfer(0xC483); // @PWR,NO RSTRIC,!st,!fi,OE,EN 
     rf12_xfer(0x9850); // !mp,90kHz,MAX OUT 
-    rf12_xfer(0xCC77); // OB1，OB0, LPX,！ddy，DDIT，BW0 
+    //rf12_xfer(0xCC77); // OB1,OB0,LPX,!ddy,DDIT,BW0
+    rf12_xfer(0xCC76); // OB1,OB0,LPX,!ddyDDIT,!BW0
     rf12_xfer(0xE000); // NOT USE 
     rf12_xfer(0xC800); // NOT USE 
-    rf12_xfer(0xC049); // 1.66MHz,3.1V 
+    rf12_xfer(0xC000); // 1.00MHz,2.2V
 
     rxstate = TXIDLE;
 #if PINCHG_IRQ
