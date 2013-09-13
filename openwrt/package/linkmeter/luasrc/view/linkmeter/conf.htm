@@ -99,8 +99,13 @@ function refreshRfNodes(o)
 function typeChanged()
 {
   var name = this.id.substr(2);
-  $("#pbody" + name).css("display", (this.value == 0) ? "none" : "block");
-  $("#prf" + name).css("display", (this.value == 2) ? "block" : "none");
+  $("#disppc" + name).toggle(this.value != 0 && this.value != 3);
+  $("#disppcr" + name).toggle(this.value != 0);
+  $("#disppo" + name).toggle(this.value != 0);
+  $("#disppal" + name).toggle(this.value != 0);
+  $("#dispprf" + name).toggle(this.value == 2);
+  // Resist is used for analog thermocouple mV/C
+  $("#pcr" + name).siblings("label").html(this.value != 3 ? "Resist" : "mV/C");
   // If switching to 'RF' and no node number is filled in, default to 'any'
   if (this.value == 2 && $("#prfn" + name).val() == "")
     $("#prfa" + name).prop("checked", true).trigger("change");
@@ -508,15 +513,18 @@ You can store a configuration by bookmarking the "Full configuration" link.</p>
   <option value="0">Disabled</option>
   <option value="1">Internal</option>
   <option value="2">RF12 Wireless</option>
+  <option value="3">Thermocouple</option>
 </select></div>
-<div id="pbody<%=i%>">
+<div id="disppc<%=i%>">
   <div><b>Probe Coefficients</b></div>
   <div class="cbi-value"><label>A</label><input type="text" class="pc" id="pca<%=i%>"/></div>
   <div class="cbi-value"><label>B</label><input type="text" class="pc" id="pcb<%=i%>"/></div>
   <div class="cbi-value"><label>C</label><input type="text" class="pc" id="pcc<%=i%>"/></div>
   <div class="pcpreset" id="pcp<%=i%>"><a class="nodest" href="#">presets</a></div>
-  <div class="cbi-value"><label>Resist</label><input type="text" maxlength="6" id="pcr<%=i%>" style="width: 4em;"/></div>
-  <div class="cbi-value"><label>Offset</label><input type="text" maxlength="3" id="po<%=i%>" style="width: 2em;"/></div>
+</div>
+  <div class="cbi-value" id="disppcr<%=i%>"><label>Resist</label><input type="text" maxlength="6" id="pcr<%=i%>" style="width: 4em;"/></div>
+  <div class="cbi-value" id="disppo<%=i%>"><label>Offset</label><input type="text" maxlength="3" id="po<%=i%>" style="width: 2em;"/></div>
+<div id="disppal<%=i%>">
   <div><b>Alarms</b></div>
   <div class="cbi-value">
     <label>Low</label>
@@ -529,7 +537,7 @@ You can store a configuration by bookmarking the "Full configuration" link.</p>
     <label><input type="checkbox" id="paleh<%=i%>" class="pale"/> On</label>
   </div>
 </div>
-<div id="prf<%=i%>" style="display: none;">
+<div id="dispprf<%=i%>">
   <div><b>RF12 Configuration</b></div>
   <div class="cbi-value cbi-value-last"><label>Node</label>
     <input type="text" maxlength="3" id="prfn<%=i%>" style="width: 2em;"/>
