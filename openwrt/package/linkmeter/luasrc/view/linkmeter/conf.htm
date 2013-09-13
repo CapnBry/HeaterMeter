@@ -5,8 +5,9 @@
 var configHash = <%= LmClient():query("$LMCF") or "{}" %>;
 var rfInterval;
 var coeffPresets = [
-  {"name": "Maverick ET-72", "desc": "Default", "stein": "2.3067434e-4,2.3696596e-4,1.2636414e-7"},
+  {"name": "Maverick ET-72/73", "desc": "Default", "stein": "2.3067434e-4,2.3696596e-4,1.2636414e-7"},
   {"name": "Maverick ET-732", "desc": "Honeywell R-T Curve 4", "stein": "5.36924e-4,1.91396e-4,6.60399e-8"},
+  {"name": "Thermoworks Pro-Series", "desc": "High Temp TX-1001X-OP", "stein": "0.00054037594,0.00023919103,4.6654582e-8"},
   {"name": "Radio Shack 10k", "desc": "271-110A", "stein": "8.98053228e-4,2.49263324e-4,2.04047542e-7"},
   {"name": "Vishay 10k", "desc": "NTCLE203E3103FB0", "stein": "1.14061e-3,2.32134e-4,9.63666e-8"},
   {"name": "iGrill", "desc": "iGrill Probe", "stein": "0.7739251279e-3,2.088025997e-4,1.154400438e-7"}
