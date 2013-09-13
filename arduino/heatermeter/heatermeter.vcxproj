@@ -69,11 +69,11 @@
       <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>C:\Arduino\arduino-1.0.3\hardware\arduino\cores\arduino;C:\Arduino\arduino-1.0.3\hardware\arduino\variants\standard;C:\Users\bmayland\Documents\heatermeter\arduino\libraries\ShiftRegLCD;C:\Users\bmayland\Documents\heatermeter\arduino\libraries\ShiftRegLCD\utility;C:\Users\bmayland\Documents\heatermeter\arduino\libraries\rf12_itplus;C:\Users\bmayland\Documents\heatermeter\arduino\libraries\rf12_itplus\utility;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\include\;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\include\avr\;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\;c:\arduino\arduino-1.0.3\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Arduino\arduino-1.0.3\hardware\arduino\cores\arduino;C:\Arduino\arduino-1.0.3\hardware\arduino\variants\standard;C:\Users\bmayland\Documents\Arduino\libraries\ShiftRegLCD;C:\Users\bmayland\Documents\Arduino\libraries\ShiftRegLCD\utility;C:\Users\bmayland\Documents\Arduino\libraries\rf12_itplus;C:\Users\bmayland\Documents\Arduino\libraries\rf12_itplus\utility;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\include\;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\include\avr\;c:\arduino\arduino-1.0.3\hardware\tools\avr\avr\;c:\arduino\arduino-1.0.3\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>C:\Users\bmayland\Documents\heatermeter\arduino\heatermeter\Visual Micro\.heatermeter.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
       <WholeProgramOptimization>false</WholeProgramOptimization>
-      <PreprocessorDefinitions>__AVR_ATmega328P__;ARDUINO=103;__AVR__;F_CPU=16000000L;HM_BOARD_REV=%27B%27;__cplusplus;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__AVR_ATmega328P__;ARDUINO=103;ARDUINO_MAIN;__AVR__;F_CPU=16000000L;HM_BOARD_REV=%27B%27;__cplusplus;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -113,12 +113,8 @@
       <FileType>CppHeader</FileType>
     </ClInclude>
     <ClInclude Include="grillpid.h" />
-    <ClInclude Include="grillpid_conf.h">
-      <FileType>CppHeader</FileType>
-    </ClInclude>
-    <ClInclude Include="hmcore.h">
-      <FileType>CppHeader</FileType>
-    </ClInclude>
+    <ClInclude Include="grillpid_conf.h" />
+    <ClInclude Include="hmcore.h" />
     <ClInclude Include="hmmenus.h">
       <FileType>CppHeader</FileType>
     </ClInclude>
