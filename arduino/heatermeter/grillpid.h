@@ -11,6 +11,7 @@
 #define PROBETYPE_DISABLED 0  // do not read
 #define PROBETYPE_INTERNAL 1  // read via analogRead()
 #define PROBETYPE_RF12     2  // RFM12B wireless
+#define PROBETYPE_TC_ANALOG  3  // Analog thermocouple, Stein[3] is mV/C
 
 #define STEINHART_COUNT 4
 

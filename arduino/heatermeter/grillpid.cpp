@@ -164,24 +164,36 @@ void TempProbe::calcTemp(void)
 
     if (ADCval != 0)  // Vout >= MAX is reduced in readTemp()
     {
-      float R, T;
-      // If you put the fixed resistor on the Vcc side of the thermistor, use the following
-      R = Steinhart[3] / ((ADCmax / (float)ADCval) - 1.0f);
-      // If you put the thermistor on the Vcc side of the fixed resistor use the following
-      //R = Steinhart[3] * ADCmax / (float)Vout - Steinhart[3];
-
-      // Units 'R' = resistance, unless this is the pit probe (which should spit out Celsius)
-      if (pid.getUnits() == 'R' && this != pid.Probes[TEMP_PIT])
+      if (_probeType == PROBETYPE_TC_ANALOG)
       {
-        Temperature = R;
-        return;
-      };
+        float mvScale = Steinhart[3];
+        if (mvScale == 0.0f)
+          mvScale = 1.0f;
+        // If scale is <100 it is assumed to be mV/C with a 3.3V reference
+        if (mvScale < 100.0f)
+          mvScale = 3300.0f / mvScale;
+        setTemperatureC(ADCval / ADCmax * mvScale);
+      }
+      else {
+        float R, T;
+        // If you put the fixed resistor on the Vcc side of the thermistor, use the following
+        R = Steinhart[3] / ((ADCmax / (float)ADCval) - 1.0f);
+        // If you put the thermistor on the Vcc side of the fixed resistor use the following
+        //R = Steinhart[3] * ADCmax / (float)Vout - Steinhart[3];
 
-      // Compute degrees K
-      R = log(R);
-      T = 1.0f / ((Steinhart[2] * R * R + Steinhart[1]) * R + Steinhart[0]);
+        // Units 'R' = resistance, unless this is the pit probe (which should spit out Celsius)
+        if (pid.getUnits() == 'R' && this != pid.Probes[TEMP_PIT])
+        {
+          Temperature = R;
+          return;
+        };
 
-      setTemperatureC(T - 273.15f);
+        // Compute degrees K
+        R = log(R);
+        T = 1.0f / ((Steinhart[2] * R * R + Steinhart[1]) * R + Steinhart[0]);
+
+        setTemperatureC(T - 273.15f);
+      } /* if PROBETYPE_INTERNAL */
     } /* if ADCval */
     else
       Temperature = NAN;
@@ -422,7 +434,8 @@ boolean GrillPid::doWork(void)
 
 #if defined(GRILLPID_CALC_TEMP)
   for (unsigned char i=0; i<TEMP_COUNT; i++)
-    if (Probes[i]->getProbeType() == PROBETYPE_INTERNAL)
+    if (Probes[i]->getProbeType() == PROBETYPE_INTERNAL ||
+      Probes[i]->getProbeType() == PROBETYPE_TC_ANALOG)
       Probes[i]->readTemp();
   
   ++_periodCounter;
