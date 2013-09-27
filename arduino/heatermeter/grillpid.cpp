@@ -167,8 +167,10 @@ void TempProbe::calcTemp(void)
       if (_probeType == PROBETYPE_TC_ANALOG)
       {
         float mvScale = Steinhart[3];
-        if (mvScale == 0.0f)
-          mvScale = 1.0f;
+        // Commented out because there's no "divide by zero" exception so
+        // just allow undefined results to save prog space
+        //if (mvScale == 0.0f)
+        //  mvScale = 1.0f;
         // If scale is <100 it is assumed to be mV/C with a 3.3V reference
         if (mvScale < 100.0f)
           mvScale = 3300.0f / mvScale;
