@@ -456,13 +456,13 @@ boolean GrillPid::doWork(void)
     if ((pitTemp >= _setPoint) &&
       (_lidOpenDuration - LidOpenResumeCountdown > LIDOPEN_MIN_AUTORESUME))
     {
-      // When we first achieve temperature, reset any P sum we accumulated during startup
+      // When we first achieve temperature, reduce any I sum we accumulated during startup
       // If we actually neded that sum to achieve temperature we'll rebuild it, and it
       // prevents bouncing around above the temperature when you first start up
       if (!_pitTemperatureReached)
       {
         _pitTemperatureReached = true;
-        _pidCurrent[PIDI] = 0.0f;
+        _pidCurrent[PIDI] *= 0.25f;
       }
       LidOpenResumeCountdown = 0;
     }
