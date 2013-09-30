@@ -135,6 +135,10 @@ private:
   unsigned char _minFanSpeed;
   unsigned char _maxServoPos;
   unsigned char _minServoPos;
+#if defined(GRILLPID_FAN_BOOST_ENABLED)
+  unsigned char _lastBlowerOutput;
+  boolean _fanBoostActive;
+#endif
 
   unsigned char _outputFlags;
   

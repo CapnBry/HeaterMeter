@@ -327,7 +327,20 @@ inline void GrillPid::commitFanOutput(void)
   if (bit_is_set(_outputFlags, PIDFLAG_INVERT_FAN))
     fanSpeed = _maxFanSpeed - fanSpeed;
 
-  analogWrite(_fanPin, mappct(fanSpeed, 0, 255));
+  unsigned char newBlowerOutput = mappct(fanSpeed, 0, 255);
+  analogWrite(_fanPin, newBlowerOutput);
+
+#if defined(GRILLPID_FAN_BOOST_ENABLED)
+  // If going from 0% to non-0%, turn the blower fully on for one period
+  // to get it moving
+  if (_lastBlowerOutput == 0 && newBlowerOutput != 0)
+  {
+    digitalWrite(_fanPin, HIGH);
+    _fanBoostActive = true;
+  }
+
+  _lastBlowerOutput = newBlowerOutput;
+#endif
 }
 
 inline void GrillPid::commitServoOutput(void)
@@ -433,6 +446,18 @@ boolean GrillPid::doWork(void)
   if (elapsed < (TEMP_MEASURE_PERIOD / TEMP_AVG_COUNT))
     return false;
   _lastWorkMillis = m;
+
+#if defined(GRILLPID_FAN_BOOST_ENABLED)
+  // If boost has been active for one period (TEMP_MEASURE_PERIOD / TEMP_AVG_COUNT
+  // milliseconds) disable it
+  if (_fanBoostActive)
+  {
+    // Really we just need to turn the OVF interupt back on but there's no
+    // function for that, so re-write the proper blower output
+    analogWrite(_fanPin, _lastBlowerOutput);
+    _fanBoostActive = false;
+  }
+#endif
 
 #if defined(GRILLPID_CALC_TEMP)
   for (unsigned char i=0; i<TEMP_COUNT; i++)
