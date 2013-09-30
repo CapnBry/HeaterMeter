@@ -439,9 +439,6 @@ void GrillPid::status(void) const
 boolean GrillPid::doWork(void)
 {
   unsigned long m = millis();
-  
-  // If this is the first invocation, force an immediate read and temperature 
-  // update to display a value as soon as possible after booting
   unsigned int elapsed = m - _lastWorkMillis;
   if (elapsed < (TEMP_MEASURE_PERIOD / TEMP_AVG_COUNT))
     return false;
