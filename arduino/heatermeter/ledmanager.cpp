@@ -27,10 +27,11 @@ void LedManager::publish(unsigned char stimulus, unsigned char action)
 
 void LedManager::doWork(void)
 {
-  if (_hasRunOnce && (millis() - _blinkMillis < LED_BLINK_MILLIS))
+  unsigned int elapsed = millis() - _blinkMillis;
+  if (_hasRunOnce && (elapsed < LED_BLINK_MILLIS))
     return;
-  _hasRunOnce = true;
   _blinkMillis = millis();
+  _hasRunOnce = true;
 
   ++_blinkCount;
   for (unsigned char i=0; i<LED_COUNT; ++i)

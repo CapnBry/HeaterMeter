@@ -980,11 +980,11 @@ static void tone_doWork(void)
 #ifdef PIEZO_HZ
   if (tone_idx == 0xff)
     return;
-  unsigned long t = millis();
+  unsigned int elapsed = millis() - tone_last;
   unsigned int dur = pgm_read_byte(&tone_durs[tone_idx]) * 10;
-  if (t - tone_last > dur)
+  if (elapsed > dur)
   {
-    tone_last = t;
+    tone_last = millis();
     tone_idx = (tone_idx + 1) % tone_cnt;
     if (tone_idx % 2 == 0)
     {

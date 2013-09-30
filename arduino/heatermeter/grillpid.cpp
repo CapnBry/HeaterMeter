@@ -438,11 +438,10 @@ void GrillPid::status(void) const
 
 boolean GrillPid::doWork(void)
 {
-  unsigned long m = millis();
-  unsigned int elapsed = m - _lastWorkMillis;
+  unsigned int elapsed = millis() - _lastWorkMillis;
   if (elapsed < (TEMP_MEASURE_PERIOD / TEMP_AVG_COUNT))
     return false;
-  _lastWorkMillis = m;
+  _lastWorkMillis = millis();
 
 #if defined(GRILLPID_FAN_BOOST_ENABLED)
   // If boost has been active for one period (TEMP_MEASURE_PERIOD / TEMP_AVG_COUNT
