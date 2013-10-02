@@ -4,6 +4,9 @@ require("luci.util")
 
 LmClient = luci.util.class()
 
+-- Must match send size if messages exceed this size
+local RECVSIZE = 8192
+
 function LmClient._connect(self)
   if self.sock then return true end
  
@@ -32,18 +35,24 @@ function LmClient.close(self)
 end
 
 function LmClient.query(self, qry, keepopen)
-  local r = {self:_connect()}
-  if not r[1] then return unpack(r) end
+  local rc = {self:_connect()}
+  if not rc[1] then return unpack(rc) end
   
   if self.sock:send(qry) == 0 then
     return nil, "send"
   end
   
-  local polle = { fd = self.sock, events = nixio.poll_flags("in") }
-  if nixio.poll({polle}, 1500) then
-    r = self.sock:recv(8192)
-  else
-    r = { nil, "poll" }
+  local polle = { { fd = self.sock, events = nixio.poll_flags("in") } }
+  local r
+  while true do
+    if nixio.poll(polle, 1500) then
+      local l = self.sock:recv(RECVSIZE)
+      r = (r or "") .. l
+      if #l < RECVSIZE then break end
+    else
+      r = r or { nil, "poll" }
+      break
+    end
   end
   
   if not keepopen then self:close() end
@@ -55,16 +64,16 @@ function LmClient.query(self, qry, keepopen)
 end
 
 function LmClient.stream(self, qry, fn)
-  local r = {self:_connect()}
-  if not r[1] then return unpack(r) end
+  local rc = {self:_connect()}
+  if not rc[1] then return unpack(rc) end
 
   if self.sock:send(qry) == 0 then
     return nil, "send"
   end
   
-  local polle = { fd = self.sock, events = nixio.poll_flags("in") }
-  while nixio.poll({polle}, 7500) do
-    r = self.sock:recv(8192)
+  local polle = { { fd = self.sock, events = nixio.poll_flags("in") } }
+  while nixio.poll(polle, 7500) do
+    local r = self.sock:recv(RECVSIZE)
     if r == "ERR" then break end
     fn(r)
   end
