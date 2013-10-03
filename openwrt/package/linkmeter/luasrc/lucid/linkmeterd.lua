@@ -667,7 +667,7 @@ local function segLmConfig()
   local r = {}
   -- Make sure we have an entry for temperatures even if there isn't a value
   for i = 0, 3 do
-    if not cm["pcurr"..i] then r[#r+1] = ("pcurr%d:null"):format(i) end
+    if not cm["pcurr"..i] then r[#r+1] = ('"pcurr%d":null'):format(i) end
   end
   
   for k,v in pairs(cm) do
