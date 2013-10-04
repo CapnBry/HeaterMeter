@@ -21,3 +21,48 @@ for SCR in "alarm-all" "alarm-${al_probe}${al_type}" ; do
     [ $? -ne 0 ] && exit $?
   fi
 done
+
+. /lib/functions.sh
+config_load linkmeter
+
+# Setpoint change
+config_get doit alarms sp${al_type_l}${al_probe} 0
+if [ "$doit" -gt 0 ] ; then
+  echo -n "Changing setpoint to $doit... "
+  lmclient LMST,sp,$doit
+fi
+
+# Send Email
+config_get_bool doit alarms email${al_type_l}${al_probe} 0
+config_get dest alarms emailtoaddress
+if [ "$doit" -gt 0 -a -n "$dest" ] ; then
+  config_get dname alarms emailtoname
+  config_get subject alarms emailsubject "HeterMeter Alert"
+  subject=$(eval echo "$subject")
+  [ -n "$dname" ] && dname="$dname <$dest>" || dname="$dest"
+  echo "Sending email to $dname"
+
+  # Bulld the message
+  echo "From: HeaterMeter <heatermeter@$ip>" > /tmp/alert
+  echo "To: $dname" >> /tmp/alert
+  echo "Subject: $subject" >> /tmp/alert
+  echo "" >> /tmp/alert
+  while read X; do
+    eval echo "$X"
+  done < email.txt >> /tmp/alert
+
+  sendmail $dest < /tmp/alert
+  rm /tmp/alert
+fi
+
+# Send SMS
+config_get_bool doit alarms sms${al_type_l}${al_probe} 0
+config_get dest alarms smstoaddress ""
+if [ "$doit" -gt 0 -a -n "$dest" ] ; then
+  config_get msg alarms smsmessage "HeaterMeter Alert"
+  msg=$(eval echo "$msg")
+  echo "Sending SMS to $dest"
+
+  echo $msg | sendmail --from $dest $dest
+fi
+
