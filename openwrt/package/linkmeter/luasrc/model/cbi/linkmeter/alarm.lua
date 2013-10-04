@@ -11,6 +11,12 @@ m = Map("linkmeter", "Alarm Settings",
     Inputting a 'Setpoint' will adjust the Pit setpoint.]])
 local ESCAPE_HELP = "All special characters (e.g. parens) must be escaped"
 
+if lmcf == nil then
+  s = m:section(SimpleSection, "_noconfig")
+  s.template = "linkmeter/noconfig"
+  return m
+end
+
 --
 -- Alarm Values
 --

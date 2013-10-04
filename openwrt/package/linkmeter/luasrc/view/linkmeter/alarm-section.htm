@@ -1,0 +1,64 @@
+<script type='text/javascript' src='<%=resource%>/js/jquery-1.9.1.min.js'></script>
+<script type='text/javascript'>//<![CDATA[
+  $(function () {
+    $("input.alarm-enable:button").click(alarmEnable)
+      .next("input:text").change(alarmChange).change();
+     
+    $("input.cbi-button-reset[type='reset']").click( function (e) {
+      // The reset event is called befor reset happens so force it to
+      // happen before syncing the button state
+      $("form").get(0).reset();
+      $("input.alarm-enable:button").next("input:text").change();
+    }); 
+  });
+  
+function alarmEnable()
+{
+  var inp = $(this).next("input:text");
+  var val = parseInt(inp.val());
+  inp.val(-val).change();
+}
+
+function alarmChange()
+{
+  var btn = $(this).prev("input:button");
+  var val = parseInt($(this).val());
+  if (val > 0)
+    btn.removeClass("cbi-input-reset").addClass("cbi-input-save")
+     .val("Enabled");
+  else
+    btn.removeClass("cbi-input-save").addClass("cbi-input-reset")
+      .val("Disabled");
+}
+
+//]]></script>
+<style>
+  .alval { width: 4em !important; }
+  .pnum0 { background: #e73; }
+  .pnum1 { background: #6c3; }
+  .pnum2 { background: #297; }
+  .pnum3 { background: #789; }
+</style>
+<fieldset class="cbi-section" id="cbi-<%=self.config%>-<%=self.sectiontype%>">
+  <% if self.title and #self.title > 0 then -%>
+    <legend><%=self.title%></legend>
+  <%- end %>
+  <div class="cbi-section-descr"><%=self.description%></div>
+<table class="cbi-section-table">
+  <tr class="cbi-section-table-titles">
+    <th>&nbsp;</th>
+    <th>Name</th>
+    <th>Current</th>
+    <th>&nbsp;</th>
+    <th>Threshold</th>
+    <th>Email</th>
+    <th>SMS</th>
+    <th>Setpoint</th>
+    <th>&nbsp;</th>
+  </tr>
+  <tr class="cbi-section-table-descr"></tr>
+  <% for i, k in ipairs(self:cfgsections()) do section = k -%>
+<%+linkmeter/alarm-node%>
+  <%- end %>
+</table>
+</fieldset>

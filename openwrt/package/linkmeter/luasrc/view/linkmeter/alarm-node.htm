@@ -1,0 +1,47 @@
+<% cbid = "cbid." .. self.config .. "." .. section -%>
+  <tr class="cbi-section-table-row cbi-rowstyle-<%=tonumber(section)%2+1%>">
+    <td class="pnum<%=section%>"><%=section%></td>
+    <td><%=self:field("pn"):cfgvalue(section)%></td>
+    <td><%
+      local curr = self:field("pcurr"):cfgvalue(section)
+      if curr then 
+        write(("%.1f&deg;"):format(curr))
+      else
+        write("&nbsp;")
+      end
+    %></td>
+    <td>Low</td>
+    <td>
+      <input class="cbi-button alarm-enable" type="button" style="width: 6em"
+        id="<%=cbid%>.pall.b"/>
+      <input type="text" id="<%=cbid%>.pall" name="<%=cbid%>.pall" class="alval"
+        value="<%=self:field("pall"):cfgvalue(section)%>"/>
+    </td>
+    <td><input type="checkbox" id="<%=cbid%>.emaill" name="<%=cbid%>.emaill"
+      <%=ifattr(self:field("emaill"):cfgvalue(section), "checked", "checked")%>/></td>
+    <td><input type="checkbox" id="<%=cbid%>.smsl" name="<%=cbid%>.smsl"
+      <%=ifattr(self:field("smsl"):cfgvalue(section), "checked", "checked")%>/></td>
+    <td><input type="text" class="alval" id="<%=cbid%>.spl" name="<%=cbid%>.spl"
+      value="<%=self:field("spl"):cfgvalue(section)%>"/></td>
+    <td class="pnum<%=section%>"><%=section%></td>
+  </tr>
+  <tr class="cbi-section-table-row cbi-rowstyle-<%=tonumber(section)%2+1%>">
+    <td class="pnum<%=section%>"></td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+    <td>High</td>
+    <td>
+      <input class="cbi-button alarm-enable" type="button" style="width: 6em"
+        id="<%=cbid%>.palh.b"/>
+      <input type="text" id="<%=cbid%>.palh" name="<%=cbid%>.palh" class="alval"
+        value="<%=self:field("palh"):cfgvalue(section)%>"/>
+    </td>
+    <td><input type="checkbox" id="<%=cbid%>.emailh" name="<%=cbid%>.emailh"
+      <%=ifattr(self:field("emailh"):cfgvalue(section), "checked", "checked")%>/></td>
+    <td><input type="checkbox" id="<%=cbid%>.smsh" name="<%=cbid%>.smsh"
+      <%=ifattr(self:field("smsh"):cfgvalue(section), "checked", "checked")%>/></td>
+    <td><input type="text" class="alval" id="<%=cbid%>.sph" name="<%=cbid%>.sph"
+      value="<%=self:field("sph"):cfgvalue(section)%>"/></td>
+    <td class="pnum<%=section%>"></td>
+  </tr>
+
