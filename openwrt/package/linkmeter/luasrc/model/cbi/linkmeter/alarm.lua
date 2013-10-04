@@ -9,6 +9,7 @@ m = Map("linkmeter", "Alarm Settings",
     its threshold to a positive value, or checking the box beside it.
     Select the types of notifications to receive when the alarm is trigged.
     Inputting a 'Setpoint' will adjust the Pit setpoint.]])
+local ESCAPE_HELP = "All special characters (e.g. parens) must be escaped"
 
 --
 -- Alarm Values
@@ -71,12 +72,16 @@ end
 local function probe_conf_write(self, section, value)
   return m:set("alarms", self.option .. section, value)
 end
+local function probe_conf_remove(self, section)
+  return m:del("alarms", self.option .. section)
+end
 
 local PROBE_CONF = { "emaill", "smsl", "spl", "emailh", "smsh", "sph" }
 for _,kv in ipairs(PROBE_CONF) do
   v = s:option(Value, kv, kv)
   v.cfgvalue = probe_conf_value
   v.write = probe_conf_write
+  v.remove = probe_conf_remove
 end
 
 --
@@ -96,6 +101,7 @@ local msg = s:option(TextValue, "_msg", "Message")
 msg.wrap    = "off"
 msg.rows    = 5
 msg.rmempty = false
+msg.description = ESCAPE_HELP
 
 local MSG_TEMPLATE = "/usr/share/linkmeter/email.txt"
 function msg.cfgvalue()
@@ -146,6 +152,7 @@ for i,p in ipairs(PROVIDERS) do
 end
 
 v = s:option(Value, "smsmessage", "Message")
+v.description = ESCAPE_HELP
 
 --
 -- Map Functions
