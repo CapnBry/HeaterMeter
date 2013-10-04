@@ -598,7 +598,7 @@ static int spi_upload_file(void)
     fprintf(stderr, "can't get SPI speed\n");
     goto cleanup;
   }
-  if (verbose > 1) fprintf(stdout, "SPI speed: %ld KHz\n", baud/1024);
+  if (verbose > 1) fprintf(stdout, "SPI speed: %ld KHz\n", baud/1000);
 
   if ((rc = spi_programming_enable()) != 0)
     goto cleanup;
