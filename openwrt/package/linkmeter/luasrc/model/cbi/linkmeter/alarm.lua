@@ -30,12 +30,23 @@ s.field = function(self, name)
 end
 
 -- probe_lm_* values that are stored in HeaterMeter
+local probe_lm_alvals = {}
 local function probe_lm_value(self, section)
   -- self.option will be the "palh" section will be 0,1,2,3
   return tostring(lmcf[self.option .. section])
 end
 local function probe_lm_write(self, section, value)
-  print("lmwrite",self.option,section,value)
+  -- Alarm high/low
+  if self.option:sub(1,3) == "pal" then
+    local idx = self.option:sub(-1) == "l" and 1 or 2
+    idx = idx + 2 * tonumber(section)
+    while #probe_lm_alvals < idx do
+      probe_lm_alvals[#probe_lm_alvals+1] = ""
+    end
+    probe_lm_alvals[idx] = value
+  end
+
+  lmcf[self.option .. section] = value
 end
 
 local PROBE_LM = { "pn", "pcurr", "pall", "palh" }
@@ -46,12 +57,18 @@ for _,kv in ipairs(PROBE_LM) do
   v.write = probe_lm_write
 end
 
+local function saveProbeLm()
+  if #probe_lm_alvals > 0 then
+    local alvals = "$LMST,al," .. table.concat(probe_lm_alvals, ",")
+    LmClient():query(alvals)
+  end
+end
+
 -- probe_conf_* values that are stored in uci
 local function probe_conf_value(self, section)
   return m:get("alarms", self.option .. section)
 end
 local function probe_conf_write(self, section, value)
-  print("confwrite",self.option,section,value)
   return m:set("alarms", self.option .. section, value)
 end
 
@@ -135,7 +152,7 @@ v = s:option(Value, "smsmessage", "Message")
 --
 
 m.on_save = function (self) 
-  print("on_save",self.changed) 
+  saveProbeLm()
 end
 
 return m

@@ -14,7 +14,8 @@ function index()
   entry({"admin", "lm", "set"}, call("action_set"))
   
   if node.inreq and nixio.fs.access("/usr/share/linkmeter/alarm") then
-    entry({"admin", "lm", "alarm"}, cbi("linkmeter/alarm"), "Alarms", 30)
+    entry({"admin", "lm", "alarm"}, cbi("linkmeter/alarm", {hidesavebtn=true}),
+      "Alarms", 30)
     entry({"admin", "lm", "alarm-scripts"}, form("linkmeter/alarm-scripts"),
       "Alarm Scripts", 35)
   end
