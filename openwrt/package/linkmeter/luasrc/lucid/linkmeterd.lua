@@ -445,6 +445,7 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
     nixio.syslog("warning", "Alarm "..probeIdx..alarmType.." started ringing")
     if nixio.fork() == 0 then
       local cm = buildConfigMap()
+      cm["ip"] = lastIp
       cm["al_probe"] = probeIdx
       cm["al_type"] = alarmType
       cm["al_thresh"] = thresh
