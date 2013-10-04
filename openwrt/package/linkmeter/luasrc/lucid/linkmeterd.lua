@@ -440,10 +440,12 @@ end
 local function broadcastAlarm(probeIdx, alarmType, thresh)
   local curTemp = JSON_TEMPLATE[15+(probeIdx*11)]
   local pname = JSON_TEMPLATE[13+(probeIdx*11)]
+  local retVal
   
   if alarmType then
     nixio.syslog("warning", "Alarm "..probeIdx..alarmType.." started ringing")
-    if nixio.fork() == 0 then
+    retVal = nixio.fork()
+    if retVal == 0 then
       local cm = buildConfigMap()
       cm["ip"] = lastIp
       cm["al_probe"] = probeIdx
@@ -467,6 +469,8 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
     return ('event: alarm\ndata: {"atype":%s,"p":%d,"pn":"%s","c":%s,"t":%s}\n\n'):format(
       alarmType, probeIdx, pname, curTemp, thresh)
     end)
+
+  return retVal
 end
 
 local function segAlarmLimits(line)
@@ -706,6 +710,27 @@ local function segLmUnknownProbe(line)
    end
 end
 
+local function segLmAlarmTest(line)
+  local vals = segSplit(line)
+  if #vals > 1 then
+    local probeIdx = tonumber(vals[1])
+    local alarmType = vals[2] or ""
+    local thresh = vals[3] or ""
+
+    -- If alarmType is blank, use nil to simulate turn off
+    alarmType = alarmType ~= "" and alarmType or nil
+
+    -- If thresh is blank, use current
+    thresh = thresh and tonumber(thresh) or
+      math.floor(tonumber(JSON_TEMPLATE[15+(probeIdx*11)]))
+
+    local pid = broadcastAlarm(probeIdx, alarmType, thresh)
+    return pid
+  else
+    return "ERR"
+  end
+end
+
 local function registerStreamingStatus(fn)
   statusListeners[#statusListeners + 1] = fn
 end
@@ -746,6 +771,7 @@ local segmentMap = {
   ["$HMSU"] = segStateUpdate,
   ["$UCID"] = segUcIdentifier,
 
+  ["$LMAT"] = segLmAlarmTest,
   ["$LMGT"] = segLmGet,
   ["$LMST"] = segLmSet,
   ["$LMSU"] = segLmStateUpdate,
