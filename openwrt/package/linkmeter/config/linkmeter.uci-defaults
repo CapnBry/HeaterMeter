@@ -4,7 +4,8 @@ INSTALL_PARAM="$1"
 [ -z "$INSTALL_PARAM" ] && INSTALL_PARAM="new"
 
 uci_set_nomodify() {
-  uci -q get $1 > /dev/null || uci set $1=$2
+  KEY="$1"; shift
+  uci -q get $KEY > /dev/null || uci set $KEY="$@"
 }
 
 HARDWARE_MODEL=`echo "_, model = luci.sys.sysinfo(); print(model)" | lua -lluci.sys`
@@ -34,6 +35,7 @@ set lucid.lmserver=daemon
 set lucid.lmserver.enabled=1
 set lucid.lmserver.slave=linkmeter
 set lucid.linkmeter=linkmeterd
+set lucid.linkmeter.name='LinkMeter Service'
 set lucid.linkmeter.platform=$HARDWARE_MODEL
 EOF
 
@@ -47,8 +49,20 @@ uci_set_nomodify lucid.linkmeter.autoback_inactive $AUTOBACK_INACTIVE
 
 uci commit lucid
 
+[ -f /etc/config/linkmeter ] || touch /etc/config/linkmeter
+uci -q set linkmeter.alarms='section'
+uci_set_nomodify linkmeter.alarms.emailtoname 'Your Name'
+uci_set_nomodify linkmeter.alarms.emailtoaddress 'chunkylover53@aol.com'
+uci_set_nomodify linkmeter.alarms.emailfromname HeaterMeter
+uci_set_nomodify linkmeter.alarms.emailfromaddress 'heatermeter@$ip'
+uci_set_nomodify linkmeter.alarms.emailsubject '$pn $al_prep $al_thresh'
+uci_set_nomodify linkmeter.alarms.smstoaddress '2125551212@txt.att.net'
+uci_set_nomodify linkmeter.alarms.smsmessage 'ALERT $pn is $al_prep $al_thresh \($pcurr\)'
+
+uci commit linkmeter
+
 # Change the session timeout from 1hr to 24hrs
-SA=`uci get luci.sauth.sessiontime`
+SA=`uci -q get luci.sauth.sessiontime`
 if [ "$SA" -eq 3600 ] ; then
   uci set luci.sauth.sessiontime=86400
 fi
@@ -69,7 +83,7 @@ if [ "$INSTALL_PARAM" = "new" ] ; then
   [ "$HARDWARE_MODEL" = "BCM2708" ] && \
     /etc/init.d/config_restore enable
 
-  # New install, disable dhcp on the lan interface
+  # New install, disable dhcp server on the lan interface
   if [ "$HARDWARE_MODEL" = "BCM2708" ] ; then
     uci set dhcp.lan.ignore=1
     uci commit dhcp

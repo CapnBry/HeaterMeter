@@ -1,0 +1,8 @@
+$pn Alarm \($al_type\) $al_prep threshold $al_thresh, currently $pcurr.
+
+$pn0: $pcurr0
+$pn1: $pcurr1
+$pn2: $pcurr2
+$pn3: $pcurr3
+--
+http://$ip/luci/lm/

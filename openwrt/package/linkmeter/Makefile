@@ -40,6 +40,8 @@ define Package/linkmeter/install
 
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_BIN) ./config/linkmeter.uci-defaults $(1)/etc/uci-defaults/linkmeter
+        # Don't clobber files
+	cp -n ./config/email.txt $(1)/usr/share/linkmeter/
 
 	$(INSTALL_DIR) $(1)/www
 	$(CP) htdocs/* $(1)/www/
@@ -71,7 +73,6 @@ define Package/linkmeter/postinst
 	/etc/init.d/lucid restart
 endef
 
-
 define Package/linkmeter/postrm
 #!/bin/sh
 	[ -n "$${IPKG_INSTROOT}" ] && exit
@@ -83,6 +84,11 @@ define Package/linkmeter/postrm
 	rm -f /tmp/luci-indexcache
 	rm -f /tmp/luci-modulecache/*
 	/etc/init.d/lucid start
+endef
+
+define Package/linkmeter/conffiles
+/etc/config/linkmeter
+/usr/share/linkmeter/email.txt
 endef
 
 $(eval $(call BuildPackage,linkmeter))
