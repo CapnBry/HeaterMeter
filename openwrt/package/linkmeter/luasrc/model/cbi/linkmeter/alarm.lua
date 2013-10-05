@@ -39,8 +39,8 @@ end
 -- probe_lm_* values that are stored in HeaterMeter
 local probe_lm_alvals = {}
 local function probe_lm_value(self, section)
-  -- self.option will be the "palh" section will be 0,1,2,3
-  return tostring(lmcf[self.option .. section])
+  local retVal = lmcf[self.option .. section]
+  return retVal and tostring(retVal)
 end
 local function probe_lm_write(self, section, value)
   -- Alarm high/low
