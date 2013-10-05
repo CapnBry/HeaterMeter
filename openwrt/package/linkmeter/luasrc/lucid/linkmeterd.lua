@@ -712,7 +712,7 @@ end
 
 local function segLmAlarmTest(line)
   local vals = segSplit(line)
-  if #vals > 1 then
+  if #vals > 0 then
     local probeIdx = tonumber(vals[1])
     local alarmType = vals[2] or ""
     local thresh = vals[3] or ""
