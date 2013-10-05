@@ -14,10 +14,12 @@ al_set() {
   lmclient ${AL}${1}
 }
 
+# The entire script is a function, to allow redirection to logger
+do_alarms() {
 cd `dirname $0`
 for SCR in "alarm-all" "alarm-${al_probe}${al_type}" ; do
   if [ -x "$SCR" ] ; then
-    . ./$SCR 2>&1 | logger -t lmalarm
+    . ./$SCR 2>&1
     [ $? -ne 0 ] && exit $?
   fi
 done
@@ -41,7 +43,7 @@ if [ "$doit" -gt 0 -a -n "$dest" ] ; then
   config_get fname alarms emailfromname "HeterMeter"
   config_get faddr alarms emailfromaddress "heatermeter@$ip"
 
-  dname=${dname:+$dname }$dest
+  dname="${dname:+$dname <}$dest${dname:+>}"
   subject=$(eval echo "$subject")
   fname=$(eval echo "$fname \<$faddr\>")
   echo "Sending email from $fname to $dname"
@@ -75,4 +77,6 @@ if [ "$doit" -gt 0 -a -n "$dest" ] ; then
 
   echo $msg | sendmail --from $dest $dest
 fi
+}
 
+do_alarms 2>&1 | logger -t lmalarm
