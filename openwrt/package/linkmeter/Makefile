@@ -39,7 +39,6 @@ define Package/linkmeter/install
 	fi
 
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
-	$(INSTALL_BIN) ./config/linkmeter.uci-defaults $(1)/etc/uci-defaults/linkmeter
         # Don't clobber files
 	cp -n ./config/email.txt $(1)/usr/share/linkmeter/
 
@@ -52,6 +51,9 @@ define Package/linkmeter/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/hmdude $(1)/usr/bin
 	$(LN) -sf ../../usr/lib/lua/lmclient.lua $(1)/usr/bin/lmclient
+	# uci-defaults is saved so it can be used again after config-restore
+	$(INSTALL_BIN) ./config/linkmeter.uci-defaults $(1)/usr/bin/
+	$(LN) -sf ../../usr/bin/linkmeter.uci-defaults $(1)/etc/uci-defaults/linkmeter
 
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/lucid
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/lucid/linkmeterd.lua $(1)/usr/lib/lua/luci/lucid/

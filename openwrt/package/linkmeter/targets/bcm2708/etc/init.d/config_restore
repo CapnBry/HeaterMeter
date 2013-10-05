@@ -91,6 +91,7 @@ elif [ $RESTORE -ne 0 ] ; then
   if [ -f "$MNT/backup.tar.gz" ] ; then
     echo Restoring system backup...
     sysupgrade -r $MNT/backup.tar.gz
+    . /usr/bin/linkmeter.uci-defaults
     sync
     reboot
   fi
