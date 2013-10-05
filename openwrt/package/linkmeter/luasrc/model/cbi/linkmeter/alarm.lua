@@ -135,6 +135,7 @@ s = m:section(NamedSection, "alarms", "sms", "SMS Notifications",
 local PROVIDERS = {
   { "AT&T", "txt.att.net", "ATT" },
   { "Nextel", "messaging.nextel.com" },
+  { "Plateau", "smsx.plateaugsm.com" },
   { "Sprint", "messaging.sprintpcs.com" },
   { "T-Mobile", "tmomail.net" },
   { "Verizon", "vtext.com" },
