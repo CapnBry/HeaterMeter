@@ -138,7 +138,7 @@ s = m:section(NamedSection, "alarms", "sms", "SMS Notifications",
   [[">SMTP Client</a> is configured.]])
 
 local PROVIDERS = {
-  { "AT&T", "txt.att.net", "ATT" },
+  { "AT&T", "txt.att.net" },
   { "Bell / Solo", "txt.bellmobility.ca" },
   { "Fido", "sms.fido.ca" },
   { "MTS", "text.mtsmobility.com" },
@@ -152,23 +152,54 @@ local PROVIDERS = {
   { "Virgin US", "vmobl.com" },
   { "Virgin Canada", "vmobl.ca" },
   { "Wind Mobile", "txt.windmobile.ca" },
+  { "Other", "other" }
 }
-local smsto = m:get("alarms", "smstoaddress")
-local smsphone, smsprovider = smsto:match("^(%d+)@(.+)$")
 
-v = s:option(Value, "_phone", "Phone number")
-v.cfgvalue = function() return smsphone end
-v.datatype = "phonedigit"
+local function split_smsto()
+  local smsto = m:get("alarms", "smstoaddress")
+  return smsto:match("^(%d+)@(.+)$")
+end
 
-v = s:option(ListValue, "_provider", "Provider")
-for i,p in ipairs(PROVIDERS) do
-  local key = p[3] or p[1]
-  v:value(key, p[1])
-  -- convert the @addr to the provider name
-  if p[2] == smsprovider then
-    v.cfgvalue = function () return key end
+local smsprovider_write = function(self, section, value)
+  if value ~= "other" then
+    local smsphone, _ = split_smsto()
+    m:set("alarms", "smstoaddress", smsphone .. "@" .. value)
   end
 end
+
+v = s:option(Value, "_phone", "Phone number")
+v.datatype = "phonedigit"
+v.cfgvalue = function()
+  local smsphone, _ = split_smsto()
+  return smsphone
+end
+v.write =  function(self, section, value)
+  local _, smsprovider = split_smsto()
+  m:set("alarms", "smstoaddress", value .. "@" .. smsprovider)
+end
+
+v = s:option(ListValue, "_provider", "Provider")
+for _,p in ipairs(PROVIDERS) do
+  v:value(p[2], p[1])
+end
+v.cfgvalue = function ()
+  local _, smsprovider = split_smsto()
+  for _,p in ipairs(PROVIDERS) do
+    if p[2] == smsprovider then
+      return smsprovider
+    end
+  end
+  return "other"
+end
+v.write = smsprovider_write
+
+v = s:option(Value, "_provider_other", "Other Provider")
+v:depends("linkmeter.alarms._provider", "other")
+v.cfgvalue = function ()
+  local _, smsprovider = split_smsto()
+  return smsprovider
+end
+v.write = smsprovider_write
 
 v = s:option(Value, "smsmessage", "Message")
 v.description = ESCAPE_HELP
