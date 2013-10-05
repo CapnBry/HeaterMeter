@@ -8,6 +8,12 @@ uci_set_nomodify() {
   uci -q get $KEY > /dev/null || uci set $KEY="$@"
 }
 
+backup_inc() {
+# First parameter is file, second paramter means "add wildcard" (*)
+grep $1 /etc/sysupgrade.conf > /dev/null || \
+  echo "$1${2:+*}" >> /etc/sysupgrade.conf
+}
+
 HARDWARE_MODEL=`echo "_, model = luci.sys.sysinfo(); print(model)" | lua -lluci.sys`
 if [ "$HARDWARE_MODEL" = "BCM2708" ] ; then
   SERIAL_DEVICE="/dev/ttyAMA0"
@@ -67,10 +73,9 @@ if [ "$SA" -eq 3600 ] ; then
   uci set luci.sauth.sessiontime=86400
 fi
 
-# Include any alarm scripts in the backup file
-ALARMS="/usr/share/linkmeter/alarm-"
-grep $ALARMS /etc/sysupgrade.conf > /dev/null || \
-  echo "${ALARMS}*" >> /etc/sysupgrade.conf
+# Include any alarm changes in the backup file
+backup_inc /usr/share/linkmeter/alarm- 1
+backup_inc /usr/share/linkmeter/email.txt
 
 if [ "$INSTALL_PARAM" = "new" ] ; then
   uci set luci.ccache.enable=$LUCI_CCACHE
