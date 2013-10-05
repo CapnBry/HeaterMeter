@@ -102,7 +102,7 @@ function typeChanged()
   $("#disppc" + name).toggle(this.value != 0 && this.value != 3);
   $("#disppcr" + name).toggle(this.value != 0);
   $("#disppo" + name).toggle(this.value != 0);
-  $("#disppal" + name).toggle(this.value != 0);
+  $("#disppal" + name).toggle(false);
   $("#dispprf" + name).toggle(this.value == 2);
   // Resist is used for analog thermocouple mV/C
   $("#pcr" + name).siblings("label").html(this.value != 3 ? "Resist" : "mV/C");
