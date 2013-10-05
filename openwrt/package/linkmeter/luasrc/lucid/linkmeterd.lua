@@ -722,7 +722,7 @@ local function segLmAlarmTest(line)
 
     -- If thresh is blank, use current
     thresh = thresh and tonumber(thresh) or
-      math.floor(tonumber(JSON_TEMPLATE[15+(probeIdx*11)]))
+      math.floor(tonumber(JSON_TEMPLATE[15+(probeIdx*11)]) or 0)
 
     local pid = broadcastAlarm(probeIdx, alarmType, thresh)
     return pid
