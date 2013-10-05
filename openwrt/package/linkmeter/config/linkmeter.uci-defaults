@@ -93,8 +93,4 @@ if [ "$INSTALL_PARAM" = "new" ] ; then
     uci set dhcp.lan.ignore=1
     uci commit dhcp
   fi
-
-  # LuCI's fixtime makes the time jump forward twice and the time is never right
-  [ -x "/etc/init.d/luci_fixtime" ] && \
-    /etc/init.d/luci_fixtime disable
 fi
