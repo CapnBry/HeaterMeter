@@ -38,16 +38,26 @@ config_get dest alarms emailtoaddress
 if [ "$doit" -gt 0 -a -n "$dest" ] ; then
   config_get dname alarms emailtoname
   config_get subject alarms emailsubject "HeterMeter Alert"
+  config_get fname alarms emailfromname "HeterMeter"
+  config_get faddr alarms emailfromaddress "heatermeter@$ip"
+
+  dname=${dname:+$dname }$dest
   subject=$(eval echo "$subject")
-  [ -n "$dname" ] && dname="$dname <$dest>" || dname="$dest"
-  echo "Sending email to $dname"
+  fname=$(eval echo "$fname \<$faddr\>")
+  echo "Sending email from $fname to $dname"
 
   # Bulld the message
-  echo "From: HeaterMeter <heatermeter@$ip>" > /tmp/alert
-  echo "To: $dname" >> /tmp/alert
-  echo "Subject: $subject" >> /tmp/alert
-  echo "" >> /tmp/alert
-  while read X; do
+cat > /tmp/alert << EOF
+From: $fname
+To: $dname
+Subject: $subject
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+
+EOF
+
+  while read -r X; do
     eval echo "$X"
   done < email.txt >> /tmp/alert
 
