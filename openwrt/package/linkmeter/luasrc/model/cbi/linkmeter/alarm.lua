@@ -139,12 +139,19 @@ s = m:section(NamedSection, "alarms", "sms", "SMS Notifications",
 
 local PROVIDERS = {
   { "AT&T", "txt.att.net", "ATT" },
+  { "Bell / Solo", "txt.bellmobility.ca" },
+  { "Fido", "sms.fido.ca" },
+  { "MTS", "text.mtsmobility.com" },
   { "Nextel", "messaging.nextel.com" },
   { "Plateau", "smsx.plateaugsm.com" },
+  { "Rogers", "sms.rogers.com" },
   { "Sprint", "messaging.sprintpcs.com" },
   { "T-Mobile", "tmomail.net" },
+  { "Telus / Koodo", "msg.telus.com" },
   { "Verizon", "vtext.com" },
-  { "Virgin Mobile", "vmobl.com" },
+  { "Virgin US", "vmobl.com" },
+  { "Virgin Canada", "vmobl.ca" },
+  { "Wind Mobile", "txt.windmobile.ca" },
 }
 local smsto = m:get("alarms", "smstoaddress")
 local smsphone, smsprovider = smsto:match("^(%d+)@(.+)$")
