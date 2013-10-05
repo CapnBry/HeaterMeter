@@ -12,6 +12,7 @@ function index()
   entry({"admin", "lm", "stashdb"}, call("action_stashdb"))
   entry({"admin", "lm", "reboot"}, call("action_reboot"))
   entry({"admin", "lm", "set"}, call("action_set"))
+  entry({"admin", "lm", "altest"}, call("action_alarm_test"))
   
   if node.inreq and nixio.fs.access("/usr/share/linkmeter/alarm") then
     entry({"admin", "lm", "alarm"}, cbi("linkmeter/alarm", {hidesavebtn=true}),
@@ -213,6 +214,20 @@ function action_light_index()
         authuser = luci.dispatcher.context.authuser
       })
   else
-    luci.dispatcher.error500("Stauts read failed: " .. err or "Unknown")
+    luci.dispatcher.error500("Status read failed: " .. err or "Unknown")
+  end
+end
+
+function action_alarm_test()
+  local http = require "luci.http"
+  local pnum = http.formvalue("pnum")
+  local al_type = http.formvalue("type")
+  if pnum and al_type then
+    require "lmclient"
+    local result, err = LmClient():query("$LMAT,"..pnum..","..al_type)
+    http.write(("Testing alarm %s%s... %s"):format(pnum, al_type,
+      result or "ERR"))
+  else
+    luci.dispatcher.error500("Missing pnum or type parameter")
   end
 end

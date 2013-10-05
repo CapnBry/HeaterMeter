@@ -23,7 +23,10 @@
       <%=ifattr(self:field("smsl"):cfgvalue(section), "checked", "checked")%>/></td>
     <td><input type="text" class="alval" id="<%=cbid%>.spl" name="<%=cbid%>.spl"
       value="<%=self:field("spl"):cfgvalue(section)%>"/></td>
-    <td class="pnum<%=section%>"><%=section%></td>
+    <td class="pnum<%=section%>">
+      <input class="cbi-button alarm-test" type="button" title="Test"
+        data-pnum="<%=section%>" data-altype="L"/>
+    </td>
   </tr>
   <tr class="cbi-section-table-row cbi-rowstyle-<%=tonumber(section)%2+1%>">
     <td class="pnum<%=section%>"></td>
@@ -42,6 +45,9 @@
       <%=ifattr(self:field("smsh"):cfgvalue(section), "checked", "checked")%>/></td>
     <td><input type="text" class="alval" id="<%=cbid%>.sph" name="<%=cbid%>.sph"
       value="<%=self:field("sph"):cfgvalue(section)%>"/></td>
-    <td class="pnum<%=section%>"></td>
+    <td class="pnum<%=section%>">
+      <input class="cbi-button alarm-test" type="button" title="Test"
+        data-pnum="<%=section%>" data-altype="H"/>
+    </td>
   </tr>
 

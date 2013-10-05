@@ -5,10 +5,15 @@ local lmcf = json.decode(LmClient():query("$LMCF"))
 
 local m, s, v
 m = Map("linkmeter", "Alarm Settings",
-  [[Alarm trigger points and alert options. Enable an alarm by setting
-    its threshold to a positive value, or checking the box beside it.
-    Select the types of notifications to receive when the alarm is trigged.
-    Inputting a 'Setpoint' will adjust the Pit setpoint.]])
+  [[ Select the types of notifications to receive when the alarm is trigged.
+    Enable an alarm by setting
+    its threshold to a positive value, or using the button beside it.
+    Inputting a 'Setpoint' will adjust the Pit setpoint.
+    Test results can be seen in the <a href="]] ..
+    luci.dispatcher.build_url("admin/status/syslog/") ..
+    [[">System Log</a>.
+    <strong>'Save &amp; Apply' before testing.</strong>
+    ]])
 local ESCAPE_HELP = "All special characters (e.g. parens) must be escaped"
 
 if lmcf == nil then
