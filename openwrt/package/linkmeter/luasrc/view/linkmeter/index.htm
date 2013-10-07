@@ -803,6 +803,12 @@ div.pibarcont { position: relative; float: right; width: 65%; border: 1px solid 
 div.pibar { position: relative; }
 div.pipip { position: absolute; left: 50%; top: 0; width: 1px; height: 100%;
     background-color: #999; }
+#navcontainer ul { list-style-type: none; margin-top: 10px; margin-bottom: 0; }
+#navcontainer li { display: inline; }
+#navcontainer li a { text-decoration: none; color: #f3f1e9;
+    padding: 4px 30px 4px 30px; border: 1px solid #000; }
+#navcontainer li a:hover { background-color: #246; color: #f3f1e9;
+    border: 1px solid #333; }
 </style>
 </head>
 
@@ -817,7 +823,7 @@ div.pipip { position: absolute; left: 50%; top: 0; width: 1px; height: 100%;
       </h2>
 <% else %>
       <div style="font-family: Trebuchet MS; background: #000 url('<%=resource%>/fire.png') repeat-x scroll left bottom;"><div style="background: rgba(76,135,199,0.5);">
-        <div style="color: #bbb; font-size: 28pt;" id="pn0">Pit</div>
+        <div style="color: #bbb; font-size: 28pt;">Current <span id="pn0">Pit</span></div>
         <div id="updatedtime" style="position: absolute; top: 8px; right: 13px; color: #bbb; font-size: 12pt;">00:00:00 AM</div>
         <div id="lid" style="position: absolute; top: 8px; left: 13px; color: #bbb; font-size: 12pt;" title="Click to toggle lid mode"></div>
         <div style="font-size: 120pt; line-height: 100pt; color: #fff; position: relative;">
@@ -890,6 +896,18 @@ div.pipip { position: absolute; left: 50%; top: 0; width: 1px; height: 100%;
         <div id="loadindic" style="display: none; position: relative; top: -320px; z-index: 2;"><img src="<%=resource%>/loading.gif" style="width: 126px; height: 22px;"></div>
       </div>
     </div>
+    <div id="navcontainer">
+        <ul>
+            <%
+        if context.authuser ~= "root" then
+          write("<li><a href=%q>Login</a></li>" % build_url("admin/lm/home"))
+        end
+        write("<li><a href=%q>Alarms</a></li>" % build_url("admin/lm/alarm"))
+        write("<li><a href=%q>Archive</a></li>" % build_url("admin/lm/archive"))
+        write("<li><a href=%q>Configuration</a></li>" % build_url("admin/lm"))
+        %>
+        </ul>
+    </div>
 </div>
 <div id="graph_opts" style="color: #000;">
     <input type="checkbox" id="showfan" checked="checked"/><label for="showfan">Show fan speed</label>
@@ -912,12 +930,6 @@ div.pipip { position: absolute; left: 50%; top: 0; width: 1px; height: 100%;
     <p></p>
     <div id="alarmclear"></div>
 </div>
-<% 
-if context.authuser ~= "root" then 
-  write("<a href=%q>Login</a> " % build_url("admin/lm/home"))
-end
-write("<a href=%q>Configuration</a>" % build_url("admin/lm"))
-%>
 </body>
 
 </html>
