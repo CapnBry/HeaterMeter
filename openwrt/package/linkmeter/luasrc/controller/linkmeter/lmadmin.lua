@@ -4,9 +4,9 @@ function index()
   local node = entry({"admin", "lm"}, alias("admin", "lm", "conf"), "LinkMeter",60)
   node.index = true
   entry({"admin", "lm", "home"}, template("linkmeter/index"), "Home", 10)
-  entry({"admin", "lm", "conf"}, template("linkmeter/conf"), "Configuration", 20)
-  entry({"admin", "lm", "archive"}, template("linkmeter/archive"), "Archive", 40)
-  entry({"admin", "lm", "fw"}, call("action_fw"), "AVR Firmware", 50)
+  entry({"admin", "lm", "archive"}, template("linkmeter/archive"), "Archive", 30)
+  entry({"admin", "lm", "fw"}, call("action_fw"), "AVR Firmware", 40)
+  entry({"admin", "lm", "conf"}, template("linkmeter/conf"), "Configuration", 50)
   entry({"admin", "lm", "credits"}, template("linkmeter/credits"), "Credits", 60)
 
   entry({"admin", "lm", "stashdb"}, call("action_stashdb"))
@@ -16,9 +16,9 @@ function index()
   
   if node.inreq and nixio.fs.access("/usr/share/linkmeter/alarm") then
     entry({"admin", "lm", "alarm"}, cbi("linkmeter/alarm", {hidesavebtn=true}),
-      "Alarms", 30)
+      "Alarms", 20)
     entry({"admin", "lm", "alarm-scripts"}, form("linkmeter/alarm-scripts"),
-      "Alarm Scripts", 35)
+      "Alarm Scripts", 25)
   end
 
   -- home and lighthome displays have both auth (under admin) and guest pages
