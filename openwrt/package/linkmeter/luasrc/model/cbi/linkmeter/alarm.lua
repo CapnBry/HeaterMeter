@@ -208,6 +208,7 @@ v.description = ESCAPE_HELP
 -- Map Functions
 --
 
+m.apply_on_parse = true
 m.on_save = function (self) 
   saveProbeLm()
 end
