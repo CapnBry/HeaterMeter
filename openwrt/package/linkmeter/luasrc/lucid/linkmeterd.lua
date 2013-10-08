@@ -450,7 +450,6 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
       cm["ip"] = lastIp
       cm["al_probe"] = probeIdx
       cm["al_type"] = alarmType
-      cm["al_type_l"] = alarmType:lower()
       cm["al_thresh"] = thresh
       cm["al_prep"] = alarmType == "H" and "above" or "below"
       cm["pn"] = cm["pn"..probeIdx]

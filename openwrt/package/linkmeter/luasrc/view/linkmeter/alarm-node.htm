@@ -17,12 +17,12 @@
       <input type="text" id="<%=cbid%>.pall" name="<%=cbid%>.pall" class="alval"
         value="<%=self:field("pall"):cfgvalue(section)%>"/>
     </td>
-    <td><input type="checkbox" id="<%=cbid%>.emaill" name="<%=cbid%>.emaill"
-      <%=ifattr(self:field("emaill"):cfgvalue(section), "checked", "checked")%>/></td>
-    <td><input type="checkbox" id="<%=cbid%>.smsl" name="<%=cbid%>.smsl"
-      <%=ifattr(self:field("smsl"):cfgvalue(section), "checked", "checked")%>/></td>
-    <td><input type="text" class="alval" id="<%=cbid%>.spl" name="<%=cbid%>.spl"
-      value="<%=self:field("spl"):cfgvalue(section)%>"/></td>
+    <td><input type="checkbox" name="<%=cbid%>.emailL"
+      <%=ifattr(self:field("emailL"):cfgvalue(section), "checked", "checked")%>/></td>
+    <td><input type="checkbox" name="<%=cbid%>.smsL"
+      <%=ifattr(self:field("smsL"):cfgvalue(section), "checked", "checked")%>/></td>
+    <td><input type="text" class="alval" name="<%=cbid%>.spL"
+      value="<%=self:field("spL"):cfgvalue(section)%>"/></td>
     <td class="pnum<%=section%>">
       <input class="cbi-button alarm-test" type="button"
         data-pnum="<%=section%>" data-altype="L"/>
@@ -39,12 +39,12 @@
       <input type="text" id="<%=cbid%>.palh" name="<%=cbid%>.palh" class="alval"
         value="<%=self:field("palh"):cfgvalue(section)%>"/>
     </td>
-    <td><input type="checkbox" id="<%=cbid%>.emailh" name="<%=cbid%>.emailh"
-      <%=ifattr(self:field("emailh"):cfgvalue(section), "checked", "checked")%>/></td>
-    <td><input type="checkbox" id="<%=cbid%>.smsh" name="<%=cbid%>.smsh"
-      <%=ifattr(self:field("smsh"):cfgvalue(section), "checked", "checked")%>/></td>
-    <td><input type="text" class="alval" id="<%=cbid%>.sph" name="<%=cbid%>.sph"
-      value="<%=self:field("sph"):cfgvalue(section)%>"/></td>
+    <td><input type="checkbox" name="<%=cbid%>.emailH"
+      <%=ifattr(self:field("emailH"):cfgvalue(section), "checked", "checked")%>/></td>
+    <td><input type="checkbox" name="<%=cbid%>.smsH"
+      <%=ifattr(self:field("smsH"):cfgvalue(section), "checked", "checked")%>/></td>
+    <td><input type="text" class="alval" name="<%=cbid%>.spH"
+      value="<%=self:field("spH"):cfgvalue(section)%>"/></td>
     <td class="pnum<%=section%>">
       <input class="cbi-button alarm-test" type="button"
         data-pnum="<%=section%>" data-altype="H"/>

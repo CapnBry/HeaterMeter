@@ -28,14 +28,14 @@ done
 config_load linkmeter
 
 # Setpoint change
-config_get doit alarms sp${al_type_l}${al_probe} 0
+config_get doit alarms sp${al_type}${al_probe} 0
 if [ "$doit" -gt 0 ] ; then
   echo -n "Changing setpoint to $doit... "
   lmclient LMST,sp,$doit
 fi
 
 # Send Email
-config_get_bool doit alarms email${al_type_l}${al_probe} 0
+config_get_bool doit alarms email${al_type}${al_probe} 0
 config_get dest alarms emailtoaddress
 if [ "$doit" -gt 0 -a -n "$dest" ] ; then
   config_get dname alarms emailtoname
@@ -68,7 +68,7 @@ EOF
 fi
 
 # Send SMS
-config_get_bool doit alarms sms${al_type_l}${al_probe} 0
+config_get_bool doit alarms sms${al_type}${al_probe} 0
 config_get dest alarms smstoaddress ""
 if [ "$doit" -gt 0 -a -n "$dest" ] ; then
   config_get msg alarms smsmessage "HeaterMeter Alert"

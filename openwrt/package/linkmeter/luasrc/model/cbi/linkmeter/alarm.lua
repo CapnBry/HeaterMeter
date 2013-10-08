@@ -87,7 +87,7 @@ local function probe_conf_remove(self, section)
   return m:del("alarms", self.option .. section)
 end
 
-local PROBE_CONF = { "emaill", "smsl", "spl", "emailh", "smsh", "sph" }
+local PROBE_CONF = { "emailL", "smsL", "spL", "emailH", "smsH", "spH" }
 for _,kv in ipairs(PROBE_CONF) do
   v = s:option(Value, kv, kv)
   v.cfgvalue = probe_conf_value
