@@ -460,6 +460,7 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
   else
     nixio.syslog("warning", "Alarm stopped")
     alarmType = "null"
+    retVal = 0
   end
 
   unthrottleUpdates() -- force the next update

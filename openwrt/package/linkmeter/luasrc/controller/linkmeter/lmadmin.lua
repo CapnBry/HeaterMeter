@@ -224,9 +224,15 @@ function action_alarm_test()
   local al_type = http.formvalue("type")
   if pnum and al_type then
     require "lmclient"
-    local result, err = LmClient():query("$LMAT,"..pnum..","..al_type)
+    local lmc = LmClient()
+
+    -- trigger alarm
+    local result, err = lmc:query("$LMAT,"..pnum..","..al_type, true)
     http.write(("Testing alarm %s%s... %s"):format(pnum, al_type,
       result or "ERR"))
+
+    -- disable alarms
+    lmc:query("$LMAT,"..pnum)
   else
     luci.dispatcher.error500("Missing pnum or type parameter")
   end
