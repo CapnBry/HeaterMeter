@@ -39,9 +39,10 @@ config_get_bool doit alarms email${al_type}${al_probe} 0
 config_get dest alarms emailtoaddress
 if [ "$doit" -gt 0 -a -n "$dest" ] ; then
   config_get dname alarms emailtoname
-  config_get subject alarms emailsubject "HeterMeter Alert"
-  config_get fname alarms emailfromname "HeterMeter"
-  config_get faddr alarms emailfromaddress "heatermeter@$ip"
+  config_get subject alarms emailsubject "HeaterMeter Alert"
+  config_get fname alarms emailfromname "HeaterMeter"
+  faddr=`grep -i "^from " /etc/msmtprc | cut -d" " -f2`
+  [ -z "$faddr" ] && faddr="heatermeter@$ip"
 
   dname="${dname:+$dname <}$dest${dname:+>}"
   subject=$(eval echo "$subject")
@@ -75,7 +76,7 @@ if [ "$doit" -gt 0 -a -n "$dest" ] ; then
   msg=$(eval echo "$msg")
   echo "Sending SMS to $dest"
 
-  echo $msg | sendmail --from $dest $dest
+  echo $msg | sendmail $dest
 fi
 }
 

@@ -59,8 +59,6 @@ uci commit lucid
 uci -q set linkmeter.alarms='section'
 uci_set_nomodify linkmeter.alarms.emailtoname 'Your Name'
 uci_set_nomodify linkmeter.alarms.emailtoaddress 'chunkylover53@aol.com'
-uci_set_nomodify linkmeter.alarms.emailfromname HeaterMeter
-uci_set_nomodify linkmeter.alarms.emailfromaddress 'heatermeter@$ip'
 uci_set_nomodify linkmeter.alarms.emailsubject '$pn $al_prep $al_thresh'
 uci_set_nomodify linkmeter.alarms.smstoaddress '2125551212@txt.att.net'
 uci_set_nomodify linkmeter.alarms.smsmessage 'ALERT $pn is $al_prep $al_thresh \($pcurr\)'
