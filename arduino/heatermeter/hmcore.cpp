@@ -526,7 +526,7 @@ static void printSciFloat(float f)
   bool neg = f < 0.0f;
   if (neg)
     f *= -1.0f;
-  while (f < 1.0f)
+  while (f < 1.0f && f != 0.0f)
   {
     --exponent;
     f *= 10.0f;
