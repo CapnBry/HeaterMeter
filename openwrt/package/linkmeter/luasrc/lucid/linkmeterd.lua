@@ -9,6 +9,7 @@ local lucid = require "luci.lucid"
 local pairs, ipairs, table, pcall, type = pairs, ipairs, table, pcall, type
 local tonumber, tostring, print, next = tonumber, tostring, print, next
 local collectgarbage, math, bxor = collectgarbage, math, nixio.bit.bxor
+local require = require
 
 module "luci.lucid.linkmeterd"
 
@@ -30,6 +31,8 @@ local segmentCall
 
 local RRD_FILE = uci.cursor():get("lucid", "linkmeter", "rrd_file")
 local RRD_AUTOBACK = "/root/autobackup.rrd"
+-- Must match recv size in lmclient if messages exceed this size
+local LMCLIENT_BUFSIZE = 8192
 
 local function rrdCreate()
   local status, last = pcall(rrd.last, RRD_AUTOBACK)
@@ -286,7 +289,7 @@ end
 
 local function setStateUpdateUnk(vals)
   if vals[2] == 'U' or vals[3] == 'U' then return end
-  local t = math.floor(vals[2] * 10)
+  local t = tonumber(vals[2])
   local r = math.floor(vals[3])
   unkProbe[t] = r
 end
@@ -391,7 +394,7 @@ local function segStateUpdate(line)
     local vals = segSplit(line)
 
     if #vals == 8 then
-      if unkProbe then return setStateUpdateUnk(vals) end
+      if unkProbe then setStateUpdateUnk(vals) end
       
       -- If the time has shifted more than 24 hours since the last update
       -- the clock has probably just been set from 0 (at boot) to actual
@@ -539,6 +542,17 @@ local function serialHandler(polle)
     end -- if validate
   end -- for line
 
+end
+
+local function lmclientSendTo(fd, addr, val)
+  if #val <= LMCLIENT_BUFSIZE then
+    fd:sendto(val, addr)
+  else
+    while val ~= "" do
+      fd:sendto(val:sub(1, LMCLIENT_BUFSIZE), addr)
+      val = val:sub(LMCLIENT_BUFSIZE)
+    end
+  end
 end
 
 local function initHmVars()
@@ -690,24 +704,51 @@ local function segLmConfig()
   return "{" .. table.concat(r, ',') .. "}"
 end
 
+local function unkProbeCurveFit()
+  local lmfit = require "lmfit"
+  local tt = {} -- table of temps
+  local tr = {} -- table of resistances
+  for k,v in pairs(unkProbe) do
+    tr[#tr+1] = v
+    tt[#tt+1] = k
+  end
+
+  local ok, p, status, evals = pcall(lmfit.steinhart, tr, tt)
+  if ok then
+    return
+    ('{"a":%.6e,"b":%.6e,"c":%.6e,"n":%d,"e":%d,"status":%s,"message":"%s"}')
+      :format(p[1], p[2], p[3], #tt, evals, status, lmfit.message(status))
+  else
+    return "ERR: " .. p
+  end
+end
+
+local function unkProbeCsv()
+  local r = { "C,R" }
+  for k,v in pairs(unkProbe) do
+    r[#r+1] = ("%.1f,%d"):format(k,v)
+  end
+
+  return table.concat(r, '\n')
+end
+
 local function segLmUnknownProbe(line)
   local vals = segSplit(line) 
-   if #vals > 0 and vals[1] ~= "0" then
-     unkProbe = {}
-     if serialPolle then serialPolle.fd:write("/set?sp=0R\n") end
-     return "OK"
-   elseif unkProbe then
-     local r = { "C,R" }
-     table.sort(unkProbe);
-     for k,v in pairs(unkProbe) do
-       r[#r+1] = ("%.1f,%d"):format(k/10,v)
-     end
-     unkProbe = nil
-     if serialPolle then serialPolle.fd:write("/reboot\n") end
-     return table.concat(r, '\n')
-   else
-     return "ERR"
-   end
+  if vals[1] == "start" then
+    unkProbe = {}
+    if serialPolle then serialPolle.fd:write("/set?sp=0R\n") end
+    return "OK"
+  elseif vals[1] == "fit" and unkProbe then
+    return unkProbeCurveFit()
+  elseif vals[1] == "csv" and unkProbe then
+    return unkProbeCsv()
+  elseif vals[1] == "stop" and unkProbe then
+    unkProbe = nil
+    if serialPolle then serialPolle.fd:write("/reboot\n") end
+    return "OK"
+  else
+    return "ERR"
+  end
 end
 
 local function segLmAlarmTest(line)
@@ -813,8 +854,7 @@ function prepare_daemon(config, server)
 	if msg == "$LMSS" then
 	  registerStreamingStatus(function (o) return polle.fd:sendto(o, addr) end)
 	else
-          local result = segmentCall(msg)
-          if result then polle.fd:sendto(result, addr) end
+          lmclientSendTo(polle.fd, addr, segmentCall(msg))
         end
       end
     end
