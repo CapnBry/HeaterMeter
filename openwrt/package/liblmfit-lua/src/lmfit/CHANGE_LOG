@@ -1,0 +1,20 @@
+Changes in lmfit-2.4, released 27jul2008:
+- clearer file headers
+- clearer licence (everything has ever been in the public domain)
+- machine-dependent arithmetic constants from float.h (suggestion M. Bydder)
+- minor improvements of comments
+
+Changes in lmfit-2.3, released 5apr2008:
+
+- fixed bug 1817631: replaced confusing variable names in lmmin.c:lm_qrsolv()
+- accepted feature request 1814970: inclusion protection in headers
+- accepted feature request 1814976: cplusplus wrapper in headers
+- fixed bug 1868399: typos in debug messages
+- accepted proposal from Mark Bydder:
+     improved calculation of differences in lmmin, lines 415-417
+- reverted comments in lmmin.c to pure C style
+- improved documentation of interfaces
+
+Changes up to lmfit-2.2, released 20sep2008:
+
+- Sorry, anterior to lmfit-2.3 no change log has been maintained.
