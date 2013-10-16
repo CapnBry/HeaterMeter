@@ -1,16 +1,5 @@
 HeaterMeter Instructions
 
-Web Site 
-http://192.168.1.252/
-
-Booting
-When plugged in, HeaterMeter will connect to your wireless network.  This process will take 1-2 minutes as the security keys are calculated.  During this time, HeaterMeter will display "Connecting to (networkname)".  To prevent HeterMeter from attenpting to connect to the network, use the following procedure
--- Start with power off
--- Press and hold any button
--- Plug in the HeaterMeter
--- Once the display lights up, continue to hold the button for 2-3 seconds
--- Release the button to advance to the Home Status Screen
-
 Home Status Screen
 While on the home status screen, the top line of the LCD contains the pit temperature and fan speed.  The bottom line rotates between active food probes and the HeaterMeter internal temperature probe.  While in Automatic Control Mode, the Up and Down buttons will quickly scroll the bottom line between probes without havting to wait for them to rotate automatically.
 
