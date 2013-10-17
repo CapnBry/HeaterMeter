@@ -398,6 +398,7 @@ void GrillPid::setPidOutput(int value)
 {
   _manualOutputMode = true;
   _pidOutput = constrain(value, 0, 100);
+  LidOpenResumeCountdown = 0;
 }
 
 void GrillPid::setLidOpenDuration(unsigned int value)
