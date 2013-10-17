@@ -104,7 +104,7 @@ static const struct  __eeprom_probe DEFAULT_PROBE_CONFIG PROGMEM = {
   0,  // unused1
   0,  // unused2
   {
-    2.3067434e-4,2.3696596e-4,1.2636414e-7  // Maverick ET-72
+    2.4723753e-4,2.3402251e-4,1.3879768e-7  // Maverick ET-72/73
     //5.36924e-4,1.91396e-4,6.60399e-8 // Maverick ET-732 (Honeywell R-T Curve 4)
     //8.98053228e-4,2.49263324e-4,2.04047542e-7 // Radio Shack 10k
     //1.14061e-3,2.32134e-4,9.63666e-8 // Vishay 10k NTCLE203E3103FB0
