@@ -1,4 +1,4 @@
-// HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net> 
+// HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net>
 #include "Arduino.h"
 #include <avr/eeprom.h>
 #include <avr/wdt.h>

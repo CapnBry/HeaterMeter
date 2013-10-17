@@ -1,4 +1,4 @@
-// HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net> 
+// HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net>
 #include "strings.h"
 #include "rfmanager.h"
 #include "hmcore.h"

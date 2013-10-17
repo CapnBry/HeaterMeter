@@ -1,4 +1,4 @@
-// HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net> 
+// HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net>
 #include "ShiftRegLCD.h"
 #include "hmcore.h"
 
@@ -25,4 +25,3 @@ int main(void)
     hmcoreLoop();
   return 0;
 }
-

@@ -1,4 +1,4 @@
-// HeaterMeter Copyright 2013 Bryan Mayland <bmayland@capnbry.net> 
+// HeaterMeter Copyright 2013 Bryan Mayland <bmayland@capnbry.net>
 
 #define GRILLPID_CALC_TEMP
 #define GRILLPID_SERIAL_ENABLED
@@ -22,7 +22,7 @@
 #define TEMPPROBE_AVG_SMOOTH (2.0f/(1.0f+60.0f))
 #define PIDOUTPUT_AVG_SMOOTH (2.0f/(1.0f+240.0f))
 // Once entering LID OPEN mode, the minimum number of seconds to stay in
-// LID OPEN mode before autoresuming due to temperature returning to setpoint 
+// LID OPEN mode before autoresuming due to temperature returning to setpoint
 #define LIDOPEN_MIN_AUTORESUME 30
 
 // Servo refresh period in usec, 20000 usec = 20ms = 50Hz
