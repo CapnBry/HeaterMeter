@@ -716,7 +716,7 @@ local function unkProbeCurveFit()
   local ok, p, status, evals = pcall(lmfit.steinhart, tr, tt)
   if ok then
     return
-    ('{"a":%.6e,"b":%.6e,"c":%.6e,"n":%d,"e":%d,"status":%s,"message":"%s"}')
+    ('{"a":%.7e,"b":%.7e,"c":%.7e,"n":%d,"e":%d,"status":%s,"message":"%s"}')
       :format(p[1], p[2], p[3], #tt, evals, status, lmfit.message(status))
   else
     return "ERR: " .. p
