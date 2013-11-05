@@ -1,5 +1,5 @@
-<% require "lmclient" %>
 <%+header%>
+<% require "lmclient" %>
 <script language="javascript" src="<%=resource%>/js/jquery-1.9.1.min.js" type="text/javascript"></script>
 <script type="text/javascript">//<![CDATA[
 var configHash = <%= LmClient():query("$LMCF") or "{}" %>;
@@ -574,7 +574,6 @@ time they are restarted.</div>
       <input type="text" maxlength="3" id="fmax" style="width: 2em;"/>%
     <label><input type="checkbox" id="oflag0"/> Invert output</label>
     <label><input type="checkbox" id="oflag2"/> On at max only</label>
-    </ul>
   </div>
   <div class="cbi-value cbi-value-last">
     Servo pulse duration
