@@ -2,6 +2,7 @@ build-cli
 ipch
 Visual Micro
 Debug
+Release
 *.sdf
 *.suo
 *.user
