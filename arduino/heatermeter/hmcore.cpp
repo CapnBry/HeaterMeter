@@ -269,12 +269,14 @@ static void storeProbeTypeOrMap(unsigned char probeIndex, unsigned char probeTyp
 
 static void storeMinFanSpeed(unsigned char minFanSpeed)
 {
+  minFanSpeed = constrain(minFanSpeed, 0, 100);
   pid.setMinFanSpeed(minFanSpeed);
   config_store_byte(minFanSpeed, minFanSpeed);
 }
 
 static void storeMaxFanSpeed(unsigned char maxFanSpeed)
 {
+  maxFanSpeed = constrain(maxFanSpeed, 0, 100);
   pid.setMaxFanSpeed(maxFanSpeed);
   config_store_byte(maxFanSpeed, maxFanSpeed);
 }
@@ -299,6 +301,7 @@ static void storeInvertPidOutput(unsigned char pidOutputFlags)
 
 void storeLcdBacklight(unsigned char lcdBacklight)
 {
+  lcdBacklight = constrain(lcdBacklight, 0, 100);
   setLcdBacklight(lcdBacklight);
   config_store_byte(lcdBacklight, lcdBacklight);
 }
