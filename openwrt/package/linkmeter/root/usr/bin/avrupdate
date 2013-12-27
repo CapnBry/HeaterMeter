@@ -57,7 +57,28 @@ platform_setup() {
     platform_setup_DEFAULT
 }
 
-HEX="$1"
+DCONTROL=1
+HEX=""
+
+while getopts ":dU:" opt ; do
+  case $opt in
+    d)
+      DCONTROL=0
+      ;;
+    U)
+      HEX=$OPTARG
+      ;;
+    :)
+      echo Option -$OPTARG requires an argument
+      exit 1
+      ;;
+    \?)
+      echo Unknown option -$OPTARG
+      ;;
+  esac
+done
+
+[ -z "$HEX" ] && HEX=$(eval echo \$$OPTIND)
 
 if [ "${HEX:0:7}" = "http://" ] ; then
   wget -O/tmp/hm.hex $HEX 2>&1
@@ -68,9 +89,11 @@ if [ "${HEX:0:7}" = "http://" ] ; then
   HEX="/tmp/hm.hex"
 fi
 
-echo -n "Stopping LinkMeter "
-lmclient LMDC,0
-echo
+[ $DCONTROL -ne 0 ] && {
+  echo -n "Stopping LinkMeter "
+  lmclient LMDC,0
+  echo
+}
 
 platform_setup
 
@@ -92,8 +115,10 @@ if [ $EXITCODE -eq 0 ] ; then
   fi
 fi
 
-echo -n "Starting LinkMeter "
-lmclient LMDC,1
+[ $DCONTROL -ne 0 ] && {
+  echo -n "Starting LinkMeter "
+  lmclient LMDC,1
+}
 
 exit $EXITCODE
 
