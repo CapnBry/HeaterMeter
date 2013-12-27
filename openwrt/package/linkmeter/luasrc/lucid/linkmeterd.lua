@@ -783,7 +783,7 @@ local function lmdTick()
     if serialPolle and not hmConfig then
       nixio.syslog("warning", "No response from HeaterMeter, running avrupdate")
       lmdStop()
-      if os.execute("/usr/bin/avrupdate") ~= 0 then
+      if os.execute("/usr/bin/avrupdate -d") ~= 0 then
         nixio.syslog("err", "avrupdate failed")
       else
         nixio.syslog("info", "avrupdate OK")
