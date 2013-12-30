@@ -116,14 +116,26 @@ void TempProbe::setProbeType(unsigned char probeType)
   TemperatureAvg = NAN;
 }
 
+#define DIFFMAX(x,y,d) ((x - y + d) <= (d*2U))
 void TempProbe::addAdcValue(unsigned int analog_temp)
 {
-  if (analog_temp == 0) // >= MAX is reduced in readTemp()
+  // any read is 0, data invalid (>= MAX is reduced in readTemp())
+  if (analog_temp == 0)
     _accumulator = 0;
+
+  // this is the first add, store the value directly
   else if (_accumulatedCount == 0)
     _accumulator = analog_temp;
+
+  // one of the reads is more than 6.25% off the average, data invalid
+  else if (!DIFFMAX(analog_temp, _accumulator / _accumulatedCount,
+    (1 << (6 + TEMP_OVERSAMPLE_BITS))))
+    _accumulator = 0;
+
+  // else normal add
   else if (_accumulator != 0)
     _accumulator += analog_temp;
+
   ++_accumulatedCount;
 }
 
