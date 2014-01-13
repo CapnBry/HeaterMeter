@@ -766,7 +766,7 @@ local function segLmAlarmTest(line)
       math.floor(tonumber(JSON_TEMPLATE[15+(probeIdx*11)]) or 0)
 
     local pid = broadcastAlarm(probeIdx, alarmType, thresh)
-    return pid
+    return "OK " .. pid
   else
     return "ERR"
   end
