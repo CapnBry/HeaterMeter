@@ -141,10 +141,8 @@ const uint8_t drssi_dec_tree[][2] = {
 };
 
 void rf12_spiInit () {
-    bitSet(SS_PORT, SS_BIT);
     bitSet(SS_DDR, SS_BIT);
-    digitalWrite(SPI_SS, 1);
-    pinMode(SPI_SS, OUTPUT);
+    bitSet(SS_PORT, SS_BIT);
     pinMode(SPI_MOSI, OUTPUT);
     pinMode(SPI_MISO, INPUT);
     pinMode(SPI_SCK, OUTPUT);
@@ -158,8 +156,7 @@ void rf12_spiInit () {
     // ATtiny
     USICR = bit(USIWM0);
 #endif    
-    pinMode(RFM_IRQ, INPUT);
-    digitalWrite(RFM_IRQ, 1); // pull-up
+    pinMode(RFM_IRQ, INPUT_PULLUP);
 }
 
 static uint8_t rf12_byte (uint8_t out) {
