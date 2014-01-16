@@ -79,7 +79,7 @@ $HMLB,LCDBacklight,LCDHomeMode,LED0,LED1,LED2,LED3
 Lid Detect Parameters
 $HMLD,Offset Percent,Lid Duration
 Debug Log Message
-$HMLG,Level,Message
+$HMLG,Message
 PID Coefficients
 $HMPD,PidB,PidP,PidI,PidD 
 Probe Names

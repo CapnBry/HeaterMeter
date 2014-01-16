@@ -1148,7 +1148,7 @@ static void serial_doWork(void)
 /* Starts a debug log output message line, end with Debug_end() */
 void Debug_begin(void)
 {
-    print_P(PSTR("HMLG" CSV_DELIMITER "0" CSV_DELIMITER));
+    print_P(PSTR("HMLG" CSV_DELIMITER));
 }
 
 static void newTempsAvail(void)
