@@ -176,8 +176,7 @@ end
 local lastLogMessage
 local function stsLogMessage()
   local vals = segSplit(lastLogMessage)
-  return ('event: log\ndata: {"level": %s, "message": "%s"}\n\n')
-    :format(vals[1], vals[2])
+  return ('event: log\ndata: {"msg": "%s"}\n\n'):format(vals[1])
 end
 
 local function segLogMessage(line)
