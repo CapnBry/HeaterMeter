@@ -12,6 +12,7 @@
 
 #include "bigchars.h"
 #include "ledmanager.h"
+#include "adc_noise.h"
 
 static TempProbe probe0(PIN_PIT);
 static TempProbe probe1(PIN_FOOD1);
@@ -1255,7 +1256,10 @@ void hmcoreLoop(void)
 
   Menus.doWork();
   if (pid.doWork())
+  {
+    testNoise();
     newTempsAvail();
+  }
   tone_doWork();
   ledmanager.doWork();
 }
