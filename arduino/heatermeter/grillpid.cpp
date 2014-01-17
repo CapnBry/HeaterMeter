@@ -342,17 +342,12 @@ inline void GrillPid::commitFanOutput(void)
   unsigned char newBlowerOutput = mappct(fanSpeed, 0, 255);
   analogWrite(_fanPin, newBlowerOutput);
 
-#if defined(GRILLPID_FAN_BOOST_ENABLED)
   // If going from 0% to non-0%, turn the blower fully on for one period
   // to get it moving
   if (_lastBlowerOutput == 0 && newBlowerOutput != 0)
-  {
     digitalWrite(_fanPin, HIGH);
-    _fanBoostActive = true;
-  }
 
   _lastBlowerOutput = newBlowerOutput;
-#endif
 }
 
 inline void GrillPid::commitServoOutput(void)
@@ -456,23 +451,14 @@ boolean GrillPid::doWork(void)
     return false;
   _lastWorkMillis = millis();
 
-#if defined(GRILLPID_FAN_BOOST_ENABLED)
-  // If boost has been active for one period (TEMP_MEASURE_PERIOD / TEMP_AVG_COUNT
-  // milliseconds) disable it
-  if (_fanBoostActive)
-  {
-    // Really we just need to turn the OVF interupt back on but there's no
-    // function for that, so re-write the proper blower output
-    analogWrite(_fanPin, _lastBlowerOutput);
-    _fanBoostActive = false;
-  }
-#endif
-
 #if defined(GRILLPID_CALC_TEMP)
+  // Disable the blower while reading to lessen noise
+  digitalWrite(_fanPin, LOW);
   for (unsigned char i=0; i<TEMP_COUNT; i++)
     if (Probes[i]->getProbeType() == PROBETYPE_INTERNAL ||
       Probes[i]->getProbeType() == PROBETYPE_TC_ANALOG)
       Probes[i]->readTemp();
+  analogWrite(_fanPin, _lastBlowerOutput);
   
   ++_periodCounter;
   if (_periodCounter < TEMP_AVG_COUNT)
