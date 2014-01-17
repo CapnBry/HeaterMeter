@@ -8,6 +8,7 @@
 
 #include "strings.h"
 #include "grillpid.h"
+#include "adc_noise.h"
 
 extern const GrillPid pid;
 
@@ -454,6 +455,7 @@ boolean GrillPid::doWork(void)
 #if defined(GRILLPID_CALC_TEMP)
   // Disable the blower while reading to lessen noise
   digitalWrite(_fanPin, LOW);
+  if (_periodCounter == 0) testNoise();
   for (unsigned char i=0; i<TEMP_COUNT; i++)
     if (Probes[i]->getProbeType() == PROBETYPE_INTERNAL ||
       Probes[i]->getProbeType() == PROBETYPE_TC_ANALOG)
