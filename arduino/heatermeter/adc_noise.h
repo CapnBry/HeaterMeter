@@ -16,9 +16,9 @@ void testNoise(void)
   uint16_t high = 0;
   uint16_t low = 1024;
   uint32_t avg = 0;
-  uint16_t arr[16];
+  uint8_t arr[16];
   memset(arr, 0, sizeof(arr));
-  for (uint16_t i=0; i<512; ++i)
+  for (uint8_t i=0; i<255; ++i)
   {
     while (_adcBusy) { };
     _adcBusy = true;
@@ -32,21 +32,21 @@ void testNoise(void)
     if (adc < low) low = adc;
   }
   ADCSRA &= ~(bit(ADATE) | bit(ADIE));
-  avg /= 512;
-  Debug_begin();
-    SerialX.print("Noise lah=");
-    SerialX.print(low, DEC);
+
+  SerialX.print("HMLG,Noise lah=");
+  SerialX.print(low, DEC);
+  SerialX.print(' ');
+  SerialX.print(avg / 255.0f, 1);
+  SerialX.print(' ');
+  SerialX.print(high, DEC);
+  SerialX.print(' ');
+  for (uint8_t j=0; j<16; ++j)
+  {
     SerialX.print(' ');
-    SerialX.print(avg, DEC);
-    SerialX.print(' ');
-    SerialX.print(high, DEC);
-    SerialX.print(' ');
-    for (uint8_t j=0; j<16; ++j)
-    {
-      SerialX.print(' ');
-      SerialX.print(arr[j], DEC);
-    }
-  Debug_end();
+    SerialX.print(arr[j], DEC);
+  }
+  Serial_nl();
+
   pid.Probes[3]->Temperature = high;
 }
 #else
