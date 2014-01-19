@@ -8,7 +8,6 @@
 
 #include "strings.h"
 #include "grillpid.h"
-#include "adc_noise.h"
 
 extern const GrillPid pid;
 
@@ -146,6 +145,10 @@ void TempProbe::readTemp(void)
   unsigned int oversampled_adc = 0;
   for (unsigned char i=OVERSAMPLE_COUNT[TEMP_OVERSAMPLE_BITS]; i; --i)
   {
+    // analogRead takes about 0.11ms so don't take any readings during the flip
+    if (pid.getFanPin() == 3 || pid.getFanPin() == 11)
+      while (TCNT2 < 30 || TCNT2 > 230) { }
+
     unsigned int adc = analogRead(_pin);
     // If we get *any* analogReads that are 0 or 1023, the measurement for 
     // the entire period is invalidated, so set the _accumulator to 0
@@ -344,7 +347,7 @@ inline void GrillPid::commitFanOutput(void)
   analogWrite(_fanPin, newBlowerOutput);
 
   // If going from 0% to non-0%, turn the blower fully on for one period
-  // to get it moving
+  // to get it moving (boost mode)
   if (_lastBlowerOutput == 0 && newBlowerOutput != 0)
     digitalWrite(_fanPin, HIGH);
 
@@ -445,6 +448,8 @@ void GrillPid::status(void) const
 #endif
 }
 
+#include "adc_noise.h"
+
 boolean GrillPid::doWork(void)
 {
   unsigned int elapsed = millis() - _lastWorkMillis;
@@ -453,13 +458,13 @@ boolean GrillPid::doWork(void)
   _lastWorkMillis = millis();
 
 #if defined(GRILLPID_CALC_TEMP)
-  // Disable the blower while reading to lessen noise
-  digitalWrite(_fanPin, LOW);
   if (_periodCounter == 0) testNoise();
   for (unsigned char i=0; i<TEMP_COUNT; i++)
     if (Probes[i]->getProbeType() == PROBETYPE_INTERNAL ||
       Probes[i]->getProbeType() == PROBETYPE_TC_ANALOG)
       Probes[i]->readTemp();
+
+  // Re-set the PWM output, in case we enabled boost mode last loop
   analogWrite(_fanPin, _lastBlowerOutput);
   
   ++_periodCounter;
