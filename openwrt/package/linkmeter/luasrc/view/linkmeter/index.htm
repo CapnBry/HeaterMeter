@@ -402,8 +402,8 @@ function graphClicked(event, pos, item)
 
                 // Save the series with the closest Y point to where the mouse is 
                 if (srsClosestY == -1 ||
-                    Math.abs(srsData[firstPastIdx][1] - pos.y2) <
-                    Math.abs(graphData[srsClosestY].data[srsClosestYIdx][1] - pos.y2))
+                    Math.abs(srsData[firstPastIdx][1] - pos.y) < 
+                    Math.abs(graphData[srsClosestY].data[srsClosestYIdx][1] - pos.y))
                 {
                     srsClosestY = srs;
                     srsClosestYIdx = firstPastIdx;
@@ -418,7 +418,7 @@ function graphClicked(event, pos, item)
     {
         if (srsClosestY != -1)
         {
-            var axisY = lastPlot.getYAxes()[1];
+            var axisY = lastPlot.getYAxes()[0];
             var valY = graphData[srsClosestY].data[srsClosestYIdx][1];
             pos.pageY = axisY.p2c(valY) + 
                 lastPlot.offset().top + lastPlot.getPlotOffset().top;
