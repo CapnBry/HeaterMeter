@@ -25,13 +25,13 @@ var lastLidOpen = -1;
 var mapJson = [6,5,4,3];
 var graphLoaded = false;
 var graphData =  [
-        { label: "", color: "#6cf", lines: { lineWidth: 1, fill: true }, shadowSize: 0, data: [] },  // fanspeed
-        { label: "", color: "#fd9", lines: { lineWidth: 1, fill: true }, shadowSize: 0, data: [] },  // lidopen
-        { label: "Set", color: "rgba(255,0,0,0.8)", lines: { lineWidth: 1 }, shadowSize: 0, yaxis: 2, data: [] },
-        { label: "Amb", color: "#789", lines: { show: true }, yaxis: 2, data: [] },
-        { label: "Food2", color: "#297", lines: { show: true }, yaxis: 2, data: [] },
-        { label: "Food1", color: "#6c3", lines: { show: true }, yaxis: 2, data: [] },
-        { label: "Pit", color: "#e73", lines: { lineWidth: 3 }, yaxis: 2, data: [] }
+        { label: "", color: "#6cf", lines: { lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // fanspeed
+        { label: "", color: "#fd9", lines: { lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // lidopen
+        { label: "Set", color: "rgba(255,0,0,0.8)", lines: { lineWidth: 1 }, shadowSize: 0, data: [] },
+        { label: "Amb", color: "#789", lines: { show: true }, data: [] },
+        { label: "Food2", color: "#297", lines: { show: true }, data: [] },
+        { label: "Food1", color: "#6c3", lines: { show: true }, data: [] },
+        { label: "Pit", color: "#e73", lines: { lineWidth: 3 }, data: [] }
     ];
 
     var graphOpts = {
@@ -45,7 +45,7 @@ var graphData =  [
         xaxis: { show: true, mode: "time", timezone: "browser",
           font: { color: "#ccc" } },
         yaxis: { show: true, ticks: 10, font: { color: "#ccc" } },
-        yaxes: [ { min: 0, max: 100 }, { position: "right" } ],
+        yaxes: [ { }, { position: "right", min: 0, max: 100 } ],
         grid: { clickable: true, hoverable: true, color: "#ccc",
           borderColor: "#545454" }
     };
