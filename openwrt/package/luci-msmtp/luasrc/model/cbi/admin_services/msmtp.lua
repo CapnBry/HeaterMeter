@@ -137,7 +137,7 @@ local function buildAccountTabs()
 
     fld = s:taboption(aname, Flag, aname .. ".tls_certcheck", "Verify server certificate",
       "Only check if you've created a TLS trust file")
-    fld.default = "on"
+    fld.default = "off"
     fld.disabled = "off"
     fld.enabled = "on"
     fld:depends(dep)
