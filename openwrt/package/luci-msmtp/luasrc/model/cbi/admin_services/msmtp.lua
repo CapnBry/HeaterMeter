@@ -61,6 +61,10 @@ local m = SimpleForm("msmtp", "SMTP (msmtp) Email Client",
   end
   function m.set(self, section, option, value)
     local acct, opt = OPT_SPLIT(option)
+    if opt == "account" then
+      -- restrict msmtp account name to only alphanumeric
+      value = value:gsub("%W", "")
+    end
     conf[acct][opt] = value
   end
 
