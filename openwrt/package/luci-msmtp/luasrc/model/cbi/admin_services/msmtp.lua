@@ -87,8 +87,8 @@ local function buildAccountTabs()
     local fld, dep
     local depbase = s.config .. "." .. s.section .. "."
 
-    fld = s:taboption(aname, Value, aname .. ".account", "Account name",
-      "Use 'default' if this is the only account")
+    fld = s:taboption(aname, Value, aname .. ".account", "Configuration name",
+      "Use 'default' if this is the only configuration")
     fld.optional = true
     fld.rmempty = false
 
