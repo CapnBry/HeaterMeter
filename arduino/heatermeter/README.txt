@@ -44,7 +44,7 @@ WiShield Wireless parameters are stored in wishieldconf.h.
 Note: No url can exceed a maximum length of 63 bytes
 
 Both Serial and Web
-/set?sp=AU - Set the setpoint to integer A with optional units U. Supported Units are (F)ahrenheit , (C)elcius, and (R)esistance.
+/set?sp=AU - Set the setpoint to integer A with optional units U. Supported Units are (A)DC Raw, (F)ahrenheit , (C)elcius, and (R)esistance. Setting the setpoint to a negative value switches to "manual mode" where the output percentage is set directly (-0 for 0%).
 /set?pidA=B - Tune PID parameter A to value float B.  A can be b (bias), p (proportional), i (integral), or d (derivative)
 /set?pnA=B - Set probe name A to string B.  B does not support URL encoding at this time.  Probe numbers are 0=pit 1=food1 2=food2 3=ambient
 /set?po=A,B,C,D - Set probe offsets to integers A, B, C, and D. Offsets can be omitted to retain their current values, such as po=,,,-2 to only set probe number 3's offset to -2
