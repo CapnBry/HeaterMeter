@@ -124,7 +124,10 @@ $(window).load(function ()
             connectionSuccess(o);
         });
         source.addEventListener("log", function (e) {
-            console.log(e.data);
+            if (e.data.substr(9, 6) == "NOISE ")
+                graphNoise(e.data);
+            else
+                console.log(e.data);
         });
         source.addEventListener("alarm", function (e) {
             var o = JSON.parse(e.data);
@@ -209,6 +212,33 @@ function pidIntEvent(o)
   $("#pivi").html(o.i.toFixed(1) + "%"); pidIntBar("#pibi", o.i);
   $("#pivd").html(o.d.toFixed(1) + "%"); pidIntBar("#pibd", o.d);
   $("#pivdt").html(o.t.toFixed(2) + "&deg;");
+}
+
+function graphNoise(s)
+{
+  var FREQ = 16000000 / 128 / 13;
+  var vals = s.substr(15, s.length - 18).split(' ');
+  var sorted = vals.slice(0).sort(function(a,b) {return a - b;});
+  var avg = 0;
+  for (var i=0; i<vals.length; ++i)
+  {
+    vals[i] = [i * 1000 / FREQ, parseInt(vals[i])];
+    avg += vals[i][1];
+  }
+  avg /= vals.length;
+  var MAX = (vals.length - 1) * 1000 / FREQ;
+  var median = sorted[Math.floor(sorted.length/2)];
+  var marray = [[0,median], [MAX,median]];
+  var aarray = [[0,avg], [MAX,avg]];
+  $.plot("#noisegraph", [ vals,
+      { label: "Median", data: marray },
+      { label: "Average", data: aarray }
+    ], { legend: { backgroundColor: "#333" },
+      xaxis: { font: { color: "#ccc" }, ticks: 16 },
+      yaxis: { font: { color: "#ccc" }},
+      grid: { color: "#999" } }
+  );
+  $("#noisegraph").show();
 }
 
 function legendClicked()
@@ -891,6 +921,8 @@ div.pipip { position: absolute; left: 50%; top: 0; width: 1px; height: 100%;
 <% end %>
       <div style="position: relative;">
         <div id="png" style="display: none; height: 350px; margin: 8px auto 0px auto;"><img id="dl" alt="<%=fshort%>"></div>
+        <div id="noisegraph" style="height: 256px; width: 1024px; margin: 8px au
+to 0px auto; display: none;"></div>
         <div id="graph" style="height: 350px; width: 700px; margin: 8px auto 0px auto;"></div>
         <div id="graph_overview" style="height: 90px; width: 700px; margin-left: auto; margin-right: auto;"></div>
         <div id="loadindic" style="display: none; position: relative; top: -320px; z-index: 2;"><img src="<%=resource%>/loading.gif" style="width: 126px; height: 22px;"></div>
