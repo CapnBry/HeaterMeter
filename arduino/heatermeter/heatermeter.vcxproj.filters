@@ -58,6 +58,12 @@
     <ClInclude Include="grillpid_conf.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="econfig.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="adc_noise.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="hmcore.cpp">
@@ -79,6 +85,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="grillpid.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="econfig.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
