@@ -15,6 +15,8 @@
 
 #define STEINHART_COUNT 4
 
+#define NOISEDUMP_PIN 5
+
 struct __eeprom_probe
 {
   char name[PROBE_NAME_SIZE];
@@ -67,6 +69,8 @@ private:
 public:
   TempProbe(const unsigned char pin);
 
+  const unsigned char getPin(void) const { return _pin; }
+
   /* Configuration */  
   // Probe Type
   unsigned char getProbeType(void) const { return _probeType; }
@@ -111,6 +115,9 @@ public:
 #define PIDFLAG_FAN_ONLY_MAX  2
 // Servo opens (to max) when pidOutput>0 (any output)
 #define PIDFLAG_SERVO_ANY_MAX 3
+
+// oversampled analogRead from current freerunning ADC
+unsigned int analogReadOver(unsigned char pin, unsigned char bits);
 
 class GrillPid
 {

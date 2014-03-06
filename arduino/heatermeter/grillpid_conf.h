@@ -10,7 +10,7 @@
 #define TEMP_AMB    3
 #define TEMP_COUNT  4
 
-// Use oversample/decimation to increase ADC resolution to 2^(10+n) bits n=[0..3]
+// Use oversample/decimation to increase ADC resolution to 2^(10+n) bits n=[0..6]
 #define TEMP_OVERSAMPLE_BITS 3
 
 // The time (ms) of the measurement period

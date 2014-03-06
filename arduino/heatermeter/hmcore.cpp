@@ -872,6 +872,12 @@ static void setTempParam(unsigned char idx, int val)
     case 0:
       g_LogPidInternals = val;
       break;
+#if defined(NOISEDUMP_PIN)
+    case 1:
+      extern volatile unsigned char g_NoisePin;
+      g_NoisePin = val;
+      break;
+#endif
   }
 }
 
