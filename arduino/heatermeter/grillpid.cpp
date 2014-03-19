@@ -15,8 +15,18 @@ extern const GrillPid pid;
 // For this calculation to work, ccpm()/8 must return a round number
 #define uSecToTicks(x) ((unsigned int)(clockCyclesPerMicrosecond() / 8) * x)
 
-// LERP percentage o into the unsigned range [A,B]. B - A must be < 6,553
+// LERP percentage o into the unsigned range [A,B]. B - A must be < 655
 #define mappct(o, a, b)  (((b - a) * (unsigned int)o / 100) + a)
+
+#define DIFFMAX(x,y,d) ((x - y + d) <= (d*2U))
+
+//#define GRILLPID_FAN_MANUALPWM
+#if defined(GRILLPID_FAN_MANUALPWM)
+ISR(TIMER1_COMPA_vect)
+{
+  digitalWrite(pid.getFanPin(), LOW);
+}
+#endif
 
 #if defined(GRILLPID_SERVO_ENABLED)
 ISR(TIMER1_COMPB_vect)
@@ -30,14 +40,19 @@ ISR(TIMER1_COMPB_vect)
   // Otherwise this is the end of the refresh period, start again
   else
   {
-    digitalWrite(pid.getServoPin(), HIGH);
+#if defined(GRILLPID_FAN_MANUALPWM)
+    if (OCR1A > 0)
+      digitalWrite(pid.getFanPin(), HIGH);
+#endif
     OCR1B = pid.getServoOutput();
     TCNT1 = 0;
+    //if (OCR1B > 0)
+    //  digitalWrite(pid.getServoPin(), HIGH);
   }
 }
 #endif
 
-#define ADC_DYNAMIC_RANGE
+//#define ADC_DYNAMIC_RANGE
 
 static struct tagAdcState
 {
@@ -71,7 +86,7 @@ ISR(ADC_vect)
   time because it causes a dip in the power. The ADC scaler and the TIMER2
   scaler are both 128 so their clock counts are the same. The ADC takes
   13 clocks to measure. */
-  //if (TCNT2 < 0)
+  //if (TCNT2 < 17)
   //  return;
 
   unsigned int adc = ADC;
@@ -248,7 +263,6 @@ void TempProbe::setProbeType(unsigned char probeType)
   TemperatureAvg = NAN;
 }
 
-#define DIFFMAX(x,y,d) ((x - y + d) <= (d*2U))
 void TempProbe::addAdcValue(unsigned int analog_temp)
 {
   _accumulator = analog_temp;
@@ -340,7 +354,9 @@ void TempProbe::setTemperatureC(float T)
 GrillPid::GrillPid(const unsigned char fanPin, const unsigned char servoPin) :
     _fanPin(fanPin), _servoPin(servoPin), _periodCounter(0x80), _units('F'), PidOutputAvg(NAN)
 {
-  //pinMode(_fanPin, OUTPUT); // handled by analogWrite
+#if defined(GRILLPID_FAN_MANUALPWM)
+  pinMode(_fanPin, OUTPUT); // handled by analogWrite if automatic
+#endif
 #if defined(GRILLPID_SERVO_ENABLED)
   pinMode(_servoPin, OUTPUT);
 #endif
@@ -356,6 +372,17 @@ void GrillPid::init(void) const
   TCCR1A = 0;
   TCCR1B = bit(CS11);
   TIMSK1 = bit(OCIE1B);
+#endif
+#if defined(GRILLPID_FAN_MANUALPWM)
+  TIMSK1 |= bit(OCIE1A);
+#else
+  // TIMER2 488Hz fast PWM
+  TCCR2A |= bit(WGM21);
+  TCCR2B = bit(CS22) | bit(CS20);
+  // 7khz
+  //TCCR2B = bit(CS21);
+  // 61Hz
+  //TCCR2B = bit(CS22) | bit(CS21) | bit(CS20);
 #endif
   // Initialize ADC for free running mode at 125kHz
   ADMUX = (DEFAULT << 6) | 0;
@@ -445,12 +472,16 @@ inline void GrillPid::commitFanOutput(void)
     fanSpeed = _maxFanSpeed - fanSpeed;
 
   unsigned char newBlowerOutput = mappct(fanSpeed, 0, 255);
+#if defined(GRILLPID_FAN_MANUALPWM)
+  OCR1A = fanSpeed * 400;
+#else
   analogWrite(_fanPin, newBlowerOutput);
 
   // If going from 0% to non-0%, turn the blower fully on for one period
   // to get it moving (boost mode)
   if (_lastBlowerOutput == 0 && newBlowerOutput != 0)
     digitalWrite(_fanPin, HIGH);
+#endif
 
   _lastBlowerOutput = newBlowerOutput;
 }
@@ -557,8 +588,11 @@ boolean GrillPid::doWork(void)
   _lastWorkMillis = millis();
 
 #if defined(GRILLPID_CALC_TEMP) 
+#if defined(GRILLPID_FAN_MANUALPWM)
+#else
   // Re-set the PWM output, in case we enabled boost mode last loop
   analogWrite(_fanPin, _lastBlowerOutput);
+#endif
   
   //SerialX.print("HMLG,ADC ");
   for (unsigned char i=0; i<TEMP_COUNT; i++)
