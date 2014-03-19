@@ -146,7 +146,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="econfig.cpp" />
+    <ClCompile Include="econfig.c" />
     <ClCompile Include="grillpid.cpp" />
     <ClCompile Include="hmcore.cpp" />
     <ClCompile Include="hmmenus.cpp" />

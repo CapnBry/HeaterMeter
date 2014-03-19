@@ -87,7 +87,7 @@
     <ClCompile Include="grillpid.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="econfig.cpp">
+    <ClCompile Include="econfig.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
