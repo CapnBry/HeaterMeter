@@ -20,7 +20,8 @@ extern const GrillPid pid;
 #if defined(GRILLPID_SERVO_ENABLED)
 ISR(TIMER1_CAPT_vect)
 {
-  digitalWrite(pid.getServoPin(), HIGH);
+  if (OCR1B > 0)
+    digitalWrite(pid.getServoPin(), HIGH);
 }
 
 ISR(TIMER1_COMPB_vect)
