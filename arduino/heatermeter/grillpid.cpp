@@ -140,7 +140,7 @@ void TempProbe::readTemp(void)
   {
     // analogRead takes about 0.11ms so don't take any readings during the flip
     if (pid.getFanPin() == 3 || pid.getFanPin() == 11)
-      while (TCNT2 < 30 || TCNT2 > 230) { }
+      while (TCNT2 < 16 || TCNT2 > 240) { }
 
     unsigned int adc = analogRead(_pin);
     // If we get *any* analogReads that are 0 or 1023, the measurement for 
@@ -256,6 +256,9 @@ void GrillPid::init(void) const
   TCCR1B = bit(WGM13) | bit(WGM12) | bit(CS11);
   TIMSK1 = bit(ICIE1) | bit(OCIE1B);
 #endif
+  // TIMER2 488Hz Fast PWM
+  TCCR2A = bit(WGM21) | bit(WGM20);
+  TCCR2B = bit(CS22) | bit(CS20);
 }
 
 unsigned int GrillPid::countOfType(unsigned char probeType) const
