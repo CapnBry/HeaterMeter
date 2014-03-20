@@ -12,6 +12,7 @@
 
 #include "bigchars.h"
 #include "ledmanager.h"
+#include "tone_4khz.h"
 
 static TempProbe probe0(PIN_PIT);
 static TempProbe probe1(PIN_FOOD1);
@@ -328,7 +329,7 @@ static void toneEnable(boolean enable)
   else
   {
     tone_idx = 0xff;
-    noTone(PIN_ALARM);
+    tone4khz_end();
     setLcdBacklight(g_LcdBacklight);
   }
 #endif /* PIEZO_HZ */
@@ -992,7 +993,7 @@ static void tone_doWork(void)
     if (tone_idx % 2 == 0)
     {
       dur = pgm_read_byte(&tone_durs[tone_idx]) * 10;
-      tone(PIN_ALARM, PIEZO_HZ, dur);
+      tone4khz_begin(PIN_ALARM, dur);
       setLcdBacklight(0x80 | 0);
     }
     else

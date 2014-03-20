@@ -18,21 +18,14 @@ extern const GrillPid pid;
 #define mappct(o, a, b)  (((b - a) * (unsigned int)o / 100) + a)
 
 #if defined(GRILLPID_SERVO_ENABLED)
+ISR(TIMER1_CAPT_vect)
+{
+  digitalWrite(pid.getServoPin(), HIGH);
+}
+
 ISR(TIMER1_COMPB_vect)
 {
-  // < Servo refresh means time to turn off output
-  if (TCNT1 < uSecToTicks(SERVO_REFRESH))
-  {
-    digitalWrite(pid.getServoPin(), LOW);
-    OCR1B = uSecToTicks(SERVO_REFRESH);
-  }
-  // Otherwise this is the end of the refresh period, start again
-  else
-  {
-    digitalWrite(pid.getServoPin(), HIGH);
-    OCR1B = pid.getServoOutput();
-    TCNT1 = 0;
-  }
+  digitalWrite(pid.getServoPin(), LOW);
 }
 #endif
 
@@ -253,13 +246,15 @@ GrillPid::GrillPid(const unsigned char fanPin, const unsigned char servoPin) :
 void GrillPid::init(void) const
 {
 #if defined(GRILLPID_SERVO_ENABLED)
-  // Normal counting, 8 prescale, INT on COMPB
+  // CTC mode with ICR1 as TOP, 8 prescale, INT on COMPB and TOP (ICR
+  // Period set to SERVO_REFRESH
   // If GrillPid is constructed statically this can't be done in the constructor
   // because the Arduino core init is called after the constructor and will set
   // the values back to the default
+  ICR1 = uSecToTicks(SERVO_REFRESH);
   TCCR1A = 0;
-  TCCR1B = bit(CS11);
-  TIMSK1 = bit(OCIE1B);
+  TCCR1B = bit(WGM13) | bit(WGM12) | bit(CS11);
+  TIMSK1 = bit(ICIE1) | bit(OCIE1B);
 #endif
 }
 
@@ -368,8 +363,7 @@ inline void GrillPid::commitServoOutput(void)
 
   // Get the output speed in 10x usec by LERPing between min and max
   output = mappct(output, _minServoPos, _maxServoPos);
-  // Servo output is actually set on the next interrupt cycle
-  _servoOutput = uSecToTicks(10U * output);
+  OCR1B = uSecToTicks(10U * output);
 #endif
 }
 

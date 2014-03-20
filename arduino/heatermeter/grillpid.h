@@ -129,7 +129,6 @@ private:
   unsigned int _lidOpenDuration;
   // Last values used in PID calculation = B + P + I + D;
   float _pidCurrent[4];
-  unsigned int _servoOutput;
   char _units;
   unsigned char _maxFanSpeed;
   unsigned char _minFanSpeed;
@@ -192,8 +191,6 @@ public:
   void setPidOutput(int value);
   // Current fan speed output in percent
   unsigned char getFanSpeed(void) const;
-  // Current servo output in TIMER1 ticks
-  unsigned int getServoOutput(void) const { return _servoOutput; }
   unsigned long getLastWorkMillis(void) const { return _lastWorkMillis; }
 
   boolean getManualOutputMode(void) const { return _manualOutputMode; }
