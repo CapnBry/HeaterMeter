@@ -64,6 +64,9 @@
     <ClInclude Include="adc_noise.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="tone_4khz.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="hmcore.cpp">
@@ -88,6 +91,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="econfig.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="tone_4khz.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -140,6 +140,7 @@
     <ClInclude Include="strings.h">
       <FileType>CppHeader</FileType>
     </ClInclude>
+    <ClInclude Include="tone_4khz.h" />
     <ClInclude Include="Visual Micro\.heatermeter.vsarduino.h" />
     <ClInclude Include="wishieldconf.h">
       <FileType>CppHeader</FileType>
@@ -154,6 +155,7 @@
     <ClCompile Include="menus.cpp" />
     <ClCompile Include="rfmanager.cpp" />
     <ClCompile Include="serialxor.cpp" />
+    <ClCompile Include="tone_4khz.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
