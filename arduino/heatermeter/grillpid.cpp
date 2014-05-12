@@ -38,10 +38,12 @@ ISR(TIMER1_COMPB_vect)
 static struct tagAdcState
 {
   unsigned char cnt;      // count in accumulator
-  unsigned char limitCnt; // count of ADC reads that were min/max
   unsigned long accumulator;  // total
   unsigned char discard;  // Discard this many ADC readings
+  unsigned int thisHigh;  // High this period
+  unsigned int thisLow;   // Low this period
   unsigned int analogReads[6]; // Current values
+  unsigned int analogRange[6]; // high-low on last period
 #if defined(ADC_DYNAMIC_RANGE)
   unsigned char lowRange[6];   // true if was low range used for read
 #endif
@@ -77,27 +79,23 @@ ISR(ADC_vect)
 #endif
   adcState.accumulator += adc;
   ++adcState.cnt;
-  if (adc >= 1023)
+
+  if (adcState.cnt != 0)
   {
-    if (adcState.limitCnt > 0x7f)
-      adcState.accumulator = 1023 << 8;
-    else
-      ++adcState.limitCnt;
+    // Not checking the range on the 256th sample saves some clock cycles
+    // and helps offset the penalty of the end of period calculations
+    if (adc > adcState.thisHigh)
+      adcState.thisHigh = adc;
+    if (adc < adcState.thisLow)
+      adcState.thisLow = adc;
   }
-
-  if (adcState.cnt == 0)
+  else
   {
-    //unsigned int val;
-    // More than half at the limit? Discard the whole thing
-    //if (adcState.limitCnt > 0x7f)
-    //  val = 0;
-    //else
-      // Store the current value with 4 bit oversample
-      //val = adcState.accumulator >> 4;
-
     unsigned char pin = ADMUX & 0x07;
     adcState.analogReads[pin] = adcState.accumulator >> 2;
-    adcState.limitCnt = 0;
+    adcState.analogRange[pin] = adcState.thisHigh - adcState.thisLow;
+    adcState.thisHigh = 0;
+    adcState.thisLow = 0xffff;
     adcState.accumulator = 0;
 
 #if defined(ADC_DYNAMIC_RANGE)
@@ -142,6 +140,16 @@ unsigned int analogReadOver(unsigned char pin, unsigned char bits)
     retVal = adcState.analogReads[pin];
   }
   return retVal >> (16 - bits);
+}
+
+unsigned int analogReadRange(unsigned char pin)
+{
+  unsigned int retVal;
+  ATOMIC_BLOCK(ATOMIC_FORCEON)
+  {
+    retVal = adcState.analogRange[pin];
+  }
+  return retVal;
 }
 
 static void adcDump(void)
@@ -266,7 +274,8 @@ void TempProbe::calcTemp(void)
     return;
   }
 
-  if (ADCval != 0)  // Vout >= MAX is reduced in readTemp()
+  // Ignore anything with a large range as being "noisy" or ramping due to a plug event
+  if (analogReadRange(_pin) >= 16)
   {
     if (_probeType == PROBETYPE_TC_ANALOG)
     {
