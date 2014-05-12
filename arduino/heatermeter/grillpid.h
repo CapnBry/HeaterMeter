@@ -15,6 +15,8 @@
 
 #define STEINHART_COUNT 4
 
+#define NOISEDUMP_PIN 5
+
 struct __eeprom_probe
 {
   char name[PROBE_NAME_SIZE];
@@ -67,6 +69,8 @@ private:
 public:
   TempProbe(const unsigned char pin);
 
+  const unsigned char getPin(void) const { return _pin; }
+
   /* Configuration */  
   // Probe Type
   unsigned char getProbeType(void) const { return _probeType; }
@@ -111,12 +115,18 @@ public:
 #define PIDFLAG_FAN_ONLY_MAX  2
 // Servo opens (to max) when pidOutput>0 (any output)
 #define PIDFLAG_SERVO_ANY_MAX 3
+// Try to output a constant voltage instead of PWM
+#define PIDFLAG_FAN_FEEDVOLT 4
+
+// oversampled analogRead from current freerunning ADC
+unsigned int analogReadOver(unsigned char pin, unsigned char bits);
 
 class GrillPid
 {
 private:
   unsigned char const _fanPin;
   unsigned char const _servoPin;
+  unsigned char const _feedbackAPin;
 
   unsigned char _pidOutput;
   unsigned long _lastWorkMillis;
@@ -136,13 +146,17 @@ private:
   unsigned char _minServoPos;
   unsigned char _lastBlowerOutput;
   unsigned char _outputFlags;
+
+  // Feedback switching mode voltage controller
+  unsigned char _feedvoltLastOutput;
   
   void calcPidOutput(void);
   void commitFanOutput(void);
   void commitServoOutput(void);
   void commitPidOutput(void);
+  void adjustFeedbackVoltage(void);
 public:
-  GrillPid(unsigned char const fanPin, unsigned char const servoPin);
+  GrillPid(unsigned char const fanPin, unsigned char const servoPin, unsigned char const feedbackAPin);
   void init(void) const;
 
   TempProbe *Probes[TEMP_COUNT];

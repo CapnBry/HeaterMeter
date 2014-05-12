@@ -5,6 +5,7 @@
 // Servo output is 50Hz pulse duration
 #include <math.h>
 #include <string.h>
+#include <util/atomic.h>
 
 #include "strings.h"
 #include "grillpid.h"
@@ -14,8 +15,18 @@ extern const GrillPid pid;
 // For this calculation to work, ccpm()/8 must return a round number
 #define uSecToTicks(x) ((unsigned int)(clockCyclesPerMicrosecond() / 8) * x)
 
-// LERP percentage o into the unsigned range [A,B]. B - A must be < 6,553
+// LERP percentage o into the unsigned range [A,B]. B - A must be < 655
 #define mappct(o, a, b)  (((b - a) * (unsigned int)o / 100) + a)
+
+#define DIFFMAX(x,y,d) ((x - y + d) <= (d*2U))
+
+//#define GRILLPID_FAN_MANUALPWM
+#if defined(GRILLPID_FAN_MANUALPWM)
+ISR(TIMER1_COMPA_vect)
+{
+  digitalWrite(pid.getFanPin(), LOW);
+}
+#endif
 
 #if defined(GRILLPID_SERVO_ENABLED)
 ISR(TIMER1_CAPT_vect)
@@ -29,6 +40,139 @@ ISR(TIMER1_COMPB_vect)
   digitalWrite(pid.getServoPin(), LOW);
 }
 #endif
+
+//#define ADC_DYNAMIC_RANGE
+
+static struct tagAdcState
+{
+  unsigned char cnt;      // count in accumulator
+  unsigned char limitCnt; // count of ADC reads that were min/max
+  unsigned long accumulator;  // total
+  unsigned char discard;  // Discard this many ADC readings
+  unsigned int analogReads[6]; // Current values
+#if defined(ADC_DYNAMIC_RANGE)
+  unsigned char lowRange[6];   // true if was low range used for read
+#endif
+#if defined(NOISEDUMP_PIN)
+  unsigned int data[256];
+#endif
+} adcState;
+
+#if defined(NOISEDUMP_PIN)
+volatile unsigned char g_NoisePin = NOISEDUMP_PIN;
+#endif
+
+ISR(ADC_vect)
+{
+  if (adcState.discard != 0)
+  {
+    --adcState.discard;
+    return;
+  }
+
+  /*
+  Don't take any readings that were sampled during the blower "turn on"
+  time because it causes a dip in the power. The ADC scaler and the TIMER2
+  scaler are both 128 so their clock counts are the same. The ADC takes
+  13 clocks to measure. */
+  //if (TCNT2 < 17)
+  //  return;
+
+  unsigned int adc = ADC;
+#if defined(NOISEDUMP_PIN)
+  if ((ADMUX & 0x07) == g_NoisePin)
+    adcState.data[adcState.cnt] = adc;
+#endif
+  adcState.accumulator += adc;
+  ++adcState.cnt;
+  if (adc >= 1023)
+  {
+    if (adcState.limitCnt > 0x7f)
+      adcState.accumulator = 1023 << 8;
+    else
+      ++adcState.limitCnt;
+  }
+
+  if (adcState.cnt == 0)
+  {
+    //unsigned int val;
+    // More than half at the limit? Discard the whole thing
+    //if (adcState.limitCnt > 0x7f)
+    //  val = 0;
+    //else
+      // Store the current value with 4 bit oversample
+      //val = adcState.accumulator >> 4;
+
+    unsigned char pin = ADMUX & 0x07;
+    adcState.analogReads[pin] = adcState.accumulator >> 2;
+    adcState.limitCnt = 0;
+    adcState.accumulator = 0;
+
+#if defined(ADC_DYNAMIC_RANGE)
+    // Select the next pin
+    // Because the MUX is change while already reading, discard readings
+    // to allow it to change and settle
+    pin = (pin + 1) % 6;
+    unsigned char reference = DEFAULT << 6;
+    if (adcState.lowRange[pin])
+      if (adcState.analogReads[pin] > (1000U << 6))
+        adcState.lowRange[pin] = false;
+      else
+        reference = INTERNAL << 6;
+    else // lowRange == false
+    {
+      if (pin ==5 && adcState.analogReads[pin] < (300U << 6))
+      {
+        adcState.lowRange[pin] = true;
+        reference = INTERNAL << 6;
+      }
+    }
+    
+    // If switching references, allow time for AREF cap to charge
+    if ((ADMUX & 0xc0) != reference)
+      adcState.discard = 48;  // 48 / 9615 samples/s = 5ms
+    else
+      adcState.discard = 2;
+
+    ADMUX = reference | pin;
+#else
+    ADMUX = (DEFAULT << 6) | ((pin + 1) % 6);
+    adcState.discard = 2;
+#endif
+  }
+}
+
+unsigned int analogReadOver(unsigned char pin, unsigned char bits)
+{
+  unsigned int retVal;
+  ATOMIC_BLOCK(ATOMIC_FORCEON)
+  {
+    retVal = adcState.analogReads[pin];
+  }
+  return retVal >> (16 - bits);
+}
+
+static void adcDump(void)
+{
+#if defined(NOISEDUMP_PIN)
+  static uint8_t x;
+  ++x;
+  if (x == 5)
+  {
+    x = 0;
+    ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0);
+    SerialX.print("HMLG,NOISE ");
+    for (unsigned int i=0; i<256; ++i)
+    {
+      SerialX.print(adcState.data[i], DEC);
+      SerialX.print(' ');
+    }
+    Serial_nl();
+    ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADIE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0);
+    ADCSRA |= bit(ADSC);
+  }
+#endif
+}
 
 static void calcExpMovingAverage(const float smooth, float *currAverage, float newValue)
 {
@@ -104,112 +248,73 @@ void TempProbe::loadConfig(struct __eeprom_probe *config)
 void TempProbe::setProbeType(unsigned char probeType)
 {
   _probeType = probeType;
-  _accumulator = 0;
-  _accumulatedCount = 0;
   Temperature = NAN;
   TemperatureAvg = NAN;
 }
 
-#define DIFFMAX(x,y,d) ((x - y + d) <= (d*2U))
 void TempProbe::addAdcValue(unsigned int analog_temp)
 {
-  // any read is 0, data invalid (>= MAX is reduced in readTemp())
-  if (analog_temp == 0)
-    _accumulator = 0;
-
-  // this is the first add, store the value directly
-  else if (_accumulatedCount == 0)
-    _accumulator = analog_temp;
-
-  // one of the reads is more than 6.25% off the average, data invalid
-  else if (!DIFFMAX(analog_temp, _accumulator / _accumulatedCount,
-    (1 << (6 + TEMP_OVERSAMPLE_BITS))))
-    _accumulator = 0;
-
-  // else normal add
-  else if (_accumulator != 0)
-    _accumulator += analog_temp;
-
-  ++_accumulatedCount;
-}
-
-void TempProbe::readTemp(void)
-{
-  const unsigned char OVERSAMPLE_COUNT[] = {1, 4, 16, 64};  // 4^n
-  unsigned int oversampled_adc = 0;
-  for (unsigned char i=OVERSAMPLE_COUNT[TEMP_OVERSAMPLE_BITS]; i; --i)
-  {
-    // analogRead takes about 0.11ms so don't take any readings during the flip
-    if (pid.getFanPin() == 3 || pid.getFanPin() == 11)
-      while (TCNT2 < 16 || TCNT2 > 240) { }
-
-    unsigned int adc = analogRead(_pin);
-    // If we get *any* analogReads that are 0 or 1023, the measurement for 
-    // the entire period is invalidated, so set the _accumulator to 0
-    if (adc == 0 || adc >= 1023)
-    {
-      addAdcValue(0);
-      return;
-    }
-    oversampled_adc += adc;
-  }
-  oversampled_adc = oversampled_adc >> TEMP_OVERSAMPLE_BITS;
-  addAdcValue(oversampled_adc);
+  _accumulator = analog_temp;
 }
 
 void TempProbe::calcTemp(void)
 {
-  const float ADCmax = (1 << (10+TEMP_OVERSAMPLE_BITS)) - 1;
-  if (_accumulatedCount != 0)
+  //const unsigned int OVERSAMPLE_CNT[] = { 1, 4, 16, 64, 256, 1024, 4096 };
+  const float ADCmax = (1 << (10+TEMP_OVERSAMPLE_BITS)) - 1; //OVERSAMPLE_CNT[TEMP_OVERSAMPLE_BITS];
+
+  if (_probeType == PROBETYPE_INTERNAL || _probeType == PROBETYPE_TC_ANALOG)
+    _accumulator = analogReadOver(_pin, 10+TEMP_OVERSAMPLE_BITS);
+  //SerialX.print(_pin); SerialX.print('-'); SerialX.print(_accumulator); SerialX.print(' ');
+  unsigned int ADCval = _accumulator;
+
+  // Units 'A' = ADC value
+  if (pid.getUnits() == 'A')
   {
-    unsigned int ADCval = _accumulator / _accumulatedCount;
-    _accumulatedCount = 0;
+    Temperature = ADCval;
+    return;
+  }
 
-    // Units 'A' = ADC value
-    if (pid.getUnits() == 'A')
+  if (ADCval != 0)  // Vout >= MAX is reduced in readTemp()
+  {
+    if (_probeType == PROBETYPE_TC_ANALOG)
     {
-      Temperature = ADCval;
-      return;
+      float mvScale = Steinhart[3];
+      // Commented out because there's no "divide by zero" exception so
+      // just allow undefined results to save prog space
+      //if (mvScale == 0.0f)
+      //  mvScale = 1.0f;
+      // If scale is <100 it is assumed to be mV/C with a 3.3V reference
+      if (mvScale < 100.0f)
+        mvScale = 3300.0f / mvScale;
+#if defined(ADC_DYNAMIC_RANGE)
+      if (adcState.lowRange[_pin])
+        mvScale /= 3;
+#endif
+      setTemperatureC(ADCval / ADCmax * mvScale);
     }
+    else {
+      float R, T;
+      // If you put the fixed resistor on the Vcc side of the thermistor, use the following
+      R = Steinhart[3] / ((ADCmax / (float)ADCval) - 1.0f);
+      // If you put the thermistor on the Vcc side of the fixed resistor use the following
+      //R = Steinhart[3] * ADCmax / (float)Vout - Steinhart[3];
 
-    if (ADCval != 0)  // Vout >= MAX is reduced in readTemp()
-    {
-      if (_probeType == PROBETYPE_TC_ANALOG)
+      // Units 'R' = resistance, unless this is the pit probe (which should spit out Celsius)
+      if (pid.getUnits() == 'R' && this != pid.Probes[TEMP_PIT])
       {
-        float mvScale = Steinhart[3];
-        // Commented out because there's no "divide by zero" exception so
-        // just allow undefined results to save prog space
-        //if (mvScale == 0.0f)
-        //  mvScale = 1.0f;
-        // If scale is <100 it is assumed to be mV/C with a 3.3V reference
-        if (mvScale < 100.0f)
-          mvScale = 3300.0f / mvScale;
-        setTemperatureC(ADCval / ADCmax * mvScale);
-      }
-      else {
-        float R, T;
-        // If you put the fixed resistor on the Vcc side of the thermistor, use the following
-        R = Steinhart[3] / ((ADCmax / (float)ADCval) - 1.0f);
-        // If you put the thermistor on the Vcc side of the fixed resistor use the following
-        //R = Steinhart[3] * ADCmax / (float)Vout - Steinhart[3];
+        Temperature = R;
+        return;
+      };
 
-        // Units 'R' = resistance, unless this is the pit probe (which should spit out Celsius)
-        if (pid.getUnits() == 'R' && this != pid.Probes[TEMP_PIT])
-        {
-          Temperature = R;
-          return;
-        };
+      // Compute degrees K
+      R = log(R);
+      T = 1.0f / ((Steinhart[2] * R * R + Steinhart[1]) * R + Steinhart[0]);
 
-        // Compute degrees K
-        R = log(R);
-        T = 1.0f / ((Steinhart[2] * R * R + Steinhart[1]) * R + Steinhart[0]);
-
-        setTemperatureC(T - 273.15f);
-      } /* if PROBETYPE_INTERNAL */
-    } /* if ADCval */
-    else
-      Temperature = NAN;
-  } /* if accumulatedcount */
+      setTemperatureC(T - 273.15f);
+    } /* if PROBETYPE_INTERNAL */
+  } /* if ADCval */
+  else
+    Temperature = NAN;
 
   if (hasTemperature())
   {
@@ -235,10 +340,13 @@ void TempProbe::setTemperatureC(float T)
   }
 }
 
-GrillPid::GrillPid(const unsigned char fanPin, const unsigned char servoPin) :
-    _fanPin(fanPin), _servoPin(servoPin), _periodCounter(0x80), _units('F'), PidOutputAvg(NAN)
+GrillPid::GrillPid(unsigned char const fanPin, unsigned char const servoPin, unsigned char const feedbackAPin) :
+    _fanPin(fanPin), _servoPin(servoPin), _feedbackAPin(feedbackAPin),
+    _periodCounter(0x80), _units('F'), PidOutputAvg(NAN)
 {
-  //pinMode(_fanPin, OUTPUT); // handled by analogWrite
+#if defined(GRILLPID_FAN_MANUALPWM)
+  pinMode(_fanPin, OUTPUT); // handled by analogWrite if automatic
+#endif
 #if defined(GRILLPID_SERVO_ENABLED)
   pinMode(_servoPin, OUTPUT);
 #endif
@@ -257,9 +365,24 @@ void GrillPid::init(void) const
   TCCR1B = bit(WGM13) | bit(WGM12) | bit(CS11);
   TIMSK1 = bit(ICIE1) | bit(OCIE1B);
 #endif
+#if defined(GRILLPID_FAN_MANUALPWM)
+  TIMSK1 |= bit(OCIE1A);
+#else
   // TIMER2 488Hz Fast PWM
   TCCR2A = bit(WGM21) | bit(WGM20);
-  TCCR2B = bit(CS22) | bit(CS20);
+  //TCCR2B = bit(CS22) | bit(CS20);
+  // 62khz
+  TCCR2B = bit(CS20);
+  // 7khz
+  //TCCR2B = bit(CS21);
+  // 61Hz
+  //TCCR2B = bit(CS22) | bit(CS21) | bit(CS20);
+#endif
+  // Initialize ADC for free running mode at 125kHz
+  ADMUX = (DEFAULT << 6) | 0;
+  ADCSRB = bit(ACME);
+  ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADIE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0);
+  ADCSRA |= bit(ADSC);
 }
 
 unsigned int GrillPid::countOfType(unsigned char probeType) const
@@ -313,6 +436,47 @@ unsigned char GrillPid::getFanSpeed(void) const
   return (unsigned int)_pidOutput * _maxFanSpeed / 100;
 }
 
+void GrillPid::adjustFeedbackVoltage(void)
+{
+  if (_lastBlowerOutput > 0 && _lastBlowerOutput < 255)
+  {
+    // _lastBlowerOutput is the voltage we want on the feedback pin
+    // adjust _feedvoltLastOutput until the ffeedback == _lastBlowerOutput
+    unsigned char ffeedback = analogReadOver(_feedbackAPin, 8);
+    int error = ((int)_lastBlowerOutput - (int)ffeedback);
+    int newOutput = _feedvoltLastOutput + (error * 2 / 3);
+    if (newOutput >= 255)
+      _feedvoltLastOutput = 255;
+    else if (newOutput <= 0)
+      _feedvoltLastOutput = 0;
+    else
+      _feedvoltLastOutput = newOutput;
+#if defined(GRILLPID_FEEDVOLT_DEBUG)
+    SerialX.print("HMLG,");
+    SerialX.print("SMPS: ffeed="); SerialX.print(ffeedback, DEC);
+    SerialX.print(" out="); SerialX.print(newOutput, DEC);
+    SerialX.print(" fdesired="); SerialX.print(_lastBlowerOutput, DEC);
+    Serial_nl();
+#endif
+  }
+  else
+    _feedvoltLastOutput = _lastBlowerOutput;
+
+  analogWrite(_fanPin, _feedvoltLastOutput);
+}
+
+inline unsigned char FeedvoltToAdc(float v)
+{
+  // Calculates what an 8 bit ADC value would be for the given voltage
+  const unsigned long R1 = 22000;
+  const unsigned long R2 = 68000;
+  // Scale the voltage by the voltage divder
+  // v * R1 / (R1 + R2) = pV
+  // Scale to ADC assuming 3.3V reference
+  // (pV / 3.3) * 256 = ADC
+  return ((v * R1 * 256) / ((R1 + R2) * 3.3f));
+}
+
 inline void GrillPid::commitFanOutput(void)
 {
   /* Long PWM period is 10 sec */
@@ -342,15 +506,25 @@ inline void GrillPid::commitFanOutput(void)
   if (bit_is_set(_outputFlags, PIDFLAG_INVERT_FAN))
     fanSpeed = _maxFanSpeed - fanSpeed;
 
-  unsigned char newBlowerOutput = mappct(fanSpeed, 0, 255);
-  analogWrite(_fanPin, newBlowerOutput);
+#if defined(GRILLPID_FAN_MANUALPWM)
+  OCR1A = fanSpeed * 400;
+#else
+  unsigned char newBlowerOutput; //mappct(fanSpeed, 0, 255);
+  //if (bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
+  newBlowerOutput = mappct(fanSpeed, FeedvoltToAdc(5.0f), FeedvoltToAdc(12.0f));
+  //analogWrite(_fanPin, newBlowerOutput);
 
+  // 0 is always 0
+  if (fanSpeed == 0)
+    _lastBlowerOutput = 0;
   // If going from 0% to non-0%, turn the blower fully on for one period
   // to get it moving (boost mode)
-  if (_lastBlowerOutput == 0 && newBlowerOutput != 0)
-    digitalWrite(_fanPin, HIGH);
-
-  _lastBlowerOutput = newBlowerOutput;
+  else if (_lastBlowerOutput == 0 && newBlowerOutput != 0)
+    _lastBlowerOutput = 255;
+  else
+    _lastBlowerOutput = newBlowerOutput;
+  adjustFeedbackVoltage();
+#endif
 }
 
 inline void GrillPid::commitServoOutput(void)
@@ -451,27 +625,15 @@ void GrillPid::status(void) const
 boolean GrillPid::doWork(void)
 {
   unsigned int elapsed = millis() - _lastWorkMillis;
-  if (elapsed < (TEMP_MEASURE_PERIOD / TEMP_AVG_COUNT))
+  if (elapsed < TEMP_MEASURE_PERIOD)
     return false;
   _lastWorkMillis = millis();
 
-#if defined(GRILLPID_CALC_TEMP)
-  if (_periodCounter == 0) testNoise();
-  for (unsigned char i=0; i<TEMP_COUNT; i++)
-    if (Probes[i]->getProbeType() == PROBETYPE_INTERNAL ||
-      Probes[i]->getProbeType() == PROBETYPE_TC_ANALOG)
-      Probes[i]->readTemp();
-
-  // Re-set the PWM output, in case we enabled boost mode last loop
-  analogWrite(_fanPin, _lastBlowerOutput);
-  
-  ++_periodCounter;
-  if (_periodCounter < TEMP_AVG_COUNT)
-    return false;
-  _periodCounter = 0;
-    
+#if defined(GRILLPID_CALC_TEMP) 
+  //SerialX.print("HMLG,ADC ");
   for (unsigned char i=0; i<TEMP_COUNT; i++)
     Probes[i]->calcTemp();
+  //Serial_nl();
 
   if (!_manualOutputMode)
   {
@@ -511,6 +673,7 @@ boolean GrillPid::doWork(void)
 #endif
 
   commitPidOutput();
+  adcDump();
   return true;
 }
 

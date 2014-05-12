@@ -18,7 +18,7 @@ static TempProbe probe0(PIN_PIT);
 static TempProbe probe1(PIN_FOOD1);
 static TempProbe probe2(PIN_FOOD2);
 static TempProbe probe3(PIN_AMB);
-GrillPid pid(PIN_BLOWER, PIN_SERVO);
+GrillPid pid(PIN_BLOWER, PIN_SERVO, PIN_FFEEDBACK);
 
 #ifdef SHIFTREGLCD_NATIVE
 ShiftRegLCD lcd(PIN_SERVO, PIN_LCD_CLK, TWO_WIRE, 2);
@@ -873,6 +873,12 @@ static void setTempParam(unsigned char idx, int val)
     case 0:
       g_LogPidInternals = val;
       break;
+#if defined(NOISEDUMP_PIN)
+    case 1:
+      extern volatile unsigned char g_NoisePin;
+      g_NoisePin = val;
+      break;
+#endif
   }
 }
 
@@ -1228,6 +1234,8 @@ void hmcoreSetup(void)
   digitalWrite(PIN_SOFTRESET, HIGH);
   pinMode(PIN_SOFTRESET, OUTPUT);
   
+  pinMode(PIN_ALARM, OUTPUT);
+
   pid.Probes[TEMP_PIT] = &probe0;
   pid.Probes[TEMP_FOOD1] = &probe1;
   pid.Probes[TEMP_FOOD2] = &probe2;
