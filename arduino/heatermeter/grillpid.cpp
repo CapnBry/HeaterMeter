@@ -20,14 +20,6 @@ extern const GrillPid pid;
 
 #define DIFFMAX(x,y,d) ((x - y + d) <= (d*2U))
 
-//#define GRILLPID_FAN_MANUALPWM
-#if defined(GRILLPID_FAN_MANUALPWM)
-ISR(TIMER1_COMPA_vect)
-{
-  digitalWrite(pid.getFanPin(), LOW);
-}
-#endif
-
 #if defined(GRILLPID_SERVO_ENABLED)
 ISR(TIMER1_CAPT_vect)
 {
@@ -344,9 +336,6 @@ GrillPid::GrillPid(unsigned char const fanPin, unsigned char const servoPin, uns
     _fanPin(fanPin), _servoPin(servoPin), _feedbackAPin(feedbackAPin),
     _periodCounter(0x80), _units('F'), PidOutputAvg(NAN)
 {
-#if defined(GRILLPID_FAN_MANUALPWM)
-  pinMode(_fanPin, OUTPUT); // handled by analogWrite if automatic
-#endif
 #if defined(GRILLPID_SERVO_ENABLED)
   pinMode(_servoPin, OUTPUT);
 #endif
@@ -365,9 +354,7 @@ void GrillPid::init(void) const
   TCCR1B = bit(WGM13) | bit(WGM12) | bit(CS11);
   TIMSK1 = bit(ICIE1) | bit(OCIE1B);
 #endif
-#if defined(GRILLPID_FAN_MANUALPWM)
-  TIMSK1 |= bit(OCIE1A);
-#else
+
   // TIMER2 488Hz Fast PWM
   TCCR2A = bit(WGM21) | bit(WGM20);
   //TCCR2B = bit(CS22) | bit(CS20);
@@ -377,7 +364,7 @@ void GrillPid::init(void) const
   //TCCR2B = bit(CS21);
   // 61Hz
   //TCCR2B = bit(CS22) | bit(CS21) | bit(CS20);
-#endif
+
   // Initialize ADC for free running mode at 125kHz
   ADMUX = (DEFAULT << 6) | 0;
   ADCSRB = bit(ACME);
@@ -506,9 +493,6 @@ inline void GrillPid::commitFanOutput(void)
   if (bit_is_set(_outputFlags, PIDFLAG_INVERT_FAN))
     fanSpeed = _maxFanSpeed - fanSpeed;
 
-#if defined(GRILLPID_FAN_MANUALPWM)
-  OCR1A = fanSpeed * 400;
-#else
   unsigned char newBlowerOutput; //mappct(fanSpeed, 0, 255);
   //if (bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
   newBlowerOutput = mappct(fanSpeed, FeedvoltToAdc(5.0f), FeedvoltToAdc(12.0f));
@@ -524,7 +508,6 @@ inline void GrillPid::commitFanOutput(void)
   else
     _lastBlowerOutput = newBlowerOutput;
   adjustFeedbackVoltage();
-#endif
 }
 
 inline void GrillPid::commitServoOutput(void)
