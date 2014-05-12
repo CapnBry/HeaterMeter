@@ -603,8 +603,6 @@ void GrillPid::status(void) const
 #endif
 }
 
-#include "adc_noise.h"
-
 boolean GrillPid::doWork(void)
 {
   unsigned int elapsed = millis() - _lastWorkMillis;
@@ -613,10 +611,8 @@ boolean GrillPid::doWork(void)
   _lastWorkMillis = millis();
 
 #if defined(GRILLPID_CALC_TEMP) 
-  //SerialX.print("HMLG,ADC ");
   for (unsigned char i=0; i<TEMP_COUNT; i++)
     Probes[i]->calcTemp();
-  //Serial_nl();
 
   if (!_manualOutputMode)
   {
