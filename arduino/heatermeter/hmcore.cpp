@@ -17,7 +17,7 @@ static TempProbe probe0(PIN_PIT);
 static TempProbe probe1(PIN_FOOD1);
 static TempProbe probe2(PIN_FOOD2);
 static TempProbe probe3(PIN_AMB);
-GrillPid pid(PIN_BLOWER, PIN_SERVO);
+GrillPid pid(PIN_BLOWER, PIN_SERVO, PIN_FFEEDBACK);
 
 #ifdef SHIFTREGLCD_NATIVE
 ShiftRegLCD lcd(PIN_SERVO, PIN_LCD_CLK, TWO_WIRE, 2);

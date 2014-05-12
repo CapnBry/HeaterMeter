@@ -40,14 +40,10 @@ ISR(TIMER1_COMPB_vect)
   // Otherwise this is the end of the refresh period, start again
   else
   {
-#if defined(GRILLPID_FAN_MANUALPWM)
-    if (OCR1A > 0)
-      digitalWrite(pid.getFanPin(), HIGH);
-#endif
     OCR1B = pid.getServoOutput();
     TCNT1 = 0;
-    //if (OCR1B > 0)
-    //  digitalWrite(pid.getServoPin(), HIGH);
+    if (OCR1B > 0)
+      digitalWrite(pid.getServoPin(), HIGH);
   }
 }
 #endif
@@ -351,8 +347,9 @@ void TempProbe::setTemperatureC(float T)
   }
 }
 
-GrillPid::GrillPid(const unsigned char fanPin, const unsigned char servoPin) :
-    _fanPin(fanPin), _servoPin(servoPin), _periodCounter(0x80), _units('F'), PidOutputAvg(NAN)
+GrillPid::GrillPid(unsigned char const fanPin, unsigned char const servoPin, unsigned char const feedbackAPin) :
+    _fanPin(fanPin), _servoPin(servoPin), _feedbackAPin(feedbackAPin),
+    _periodCounter(0x80), _units('F'), PidOutputAvg(NAN)
 {
 #if defined(GRILLPID_FAN_MANUALPWM)
   pinMode(_fanPin, OUTPUT); // handled by analogWrite if automatic
@@ -376,9 +373,11 @@ void GrillPid::init(void) const
 #if defined(GRILLPID_FAN_MANUALPWM)
   TIMSK1 |= bit(OCIE1A);
 #else
-  // TIMER2 488Hz fast PWM
-  TCCR2A |= bit(WGM21);
-  TCCR2B = bit(CS22) | bit(CS20);
+  // TIMER2 488Hz Fast PWM
+  TCCR2A = bit(WGM21) | bit(WGM20);
+  //TCCR2B = bit(CS22) | bit(CS20);
+  // 62khz
+  TCCR2B = bit(CS20);
   // 7khz
   //TCCR2B = bit(CS21);
   // 61Hz
@@ -442,6 +441,47 @@ unsigned char GrillPid::getFanSpeed(void) const
   return (unsigned int)_pidOutput * _maxFanSpeed / 100;
 }
 
+void GrillPid::adjustFeedbackVoltage(void)
+{
+  if (_lastBlowerOutput > 0 && _lastBlowerOutput < 255)
+  {
+    // _lastBlowerOutput is the voltage we want on the feedback pin
+    // adjust _feedvoltLastOutput until the ffeedback == _lastBlowerOutput
+    unsigned char ffeedback = analogReadOver(_feedbackAPin, 8);
+    int error = ((int)_lastBlowerOutput - (int)ffeedback);
+    int newOutput = _feedvoltLastOutput + (error * 2 / 3);
+    if (newOutput >= 255)
+      _feedvoltLastOutput = 255;
+    else if (newOutput <= 0)
+      _feedvoltLastOutput = 0;
+    else
+      _feedvoltLastOutput = newOutput;
+#if defined(GRILLPID_FEEDVOLT_DEBUG)
+    SerialX.print("HMLG,");
+    SerialX.print("SMPS: ffeed="); SerialX.print(ffeedback, DEC);
+    SerialX.print(" out="); SerialX.print(newOutput, DEC);
+    SerialX.print(" fdesired="); SerialX.print(_lastBlowerOutput, DEC);
+    Serial_nl();
+#endif
+  }
+  else
+    _feedvoltLastOutput = _lastBlowerOutput;
+
+  analogWrite(_fanPin, _feedvoltLastOutput);
+}
+
+inline unsigned char FeedvoltToAdc(float v)
+{
+  // Calculates what an 8 bit ADC value would be for the given voltage
+  const unsigned long R1 = 22000;
+  const unsigned long R2 = 68000;
+  // Scale the voltage by the voltage divder
+  // v * R1 / (R1 + R2) = pV
+  // Scale to ADC assuming 3.3V reference
+  // (pV / 3.3) * 256 = ADC
+  return ((v * R1 * 256) / ((R1 + R2) * 3.3f));
+}
+
 inline void GrillPid::commitFanOutput(void)
 {
   /* Long PWM period is 10 sec */
@@ -471,19 +511,25 @@ inline void GrillPid::commitFanOutput(void)
   if (bit_is_set(_outputFlags, PIDFLAG_INVERT_FAN))
     fanSpeed = _maxFanSpeed - fanSpeed;
 
-  unsigned char newBlowerOutput = mappct(fanSpeed, 0, 255);
 #if defined(GRILLPID_FAN_MANUALPWM)
   OCR1A = fanSpeed * 400;
 #else
-  analogWrite(_fanPin, newBlowerOutput);
+  unsigned char newBlowerOutput; //mappct(fanSpeed, 0, 255);
+  //if (bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
+  newBlowerOutput = mappct(fanSpeed, FeedvoltToAdc(5.0f), FeedvoltToAdc(12.0f));
+  //analogWrite(_fanPin, newBlowerOutput);
 
+  // 0 is always 0
+  if (fanSpeed == 0)
+    _lastBlowerOutput = 0;
   // If going from 0% to non-0%, turn the blower fully on for one period
   // to get it moving (boost mode)
-  if (_lastBlowerOutput == 0 && newBlowerOutput != 0)
-    digitalWrite(_fanPin, HIGH);
+  else if (_lastBlowerOutput == 0 && newBlowerOutput != 0)
+    _lastBlowerOutput = 255;
+  else
+    _lastBlowerOutput = newBlowerOutput;
+  adjustFeedbackVoltage();
 #endif
-
-  _lastBlowerOutput = newBlowerOutput;
 }
 
 inline void GrillPid::commitServoOutput(void)
@@ -588,12 +634,6 @@ boolean GrillPid::doWork(void)
   _lastWorkMillis = millis();
 
 #if defined(GRILLPID_CALC_TEMP) 
-#if defined(GRILLPID_FAN_MANUALPWM)
-#else
-  // Re-set the PWM output, in case we enabled boost mode last loop
-  analogWrite(_fanPin, _lastBlowerOutput);
-#endif
-  
   //SerialX.print("HMLG,ADC ");
   for (unsigned char i=0; i<TEMP_COUNT; i++)
     Probes[i]->calcTemp();
