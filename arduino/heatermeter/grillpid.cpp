@@ -275,7 +275,7 @@ void TempProbe::calcTemp(void)
   }
 
   // Ignore anything with a large range as being "noisy" or ramping due to a plug event
-  if (analogReadRange(_pin) >= 16)
+  if (analogReadRange(_pin) < 16)
   {
     if (_probeType == PROBETYPE_TC_ANALOG)
     {
