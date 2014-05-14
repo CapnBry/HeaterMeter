@@ -259,13 +259,11 @@ void TempProbe::addAdcValue(unsigned int analog_temp)
 
 void TempProbe::calcTemp(void)
 {
-  //const unsigned int OVERSAMPLE_CNT[] = { 1, 4, 16, 64, 256, 1024, 4096 };
-  const float ADCmax = (1 << (10+TEMP_OVERSAMPLE_BITS)) - 1; //OVERSAMPLE_CNT[TEMP_OVERSAMPLE_BITS];
-
+  unsigned int ADCval;
   if (_probeType == PROBETYPE_INTERNAL || _probeType == PROBETYPE_TC_ANALOG)
-    _accumulator = analogReadOver(_pin, 10+TEMP_OVERSAMPLE_BITS);
-  //SerialX.print(_pin); SerialX.print('-'); SerialX.print(_accumulator); SerialX.print(' ');
-  unsigned int ADCval = _accumulator;
+    ADCval = analogReadOver(_pin, 10+TEMP_OVERSAMPLE_BITS);
+  else
+    ADCval = _accumulator;
 
   // Units 'A' = ADC value
   if (pid.getUnits() == 'A')
@@ -277,6 +275,8 @@ void TempProbe::calcTemp(void)
   // Ignore anything with a large range as being "noisy" or ramping due to a plug event
   if (analogReadRange(_pin) < 16)
   {
+    const float ADCmax = 1023 * pow(2, TEMP_OVERSAMPLE_BITS);
+
     if (_probeType == PROBETYPE_TC_ANALOG)
     {
       float mvScale = Steinhart[3];
