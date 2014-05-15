@@ -120,6 +120,8 @@ public:
 
 // oversampled analogRead from current freerunning ADC
 unsigned int analogReadOver(unsigned char pin, unsigned char bits);
+// Range of the last ADC period for this pin, always 10bit
+unsigned int analogReadRange(unsigned char pin);
 
 class GrillPid
 {
