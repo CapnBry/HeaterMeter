@@ -168,8 +168,7 @@ static void adcDump(void)
       SerialX.print(' ');
     }
     Serial_nl();
-    ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADIE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0);
-    ADCSRA |= bit(ADSC);
+    ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADIE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0) | bit(ADSC);
   }
 #endif
 }
@@ -363,22 +362,25 @@ void GrillPid::init(void) const
   TCCR1B = bit(WGM13) | bit(WGM12) | bit(CS11);
   TIMSK1 = bit(ICIE1) | bit(OCIE1B);
 #endif
+  // Initialize ADC for free running mode at 125kHz
+  ADMUX = (DEFAULT << 6) | 0;
+  ADCSRB = bit(ACME);
+  ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADIE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0) | bit(ADSC);
+}
 
-  // TIMER2 488Hz Fast PWM
+void GrillPid::setOutputFlags(unsigned char value)
+{
+  _outputFlags = value;
+  // Timer2 Fast PWM
   TCCR2A = bit(WGM21) | bit(WGM20);
-  //TCCR2B = bit(CS22) | bit(CS20);
-  // 62khz
-  TCCR2B = bit(CS20);
+  if (bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
+    TCCR2B = bit(CS20); // 62kHz
+  else
+    TCCR2B = bit(CS22) | bit(CS20); // 488Hz
   // 7khz
   //TCCR2B = bit(CS21);
   // 61Hz
   //TCCR2B = bit(CS22) | bit(CS21) | bit(CS20);
-
-  // Initialize ADC for free running mode at 125kHz
-  ADMUX = (DEFAULT << 6) | 0;
-  ADCSRB = bit(ACME);
-  ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADIE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0);
-  ADCSRA |= bit(ADSC);
 }
 
 unsigned int GrillPid::countOfType(unsigned char probeType) const
@@ -434,19 +436,15 @@ unsigned char GrillPid::getFanSpeed(void) const
 
 void GrillPid::adjustFeedbackVoltage(void)
 {
-  if (_lastBlowerOutput > 0 && _lastBlowerOutput < 255)
+  if (_lastBlowerOutput != 0 && bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
   {
     // _lastBlowerOutput is the voltage we want on the feedback pin
     // adjust _feedvoltLastOutput until the ffeedback == _lastBlowerOutput
     unsigned char ffeedback = analogReadOver(_feedbackAPin, 8);
     int error = ((int)_lastBlowerOutput - (int)ffeedback);
-    int newOutput = _feedvoltLastOutput + (error * 2 / 3);
-    if (newOutput >= 255)
-      _feedvoltLastOutput = 255;
-    else if (newOutput <= 0)
-      _feedvoltLastOutput = 0;
-    else
-      _feedvoltLastOutput = newOutput;
+    int newOutput = (int)_feedvoltLastOutput + (error / 2);
+    _feedvoltLastOutput = constrain(newOutput, 0, 255);
+
 #if defined(GRILLPID_FEEDVOLT_DEBUG)
     SerialX.print("HMLG,");
     SerialX.print("SMPS: ffeed="); SerialX.print(ffeedback, DEC);
@@ -502,20 +500,27 @@ inline void GrillPid::commitFanOutput(void)
   if (bit_is_set(_outputFlags, PIDFLAG_INVERT_FAN))
     fanSpeed = _maxFanSpeed - fanSpeed;
 
-  unsigned char newBlowerOutput; //mappct(fanSpeed, 0, 255);
-  //if (bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
-  newBlowerOutput = mappct(fanSpeed, FeedvoltToAdc(5.0f), FeedvoltToAdc(12.0f));
-  //analogWrite(_fanPin, newBlowerOutput);
-
   // 0 is always 0
   if (fanSpeed == 0)
     _lastBlowerOutput = 0;
-  // If going from 0% to non-0%, turn the blower fully on for one period
-  // to get it moving (boost mode)
-  else if (_lastBlowerOutput == 0 && newBlowerOutput != 0)
-    _lastBlowerOutput = 255;
   else
-    _lastBlowerOutput = newBlowerOutput;
+  {
+    bool needBoost = _lastBlowerOutput == 0;
+    if (bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
+      _lastBlowerOutput = mappct(fanSpeed, FeedvoltToAdc(5.0f), FeedvoltToAdc(12.0f));
+    else
+      _lastBlowerOutput = mappct(fanSpeed, 0, 255);
+    // If going from 0% to non-0%, turn the blower fully on for one period
+    // to get it moving (boost mode)
+    if (needBoost)
+    {
+      digitalWrite(_fanPin, HIGH);
+      // give the FFEEDBACK control a high starting point so when it reads
+      // for the first time and sees full voltage it doesn't turn off
+      _feedvoltLastOutput = 128;
+      return;
+    }
+  }
   adjustFeedbackVoltage();
 }
 
@@ -615,9 +620,17 @@ void GrillPid::status(void) const
 boolean GrillPid::doWork(void)
 {
   unsigned int elapsed = millis() - _lastWorkMillis;
-  if (elapsed < TEMP_MEASURE_PERIOD)
+  if (elapsed < (TEMP_MEASURE_PERIOD / TEMP_OUTADJUST_CNT))
     return false;
   _lastWorkMillis = millis();
+
+  if (_periodCounter < (TEMP_OUTADJUST_CNT-1))
+  {
+    ++_periodCounter;
+    adjustFeedbackVoltage();
+    return false;
+  }
+  _periodCounter = 0;
 
 #if defined(GRILLPID_CALC_TEMP) 
   for (unsigned char i=0; i<TEMP_COUNT; i++)

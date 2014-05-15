@@ -116,7 +116,7 @@ public:
 // Servo opens (to max) when pidOutput>0 (any output)
 #define PIDFLAG_SERVO_ANY_MAX 3
 // Try to output a constant voltage instead of PWM
-#define PIDFLAG_FAN_FEEDVOLT 4
+#define PIDFLAG_FAN_FEEDVOLT  4
 
 // oversampled analogRead from current freerunning ADC
 unsigned int analogReadOver(unsigned char pin, unsigned char bits);
@@ -198,7 +198,7 @@ public:
   void setMinServoPos(unsigned char value) { _minServoPos = value; }
 
   // Collection of PIDFLAG_*
-  void setOutputFlags(unsigned char value) { _outputFlags = value; }
+  void setOutputFlags(unsigned char value);
   unsigned char getOutputFlags(void) const { return _outputFlags; }
   
   /* Runtime Data */

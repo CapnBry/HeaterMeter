@@ -3,6 +3,7 @@
 #define GRILLPID_CALC_TEMP
 #define GRILLPID_SERIAL_ENABLED
 #define GRILLPID_SERVO_ENABLED
+//#define GRILLPID_FEEDVOLT_DEBUG
 
 #define TEMP_PIT    0
 #define TEMP_FOOD1  1
@@ -15,8 +16,9 @@
 
 // The time (ms) of the measurement period
 #define TEMP_MEASURE_PERIOD 1000
-// The temperatures are averaged over 1, 2, 4 or 8 samples per period
-#define TEMP_AVG_COUNT 8
+// Number of times the ouput is adusted over TEMP_MEASURE_PERIOD
+// This affects fan boost mode and FFEEDBACK output
+#define TEMP_OUTADJUST_CNT 3
 // 2/(1+Number of samples used in the exponential moving average)
 #define TEMPPROBE_AVG_SMOOTH (2.0f/(1.0f+60.0f))
 #define PIDOUTPUT_AVG_SMOOTH (2.0f/(1.0f+240.0f))
