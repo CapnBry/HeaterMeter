@@ -129,7 +129,7 @@ function configHashToForm()
     if (isProbeId(k, "pcurr"))
     {
       if (val != null)
-        elem.html("current temperature " + val.toFixed(1) + "&deg;");
+        elem.html("current temperature " + val.toFixed(1) + "&#176;");
       else
         elem.html("off");
     } 
@@ -663,7 +663,7 @@ Version <span id="ucid"></span><br/><span id="cerr" style="color: #f00;"></span>
 
 <div class="cbi-page-actions">
 <input type="button" name="cbi.apply" value="Save &amp; Apply"
-  class="cbi-button cbi-button-apply"/>
+  class="cbi-button cbi-button-apply" accesskey="S" title="Access key: S"/>
 <input type="button" onclick="configToForm();" value="Reset to current"
   class="cbi-button cbi-button-reset"/>
 <input type="button" value="Reboot AVR" class="cbi-button cbi-input-reload"
