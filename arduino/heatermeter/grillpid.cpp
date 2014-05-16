@@ -42,10 +42,10 @@ static struct tagAdcState
   unsigned char discard;  // Discard this many ADC readings
   unsigned int thisHigh;  // High this period
   unsigned int thisLow;   // Low this period
-  unsigned int analogReads[6]; // Current values
-  unsigned int analogRange[6]; // high-low on last period
-#if defined(ADC_DYNAMIC_RANGE)
-  unsigned char lowRange[6];   // true if was low range used for read
+  unsigned int analogReads[NUM_ANALOG_INPUTS]; // Current values
+  unsigned int analogRange[NUM_ANALOG_INPUTS]; // high-low on last period
+#if defined(GRILLPID_DYNAMIC_RANGE)
+  bool useBandgapReference[NUM_ANALOG_INPUTS];  // Use 1.1V reference instead of AVCC
 #endif
 #if defined(NOISEDUMP_PIN)
   unsigned int data[256];
@@ -98,26 +98,10 @@ ISR(ADC_vect)
     adcState.thisLow = 0xffff;
     adcState.accumulator = 0;
 
-#if defined(ADC_DYNAMIC_RANGE)
-    // Select the next pin
-    // Because the MUX is change while already reading, discard readings
-    // to allow it to change and settle
     pin = (pin + 1) % 6;
-    unsigned char reference = DEFAULT << 6;
-    if (adcState.lowRange[pin])
-      if (adcState.analogReads[pin] > (1000U << 6))
-        adcState.lowRange[pin] = false;
-      else
-        reference = INTERNAL << 6;
-    else // lowRange == false
-    {
-      if (pin ==5 && adcState.analogReads[pin] < (300U << 6))
-      {
-        adcState.lowRange[pin] = true;
-        reference = INTERNAL << 6;
-      }
-    }
-    
+#if defined(GRILLPID_DYNAMIC_RANGE)
+    unsigned char reference =
+      adcState.useBandgapReference[pin] ? (INTERNAL << 6) : (DEFAULT << 6);
     // If switching references, allow time for AREF cap to charge
     if ((ADMUX & 0xc0) != reference)
       adcState.discard = 48;  // 48 / 9615 samples/s = 5ms
@@ -126,7 +110,7 @@ ISR(ADC_vect)
 
     ADMUX = reference | pin;
 #else
-    ADMUX = (DEFAULT << 6) | ((pin + 1) % 6);
+    ADMUX = (DEFAULT << 6) | pin;
     adcState.discard = 2;
 #endif
   }
@@ -150,6 +134,16 @@ unsigned int analogReadRange(unsigned char pin)
     retVal = adcState.analogRange[pin];
   }
   return retVal;
+}
+
+bool analogIsBandgapReference(unsigned char pin)
+{
+  return adcState.useBandgapReference[pin];
+}
+
+void analogSetBandgapReference(unsigned char pin, bool enable)
+{
+  adcState.useBandgapReference[pin] = enable;
 }
 
 static void adcDump(void)
@@ -286,9 +280,14 @@ void TempProbe::calcTemp(void)
       // If scale is <100 it is assumed to be mV/C with a 3.3V reference
       if (mvScale < 100.0f)
         mvScale = 3300.0f / mvScale;
-#if defined(ADC_DYNAMIC_RANGE)
-      if (adcState.lowRange[_pin])
+#if defined(GRILLPID_DYNAMIC_RANGE)
+      if (analogIsBandgapReference(_pin))
+      {
+        analogSetBandgapReference(_pin, ADCval < (1000U * (unsigned char)pow(2, TEMP_OVERSAMPLE_BITS)));
         mvScale /= 3;
+      }
+      else
+        analogSetBandgapReference(_pin, ADCval < (300U * (unsigned char)pow(2, TEMP_OVERSAMPLE_BITS)));
 #endif
       setTemperatureC(ADCval / ADCmax * mvScale);
     }

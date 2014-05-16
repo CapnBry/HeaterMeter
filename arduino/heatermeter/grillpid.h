@@ -122,6 +122,9 @@ public:
 unsigned int analogReadOver(unsigned char pin, unsigned char bits);
 // Range of the last ADC period for this pin, always 10bit
 unsigned int analogReadRange(unsigned char pin);
+// Is the pin using the 1.1V reference
+bool analogIsBandgapReference(unsigned char pin);
+void analogSetBandgapReference(unsigned char pin, bool enable);
 
 class GrillPid
 {
