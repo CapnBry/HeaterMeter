@@ -169,13 +169,8 @@ static void adcDump(void)
 
 static void calcExpMovingAverage(const float smooth, float *currAverage, float newValue)
 {
-  if (isnan(*currAverage))
-    *currAverage = newValue;
-  else
-  {
-    newValue = newValue - *currAverage;
-    *currAverage = *currAverage + (smooth * newValue);
-  }
+  newValue = newValue - *currAverage;
+  *currAverage = *currAverage + (smooth * newValue);
 }
 
 void ProbeAlarm::updateStatus(int value)
@@ -225,7 +220,7 @@ void ProbeAlarm::setThreshold(unsigned char idx, int value)
 }
 
 TempProbe::TempProbe(const unsigned char pin) :
-  _pin(pin), Temperature(NAN), TemperatureAvg(NAN)
+  _pin(pin), _tempStatus(TSTATUS_NONE)
 {
 }
 
@@ -241,8 +236,8 @@ void TempProbe::loadConfig(struct __eeprom_probe *config)
 void TempProbe::setProbeType(unsigned char probeType)
 {
   _probeType = probeType;
-  Temperature = NAN;
-  TemperatureAvg = NAN;
+  _tempStatus = TSTATUS_NONE;
+  _hasTempAvg = false;
 }
 
 void TempProbe::addAdcValue(unsigned int analog_temp)
@@ -266,7 +261,9 @@ void TempProbe::calcTemp(void)
   }
 
   // Ignore anything with a large range as being "noisy" or ramping due to a plug event
-  if (analogReadRange(_pin) < 16)
+  if (analogReadRange(_pin) > 16)
+    _tempStatus = TSTATUS_NOISE;
+  else
   {
     const float ADCmax = 1023 * pow(2, TEMP_OVERSAMPLE_BITS);
 
@@ -312,11 +309,11 @@ void TempProbe::calcTemp(void)
       setTemperatureC(T - 273.15f);
     } /* if PROBETYPE_INTERNAL */
   } /* if ADCval */
-  else
-    Temperature = NAN;
 
   if (hasTemperature())
   {
+    if (!_hasTempAvg)
+      TemperatureAvg = Temperature;
     calcExpMovingAverage(TEMPPROBE_AVG_SMOOTH, &TemperatureAvg, Temperature);
     Alarms.updateStatus(Temperature);
   }
@@ -327,8 +324,10 @@ void TempProbe::calcTemp(void)
 void TempProbe::setTemperatureC(float T)
 {
   // Sanity - anything less than -20C (-4F) or greater than 500C (932F) is rejected
-  if (T <= -20.0f || T > 500.0f)
-    Temperature = NAN;
+  if (T <= -20.0f) // || T > 500.0f)
+    _tempStatus = TSTATUS_LOW;
+  else if (T >= 500.0f)
+    _tempStatus = TSTATUS_HIGH;
   else
   {
     if (pid.getUnits() == 'F')
@@ -336,12 +335,13 @@ void TempProbe::setTemperatureC(float T)
     else
       Temperature = T;
     Temperature += Offset;
+    _tempStatus = TSTATUS_OK;
   }
 }
 
 GrillPid::GrillPid(unsigned char const fanPin, unsigned char const servoPin, unsigned char const feedbackAPin) :
     _fanPin(fanPin), _servoPin(servoPin), _feedbackAPin(feedbackAPin),
-    _periodCounter(0x80), _units('F'), PidOutputAvg(NAN)
+    _periodCounter(0x80), _units('F')
 {
 #if defined(GRILLPID_SERVO_ENABLED)
   pinMode(_servoPin, OUTPUT);

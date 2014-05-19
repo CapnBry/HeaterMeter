@@ -58,13 +58,20 @@ public:
   boolean Armed[2];
 };
 
+#define TSTATUS_NONE  'U'
+#define TSTATUS_NOISE 'N'
+#define TSTATUS_HIGH  'H'
+#define TSTATUS_LOW   'L'
+#define TSTATUS_OK    'O'
+
 class TempProbe
 {
 private:
   const unsigned char _pin; 
-  unsigned char _accumulatedCount;
   unsigned int _accumulator;
-  unsigned char _probeType;  
+  unsigned char _probeType;
+  unsigned char _tempStatus;
+  boolean _hasTempAvg;
   
 public:
   TempProbe(const unsigned char pin);
@@ -87,11 +94,11 @@ public:
   /* Runtime Data/Methods */
   // Last averaged temperature reading
   float Temperature;
-  boolean hasTemperature(void) const { return !isnan(Temperature); }
+  boolean hasTemperature(void) const { return _tempStatus == TSTATUS_OK; }
   void setTemperatureC(float T);
   // Temperature moving average 
   float TemperatureAvg;
-  boolean hasTemperatureAvg(void) const { return !isnan(TemperatureAvg); }
+  boolean hasTemperatureAvg(void) const { return _hasTempAvg; }
   // Do the duty of reading ADC
   void readTemp(void);
   // Convert ADC to Temperature
