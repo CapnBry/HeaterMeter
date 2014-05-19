@@ -506,7 +506,7 @@ inline void GrillPid::commitFanOutput(void)
   {
     bool needBoost = _lastBlowerOutput == 0;
     if (bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
-      _lastBlowerOutput = mappct(fanSpeed, FeedvoltToAdc(5.0f), FeedvoltToAdc(12.0f));
+      _lastBlowerOutput = mappct(fanSpeed, FeedvoltToAdc(5.0f), FeedvoltToAdc(12.1f));
     else
       _lastBlowerOutput = mappct(fanSpeed, 0, 255);
     // If going from 0% to non-0%, turn the blower fully on for one period
