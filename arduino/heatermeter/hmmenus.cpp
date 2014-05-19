@@ -509,17 +509,19 @@ void HmMenuSystem::displayToast(char *msg)
   /* This function attempts to clumsily split msg into two lines for display 
      and pads the extra space characters with space. If there is no comma in
      msg, then just the first line is written */
-  char *pos = strchr(msg, ',');
-  memset(_toastMsg, ' ', sizeof(_toastMsg));
-  if (pos == NULL)
+  unsigned char dst = 0;
+  while (*msg && dst < sizeof(_toastMsg))
   {
-    memcpy(getToastLine0(), msg, min(strlen(msg), sizeof(_toastMsg)));
+    if (*msg != ',')
+      _toastMsg[dst++] = *msg;
+    else
+      while (dst < (sizeof(_toastMsg)/2))
+        _toastMsg[dst++] = ' ';
+    ++msg;
   }
-  else
-  {
-    memcpy(getToastLine0(), msg, min(pos - msg, sizeof(_toastMsg)/2));
-    memcpy(getToastLine1(), pos+1, min(strlen(pos)-1, sizeof(_toastMsg)/2));
-  }
+  while (dst < sizeof(_toastMsg))
+     _toastMsg[dst++] = ' ';
+
   if (getState() != ST_TOAST)
     setState(ST_TOAST);
   else

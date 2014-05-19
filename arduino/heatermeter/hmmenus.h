@@ -47,7 +47,7 @@ public:
 
   void displayToast(char *msg);
   unsigned char *getToastLine0(void) { return &_toastMsg[0]; }
-  unsigned char *getToastLine1(void) { return &_toastMsg[sizeof(_toastMsg)/2+1]; }
+  unsigned char *getToastLine1(void) { return &_toastMsg[sizeof(_toastMsg)/2]; }
 private:
   unsigned char _toastMsg[33];
 };
