@@ -19,9 +19,11 @@ ISR(TIMER1_COMPA_vect)
 {
   if (timer4k.cnt != 0)
   {
-    OCR1A += (40000/160);
-    if (OCR1A >= 40000)
-      OCR1A -= 40000;
+    uint16_t trigger = OCR1A;
+    trigger += (40000/160);
+    if (trigger >= 40000)
+      trigger -= 40000;
+    OCR1A = trigger;
     --timer4k.cnt;
     *timer4k.pinPort ^= timer4k.pinMask;
   }

@@ -53,7 +53,7 @@ static struct tagAdcState
 } adcState;
 
 #if defined(NOISEDUMP_PIN)
-volatile unsigned char g_NoisePin = NOISEDUMP_PIN;
+unsigned char g_NoisePin = NOISEDUMP_PIN;
 #endif
 
 ISR(ADC_vect)
@@ -63,14 +63,6 @@ ISR(ADC_vect)
     --adcState.discard;
     return;
   }
-
-  /*
-  Don't take any readings that were sampled during the blower "turn on"
-  time because it causes a dip in the power. The ADC scaler and the TIMER2
-  scaler are both 128 so their clock counts are the same. The ADC takes
-  13 clocks to measure. */
-  //if (TCNT2 < 17)
-  //  return;
 
   unsigned int adc = ADC;
 #if defined(NOISEDUMP_PIN)
@@ -98,17 +90,20 @@ ISR(ADC_vect)
     adcState.thisLow = 0xffff;
     adcState.accumulator = 0;
 
-    pin = (pin + 1) % 6;
+    ++pin;
+    if (pin >= NUM_ANALOG_INPUTS)
+      pin = 0;
 #if defined(GRILLPID_DYNAMIC_RANGE)
-    unsigned char reference =
+    unsigned char newref =
       adcState.useBandgapReference[pin] ? (INTERNAL << 6) : (DEFAULT << 6);
+    unsigned char curref = ADMUX & 0xc0;
     // If switching references, allow time for AREF cap to charge
-    if ((ADMUX & 0xc0) != reference)
+    if (curref != newref)
       adcState.discard = 48;  // 48 / 9615 samples/s = 5ms
     else
       adcState.discard = 2;
 
-    ADMUX = reference | pin;
+    ADMUX = newref | pin;
 #else
     ADMUX = (DEFAULT << 6) | pin;
     adcState.discard = 2;
