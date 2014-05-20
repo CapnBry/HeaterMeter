@@ -31,7 +31,7 @@ var graphData =  [
         { label: "Amb", color: "#789", lines: { show: true }, data: [] },
         { label: "Food2", color: "#297", lines: { show: true }, data: [] },
         { label: "Food1", color: "#6c3", lines: { show: true }, data: [] },
-        { label: "Pit", color: "#e73", lines: { lineWidth: 3 }, data: [] }
+        { label: "Pit", color: "#e73", lines: { show: true, lineWidth: 3 }, data: [] }
     ];
 
     var graphOpts = {
@@ -66,12 +66,13 @@ var graphData =  [
 
 $(document).ready(function()
 {
+    loadPrefs();
     graphOpts.legend.container = $("#graph_legend");
     $("#graph_overview").bind("plotselected", overviewSelected);
     $("#graph_overview").bind("plotunselected", overviewUnselected);
     $("#showfan").click(showFanChanged);
     $("#graphtt").click(graphttClicked);
-    $("#rangeselect").change(refreshGraphData);
+    $("#rangeselect").change(rangeSelectChanged);
     $("#graph").bind("plotclick", graphClicked);
     $("#graph").bind("plothover", graphHover);
     $("#graph").mouseout(function () { $("#graphtt").fadeOut(); });
@@ -147,6 +148,30 @@ $(window).load(function ()
 <% end %>
     refreshGraphData();
 });
+
+function storePref(k, v)
+{
+  if ("localStorage" in window && window["localStorage"] !== null)
+    localStorage[k] = v;
+}
+
+function loadPrefs()
+{
+  if ("localStorage" in window && window["localStorage"] !== null)
+  {
+    $("#rangeselect").val(localStorage["prefs.graphrange"] || "");
+    $("#showfan").prop("checked", (localStorage["prefs.showfan"] || "true") == "true");
+    var probelines = localStorage["pref.probelines"] || "3456";
+    for (i=0; i<graphData.length; ++i)
+      graphData[i].lines.show = probelines.indexOf(i) != -1;
+  }
+}
+
+function rangeSelectChanged()
+{
+  storePref("prefs.graphrange", $("#rangeselect").val());
+  refreshGraphData();
+}
 
 function alarmEvent(o)
 {
@@ -248,6 +273,13 @@ function legendClicked()
     // and get the graphdata index
     var idx = mapJson[parseInt(this.id.substring(2))];
     graphData[idx].lines.show = !graphData[idx].lines.show;
+
+    var probelines = "";
+    for (i=0; i<graphData.length; ++i)
+      if (graphData[i].lines.show)
+        probelines += i;
+    storePref("pref.probelines", probelines);
+
     updateGraph();
 }
 
@@ -301,11 +333,13 @@ function showFanChanged()
     {
         graphData[0].lines.show = true;
         graphData[1].lines.show = true;
+        storePref("prefs.showfan", "true");
     }
     else
     {
         graphData[0].lines.show = false;
         graphData[1].lines.show = false;
+        storePref("prefs.showfan", "false");
     }
     updateGraph();
 }
