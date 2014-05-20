@@ -87,13 +87,8 @@ $(document).ready(function()
         $("#pl" + srs).css("background", graphData[mapJson[srs]].color);
 
 <% if context.authuser == "root" then %>
-    $(".pname").editable(function(value, settings) {
-        return(nameChanged(this.id, value));
-    }, {maxlength: 13, select: true});
-
-    $("#set").editable(function(value, settings) {
-        return(tempChanged(value));
-    }, {style: "display: inline", select: true});
+    $(".pname").editable(nameChanged, {maxlength: 13, select: true});
+    $("#set").editable(tempChanged, {style: "display: inline", select: true});
     
     $("#lid").click(function () { 
         if (lastLidOpen == -1) return;
@@ -600,17 +595,16 @@ function tstatSuccess(csv)
     updateGraph();
 }
 
-function nameChanged(from, value)
+function nameChanged(value, settings)
 {
-    var params = {}; params[from] = value;
+    var params = {}; params[this.id] = value;
     $.get("<%=build_url("admin/lm/set")%>", params);
     return value;
 }
 
-function tempChanged(value)
+function tempChanged(value, settings)
 {
-    if((value - 0) == value && value.length > 0 && 
-      value < 999 && value >= -100)
+    if (value.length > 0)
     {
         $.get("<%=build_url("admin/lm/set")%>", {sp: value});
         return value;
