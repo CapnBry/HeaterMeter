@@ -25,9 +25,9 @@ var lastLidOpen = -1;
 var mapJson = [6,5,4,3];
 var graphLoaded = false;
 var graphData =  [
-        { label: "", color: "#6cf", lines: { lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // fanspeed
-        { label: "", color: "#fd9", lines: { lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // lidopen
-        { label: "Set", color: "rgba(255,0,0,0.8)", lines: { lineWidth: 1 }, shadowSize: 0, data: [] },
+        { label: "", color: "#6cf", lines: { show: true, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // fanspeed
+        { label: "", color: "#fd9", lines: { show: true, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // lidopen
+        { label: "Set", color: "rgba(255,0,0,0.8)", lines: { show: true, lineWidth: 1 }, shadowSize: 0, data: [] },
         { label: "Amb", color: "#789", lines: { show: true }, data: [] },
         { label: "Food2", color: "#297", lines: { show: true }, data: [] },
         { label: "Food1", color: "#6c3", lines: { show: true }, data: [] },
@@ -155,11 +155,20 @@ function loadPrefs()
   if ("localStorage" in window && window["localStorage"] !== null)
   {
     $("#rangeselect").val(localStorage["prefs.graphrange"] || "");
-    $("#showfan").prop("checked", (localStorage["prefs.showfan"] || "true") == "true");
-    var probelines = localStorage["pref.probelines"] || "3456";
+    var graphlines = localStorage["pref.graphlines"] || "0123456";
+    $("#showfan").prop("checked", graphlines.indexOf("0") != -1);
     for (i=0; i<graphData.length; ++i)
-      graphData[i].lines.show = probelines.indexOf(i) != -1;
+      graphData[i].lines.show = graphlines.indexOf(i) != -1;
   }
+}
+
+function storePrefGraphlines()
+{
+  var graphlines = "";
+  for (i=0; i<graphData.length; ++i)
+    if (graphData[i].lines.show)
+      graphlines += i;
+  storePref("pref.graphlines", graphlines);
 }
 
 function rangeSelectChanged()
@@ -268,13 +277,7 @@ function legendClicked()
     // and get the graphdata index
     var idx = mapJson[parseInt(this.id.substring(2))];
     graphData[idx].lines.show = !graphData[idx].lines.show;
-
-    var probelines = "";
-    for (i=0; i<graphData.length; ++i)
-      if (graphData[i].lines.show)
-        probelines += i;
-    storePref("pref.probelines", probelines);
-
+    storePrefGraphlines();
     updateGraph();
 }
 
@@ -328,13 +331,13 @@ function showFanChanged()
     {
         graphData[0].lines.show = true;
         graphData[1].lines.show = true;
-        storePref("prefs.showfan", "true");
+        storePrefGraphlines();
     }
     else
     {
         graphData[0].lines.show = false;
         graphData[1].lines.show = false;
-        storePref("prefs.showfan", "false");
+        storePrefGraphlines();
     }
     updateGraph();
 }
