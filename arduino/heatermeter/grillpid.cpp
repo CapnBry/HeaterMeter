@@ -255,8 +255,11 @@ void TempProbe::calcTemp(void)
     return;
   }
 
+  // Ignore probes within 1 LSB of max
+  if (ADCval > 1022 * pow(2, TEMP_OVERSAMPLE_BITS))
+    _tempStatus = TSTATUS_NONE;
   // Ignore anything with a large range as being "noisy" or ramping due to a plug event
-  if (analogReadRange(_pin) > 16)
+  else if (analogReadRange(_pin) > 32)
     _tempStatus = TSTATUS_NOISE;
   else
   {
