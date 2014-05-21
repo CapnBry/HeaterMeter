@@ -1,22 +1,36 @@
 #!/bin/sh
 
+FUNC=`basename $0`
+
 [ $# -eq 0 ] && {
 cat <<EOF
-Usage: wifi-client SSID [encryption] [password]
+Usage: $FUNC [-s SSID] [-p password] [-c channel] [-e encryption] [-m mode]
        encryption = none wep psk psk2 (default)
+       mode = ap sta
 EOF
   exit 1
 }
 
-SSID=$1
-if [ $# -gt 2 ] ; then
-  ENC=$2
-  PASS=$3
-else
-  ENC=psk2
-  PASS=$2
-fi
-PASS="	option key '$PASS'"
+ENC=psk2
+MODE=sta
+[ "$FUNC" = "wifi-client" ] && MODE="sta"
+[ "$FUNC" = "wifi-ap" ] && MODE="ap"
+
+while getopts "s:p:c:e:" arg ; do
+  case $arg in
+    s) SSID=$OPTARG ;;
+    p) PASS=$OPTARG ;;
+    c) CHANNEL=$OPTARG ;;
+    e) ENC=$OPTARG ;;
+  esac
+done
+
+shift $((OPTIND-1))
+[ $# -gt 0 ] && SSID=$1
+[ $# -gt 1 ] && PASS=$2
+
+[ -n "$PASS" ] && PASS="	option key '$PASS'"
+[ -n "$CHANNEL" ] && CHANNEL="	option channel '$CHANNEL'"
 
 cat > /etc/config/wireless << EOF
 config wifi-device 'radio0'
@@ -28,17 +42,30 @@ config wifi-device 'radio0'
 	#list ht_capab 'SHORT-GI-40'
 	#list ht_capab 'DSSS_CCK-40'
 	#option country '00'
+$CHANNEL	
 
 config wifi-iface
 	option device 'radio0'
 	option network 'wwan'
-	option mode 'sta'
+	option mode '$MODE'
 	option ssid '$SSID'
 	option encryption '$ENC'
 $PASS
 EOF
 
 uci set network.wwan=interface
-uci set network.wwan.proto=dhcp
+uci set dhcp.wwan=dhcp
+uci set dhcp.wwan.interface=wwan
+if [ "$MODE" = "sta" ] ; then
+  uci set dhcp.wwan.ignore=1
+  uci set network.wwan.proto=dhcp
+else
+  uci set dhcp.wwan.ignore=0
+  uci set network.wwan.proto=static
+  uci -q get network.wwan.ipaddr > /dev/null || {
+    uci set network.wwan.ipaddr=192.168.201.1
+    uci set network.wwan.netmask=255.255.255.0
+  }
+fi
 uci commit
 

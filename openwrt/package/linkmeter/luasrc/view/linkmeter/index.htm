@@ -25,13 +25,13 @@ var lastLidOpen = -1;
 var mapJson = [6,5,4,3];
 var graphLoaded = false;
 var graphData =  [
-        { label: "", color: "#6cf", lines: { lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // fanspeed
-        { label: "", color: "#fd9", lines: { lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // lidopen
-        { label: "Set", color: "rgba(255,0,0,0.8)", lines: { lineWidth: 1 }, shadowSize: 0, data: [] },
+        { label: "", color: "#6cf", lines: { show: true, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // fanspeed
+        { label: "", color: "#fd9", lines: { show: true, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // lidopen
+        { label: "Set", color: "rgba(255,0,0,0.8)", lines: { show: true, lineWidth: 1 }, shadowSize: 0, data: [] },
         { label: "Amb", color: "#789", lines: { show: true }, data: [] },
         { label: "Food2", color: "#297", lines: { show: true }, data: [] },
         { label: "Food1", color: "#6c3", lines: { show: true }, data: [] },
-        { label: "Pit", color: "#e73", lines: { lineWidth: 3 }, data: [] }
+        { label: "Pit", color: "#e73", lines: { show: true, lineWidth: 3 }, data: [] }
     ];
 
     var graphOpts = {
@@ -66,16 +66,18 @@ var graphData =  [
 
 $(document).ready(function()
 {
+    loadPrefs();
     graphOpts.legend.container = $("#graph_legend");
     $("#graph_overview").bind("plotselected", overviewSelected);
     $("#graph_overview").bind("plotunselected", overviewUnselected);
     $("#showfan").click(showFanChanged);
     $("#graphtt").click(graphttClicked);
-    $("#rangeselect").change(refreshGraphData);
+    $("#rangeselect").change(rangeSelectChanged);
     $("#graph").bind("plotclick", graphClicked);
     $("#graph").bind("plothover", graphHover);
     $("#graph").mouseout(function () { $("#graphtt").fadeOut(); });
     $("div.legfill").click(legendClicked);
+    $("div.noisebtn").click(noisebtnClicked);
     $(document).keydown(keyPressed);
 
     // Set colors of probe readings to match the graph colors
@@ -85,13 +87,8 @@ $(document).ready(function()
         $("#pl" + srs).css("background", graphData[mapJson[srs]].color);
 
 <% if context.authuser == "root" then %>
-    $(".pname").editable(function(value, settings) {
-        return(nameChanged(this.id, value));
-    }, {maxlength: 13, select: true});
-
-    $("#set").editable(function(value, settings) {
-        return(tempChanged(value));
-    }, {style: "display: inline", select: true});
+    $(".pname").editable(nameChanged, {maxlength: 13, select: true});
+    $("#set").editable(tempChanged, {style: "display: inline", select: true});
     
     $("#lid").click(function () { 
         if (lastLidOpen == -1) return;
@@ -146,6 +143,39 @@ $(window).load(function ()
 <% end %>
     refreshGraphData();
 });
+
+function storePref(k, v)
+{
+  if ("localStorage" in window && window["localStorage"] !== null)
+    localStorage[k] = v;
+}
+
+function loadPrefs()
+{
+  if ("localStorage" in window && window["localStorage"] !== null)
+  {
+    $("#rangeselect").val(localStorage["prefs.graphrange"] || "");
+    var graphlines = localStorage["pref.graphlines"] || "0123456";
+    $("#showfan").prop("checked", graphlines.indexOf("0") != -1);
+    for (i=0; i<graphData.length; ++i)
+      graphData[i].lines.show = graphlines.indexOf(i) != -1;
+  }
+}
+
+function storePrefGraphlines()
+{
+  var graphlines = "";
+  for (i=0; i<graphData.length; ++i)
+    if (graphData[i].lines.show)
+      graphlines += i;
+  storePref("pref.graphlines", graphlines);
+}
+
+function rangeSelectChanged()
+{
+  storePref("prefs.graphrange", $("#rangeselect").val());
+  refreshGraphData();
+}
 
 function alarmEvent(o)
 {
@@ -230,7 +260,7 @@ function graphNoise(s)
   var median = sorted[Math.floor(sorted.length/2)];
   var marray = [[0,median], [MAX,median]];
   var aarray = [[0,avg], [MAX,avg]];
-  $.plot("#noisegraph", [ vals,
+  $.plot("#noisegraph_g", [ vals,
       { label: "Median", data: marray },
       { label: "Average", data: aarray }
     ], { legend: { backgroundColor: "#333" },
@@ -247,7 +277,15 @@ function legendClicked()
     // and get the graphdata index
     var idx = mapJson[parseInt(this.id.substring(2))];
     graphData[idx].lines.show = !graphData[idx].lines.show;
+    storePrefGraphlines();
     updateGraph();
+}
+
+function noisebtnClicked()
+{
+    var probe = $(this).text();
+    $.get("<%=build_url("admin/lm/set")%>",
+      {tp: "," + probe });
 }
 
 function refreshGraphData()
@@ -293,11 +331,13 @@ function showFanChanged()
     {
         graphData[0].lines.show = true;
         graphData[1].lines.show = true;
+        storePrefGraphlines();
     }
     else
     {
         graphData[0].lines.show = false;
         graphData[1].lines.show = false;
+        storePrefGraphlines();
     }
     updateGraph();
 }
@@ -558,17 +598,16 @@ function tstatSuccess(csv)
     updateGraph();
 }
 
-function nameChanged(from, value)
+function nameChanged(value, settings)
 {
-    var params = {}; params[from] = value;
+    var params = {}; params[this.id] = value;
     $.get("<%=build_url("admin/lm/set")%>", params);
     return value;
 }
 
-function tempChanged(value)
+function tempChanged(value, settings)
 {
-    if((value - 0) == value && value.length > 0 && 
-      value < 999 && value >= -100)
+    if (value.length > 0)
     {
         $.get("<%=build_url("admin/lm/set")%>", {sp: value});
         return value;
@@ -839,6 +878,9 @@ div.pipip { position: absolute; left: 50%; top: 0; width: 1px; height: 100%;
     padding: 4px 30px 4px 30px; border: 1px solid #000; }
 #navcontainer li a:hover { background-color: #246; color: #f3f1e9;
     border: 1px solid #333; }
+div.noisebtn { color: #777; text-align:center; height:32px; width:32px; font-size:15px;
+    border:1px solid #dcdcdc; line-height:32px; background-color:#ededed;
+    float: right; }
 </style>
 </head>
 
@@ -921,8 +963,17 @@ div.pipip { position: absolute; left: 50%; top: 0; width: 1px; height: 100%;
 <% end %>
       <div style="position: relative;">
         <div id="png" style="display: none; height: 350px; margin: 8px auto 0px auto;"><img id="dl" alt="<%=fshort%>"></div>
-        <div id="noisegraph" style="height: 256px; width: 1024px; margin: 8px au
-to 0px auto; display: none;"></div>
+        <div id="noisegraph" style="height: 256px; width: 1058px; margin: 8px auto 0px auto; display: none;">
+          <div id="noisegraph_g" style="height: 256px; width: 1024px; float: left;"></div>
+<% if context.authuser == "root" then %>
+          <div class="noisebtn" style="border-radius: 6px 6px 0 0; margin-top: 6px;">0</div>
+          <div class="noisebtn">1</div>
+          <div class="noisebtn">2</div>
+          <div class="noisebtn">3</div>
+          <div class="noisebtn">4</div>
+          <div class="noisebtn" style="border-radius: 0 0 6px 6px;">5</div>
+<% end %>
+        </div>
         <div id="graph" style="height: 350px; width: 700px; margin: 8px auto 0px auto;"></div>
         <div id="graph_overview" style="height: 90px; width: 700px; margin-left: auto; margin-right: auto;"></div>
         <div id="loadindic" style="display: none; position: relative; top: -320px; z-index: 2;"><img src="<%=resource%>/loading.gif" style="width: 126px; height: 22px;"></div>

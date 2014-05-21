@@ -193,6 +193,12 @@ function action_set()
       nixio.nanosleep(0, 100000000)
     end
 
+    -- Convert XX% setpoint to -XX
+    if (k == "sp") then
+      local dig, units = v:match("^(%d+).-([ACFR%%]?)$")
+      if units == "%" then v = "-" .. dig end
+    end
+
     local result, err = lm:query("$LMST,%s,%s" % {k,v}, true)
     http.write("%s to %s = %s\n" % {k,v, result or err})
     if err then break end

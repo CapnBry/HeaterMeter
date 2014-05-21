@@ -129,7 +129,7 @@ function configHashToForm()
     if (isProbeId(k, "pcurr"))
     {
       if (val != null)
-        elem.html("current temperature " + val.toFixed(1) + "&deg;");
+        elem.html("current temperature " + val.toFixed(1) + "&#176;");
       else
         elem.html("off");
     } 
@@ -163,7 +163,10 @@ function configHashToForm()
         .prop("checked", val & 0x80);
     }
     else if (k == "oflag")
+    {
       setupCheckboxBitmask(k, val);
+      $("#oflag4").val(parseInt(val) >> 4); // mode
+    }
     else if (k == "smin" || k == "smax")
       $("#" + k + "X")
         .val(val * 10)
@@ -231,7 +234,11 @@ function configElemChange()
   {
     var idx = +name.substr(5);
     var val = $("#oflag").val();
-    if ($(this).is(":checked"))
+	var thisval =
+	  // oflag4 is the PWM/Voltage dropdown
+	  ((idx == 4) && ($(this).val() == "1")) ||
+	  ((idx != 4) && $(this).is(":checked"));
+    if (thisval)
       val |= (1 << idx);
     else
       val &= ~(1 << idx);
@@ -569,7 +576,11 @@ time they are restarted.</div>
   </div>
   <div class="cbi-value">
     <input type="hidden" id="oflag"/>
-    Fan speed
+    Fan output
+    <select id="oflag4" style="width: 6em;">
+      <option value="0">Pulse</option>
+      <option value="1">Voltage</option>
+    </select>
     min <input type="text" maxlength="3" id="fmin" style="width: 2em;"/>% max
       <input type="text" maxlength="3" id="fmax" style="width: 2em;"/>%
     <label><input type="checkbox" id="oflag0"/> Invert output</label>
@@ -652,7 +663,7 @@ Version <span id="ucid"></span><br/><span id="cerr" style="color: #f00;"></span>
 
 <div class="cbi-page-actions">
 <input type="button" name="cbi.apply" value="Save &amp; Apply"
-  class="cbi-button cbi-button-apply"/>
+  class="cbi-button cbi-button-apply" accesskey="s" title="Access key: S"/>
 <input type="button" onclick="configToForm();" value="Reset to current"
   class="cbi-button cbi-button-reset"/>
 <input type="button" value="Reboot AVR" class="cbi-button cbi-input-reload"
