@@ -61,9 +61,6 @@
     <ClInclude Include="econfig.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="adc_noise.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="tone_4khz.h">
       <Filter>Header Files</Filter>
     </ClInclude>
