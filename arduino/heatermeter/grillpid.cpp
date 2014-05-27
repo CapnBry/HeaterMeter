@@ -311,8 +311,12 @@ void TempProbe::calcTemp(void)
   if (hasTemperature())
   {
     if (!_hasTempAvg)
+    {
       TemperatureAvg = Temperature;
-    calcExpMovingAverage(TEMPPROBE_AVG_SMOOTH, &TemperatureAvg, Temperature);
+      _hasTempAvg = true;
+    }
+    else
+      calcExpMovingAverage(TEMPPROBE_AVG_SMOOTH, &TemperatureAvg, Temperature);
     Alarms.updateStatus(Temperature);
   }
   else
