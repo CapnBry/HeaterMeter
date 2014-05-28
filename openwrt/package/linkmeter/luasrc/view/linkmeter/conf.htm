@@ -416,7 +416,7 @@ function showCoeffPopup()
   for (var i=0; i<coeffPresets.length; ++i)
     items.push('<li><a class="nodest" href="#" onclick="return coeffClick(' +
       probeId + ',' + i + ');">' + coeffPresets[i].name + 
-      '</a><br/>' + coeffPresets[i].desc);
+      '</a><br/>' + coeffPresets[i].desc + "</li>");
   
   list.html(items.join(''));
   $(o).append($("#pcppopup").slideDown("fast"));
@@ -496,7 +496,9 @@ function ifrmHide()
 <div id="allconfig" style="display: none;">
 <p>Adjust the configuration of the HeaterMeter microcontroller by modifying the
 values in these fields. Save the changes by clicking the "Update URL" link.
-You can store a configuration by bookmarking the "Full configuration" link.</p>
+You can store a configuration by bookmarking the "Full configuration" link.
+The look of the Home page can be modified using the
+<a href="<%=build_url("admin/lm/usercss")%>">user CSS</a> tool.</p>
 
 <form method="GET" action="">
 <fieldset class="cbi-section" id="cbi-lm-probes">

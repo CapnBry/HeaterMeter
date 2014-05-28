@@ -9,6 +9,8 @@ function index()
   entry({"admin", "lm", "conf"}, template("linkmeter/conf"), "Configuration", 50)
   entry({"admin", "lm", "credits"}, template("linkmeter/credits"), "Credits", 60)
 
+  entry({"admin", "lm", "usercss"}, cbi("linkmeter/usercss"))
+
   entry({"admin", "lm", "stashdb"}, call("action_stashdb"))
   entry({"admin", "lm", "reboot"}, call("action_reboot"))
   entry({"admin", "lm", "set"}, call("action_set"))
