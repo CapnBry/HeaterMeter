@@ -431,7 +431,9 @@ void updateDisplay(void)
 
     /* Default Pit / Fan Speed first line */
     int pitTemp = pid.Probes[TEMP_PIT]->Temperature;
-    if (!pid.getManualOutputMode() && !pid.Probes[TEMP_PIT]->hasTemperature())
+    if (!pid.getManualOutputMode() && pid.Probes[TEMP_PIT]->getTempStatus() == TSTATUS_NOISE)
+      memcpy_P(buffer, LCD_LINE1_NOISE, sizeof(LCD_LINE1_NOISE));
+    else if (!pid.getManualOutputMode() && !pid.Probes[TEMP_PIT]->hasTemperature())
       memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
     else if (pid.LidOpenResumeCountdown > 0)
       snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE"%c Lid%3u"),

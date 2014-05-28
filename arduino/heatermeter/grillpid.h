@@ -95,6 +95,7 @@ public:
   // Last averaged temperature reading
   float Temperature;
   boolean hasTemperature(void) const { return _tempStatus == TSTATUS_OK; }
+  unsigned char getTempStatus(void) const { return _tempStatus; }
   void setTemperatureC(float T);
   // Temperature moving average 
   float TemperatureAvg;
