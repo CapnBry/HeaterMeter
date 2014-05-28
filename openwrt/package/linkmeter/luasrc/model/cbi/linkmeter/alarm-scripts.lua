@@ -33,6 +33,10 @@ local function script_write(self, section, value)
   end
 end
 
+local function script_remove(self, section)
+  luci.fs.unlink(SCRIPT_PATH .. self.config)
+end
+
 local scriptitems = {
   { fname = "all", title = "All Alarm Script", desc =
     [[This script is run when HeaterMeter signals any alarm before any
@@ -75,11 +79,11 @@ for i, item in pairs(scriptitems) do
 
   local fld = f:field(TextValue, "script")
     fld.isexec = isexec
-    fld.rmempty = nil
     fld.optional = true
     fld.rows = 10
     fld.cfgvalue = script_cfgvalue
     fld.write = script_write
+    fld.remove = script_remove
         
   retVal[#retVal+1] = f
 end -- for file
