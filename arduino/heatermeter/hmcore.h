@@ -6,7 +6,6 @@
 
 #define HEATERMETER_SERIAL 38400 // enable serial interface
 #define HEATERMETER_RFM12  RF12_915MHZ  // enable RFM12B receiving (433MHZ|868MHZ|915MHZ)
-//#define USE_EXTERNAL_VREF       // Using external 5V as reference to analog inputs
 #define PIEZO_HZ 4000             // enable piezo buzzer at this frequency
 #if HM_BOARD_REV == 'A'
 #define SHIFTREGLCD_NATIVE        // Use the native shift register instead of SPI (HM PCB <v3.2)

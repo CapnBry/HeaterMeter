@@ -1220,9 +1220,6 @@ void hmcoreSetup(void)
   Serial.write('\n');
   reportVersion();
 #endif  /* HEATERMETER_SERIAL */
-#ifdef USE_EXTERNAL_VREF  
-  analogReference(EXTERNAL);
-#endif  /* USE_EXTERNAL_VREF */
   // Disable Analog Comparator
   ACSR = bit(ACD);
   // Disable Digital Input on ADC pins
