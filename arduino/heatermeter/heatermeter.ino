@@ -1,5 +1,6 @@
 // HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net>
 #include "ShiftRegLCD.h"
+#include <digitalWriteFast.h>
 #include "hmcore.h"
 
 // See hmcore.h for most options and tweaks

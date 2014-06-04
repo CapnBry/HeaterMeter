@@ -12,8 +12,12 @@
 #define TEMP_AMB    3
 #define TEMP_COUNT  4
 
+#define APIN_FFEEDBACK 1
+#define PIN_BLOWER  3
+#define PIN_SERVO   5
+
 // Use oversample/decimation to increase ADC resolution to 2^(10+n) bits n=[0..6]
-#define TEMP_OVERSAMPLE_BITS 3
+#define TEMP_OVERSAMPLE_BITS 6
 
 // The time (ms) of the measurement period
 #define TEMP_MEASURE_PERIOD 1000
@@ -29,6 +33,8 @@
 
 // Servo refresh period in usec, 20000 usec = 20ms = 50Hz
 #define SERVO_REFRESH          20000
+
+#define PROBE_NAME_SIZE 13
 
 #if HM_BOARD_REV == 'A'
   #undef GRILLPID_SERVO_ENABLED

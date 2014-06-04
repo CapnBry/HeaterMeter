@@ -3,6 +3,7 @@
 #include "econfig.h"
 #include <avr/wdt.h>
 #include <avr/power.h>
+#include <digitalWriteFast.h>
 
 #include "hmcore.h"
 
@@ -18,7 +19,7 @@ static TempProbe probe0(PIN_PIT);
 static TempProbe probe1(PIN_FOOD1);
 static TempProbe probe2(PIN_FOOD2);
 static TempProbe probe3(PIN_AMB);
-GrillPid pid(PIN_BLOWER, PIN_SERVO, PIN_FFEEDBACK);
+GrillPid pid;
 
 #ifdef SHIFTREGLCD_NATIVE
 ShiftRegLCD lcd(PIN_SERVO, PIN_LCD_CLK, TWO_WIRE, 2);
@@ -602,7 +603,7 @@ static void storeProbeCoeff(unsigned char probeIndex, char *vals)
 static void reboot(void)
 {
   // Once the pin goes low, the avr should reboot
-  digitalWrite(PIN_SOFTRESET, LOW);
+  digitalWriteFast(PIN_SOFTRESET, LOW);
   // Use the watchdog in case SOFTRESET isn't hooked up (e.g. HM4.0)
   // If hoping to program via Optiboot, this won't work if the WDT trigers the reboot
   cli();
@@ -1210,7 +1211,7 @@ static void ledExecutor(unsigned char led, unsigned char on)
 
 void hmcoreSetup(void)
 {
-  pinMode(PIN_WIRELESS_LED, OUTPUT);
+  pinModeFast(PIN_WIRELESS_LED, OUTPUT);
   blinkLed();
   
 #ifdef HEATERMETER_SERIAL
@@ -1233,10 +1234,10 @@ void hmcoreSetup(void)
   // to take it to 5V before setting the mode to OUTPUT. 
   // If we reverse this, the pin will go OUTPUT,LOW and reboot.
   // SoftReset and WiShield are mutually exlusive, but it is HIGH/OUTPUT too
-  digitalWrite(PIN_SOFTRESET, HIGH);
-  pinMode(PIN_SOFTRESET, OUTPUT);
-  
-  pinMode(PIN_ALARM, OUTPUT);
+  digitalWriteFast(PIN_SOFTRESET, HIGH);
+  pinModeFast(PIN_SOFTRESET, OUTPUT);
+
+  tone4khz_init();
 
   pid.Probes[TEMP_PIT] = &probe0;
   pid.Probes[TEMP_FOOD1] = &probe1;

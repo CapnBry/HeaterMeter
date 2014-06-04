@@ -5,8 +5,6 @@
 #include "Arduino.h"
 #include "grillpid_conf.h"
 
-#define PROBE_NAME_SIZE 13
-
 // Probe types used in probeType config
 #define PROBETYPE_DISABLED 0  // do not read
 #define PROBETYPE_INTERNAL 1  // read via analogRead()
@@ -137,10 +135,6 @@ void analogSetBandgapReference(unsigned char pin, bool enable);
 class GrillPid
 {
 private:
-  unsigned char const _fanPin;
-  unsigned char const _servoPin;
-  unsigned char const _feedbackAPin;
-
   unsigned char _pidOutput;
   unsigned long _lastWorkMillis;
   boolean _pitTemperatureReached;
@@ -171,14 +165,12 @@ private:
   void commitPidOutput(void);
   void adjustFeedbackVoltage(void);
 public:
-  GrillPid(unsigned char const fanPin, unsigned char const servoPin, unsigned char const feedbackAPin);
+  GrillPid(void) : _periodCounter(0x80), _units('F') {};
   void init(void) const;
 
   TempProbe *Probes[TEMP_COUNT];
 
   /* Configuration */
-  unsigned char const getFanPin(void) const { return _fanPin; }
-  unsigned char const getServoPin(void) const { return _servoPin; }
   int getSetPoint(void) const { return _setPoint; }
   void setSetPoint(int value); 
   char getUnits(void) const { return _units; }

@@ -6,6 +6,7 @@
 #include <math.h>
 #include <string.h>
 #include <util/atomic.h>
+#include <digitalWriteFast.h>
 
 #include "strings.h"
 #include "grillpid.h"
@@ -27,13 +28,13 @@ ISR(TIMER1_CAPT_vect)
   if (cnt != 0)
   {
     OCR1B = cnt + pid.getServoStep();
-    digitalWrite(pid.getServoPin(), HIGH);
+    digitalWriteFast(PIN_SERVO, HIGH);
   }
 }
 
 ISR(TIMER1_COMPB_vect)
 {
-  digitalWrite(pid.getServoPin(), LOW);
+  digitalWriteFast(PIN_SERVO, LOW);
 }
 #endif
 
@@ -343,18 +344,11 @@ void TempProbe::setTemperatureC(float T)
   }
 }
 
-GrillPid::GrillPid(unsigned char const fanPin, unsigned char const servoPin, unsigned char const feedbackAPin) :
-    _fanPin(fanPin), _servoPin(servoPin), _feedbackAPin(feedbackAPin),
-    _periodCounter(0x80), _units('F')
-{
-#if defined(GRILLPID_SERVO_ENABLED)
-  pinMode(_servoPin, OUTPUT);
-#endif
-}
-
 void GrillPid::init(void) const
 {
 #if defined(GRILLPID_SERVO_ENABLED)
+  pinModeFast(PIN_SERVO, OUTPUT);
+
   // CTC mode with ICR1 as TOP, 8 prescale, INT on COMPB and TOP (ICR
   // Period set to SERVO_REFRESH
   // If GrillPid is constructed statically this can't be done in the constructor
@@ -443,7 +437,7 @@ void GrillPid::adjustFeedbackVoltage(void)
   {
     // _lastBlowerOutput is the voltage we want on the feedback pin
     // adjust _feedvoltLastOutput until the ffeedback == _lastBlowerOutput
-    unsigned char ffeedback = analogReadOver(_feedbackAPin, 8);
+    unsigned char ffeedback = analogReadOver(APIN_FFEEDBACK, 8);
     int error = ((int)_lastBlowerOutput - (int)ffeedback);
     int newOutput = (int)_feedvoltLastOutput + (error / 2);
     _feedvoltLastOutput = constrain(newOutput, 0, 255);
@@ -459,7 +453,7 @@ void GrillPid::adjustFeedbackVoltage(void)
   else
     _feedvoltLastOutput = _lastBlowerOutput;
 
-  analogWrite(_fanPin, _feedvoltLastOutput);
+  analogWrite(PIN_BLOWER, _feedvoltLastOutput);
 }
 
 inline unsigned char FeedvoltToAdc(float v)
@@ -517,7 +511,7 @@ inline void GrillPid::commitFanOutput(void)
     // to get it moving (boost mode)
     if (needBoost)
     {
-      digitalWrite(_fanPin, HIGH);
+      analogWrite(PIN_BLOWER, 255);
       // give the FFEEDBACK control a high starting point so when it reads
       // for the first time and sees full voltage it doesn't turn off
       _feedvoltLastOutput = 128;
