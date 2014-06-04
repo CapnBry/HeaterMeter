@@ -162,6 +162,8 @@ private:
 
   // Feedback switching mode voltage controller
   unsigned char _feedvoltLastOutput;
+  int _servoTarget;
+  int _servoStep;
   
   void calcPidOutput(void);
   void commitFanOutput(void);
@@ -207,6 +209,10 @@ public:
   // The duration (in 10x usec) for the minimum servo position
   unsigned char getMinServoPos(void) const { return _minServoPos; }
   void setMinServoPos(unsigned char value) { _minServoPos = value; }
+  // The number of timer ticks the servo is moving to
+  int getServoTarget(void) const { return _servoTarget; }
+  // Step size moving toward the target
+  int getServoStep(void) const { return _servoStep; }
 
   // Collection of PIDFLAG_*
   void setOutputFlags(unsigned char value);

@@ -23,8 +23,12 @@ extern const GrillPid pid;
 #if defined(GRILLPID_SERVO_ENABLED)
 ISR(TIMER1_CAPT_vect)
 {
-  if (OCR1B > 0)
+  unsigned int cnt = OCR1B;
+  if (cnt != 0)
+  {
+    OCR1B = cnt + pid.getServoStep();
     digitalWrite(pid.getServoPin(), HIGH);
+  }
 }
 
 ISR(TIMER1_COMPB_vect)
@@ -32,8 +36,6 @@ ISR(TIMER1_COMPB_vect)
   digitalWrite(pid.getServoPin(), LOW);
 }
 #endif
-
-//#define ADC_DYNAMIC_RANGE
 
 static struct tagAdcState
 {
@@ -539,7 +541,17 @@ inline void GrillPid::commitServoOutput(void)
 
   // Get the output speed in 10x usec by LERPing between min and max
   output = mappct(output, _minServoPos, _maxServoPos);
-  OCR1B = uSecToTicks(10U * output);
+  // _servoTarget could be 0 if this is the first set, set to min and slope from there
+  if (_servoTarget == 0)
+    _servoTarget = uSecToTicks(10U * _minServoPos);
+  int targetTicks = uSecToTicks(10U * output);
+  int targetDiff = targetTicks - _servoTarget;
+  ATOMIC_BLOCK(ATOMIC_FORCEON)
+  {
+    _servoStep = targetDiff / (TEMP_MEASURE_PERIOD / (SERVO_REFRESH / 1000));
+    OCR1B = _servoTarget + _servoStep;
+  }
+  _servoTarget = targetTicks;
 #endif
 }
 
