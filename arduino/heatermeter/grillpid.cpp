@@ -48,7 +48,8 @@ static struct tagAdcState
   unsigned int analogReads[NUM_ANALOG_INPUTS]; // Current values
   unsigned int analogRange[NUM_ANALOG_INPUTS]; // high-low on last period
 #if defined(GRILLPID_DYNAMIC_RANGE)
-  bool useBandgapReference[NUM_ANALOG_INPUTS];  // Use 1.1V reference instead of AVCC
+  bool useBandgapReference[NUM_ANALOG_INPUTS]; // Use 1.1V reference instead of AVCC
+  unsigned int bandgapAdc;                     // 10-bit adc reading of BG with AVCC ref
 #endif
 #if defined(NOISEDUMP_PIN)
   unsigned int data[256];
@@ -86,9 +87,19 @@ ISR(ADC_vect)
   }
   else
   {
-    unsigned char pin = ADMUX & 0x07;
-    adcState.analogReads[pin] = adcState.accumulator >> 2;
-    adcState.analogRange[pin] = adcState.thisHigh - adcState.thisLow;
+    unsigned char pin = ADMUX & 0x0f;
+#if defined(GRILLPID_DYNAMIC_RANGE)
+    if (pin > NUM_ANALOG_INPUTS)
+    {
+      // Store only the last ADC value, giving the bandgap ~25ms to stabilize
+      adcState.bandgapAdc = adc;
+    }
+    else
+#endif // GRILLPID_DYNAMIC_RANGE
+    {
+      adcState.analogReads[pin] = adcState.accumulator >> 2;
+      adcState.analogRange[pin] = adcState.thisHigh - adcState.thisLow;
+    }
     adcState.thisHigh = 0;
     adcState.thisLow = 0xffff;
     adcState.accumulator = 0;
@@ -282,7 +293,7 @@ void TempProbe::calcTemp(void)
       if (analogIsBandgapReference(_pin))
       {
         analogSetBandgapReference(_pin, ADCval < (1000U * (unsigned char)pow(2, TEMP_OVERSAMPLE_BITS)));
-        mvScale /= 3;
+        mvScale /= 1023.0f / adcState.bandgapAdc;
       }
       else
         analogSetBandgapReference(_pin, ADCval < (300U * (unsigned char)pow(2, TEMP_OVERSAMPLE_BITS)));
@@ -360,7 +371,12 @@ void GrillPid::init(void) const
   TIMSK1 = bit(ICIE1) | bit(OCIE1B);
 #endif
   // Initialize ADC for free running mode at 125kHz
+#if defined(GRILLPID_DYNAMIC_RANGE)
+  // Start by measuring the bandgap reference for dynamic range scaling
+  ADMUX = (DEFAULT << 6) | 0b1110;
+#else
   ADMUX = (DEFAULT << 6) | 0;
+#endif // GRILLPID_DYNAMIC_RANGE
   ADCSRB = bit(ACME);
   ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADIE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0) | bit(ADSC);
 }
