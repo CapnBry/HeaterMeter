@@ -14,7 +14,7 @@
 
 #define APIN_FFEEDBACK 1
 #define PIN_BLOWER  3
-#define PIN_SERVO   5
+#define PIN_SERVO   8
 
 // Use oversample/decimation to increase ADC resolution to 2^(10+n) bits n=[0..6]
 #define TEMP_OVERSAMPLE_BITS 6
