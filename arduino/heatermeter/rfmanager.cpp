@@ -35,7 +35,7 @@ boolean RFSource::update(rf12_packet_t *pkt)
     /* Otherwise the value degrees C in BCD (10x)(1x)(0.1x) with a 40.0 degree offset */
     /* TX25U primary:   95 96 20 6A */
     Value = (((pkt->byte1 & 0x0f) * 100) + ((pkt->byte2 >> 4) * 10) + (pkt->byte2 & 0x0f)) - 400;
-    //Debug_begin(); SerialX.print("RF12N "); SerialX.print(Value, DEC); Serial_nl();
+    //Debug_begin(); SerialX.print("RF12N "); SerialX.print(_id, DEC); SerialX.print('='); SerialX.print(Value, DEC); Serial_nl();
   }
   else
   {
