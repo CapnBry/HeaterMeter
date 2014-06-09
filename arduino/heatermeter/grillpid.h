@@ -57,7 +57,6 @@ public:
 };
 
 #define TSTATUS_NONE  'U'
-#define TSTATUS_NOISE 'N'
 #define TSTATUS_HIGH  'H'
 #define TSTATUS_LOW   'L'
 #define TSTATUS_OK    'O'
@@ -68,7 +67,7 @@ private:
   const unsigned char _pin; 
   unsigned int _accumulator;
   unsigned char _probeType;
-  unsigned char _tempStatus;
+  char _tempStatus;
   boolean _hasTempAvg;
   
 public:
@@ -93,7 +92,7 @@ public:
   // Last averaged temperature reading
   float Temperature;
   boolean hasTemperature(void) const { return _tempStatus == TSTATUS_OK; }
-  unsigned char getTempStatus(void) const { return _tempStatus; }
+  char getTempStatus(void) const { return _tempStatus; }
   void setTemperatureC(float T);
   // Temperature moving average 
   float TemperatureAvg;
