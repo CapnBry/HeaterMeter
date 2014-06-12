@@ -431,7 +431,11 @@ void updateDisplay(void)
     }
 
     /* Default Pit / Fan Speed first line */
-    int pitTemp = pid.Probes[TEMP_PIT]->Temperature;
+    int pitTemp;
+    if (pid.Probes[TEMP_PIT]->hasTemperature())
+      pitTemp = pid.Probes[TEMP_PIT]->Temperature;
+    else
+      pitTemp = 0;
     if (!pid.getManualOutputMode() && !pid.Probes[TEMP_PIT]->hasTemperature())
       memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
     else if (pid.LidOpenResumeCountdown > 0)
