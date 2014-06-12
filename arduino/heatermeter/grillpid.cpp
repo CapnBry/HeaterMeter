@@ -249,28 +249,18 @@ void TempProbe::setProbeType(unsigned char probeType)
   _hasTempAvg = false;
 }
 
-void TempProbe::addAdcValue(unsigned int analog_temp)
+void TempProbe::calcTemp(unsigned int adcval)
 {
-  _accumulator = analog_temp;
-}
-
-void TempProbe::calcTemp(void)
-{
-  unsigned int ADCval;
-  if (_probeType == PROBETYPE_INTERNAL || _probeType == PROBETYPE_TC_ANALOG)
-    ADCval = analogReadOver(_pin, 10+TEMP_OVERSAMPLE_BITS);
-  else
-    ADCval = _accumulator;
-
   // Units 'A' = ADC value
   if (pid.getUnits() == 'A')
   {
-    Temperature = ADCval;
+    Temperature = adcval;
+    _tempStatus = TSTATUS_OK;
     return;
   }
 
   // Ignore probes within 1 LSB of max
-  if (ADCval > 1022 * pow(2, TEMP_OVERSAMPLE_BITS))
+  if (adcval > 1022 * pow(2, TEMP_OVERSAMPLE_BITS) || adcval == 0)
     _tempStatus = TSTATUS_NONE;
   else
   {
@@ -289,18 +279,18 @@ void TempProbe::calcTemp(void)
 #if defined(GRILLPID_DYNAMIC_RANGE)
       if (analogIsBandgapReference(_pin))
       {
-        analogSetBandgapReference(_pin, ADCval < (1000U * (unsigned char)pow(2, TEMP_OVERSAMPLE_BITS)));
+        analogSetBandgapReference(_pin, adcval < (1000U * (unsigned char)pow(2, TEMP_OVERSAMPLE_BITS)));
         mvScale /= 1023.0f / adcState.bandgapAdc;
       }
       else
-        analogSetBandgapReference(_pin, ADCval < (300U * (unsigned char)pow(2, TEMP_OVERSAMPLE_BITS)));
+        analogSetBandgapReference(_pin, adcval < (300U * (unsigned char)pow(2, TEMP_OVERSAMPLE_BITS)));
 #endif
-      setTemperatureC(ADCval / ADCmax * mvScale);
+      setTemperatureC(adcval / ADCmax * mvScale);
     }
     else {
       float R, T;
       // If you put the fixed resistor on the Vcc side of the thermistor, use the following
-      R = Steinhart[3] / ((ADCmax / (float)ADCval) - 1.0f);
+      R = Steinhart[3] / ((ADCmax / (float)adcval) - 1.0f);
       // If you put the thermistor on the Vcc side of the fixed resistor use the following
       //R = Steinhart[3] * ADCmax / (float)Vout - Steinhart[3];
 
@@ -308,6 +298,7 @@ void TempProbe::calcTemp(void)
       if (pid.getUnits() == 'R' && this != pid.Probes[TEMP_PIT])
       {
         Temperature = R;
+        _tempStatus = TSTATUS_OK;
         return;
       };
 
@@ -337,7 +328,7 @@ void TempProbe::calcTemp(void)
 void TempProbe::setTemperatureC(float T)
 {
   // Sanity - anything less than -20C (-4F) or greater than 500C (932F) is rejected
-  if (T <= -20.0f) // || T > 500.0f)
+  if (T <= -20.0f)
     _tempStatus = TSTATUS_LOW;
   else if (T >= 500.0f)
     _tempStatus = TSTATUS_HIGH;
@@ -654,7 +645,9 @@ boolean GrillPid::doWork(void)
 
 #if defined(GRILLPID_CALC_TEMP) 
   for (unsigned char i=0; i<TEMP_COUNT; i++)
-    Probes[i]->calcTemp();
+    if (Probes[i]->getProbeType() == PROBETYPE_INTERNAL ||
+        Probes[i]->getProbeType() == PROBETYPE_TC_ANALOG)
+      Probes[i]->calcTemp(analogReadOver(Probes[i]->getPin(), 10+TEMP_OVERSAMPLE_BITS));
 
   if (!_manualOutputMode)
   {

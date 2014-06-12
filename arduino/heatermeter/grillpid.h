@@ -65,7 +65,6 @@ class TempProbe
 {
 private:
   const unsigned char _pin; 
-  unsigned int _accumulator;
   unsigned char _probeType;
   char _tempStatus;
   boolean _hasTempAvg;
@@ -85,8 +84,6 @@ public:
   float Steinhart[STEINHART_COUNT];
   // Copy struct to members
   void loadConfig(struct __eeprom_probe *config);
-  // Takes a Temperarure ADC value and adds it to the accumulator
-  void addAdcValue(unsigned int analog_temp);
 
   /* Runtime Data/Methods */
   // Last averaged temperature reading
@@ -97,10 +94,8 @@ public:
   // Temperature moving average 
   float TemperatureAvg;
   boolean hasTemperatureAvg(void) const { return _hasTempAvg; }
-  // Do the duty of reading ADC
-  void readTemp(void);
   // Convert ADC to Temperature
-  void calcTemp(void);
+  void calcTemp(unsigned int _accumulator);
   
   ProbeAlarm Alarms;
 };

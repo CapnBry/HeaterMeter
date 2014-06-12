@@ -967,7 +967,7 @@ static void rfSourceNotify(RFSource &r, unsigned char event)
     )
     {
       if (event == RFEVENT_Remove)
-        pid.Probes[i]->addAdcValue(0);
+        pid.Probes[i]->calcTemp(0);
       else if (r.isNative())
         pid.Probes[i]->setTemperatureC(r.Value / 10.0f);
       else
@@ -977,7 +977,7 @@ static void rfSourceNotify(RFSource &r, unsigned char event)
         // If the remote is lower resolution then shift it up to our resolution
         if (adcBits < pid.getAdcBits())
           val <<= (pid.getAdcBits() - adcBits);
-        pid.Probes[i]->addAdcValue(val);
+        pid.Probes[i]->calcTemp(val);
       }
     } /* if probe is this source */
 
