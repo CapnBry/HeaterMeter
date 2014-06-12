@@ -16,12 +16,13 @@ MODE=sta
 [ "$FUNC" = "wifi-client" ] && MODE="sta"
 [ "$FUNC" = "wifi-ap" ] && MODE="ap"
 
-while getopts "s:p:c:e:" arg ; do
+while getopts "s:p:c:e:m:" arg ; do
   case $arg in
     s) SSID=$OPTARG ;;
     p) PASS=$OPTARG ;;
     c) CHANNEL=$OPTARG ;;
     e) ENC=$OPTARG ;;
+    m) MODE=$OPTARG ;;
   esac
 done
 
@@ -41,6 +42,7 @@ config wifi-device 'radio0'
 	#list ht_capab 'SHORT-GI-20'
 	#list ht_capab 'SHORT-GI-40'
 	#list ht_capab 'DSSS_CCK-40'
+	#list ht_capab 'RX-STBC1'
 	#option country '00'
 $CHANNEL	
 

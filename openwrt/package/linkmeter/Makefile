@@ -36,6 +36,7 @@ define Package/linkmeter/install
 	$(CP) ./root/* $(1)/
 	if [ "$(CONFIG_TARGET_brcm2708)" = "y" ] ; then \
 	  $(CP) ./targets/bcm2708/* $(1)/ ; \
+	  $(LN) -sf wifi-client $(1)/usr/bin/wifi-ap ; \
 	fi
 
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
