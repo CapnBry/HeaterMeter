@@ -887,6 +887,37 @@ static void setTempParam(unsigned char idx, int val)
   }
 }
 
+static void setControlProbe(unsigned char idx)
+{
+  switch (idx)
+  {
+  case TEMP_PIT:
+    pid.Probes[TEMP_PIT] = &probe0;
+    pid.Probes[TEMP_FOOD1] = &probe1;
+    pid.Probes[TEMP_FOOD2] = &probe2;
+    pid.Probes[TEMP_AMB] = &probe3;
+    break;
+  case TEMP_FOOD1:
+    pid.Probes[TEMP_FOOD1] = &probe0;
+    pid.Probes[TEMP_PIT] = &probe1;
+    pid.Probes[TEMP_FOOD2] = &probe2;
+    pid.Probes[TEMP_AMB] = &probe3;
+    break;
+  case TEMP_FOOD2:
+    pid.Probes[TEMP_FOOD1] = &probe0;
+    pid.Probes[TEMP_FOOD2] = &probe1;
+    pid.Probes[TEMP_PIT] = &probe2;
+    pid.Probes[TEMP_AMB] = &probe3;
+    break;
+  case TEMP_AMB:
+    pid.Probes[TEMP_FOOD1] = &probe0;
+    pid.Probes[TEMP_FOOD2] = &probe1;
+    pid.Probes[TEMP_AMB] = &probe2;
+    pid.Probes[TEMP_PIT] = &probe3;
+    break;
+  }
+}
+
 static void handleCommandUrl(char *URL)
 {
   unsigned char urlLen = strlen(URL);
@@ -1238,10 +1269,7 @@ void hmcoreSetup(void)
 
   tone4khz_init();
 
-  pid.Probes[TEMP_PIT] = &probe0;
-  pid.Probes[TEMP_FOOD1] = &probe1;
-  pid.Probes[TEMP_FOOD2] = &probe2;
-  pid.Probes[TEMP_AMB] = &probe3;
+  setControlProbe(TEMP_PIT);
   pid.init();
 
   eepromLoadConfig(0);
