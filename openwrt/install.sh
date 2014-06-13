@@ -39,7 +39,7 @@ cp patches/217-luci-login-urltok.patch $LUCIP
 cp patches/218-lucid-cacheloader.patch $LUCIP
 cp patches/219-lucid-sysupgrade-url.patch $LUCIP
 
-LMPACKS="rrdtool kmod-broadcom-sdhc26 linkmeter kmod-8192cu kmod-spi-bcm2708 luci-app-msmtp parted avahi-daemon"
+LMPACKS="rrdtool kmod-broadcom-sdhc26 linkmeter kmod-8192cu kmod-spi-bcm2708 luci-app-msmtp parted avahi-daemon kmod-incompat-wireless"
 for PACK in $LMPACKS ; do
   $WRT_PATH/scripts/feeds install -p linkmeter $PACK
 done
