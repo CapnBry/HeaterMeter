@@ -5,19 +5,19 @@
 var configHash = <%= LmClient():query("$LMCF") or "{}" %>;
 var rfInterval;
 var coeffPresets = [
-  {"name": "Maverick ET-72/73", "desc": "Default", "stein": "2.4723753e-04,2.3402251e-04,1.3879768e-07"},
-  {"name": "Maverick ET-732", "desc": "Honeywell R-T Curve 4", "stein": "5.36924e-4,1.91396e-4,6.60399e-8"},
-  {"name": "Thermoworks Pro-Series", "desc": "High Temp TX-1001X-OP", "stein": "6.6853001e-04,2.2231022e-04,9.9680632e-08"},
-  {"name": "Radio Shack 10k", "desc": "271-110A", "stein": "8.98053228e-4,2.49263324e-4,2.04047542e-7"},
-  {"name": "Vishay 10k", "desc": "NTCLE203E3103FB0", "stein": "1.14061e-3,2.32134e-4,9.63666e-8"},
-  {"name": "iGrill", "desc": "iGrill Probe", "stein": "0.7739251279e-3,2.088025997e-4,1.154400438e-7"}
+  {"name": "ET-72/73", "desc": "Maverick Industries", "stein": "2.4723746e-4,2.3402252e-4,1.3879770e-7"},
+  {"name": "ET-732", "desc": "Maverick Industries", "stein": "5.3692398e-4,1.9139599e-4,6.6039896e-8"},
+  {"name": "TX-1001X-OP", "desc": "Thermoworks Pro-Series", "stein": "6.6852998e-4,2.2231020e-4,9.9680614e-8"},
+  {"name": "Vishay 10k", "desc": "Part NTCLE203E3103FB0", "stein": "1.1406099e-3,2.3213400e-4,9.6366596e-8"},
+  {"name": "iGrill", "desc": "iGrill Probe", "stein": "7.7392511e-4,2.0880260e-4,1.1544003e-7"}
+  //{"name": "RadioShack 10k", "desc": "Part 271-110A", "stein": "8.9805316e-4,2.4926333e-4,2.0404753e-7"},
   //{"name": "IKEA Fantast", "desc": "Article Number: 801.004.06", "stein": "0.0012555249,1.5671315e-4,3.2210954e-7"}
 ];
 
 $(function ()
 {
+  loadCoeffPresets();
   $(".pt").change(typeChanged);
-  $(".pcpreset a").click(showCoeffPopup);
   configToForm();
 });
 $(window).load(windowLoaded);
@@ -26,6 +26,61 @@ function windowLoaded()
 {
   rfInterval = window.setInterval(queryRfNodes, 10000);
   queryRfNodes();
+}
+
+function loadCoeffPresets()
+{
+  var opts = [];
+  $.each(coeffPresets, function (i,o) {
+    opts.push('<option value="' + i + '">' + o.name + '</option>');
+  });
+    opts.push('<option value="' + coeffPresets.length + '">Custom</option>');
+  opts = opts.join('');
+  $(".pcp").append(opts)
+    .change(coeffPresetChanged);
+}
+
+function coeffPresetChanged()
+{
+  var name = this.id.substr(3);
+  var val = parseInt($(this).val());
+  if (val < coeffPresets.length)
+  {
+    $("#disppcc" + name).hide();
+    // Setting one coefficient with a commatext sets them all
+    $("#pca" + name).val(coeffPresets[val].stein)
+      .trigger("change");
+    $("#pcad" + name).html(coeffPresets[val].desc);
+  }
+  else
+  {
+    $("#disppcc" + name).show();
+    $("#pcad" + name).html('');
+  }
+}
+
+function checkIsCoeffPreset(name)
+{
+  // Convert the float strings (which may be scientific notation)
+  // to floats then back to strings to get the default representation
+  var a = $("#pca"+name).val();
+  var b = $("#pcb"+name).val();
+  var c = $("#pcc"+name).val();
+  var result = coeffPresets.length;
+  for (i=0; i<coeffPresets.length; ++i)
+  {
+    var pcp = coeffPresets[i].stein.split(',');
+    if (pcp.length < 3)
+      continue;
+
+    if (a == pcp[0] && b == pcp[1] && c == pcp[2])
+    {
+      result = i;
+      break;
+    }
+  }
+  $("#pcp"+name).val(result)
+    .trigger("change");
 }
 
 function queryRfNodes()
@@ -276,6 +331,10 @@ function configToForm()
     $("#noconfig").hide();
     $("#allconfig").show();
     configHashToForm();
+    checkIsCoeffPreset("0");
+    checkIsCoeffPreset("1");
+    checkIsCoeffPreset("2");
+    checkIsCoeffPreset("3");
     updateConfigUrl("#fullurl", configHash);
     updateConfigUrl("#updateurl", {});
   }
@@ -406,24 +465,6 @@ function coeffClick(probeId, idx)
   return false;
 }
 
-function showCoeffPopup()
-{
-  var o = this.parentNode;
-  var probeId = o.id.substr(3);
-  var list = $("#pcplist");
-  list.empty();
-  var items = new Array();
-  for (var i=0; i<coeffPresets.length; ++i)
-    items.push('<li><a class="nodest" href="#" onclick="return coeffClick(' +
-      probeId + ',' + i + ');">' + coeffPresets[i].name + 
-      '</a><br/>' + coeffPresets[i].desc + "</li>");
-  
-  list.html(items.join(''));
-  $(o).append($("#pcppopup").slideDown("fast"));
-  
-  return false;
-}
-
 function ifrmTarget(url,title)
 {
   clearInterval(rfInterval);
@@ -526,10 +567,14 @@ The look of the Home page can be modified using the
 </select></div>
 <div id="disppc<%=i%>">
   <div><b>Probe Coefficients</b></div>
-  <div class="cbi-value"><label>A</label><input type="text" class="pc" id="pca<%=i%>"/></div>
-  <div class="cbi-value"><label>B</label><input type="text" class="pc" id="pcb<%=i%>"/></div>
-  <div class="cbi-value"><label>C</label><input type="text" class="pc" id="pcc<%=i%>"/></div>
-  <div class="pcpreset" id="pcp<%=i%>"><a class="nodest" href="#">presets</a></div>
+  <div class="cbi-value"><label><a class="nodest" href="https://github.com/CapnBry/HeaterMeter/wiki/HeaterMeter-Probes">Preset</a></label><select class="pt pcp" id="pcp<%=i%>">
+    </select><div id="pcad<%=i%>" class="pcpreset"></div>
+  </div>
+  <div id="disppcc<%=i%>" style="display: none">
+    <div class="cbi-value"><label>A</label><input type="text" class="pc" id="pca<%=i%>"/></div>
+    <div class="cbi-value"><label>B</label><input type="text" class="pc" id="pcb<%=i%>"/></div>
+    <div class="cbi-value"><label>C</label><input type="text" class="pc" id="pcc<%=i%>"/></div>
+  </div>
 </div>
   <div class="cbi-value" id="disppcr<%=i%>"><label>Resist</label><input type="text" maxlength="6" id="pcr<%=i%>" style="width: 4em;"/></div>
   <div class="cbi-value" id="disppo<%=i%>"><label>Offset</label><input type="text" maxlength="3" id="po<%=i%>" style="width: 2em;"/></div>

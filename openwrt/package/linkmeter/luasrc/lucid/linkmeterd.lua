@@ -238,7 +238,9 @@ end
 
 local function segProbeCoeffs(line)
   local i = line:sub(7, 7)
-  return segConfig(line, {"", "pca"..i, "pcb"..i, "pcc"..i, "pcr"..i, "pt"..i}, true)
+  segConfig(line, {"", "pca"..i, "pcb"..i, "pcc"..i, "pcr"..i, "pt"..i}, false)
+  -- The resistance looks better in the UI without scientific notation
+  hmConfig["pcr"..i] = tonumber(hmConfig["pcr"..i])
 end
 
 local function segLcdBacklight(line)
