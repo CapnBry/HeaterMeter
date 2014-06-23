@@ -665,7 +665,7 @@ boolean GrillPid::doWork(void)
       if (!_pitTemperatureReached)
       {
         _pitTemperatureReached = true;
-        _pidCurrent[PIDI] *= 0.25f;
+        _pidCurrent[PIDI] *= 0.50f;
       }
       LidOpenResumeCountdown = 0;
     }
