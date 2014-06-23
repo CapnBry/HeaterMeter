@@ -5,11 +5,11 @@
 var configHash = <%= LmClient():query("$LMCF") or "{}" %>;
 var rfInterval;
 var coeffPresets = [
-  {"name": "ET-72/73", "desc": "Maverick Industries", "stein": "2.4723746e-4,2.3402252e-4,1.3879770e-7"},
-  {"name": "ET-732", "desc": "Maverick Industries", "stein": "5.3692398e-4,1.9139599e-4,6.6039896e-8"},
-  {"name": "TX-1001X-OP", "desc": "Thermoworks Pro-Series", "stein": "6.6852998e-4,2.2231020e-4,9.9680614e-8"},
-  {"name": "Vishay 10k", "desc": "Part NTCLE203E3103FB0", "stein": "1.1406099e-3,2.3213400e-4,9.6366596e-8"},
-  {"name": "iGrill", "desc": "iGrill Probe", "stein": "7.7392511e-4,2.0880260e-4,1.1544003e-7"}
+  {"name": "ET-72/73", "desc": "Maverick Industries", "stein": "2.4723753e-04,2.3402251e-04,1.3879768e-07"},
+  {"name": "ET-732", "desc": "Maverick Industries", "stein": "5.36924e-4,1.91396e-4,6.60399e-8"},
+  {"name": "TX-1001X-OP", "desc": "Thermoworks Pro-Series", "stein": "6.6853001e-04,2.2231022e-04,9.9680632e-08"},
+  {"name": "Vishay 10k", "desc": "Part NTCLE203E3103FB0", "stein": "1.14061e-3,2.32134e-4,9.63666e-8"},
+  {"name": "iGrill", "desc": "iGrill Probe", "stein": "0.7739251279e-3,2.088025997e-4,1.154400438e-7"}
   //{"name": "RadioShack 10k", "desc": "Part 271-110A", "stein": "8.9805316e-4,2.4926333e-4,2.0404753e-7"},
   //{"name": "IKEA Fantast", "desc": "Article Number: 801.004.06", "stein": "0.0012555249,1.5671315e-4,3.2210954e-7"}
 ];
@@ -34,7 +34,7 @@ function loadCoeffPresets()
   $.each(coeffPresets, function (i,o) {
     opts.push('<option value="' + i + '">' + o.name + '</option>');
   });
-    opts.push('<option value="' + coeffPresets.length + '">Custom</option>');
+  opts.push('<option value="' + coeffPresets.length + '">Custom</option>');
   opts = opts.join('');
   $(".pcp").append(opts)
     .change(coeffPresetChanged);
@@ -59,28 +59,45 @@ function coeffPresetChanged()
   }
 }
 
-function checkIsCoeffPreset(name)
+function coeffIsCloseEnough(x, y)
 {
-  // Convert the float strings (which may be scientific notation)
-  // to floats then back to strings to get the default representation
-  var a = $("#pca"+name).val();
-  var b = $("#pcb"+name).val();
-  var c = $("#pcc"+name).val();
-  var result = coeffPresets.length;
-  for (i=0; i<coeffPresets.length; ++i)
-  {
-    var pcp = coeffPresets[i].stein.split(',');
-    if (pcp.length < 3)
-      continue;
+  // If the value is within 0.0001% that's probably it
+  return (Math.abs(x - y) / x) < 1.0e-6;
+}
 
-    if (a == pcp[0] && b == pcp[1] && c == pcp[2])
+function checkCoeffForPresets()
+{
+  for (var probenum=0; probenum<4; ++probenum)
+  {
+    var name = probenum.toString();
+    var a = parseFloat(configHash["pca"+name]);
+    var b = parseFloat(configHash["pcb"+name]);
+    var c = parseFloat(configHash["pcc"+name]);
+    var result = coeffPresets.length;
+    for (var i=0; i<coeffPresets.length; ++i)
     {
-      result = i;
-      break;
+      var steinstrs = coeffPresets[i].stein.split(',');
+      if (steinstrs.length < 3)
+        continue;
+
+      var steinflts = steinstrs.map(parseFloat);
+      if (coeffIsCloseEnough(steinflts[0], a) &&
+        coeffIsCloseEnough(steinflts[1], b) &&
+        coeffIsCloseEnough(steinflts[2], c))
+      {
+        result = i;
+
+        // Store the preset value back into the configHash so
+        // the value looks identical in configChangedHash()
+        configHash["pca"+name] = steinstrs[0];
+        configHash["pcb"+name] = steinstrs[1];
+        configHash["pcc"+name] = steinstrs[2];
+        break;
+      }
     }
-  }
-  $("#pcp"+name).val(result)
-    .trigger("change");
+    $("#pcp"+name).val(result)
+      .trigger("change");
+  } /* for probenum */
 }
 
 function queryRfNodes()
@@ -187,7 +204,7 @@ function configHashToForm()
         elem.html("current temperature " + val.toFixed(1) + "&#176;");
       else
         elem.html("off");
-    } 
+    }
     else if (k == "ucid")
       elem.html(val);
     else if (k == "cerr")
@@ -289,10 +306,10 @@ function configElemChange()
   {
     var idx = +name.substr(5);
     var val = $("#oflag").val();
-	var thisval =
-	  // oflag4 is the PWM/Voltage dropdown
-	  ((idx == 4) && ($(this).val() == "1")) ||
-	  ((idx != 4) && $(this).is(":checked"));
+    var thisval =
+      // oflag4 is the PWM/Voltage dropdown
+      ((idx == 4) && ($(this).val() == "1")) ||
+      ((idx != 4) && $(this).is(":checked"));
     if (thisval)
       val |= (1 << idx);
     else
@@ -331,10 +348,7 @@ function configToForm()
     $("#noconfig").hide();
     $("#allconfig").show();
     configHashToForm();
-    checkIsCoeffPreset("0");
-    checkIsCoeffPreset("1");
-    checkIsCoeffPreset("2");
-    checkIsCoeffPreset("3");
+    checkCoeffForPresets();
     updateConfigUrl("#fullurl", configHash);
     updateConfigUrl("#updateurl", {});
   }
