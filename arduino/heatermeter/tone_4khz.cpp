@@ -21,7 +21,7 @@ ISR(TIMER1_COMPA_vect)
     uint16_t trigger = OCR1A;
     trigger += (40000/160);
     if (trigger >= 40000)
-      trigger -= 40000;
+      trigger = 0;
     OCR1A = trigger;
     --timer4k.cnt;
     uint8_t v = *digitalPinToPortReg(PIN_ALARM);
