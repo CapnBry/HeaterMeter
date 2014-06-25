@@ -78,7 +78,7 @@ local JSON_TEMPLATE_SRC = {
     ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null',
   '}},{"n":"', 'Ambient', '","c":', 0, '',
     ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null',
-  '}}]}',
+  '}}]', '', '}',
   ''
 }
 local JSON_TEMPLATE
@@ -505,6 +505,10 @@ local function segAlarmLimits(line)
   end
 end
 
+local function segAdcRange(line)
+  JSON_TEMPLATE[57] = ',"adc":[' .. line:sub(7) .. ']'
+end
+
 local function segmentValidate(line)
   -- First character always has to be $
   if line:sub(1, 1) ~= "$" then return false end
@@ -799,6 +803,7 @@ end
 
 local segmentMap = {
   ["$HMAL"] = segAlarmLimits,
+  ["$HMAR"] = segAdcRange,
   ["$HMFN"] = segFanParams,
   ["$HMLB"] = segLcdBacklight,
   ["$HMLD"] = segLidParams,

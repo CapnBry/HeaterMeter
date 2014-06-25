@@ -707,14 +707,15 @@ function connectionSuccess(o)
             addGraphPoint(graphData[dataIdx].data, o.time, val);
 
         var rfsDiv = "#rfs" + i;
+        var noiseDiv = "#noise" + i;
         if (typeof o.temps[i].rf !== "undefined")
         {
             var rf = o.temps[i].rf;
             var img, detals;
             if (rf == null)
             {
-              img = 0;
-              details = "offline";
+                img = 0;
+                details = "offline";
             }
             else 
             {
@@ -728,9 +729,22 @@ function connectionSuccess(o)
             $(rfsDiv).css('background-position', img)
                 .attr('title', details)
                 .show();
+            $(noiseDiv).hide();
         }
         else
-          $(rfsDiv).hide();
+        {
+            $(rfsDiv).hide();
+            if ($.isArray(o.adc))
+            {
+                var noise = o.adc[5-i];
+                if (noise < 5)
+                  $(noiseDiv).hide();
+                else
+                  $(noiseDiv).css('background-position', (noise < 20) ? "0px" : "16px")
+                      .attr('title', "Noise: " + noise.toString())
+                      .show();
+            }
+        }
     }
     $("#fana").animate({left: o.fan.a + "%"});
     $("#fanc").animate({width: o.fan.c + "%"});
@@ -864,8 +878,10 @@ td.probe { width: 33%; position: relative; }
     position: fixed; z-index: 3; top: 100px; display: none;
     left: 50%; margin-left: -240px; }
 #alarmclear { display: none; position: absolute; bottom: 4px; right: 4px; color: #ccc; }
-.rfstatus { display: none; position: absolute; left: 0; bottom: 0; 
+.rfstatus { display: none; position: absolute; left: 0; bottom: 0;
     width: 16px; height: 16px; background-image: url('<%=resource%>/rf.png'); }
+.noise { display: none; position: absolute; left: 0; bottom: 0;
+    width: 16px; height: 16px; background-image: url('<%=resource%>/noise.png'); }
 #pidint { width: 200px; background-color: #fcfcfc; border-radius: 5px; 
     border: 1px solid #333; position: absolute; font-size: 10pt;
     bottom: 0px; line-height: 12pt; padding: 3px; display: none; }
@@ -949,6 +965,8 @@ td.probe { width: 33%; position: relative; }
             <div class="pilabel">dT</div>
             <div class="pival" id="pivdt">-&deg;</div>
           </div>
+          <div class="rfstatus" id="rfs0"></div>
+          <div class="noise" id="noise0"></div>
         </div>
 
         <div id="fancontainer">
@@ -961,6 +979,7 @@ td.probe { width: 33%; position: relative; }
             <td class="probe first">
                 <div class="dph" id="dph1"></div>
                 <div class="rfstatus" id="rfs1"></div>
+                <div class="noise" id="noise1"></div>
                 <div class="legbord"><div class="legfill" id="pl1"></div></div>
                 <div class="pname" id="pn1">-</div>
                 <div class="ptemp" id="temp1">-</div>
@@ -968,6 +987,7 @@ td.probe { width: 33%; position: relative; }
             <td class="probe">
                 <div class="dph" id="dph2"></div>
                 <div class="rfstatus" id="rfs2"></div>
+                <div class="noise" id="noise2"></div>
                 <div class="legbord"><div class="legfill" id="pl2"></div></div>
                 <div class="pname" id="pn2">-</div>
                 <div class="ptemp" id="temp2">-</div>
@@ -975,6 +995,7 @@ td.probe { width: 33%; position: relative; }
             <td class="probe last">
                 <div class="dph" id="dph3"></div>
                 <div class="rfstatus" id="rfs3"></div>
+                <div class="noise" id="noise3"></div>
                 <div class="legbord"><div class="legfill" id="pl3"></div></div>
                 <div class="pname" id="pn3">-</div>
                 <div class="ptemp" id="temp3">-</div>
