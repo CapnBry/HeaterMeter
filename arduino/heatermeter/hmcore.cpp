@@ -1021,6 +1021,19 @@ static void rfSourceNotify(RFSource &r, unsigned char event)
 }
 #endif /* HEATERMETER_RFM12 */
 
+static void outputAdcStatus(void)
+{
+#if defined(HEATERMETER_SERIAL)
+  print_P(PSTR("HMAR"));
+  for (unsigned char i=0; i<NUM_ANALOG_INPUTS; ++i)
+  {
+    Serial_csv();
+    SerialX.print(analogReadRange(i), DEC);
+  }
+  Serial_nl();
+#endif
+}
+
 static void tone_doWork(void)
 {
 #ifdef PIEZO_HZ
@@ -1211,6 +1224,9 @@ static void newTempsAvail(void)
 
   if (g_LogPidInternals)
     pid.pidStatus();
+
+  if ((pidCycleCount % 0x08) == 1)
+    outputAdcStatus();
 
   ledmanager.publish(LEDSTIMULUS_Off, LEDACTION_Off);
   ledmanager.publish(LEDSTIMULUS_LidOpen, pid.isLidOpen());
