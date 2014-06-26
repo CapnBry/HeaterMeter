@@ -133,6 +133,7 @@ local function buildAccountTabs()
     fld.default = "on"
     fld.disabled = "off"
     fld.enabled = "on"
+    fld.rmempty = false
     fld:depends(dep)
 
     fld = s:taboption(aname, Flag, aname .. ".tls_certcheck", "Verify server certificate",
@@ -140,6 +141,7 @@ local function buildAccountTabs()
     fld.default = "off"
     fld.disabled = "off"
     fld.enabled = "on"
+    fld.rmempty = false
     fld:depends(dep)
   end -- for account
 end -- buildAccountTabs()
