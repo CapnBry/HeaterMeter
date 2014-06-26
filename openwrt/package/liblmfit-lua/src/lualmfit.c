@@ -152,6 +152,14 @@ static double steinhart_fit_function(double t, double *p, int n_p, lua_State* L)
   return 1.0 / ((p[2] * lx * lx + p[1]) * lx + p[0]) - 273.15;
 }
 
+static double linear_fit_function(double t, double *p, int n_p, lua_State* L)
+{
+  double retVal = t * p[0];
+  if (n_p > 1)
+    retVal += p[1];
+  return retVal;
+}
+
 /*
   Run lmfit algorithm  
 */
@@ -231,6 +239,19 @@ static int steinhart(lua_State* L)
   return lua_lm_do_fit(L, &steinhart_fit_function);
 }
 
+/*
+  lmfit.linear(x[], y[], [m_est, b_est])
+  Simple linear regression fit
+  x[] - table of x values
+  y[] - table of y values
+  m_est - slope estimate
+  b_est - intercept estimate
+*/
+static int linear(lua_State* L)
+{
+  return lua_lm_do_fit(L, &linear_fit_function);
+}
+
 static int shortmsg(lua_State* L)
 {
   int msg = luaL_checkint(L, 1);
@@ -259,6 +280,7 @@ static struct luaL_Reg regs[] = {
   {"minimize", minimize},
   {"shortmsg", shortmsg},
   {"steinhart", steinhart},
+  {"linear", linear},
   {NULL, NULL}
 };
 
