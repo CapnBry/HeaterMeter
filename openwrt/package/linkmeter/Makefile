@@ -91,7 +91,6 @@ endef
 
 define Package/linkmeter/conffiles
 /etc/config/linkmeter
-/usr/share/linkmeter/email.txt
 endef
 
 $(eval $(call BuildPackage,linkmeter))
