@@ -70,4 +70,4 @@ else
   }
 fi
 uci commit
-
+sync
