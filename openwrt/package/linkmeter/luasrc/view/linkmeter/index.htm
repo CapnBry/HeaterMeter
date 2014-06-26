@@ -594,7 +594,6 @@ function tstatSuccess(csv)
         }
     });
     graphLoaded = true;
-    updateProbeEstimates();
     updateGraph();
 }
 
@@ -692,17 +691,26 @@ function connectionSuccess(o)
         }
         else
             tempElem.html(val.toFixed(1) + "&deg;");
-            
+
         if (o.temps[i].a.r == 'H')
             tempElem.removeClass("alarmLow").addClass("alarmHigh");
         else if (o.temps[i].a.r == 'L')
             tempElem.removeClass("alarmHigh").addClass("alarmLow");
         else
             tempElem.removeClass("alarmLow alarmHigh");
-        
+
+        if (val && o.temps[i].dph && o.temps[i].dph >= 1.0)
+        {
+            var alarm_h = +o.temps[i].a.h;
+            var timeRemain = ((alarm_h - val) / o.temps[i].dph) * 3600;
+            timeRemain = (timeRemain > 0) ? formatTimer(timeRemain, false) + " to " + alarm_h + "&deg;<br />" : "";
+            $("#dph"+i).html(o.temps[i].dph.toFixed(1) + "&deg;/hr<br />" + timeRemain).show();
+        }
+        else
+          $("#dph"+i).hide();
+
         var dataIdx = mapJson[i];
         graphData[dataIdx].label = o.temps[i].n;
-        graphData[dataIdx].alarm_h = o.temps[i].a.h;
         if (graphLoaded)
             addGraphPoint(graphData[dataIdx].data, o.time, val);
 
@@ -725,7 +733,7 @@ function connectionSuccess(o)
                   details += " Low Battery";
             }
 
-	    img = (img * -16) + "px";
+            img = (img * -16) + "px";
             $(rfsDiv).css('background-position', img)
                 .attr('title', details)
                 .show();
@@ -752,7 +760,6 @@ function connectionSuccess(o)
     
     updateLid(o.lid);
     updateTime(lastUpdateUtc); //o.time);
-    updateProbeEstimates();
     checkRefreshGraphOrUpdate();
 }
 
@@ -779,43 +786,6 @@ function updateTime(time)
     .html(formatTime(date, true))
     .css("color", color)
     .attr("title", formatDate(date));
-}
-
-function degPerHour(probeIdx)
-{
-    var pname = "#dph" + probeIdx;
-    var alarm_h = +graphData[mapJson[probeIdx]].alarm_h;
-    var data = graphData[mapJson[probeIdx]].data;
-    if (data.length != 0 && !isNaN(data[data.length-1][1]))
-    {
-        var val = data[data.length-1][1];
-        var time = data[data.length-1][0];
-        
-        // Target is 59mins30secs ago, allows drawing with scale set to 1hr
-        var targetTime = time - (60 * 60 * 1000) + 30000;
-        for (var i=data.length-1; i>=0; --i)
-            if (data[i][0] <= targetTime && !isNaN(data[i][1]))
-            {
-                var diffTemp = val - data[i][1];
-                var diffTime = time - data[i][0];
-                diffTime /= (60.0 * 60.0 * 1000.0);
-                var dph = diffTemp / diffTime;
-                // Don't display if there isn't clear increase, prevents wild numbers
-                if (dph < 1.0)
-                    break;
-                var timeRemain = ((alarm_h - val) / dph) * 3600;
-                timeRemain = (timeRemain > 0) ? formatTimer(timeRemain, false) + " to " + alarm_h + "&deg;<br />" : "";
-                $(pname).html(diffTemp.toFixed(1) + "&deg;/hr<br />" + timeRemain).show();
-                return;
-            }
-    }  /* if has valid data */
-    $(pname).hide();
-}
-
-function updateProbeEstimates()
-{
-    for (var i=1; i<4; ++i)
-        degPerHour(i);
 }
 
 function plotToPng(plot, background)

@@ -5,11 +5,11 @@ local nixio = require "nixio"
       nixio.util = require "nixio.util" 
 local uci = require "uci"
 local lucid = require "luci.lucid"
+local lmfit, t = pcall(require,"lmfit"); lmfit = lmfit and t
 
 local pairs, ipairs, table, pcall, type = pairs, ipairs, table, pcall, type
 local tonumber, tostring, print, next = tonumber, tostring, print, next
 local collectgarbage, math, bxor = collectgarbage, math, nixio.bit.bxor
-local require = require
 
 module "luci.lucid.linkmeterd"
 
@@ -65,24 +65,25 @@ end
 -- and discard it every time, just replace the values to reduce
 -- the load on the garbage collector
 local JSON_TEMPLATE_SRC = {
-  '',
-  '{"time":', 0,
-  ',"set":', 0,
-  ',"lid":', 0,
-  ',"fan":{"c":', 0, ',"a":', 0,
-  '},"temps":[{"n":"', 'Pit', '","c":', 0, '',
-    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null',
-  '}},{"n":"', 'Food Probe1', '","c":', 0, '',
-    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null',
-  '}},{"n":"', 'Food Probe2', '","c":', 0, '',
-    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null',
-  '}},{"n":"', 'Ambient', '","c":', 0, '',
-    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null',
-  '}}],"adc":[', '', ']}',
-  ''
+  '', -- 1
+  '{"time":', 0, -- 3
+  ',"set":', 0,  -- 5
+  ',"lid":', 0,  -- 7
+  ',"fan":{"c":', 0, ',"a":', 0, -- 11
+  '},"adc":[', '', -- 13
+  '],"temps":[{"n":"', 'Pit', '","c":', 0, '', ',"dph":', 'null', -- 20
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 26
+  '}},{"n":"', 'Food Probe1', '","c":', 0, '', ',"dph":', 'null', -- 33
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 39
+  '}},{"n":"', 'Food Probe2', '","c":', 0, '', ',"dph":', 'null', -- 46
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 52
+  '}},{"n":"', 'Ambient', '","c":', 0, '', ',"dph":', 'null', -- 59
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 65
+  '}}]}', -- 66
+  '' -- 67
 }
 local JSON_TEMPLATE
-local JSON_FROM_CSV = {3, 5, 15, 26, 37, 48, 9, 11, 7 }
+local JSON_FROM_CSV = {3, 5, 17, 30, 43, 56, 9, 11, 7 }
 
 local function jsonWrite(vals)
   local i,v
@@ -104,7 +105,7 @@ local function jsonWrite(vals)
     else
       rfval = ''
     end
-    JSON_TEMPLATE[5+(i*11)] = rfval
+    JSON_TEMPLATE[5+(i*13)] = rfval
   end
 end
 
@@ -135,7 +136,7 @@ local function buildConfigMap()
   if JSON_TEMPLATE[3] ~= 0 then
     -- Current temperatures
     for i = 0, 3 do
-      r["pcurr"..i] = tonumber(JSON_TEMPLATE[15+(i*11)])
+      r["pcurr"..i] = tonumber(JSON_TEMPLATE[17+(i*13)])
     end
     -- Setpoint
     r["sp"] = JSON_TEMPLATE[5]
@@ -216,7 +217,7 @@ local function segProbeNames(line)
   local vals = segConfig(line, {"pn0", "pn1", "pn2", "pn3"})
  
   for i,v in ipairs(vals) do
-    JSON_TEMPLATE[2+i*11] = v
+    JSON_TEMPLATE[2+i*13] = v
   end
 end
 
@@ -343,6 +344,45 @@ local function checkAutobackup(now, vals)
   end
 end
 
+local lastDphUpdate = 0
+local dphEstimates = { {0,0}, {0,0}, {0,0}, {0,0} }
+local function checkDphUpdate(now)
+  -- Update the degrees per hour estimates once every minute
+  if not lmfit or (now - lastDphUpdate) < 60 then return end
+  lastDphUpdate = now
+
+  local step = 10
+  local soff = 3600
+  local last = math.floor(rrd.last(RRD_FILE)/step) * step
+  start, step, _, data = rrd.fetch(RRD_FILE, "AVERAGE",
+    "--end", now, "--start", now - soff, "-r", step)
+
+  for probe = 1,4 do
+    local x = {}
+    local y = {}
+    for n, dp in ipairs(data) do
+      local val = dp[probe+1]
+      if (val == val) then
+        x[#x+1] = n / 360
+        y[#y+1] = val
+      end
+    end
+
+    local dph = "null"
+    if #x > 180 then
+      local ok, p, status, evals = pcall(lmfit.linear, x, y, dphEstimates[1])
+      if ok and status >= 1 and status <= 3 then
+        dph = ("%.2f"):format(p[1])
+        dphEstimates[probe] = p
+        --print(("probe=%d m=%.3f b=%.3f evals=%d status=%d %s"):format(
+        --  probe, p[1], p[2] or 0.0, evals, status, lmfit.message(status)))
+      end
+    end -- if #x
+
+    JSON_TEMPLATE[7+(probe*13)] = dph
+  end -- for probe
+end
+
 local lastStateUpdate
 local spareUpdates
 local skippedUpdates
@@ -438,12 +478,13 @@ local function segStateUpdate(line)
         lastIpCheck = time
       end
       checkAutobackup(time, vals)
+      checkDphUpdate(time)
     end
 end
 
 local function broadcastAlarm(probeIdx, alarmType, thresh)
-  local curTemp = JSON_TEMPLATE[15+(probeIdx*11)]
-  local pname = JSON_TEMPLATE[13+(probeIdx*11)]
+  local pname = JSON_TEMPLATE[15+(probeIdx*13)]
+  local curTemp = JSON_TEMPLATE[17+(probeIdx*13)]
   local retVal
   
   if alarmType then
@@ -468,7 +509,7 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
   end
 
   unthrottleUpdates() -- force the next update
-  JSON_TEMPLATE[22+(probeIdx*11)] = alarmType
+  JSON_TEMPLATE[26+(probeIdx*13)] = alarmType
   broadcastStatus(function ()
     return ('event: alarm\ndata: {"atype":%s,"p":%d,"pn":"%s","c":%s,"t":%s}\n\n'):format(
       alarmType, probeIdx, pname, curTemp, thresh)
@@ -490,7 +531,7 @@ local function segAlarmLimits(line)
     local curr = hmAlarms[i] or {}
     local probeIdx = math.floor(alarmId/2)
     local alarmType = alarmId % 2
-    JSON_TEMPLATE[18+(probeIdx*11)+(alarmType*2)] = v
+    JSON_TEMPLATE[22+(probeIdx*13)+(alarmType*2)] = v
     -- Wait until we at least have some config before broadcasting
     if (ringing and not curr.ringing) and (hmConfig and hmConfig.ucid) then
       curr.ringing = os.time()
@@ -506,7 +547,7 @@ local function segAlarmLimits(line)
 end
 
 local function segAdcRange(line)
-  JSON_TEMPLATE[57] = line:sub(7)
+  JSON_TEMPLATE[13] = line:sub(7)
 end
 
 local function segmentValidate(line)
@@ -710,7 +751,7 @@ local function segLmConfig()
 end
 
 local function unkProbeCurveFit()
-  local lmfit = require "lmfit"
+  if not lmfit then return end
   local tt = {} -- table of temps
   local tr = {} -- table of resistances
   for k,v in pairs(unkProbe) do
@@ -768,7 +809,7 @@ local function segLmAlarmTest(line)
 
     -- If thresh is blank, use current
     thresh = thresh and tonumber(thresh) or
-      math.floor(tonumber(JSON_TEMPLATE[15+(probeIdx*11)]) or 0)
+      math.floor(tonumber(JSON_TEMPLATE[17+(probeIdx*13)]) or 0)
 
     local pid = broadcastAlarm(probeIdx, alarmType, thresh)
     return "OK " .. pid
