@@ -88,6 +88,7 @@ $(document).ready(function()
 
 <% if context.authuser == "root" then %>
     $(".pname").editable(nameChanged, {maxlength: 13, select: true});
+    $("#pn0").editable(nameChanged, {maxlength: 13, width: "13em", select: true});
     $("#set").editable(tempChanged, {style: "display: inline", select: true});
     
     $("#lid").click(function () { 
