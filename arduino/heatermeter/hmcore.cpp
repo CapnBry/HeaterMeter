@@ -1225,7 +1225,7 @@ static void newTempsAvail(void)
   if (g_LogPidInternals)
     pid.pidStatus();
 
-  if ((pidCycleCount % 0x08) == 1)
+  if ((pidCycleCount % 0x04) == 1)
     outputAdcStatus();
 
   ledmanager.publish(LEDSTIMULUS_Off, LEDACTION_Off);
