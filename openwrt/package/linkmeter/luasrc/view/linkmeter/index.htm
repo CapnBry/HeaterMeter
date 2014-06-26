@@ -734,7 +734,7 @@ function connectionSuccess(o)
         else
         {
             $(rfsDiv).hide();
-            if ($.isArray(o.adc))
+            if (o.adc.length > 4)
             {
                 var noise = o.adc[5-i];
                 if (noise < 5)

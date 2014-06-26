@@ -78,7 +78,7 @@ local JSON_TEMPLATE_SRC = {
     ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null',
   '}},{"n":"', 'Ambient', '","c":', 0, '',
     ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null',
-  '}}]', '', '}',
+  '}}],"adc":[', '', ']}',
   ''
 }
 local JSON_TEMPLATE
@@ -506,7 +506,7 @@ local function segAlarmLimits(line)
 end
 
 local function segAdcRange(line)
-  JSON_TEMPLATE[57] = ',"adc":[' .. line:sub(7) .. ']'
+  JSON_TEMPLATE[57] = line:sub(7)
 end
 
 local function segmentValidate(line)
