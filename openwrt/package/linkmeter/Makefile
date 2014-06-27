@@ -33,9 +33,8 @@ endef
 
 define Build/Compile
 	$(call Build/Compile/Default)
-	rm -f jssrc/jquery-all.js
-	$(FIND) jssrc/ -type f -name "1??-\*" | \
-		sort | $(XARGS) cat >> jssrc/jquery-all.js
+	$(FIND) $(PKG_BUILD_DIR)/jssrc/ -type f -name "1??-*" | \
+		sort | $(XARGS) cat > $(PKG_BUILD_DIR)/jssrc/jquery-all.js
 endef
 
 define Package/linkmeter/install
