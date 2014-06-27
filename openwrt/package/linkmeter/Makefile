@@ -26,11 +26,17 @@ define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
 	$(CP) src/* $(PKG_BUILD_DIR)/
 	$(CP) luasrc/* $(PKG_BUILD_DIR)/
+
+	mkdir -p $(PKG_BUILD_DIR)/jssrc
+	$(CP) jssrc/* $(PKG_BUILD_DIR)/jssrc
 endef
 
-#define Build/Compile
-	# Nothing to compile
-#endef
+define Build/Compile
+	$(call Build/Compile/Default)
+	rm -f jssrc/jquery-all.js
+	$(FIND) jssrc/ -type f -name "1??-\*" | \
+		sort | $(XARGS) cat >> jssrc/jquery-all.js
+endef
 
 define Package/linkmeter/install
 	$(CP) ./root/* $(1)/
@@ -43,8 +49,9 @@ define Package/linkmeter/install
         # Don't clobber files
 	cp -n ./config/email.txt $(1)/usr/share/linkmeter/
 
-	$(INSTALL_DIR) $(1)/www
+	$(INSTALL_DIR) $(1)/www/luci-static/resouces/js
 	$(CP) htdocs/* $(1)/www/
+	$(CP) $(PKG_BUILD_DIR)/jssrc/jquery-all.js $(1)/www/luci-static/resources/js
 
 	$(INSTALL_DIR) $(1)/usr/lib/lua
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/lmclient.lua $(1)/usr/lib/lua/

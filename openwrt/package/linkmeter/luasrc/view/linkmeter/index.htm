@@ -7,13 +7,8 @@
 <head>
 <link rel="icon" type="image/x-icon" href="<%=resource%>/favicon.ico">
 <title>HeaterMeter BBQ Control</title>
-<script language="javascript" src="<%=resource%>/js/jquery-1.9.1.min.js" type="text/javascript"></script>
-<script language="javascript" src="<%=resource%>/js/jquery.jeditable.mini.js" type="text/javascript"></script>
+<script language="javascript" src="<%=resource%>/js/jquery-all.js" type="text/javascript"></script>
 <!--[if lte IE 8]><script language="javascript" type="text/javascript" src="<%=resource%>/js/excanvas.min.js"></script><![endif]-->
-<script language="javascript" type="text/javascript" src="<%=resource%>/js/jquery.flot-0.8.min.js"></script>
-<script language="javascript" type="text/javascript" src="<%=resource%>/js/jquery.flot.selection-0.8.min.js"></script>
-<script language="javascript" type="text/javascript" src="<%=resource%>/js/jquery.flot.time-0.8.min.js"></script>
-<script language="javascript" type="text/javascript" src="<%=resource%>/js/jquery.flot.canvas-0.8.min.js"></script>
 <script language="javascript" type="text/javascript">
 var lastUpdateUtc;
 var lastPlot;
@@ -110,6 +105,7 @@ $(document).ready(function()
     if ((now - 10000) < (o.time * 1000))
         connectionSuccess(o);
 <% end %>
+    refreshGraphData();
 });
 
 $(window).load(function ()
@@ -142,7 +138,6 @@ $(window).load(function ()
         window.setInterval(JSONQuery, 10000);
     }
 <% end %>
-    refreshGraphData();
 });
 
 function storePref(k, v)
@@ -895,11 +890,13 @@ td.probe { width: 33%; position: relative; }
   width: 0%; height: 14px; border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
 #fanl { position: absolute; left: 0; top: 1px; z-index: 1; color: #003; font-size: 10pt; }
 #fana { position: absolute; left: 0; top: 0; z-index: 2; width: 3px; height: 20px; background: #fe4; opacity: 0.5; }
+img.preload { display: none; }
 <%=nixio.fs.readfile("/usr/share/linkmeter/user.css") or ""%>
 </style>
 </head>
 
 <body>
+<img src="<%=resource%>/fire.png" class="preload">
 <div id="contentframe">
     <div id="content">
 <% if rrd then fname = rrd:sub(1, -5) .. ".png"; fshort = nixio.fs.basename(fname) %>
@@ -1026,6 +1023,8 @@ td.probe { width: 33%; position: relative; }
     <p></p>
     <div id="alarmclear"></div>
 </div>
+<img src="<%=resource%>/noise.png" class="preload">
+<img src="<%=resource%>/rf.png" class="preload">
 </body>
 
 </html>
