@@ -1,73 +1,102 @@
-Index: target/linux/brcm2708/image/config.txt
+Index: target/linux/brcm2708/Makefile
 ===================================================================
---- target/linux/brcm2708/image/config.txt	(revision 0)
-+++ target/linux/brcm2708/image/config.txt	(working copy)
-@@ -0,0 +1,6 @@
-+gpu_mem=32
-+arm_freq=800
-+arm_freq_min=700
-+sdram_freq=400
-+core_freq=250
+--- target/linux/brcm2708/Makefile	(revision 36720)
++++ target/linux/brcm2708/Makefile	(working copy)
+@@ -23,6 +23,6 @@
+ 	Currently produces SD Card image for Raspberry Pi.
+ endef
+ 
+-CFLAGS:=-pipe -march=armv6 -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=softfp -marm
++CFLAGS:=-pipe -march=armv6zk -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard -marm
+ 
+ $(eval $(call BuildTarget))
+Index: target/linux/brcm2708/base-files/etc/config/network
+===================================================================
+--- target/linux/brcm2708/base-files/etc/config/network	(revision 36720)
++++ target/linux/brcm2708/base-files/etc/config/network	(working copy)
+@@ -6,8 +6,12 @@
+ 	option ipaddr	127.0.0.1
+ 	option netmask	255.0.0.0
+ 
+-config interface lan
++config interface fallback
+ 	option ifname	eth0
+ 	option proto	static
+-	option ipaddr	192.168.1.1
++	option ipaddr	192.168.200.1
+ 	option netmask	255.255.255.0
 +
-Index: target/linux/brcm2708/image/gen_rpi_sdcard_img.sh
++config interface lan
++	option ifname	eth0
++	option proto	dhcp
+Index: target/linux/brcm2708/base-files/etc/inittab
 ===================================================================
---- target/linux/brcm2708/image/gen_rpi_sdcard_img.sh	(revision 36720)
-+++ target/linux/brcm2708/image/gen_rpi_sdcard_img.sh	(working copy)
-@@ -12,7 +12,7 @@
- BOOTFSSIZE="$4"
- ROOTFSSIZE="$5"
- 
--head=4
-+head=255
- sect=63
- 
- set `ptgen -o $OUTPUT -h $head -s $sect -l 4096 -t c -p ${BOOTFSSIZE}M -t 83 -p ${ROOTFSSIZE}M`
-Index: target/linux/brcm2708/image/cmdline.txt
+--- target/linux/brcm2708/base-files/etc/inittab	(revision 36720)
++++ target/linux/brcm2708/base-files/etc/inittab	(working copy)
+@@ -1,5 +1,5 @@
+ ::sysinit:/etc/init.d/rcS S boot
+ ::shutdown:/etc/init.d/rcS K shutdown
+-tts/0::askfirst:/bin/ash --login
+-ttyAMA0::askfirst:/bin/ash --login
++#tts/0::askfirst:/bin/ash --login
++#ttyAMA0::askfirst:/bin/ash --login
+ tty1::askfirst:/bin/ash --login
+Index: target/linux/brcm2708/base-files/lib/upgrade/platform.sh
 ===================================================================
---- target/linux/brcm2708/image/cmdline.txt	(revision 36720)
-+++ target/linux/brcm2708/image/cmdline.txt	(working copy)
-@@ -1 +1 @@
--dwc_otg.lpm_enable=0 rpitestmode=1 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
-+dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
-Index: target/linux/brcm2708/image/Makefile
-===================================================================
---- target/linux/brcm2708/image/Makefile	(revision 36720)
-+++ target/linux/brcm2708/image/Makefile	(working copy)
-@@ -20,27 +20,22 @@
- 
- 	mkdosfs $(KDIR)/boot.img -C $(FAT32_BLOCKS)
- 	# Raspberry Pi has no bootloader, instead the GPU loads and starts the kernel
--	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm128_start.elf ::
--	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm192_start.elf ::
--	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm224_start.elf ::
- 	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/bootcode.bin ::
--	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/COPYING.linux ::
--	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/LICENCE.broadcom ::
--	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/loader.bin ::
--	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm$(2)_start.elf ::start.elf  #Copy file for memory/gpu division
-+	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/start.elf ::
-+	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/start_cd.elf ::
-+	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/fixup.dat ::
-+	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/fixup_cd.dat ::
-+	mcopy -i $(KDIR)/boot.img config.txt ::
- 	mcopy -i $(KDIR)/boot.img cmdline.txt ::
- 	mcopy -i $(KDIR)/boot.img $(KDIR)/Image ::kernel.img  # Copy OpenWrt built kernel
--	./gen_rpi_sdcard_img.sh $(BIN_DIR)/$(IMG_PREFIX)-sdcard-vfat-$(1)_$(2).img $(KDIR)/boot.img $(KDIR)/root.$(1) \
-+	./gen_rpi_sdcard_img.sh $(BIN_DIR)/$(IMG_PREFIX)-sdcard-vfat-$(1).img $(KDIR)/boot.img $(KDIR)/root.$(1) \
- 		$(CONFIG_BRCM2708_SD_BOOT_PARTSIZE) $(CONFIG_TARGET_ROOTFS_PARTSIZE)
- endef
- 
- define Image/Build
- 	$(CP) $(KDIR)/root.$(1) $(BIN_DIR)/$(IMG_PREFIX)-$(1).img
--	$(CP) $(KDIR)/Image $(BIN_DIR)/$(IMG_PREFIX)-Image
- 
--	$(call Image/Build/RaspberryPi,$(1),128)
--	$(call Image/Build/RaspberryPi,$(1),192)
--	$(call Image/Build/RaspberryPi,$(1),224)
-+	$(call Image/Build/RaspberryPi,$(1))
- endef
- 
- $(eval $(call BuildImage))
+--- target/linux/brcm2708/base-files/lib/upgrade/platform.sh	(revision 0)
++++ target/linux/brcm2708/base-files/lib/upgrade/platform.sh	(working copy)
+@@ -0,0 +1,51 @@
++USE_REFRESH=1
++RAMFS_COPY_BIN=/usr/sbin/partprobe
++
++platform_check_image() {
++	[ "$ARGC" -gt 1 ] && return 1
++
++	case "$(get_magic_word "$1")" in
++		0000) return 0;;
++		*)
++			echo "Invalid image type"
++			return 1
++		;;
++	esac
++}
++
++platform_refresh_partitions() {
++	partprobe /dev/mmcblk0
++}
++
++platform_copy_config() {
++	# remounting corrupts the filesystem, rely on config_restore
++	return 0
++	mount -t ext4 -o ro,noatime /dev/mmcblk0p2 /mnt && \
++	  mount -t ext4 -o remount,rw,noatime /dev/mmcblk0p2 /mnt && \
++	  cp -af "$CONF_TAR" /mnt/ && \
++	  umount /mnt
++}
++
++platform_do_upgrade() {
++	sync
++	# If not saving the configuration, wipe the config partition
++	[ $SAVE_CONFIG -eq 0 -a -b /dev/mmcblk0p4 ] && {
++  	  # Should do mkfs.ext4 here but isn't on ramdisk
++  	  dd if=/dev/zero of=/dev/mmcblk0p4 bs=1M count=1 conv=fsync
++	}
++	dd if=/dev/zero of=/dev/mmcblk0 bs=4M count=10 conv=fsync
++	get_image "$@" | dd of=/dev/mmcblk0 bs=4M conv=fsync
++	sleep 1
++}
++
++bcm2708_umount_all() {
++	cd /tmp
++	echo powersave > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
++	lmclient LMDC,0
++	umount /dev/mmcblk0p1
++	umount /dev/mmcblk0p4
++	umount /sys/kernel/debug
++}
++
++append sysupgrade_pre_upgrade bcm2708_umount_all
++
 Index: target/linux/brcm2708/config-3.3
 ===================================================================
 --- target/linux/brcm2708/config-3.3	(revision 36720)
@@ -80,7 +109,7 @@ Index: target/linux/brcm2708/config-3.3
  CONFIG_ARCH_HAS_CPU_IDLE_WAIT=y
  CONFIG_ARCH_NR_GPIO=0
  CONFIG_ARCH_REQUIRE_GPIOLIB=y
-@@ -12,21 +13,18 @@
+@@ -12,10 +13,12 @@
  # CONFIG_ARCH_USES_GETTIMEOFFSET is not set
  CONFIG_ARM=y
  CONFIG_ARM_AMBA=y
@@ -93,6 +122,7 @@ Index: target/linux/brcm2708/config-3.3
  CONFIG_ARM_L1_CACHE_SHIFT=5
  CONFIG_ARM_NR_BANKS=8
  # CONFIG_ARM_SP805_WATCHDOG is not set
+@@ -22,11 +25,6 @@
  CONFIG_ARM_THUMB=y
  CONFIG_ARM_UNWIND=y
  CONFIG_AVERAGE=y
@@ -219,102 +249,73 @@ Index: target/linux/brcm2708/config-3.3
  CONFIG_TMPFS_POSIX_ACL=y
  CONFIG_UEVENT_HELPER_PATH=""
  # CONFIG_UID16 is not set
-Index: target/linux/brcm2708/base-files/lib/upgrade/platform.sh
+Index: target/linux/brcm2708/image/Makefile
 ===================================================================
---- target/linux/brcm2708/base-files/lib/upgrade/platform.sh	(revision 0)
-+++ target/linux/brcm2708/base-files/lib/upgrade/platform.sh	(working copy)
-@@ -0,0 +1,51 @@
-+USE_REFRESH=1
-+RAMFS_COPY_BIN=/usr/sbin/partprobe
-+
-+platform_check_image() {
-+	[ "$ARGC" -gt 1 ] && return 1
-+
-+	case "$(get_magic_word "$1")" in
-+		0000) return 0;;
-+		*)
-+			echo "Invalid image type"
-+			return 1
-+		;;
-+	esac
-+}
-+
-+platform_refresh_partitions() {
-+	partprobe /dev/mmcblk0
-+}
-+
-+platform_copy_config() {
-+	# remounting corrupts the filesystem, rely on config_restore
-+	return 0
-+	mount -t ext4 -o ro,noatime /dev/mmcblk0p2 /mnt && \
-+	  mount -t ext4 -o remount,rw,noatime /dev/mmcblk0p2 /mnt && \
-+	  cp -af "$CONF_TAR" /mnt/ && \
-+	  umount /mnt
-+}
-+
-+platform_do_upgrade() {
-+	sync
-+	# If not saving the configuration, wipe the config partition
-+	[ $SAVE_CONFIG -eq 0 -a -b /dev/mmcblk0p4 ] && {
-+  	  # Should do mkfs.ext4 here but isn't on ramdisk
-+  	  dd if=/dev/zero of=/dev/mmcblk0p4 bs=1M count=1 conv=fsync
-+	}
-+	dd if=/dev/zero of=/dev/mmcblk0 bs=4M count=10 conv=fsync
-+	get_image "$@" | dd of=/dev/mmcblk0 bs=4M conv=fsync
-+	sleep 1
-+}
-+
-+bcm2708_umount_all() {
-+	cd /tmp
-+	echo powersave > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
-+	lmclient LMDC,0
-+	umount /dev/mmcblk0p1
-+	umount /dev/mmcblk0p4
-+	umount /sys/kernel/debug
-+}
-+
-+append sysupgrade_pre_upgrade bcm2708_umount_all
-+
-Index: target/linux/brcm2708/base-files/etc/inittab
-===================================================================
---- target/linux/brcm2708/base-files/etc/inittab	(revision 36720)
-+++ target/linux/brcm2708/base-files/etc/inittab	(working copy)
-@@ -1,5 +1,5 @@
- ::sysinit:/etc/init.d/rcS S boot
- ::shutdown:/etc/init.d/rcS K shutdown
--tts/0::askfirst:/bin/ash --login
--ttyAMA0::askfirst:/bin/ash --login
-+#tts/0::askfirst:/bin/ash --login
-+#ttyAMA0::askfirst:/bin/ash --login
- tty1::askfirst:/bin/ash --login
-Index: target/linux/brcm2708/base-files/etc/config/network
-===================================================================
---- target/linux/brcm2708/base-files/etc/config/network	(revision 36720)
-+++ target/linux/brcm2708/base-files/etc/config/network	(working copy)
-@@ -6,8 +6,12 @@
- 	option ipaddr	127.0.0.1
- 	option netmask	255.0.0.0
+--- target/linux/brcm2708/image/Makefile	(revision 36720)
++++ target/linux/brcm2708/image/Makefile	(working copy)
+@@ -20,27 +20,22 @@
  
--config interface lan
-+config interface fallback
- 	option ifname	eth0
- 	option proto	static
--	option ipaddr	192.168.1.1
-+	option ipaddr	192.168.200.1
- 	option netmask	255.255.255.0
-+
-+config interface lan
-+	option ifname	eth0
-+	option proto	dhcp
-Index: target/linux/brcm2708/Makefile
-===================================================================
---- target/linux/brcm2708/Makefile	(revision 36720)
-+++ target/linux/brcm2708/Makefile	(working copy)
-@@ -23,6 +23,6 @@
- 	Currently produces SD Card image for Raspberry Pi.
+ 	mkdosfs $(KDIR)/boot.img -C $(FAT32_BLOCKS)
+ 	# Raspberry Pi has no bootloader, instead the GPU loads and starts the kernel
+-	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm128_start.elf ::
+-	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm192_start.elf ::
+-	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm224_start.elf ::
+ 	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/bootcode.bin ::
+-	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/COPYING.linux ::
+-	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/LICENCE.broadcom ::
+-	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/loader.bin ::
+-	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/arm$(2)_start.elf ::start.elf  #Copy file for memory/gpu division
++	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/start.elf ::
++	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/start_cd.elf ::
++	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/fixup.dat ::
++	mcopy -i $(KDIR)/boot.img $(BUILD_DIR)/brcm2708-gpu-fw-boot/fixup_cd.dat ::
++	mcopy -i $(KDIR)/boot.img config.txt ::
+ 	mcopy -i $(KDIR)/boot.img cmdline.txt ::
+ 	mcopy -i $(KDIR)/boot.img $(KDIR)/Image ::kernel.img  # Copy OpenWrt built kernel
+-	./gen_rpi_sdcard_img.sh $(BIN_DIR)/$(IMG_PREFIX)-sdcard-vfat-$(1)_$(2).img $(KDIR)/boot.img $(KDIR)/root.$(1) \
++	./gen_rpi_sdcard_img.sh $(BIN_DIR)/$(IMG_PREFIX)-sdcard-vfat-$(1).img $(KDIR)/boot.img $(KDIR)/root.$(1) \
+ 		$(CONFIG_BRCM2708_SD_BOOT_PARTSIZE) $(CONFIG_TARGET_ROOTFS_PARTSIZE)
  endef
  
--CFLAGS:=-pipe -march=armv6 -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=softfp -marm
-+CFLAGS:=-pipe -march=armv6zk -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard -marm
+ define Image/Build
+ 	$(CP) $(KDIR)/root.$(1) $(BIN_DIR)/$(IMG_PREFIX)-$(1).img
+-	$(CP) $(KDIR)/Image $(BIN_DIR)/$(IMG_PREFIX)-Image
  
- $(eval $(call BuildTarget))
+-	$(call Image/Build/RaspberryPi,$(1),128)
+-	$(call Image/Build/RaspberryPi,$(1),192)
+-	$(call Image/Build/RaspberryPi,$(1),224)
++	$(call Image/Build/RaspberryPi,$(1))
+ endef
+ 
+ $(eval $(call BuildImage))
+Index: target/linux/brcm2708/image/cmdline.txt
+===================================================================
+--- target/linux/brcm2708/image/cmdline.txt	(revision 36720)
++++ target/linux/brcm2708/image/cmdline.txt	(working copy)
+@@ -1 +1 @@
+-dwc_otg.lpm_enable=0 rpitestmode=1 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
++dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
+Index: target/linux/brcm2708/image/config.txt
+===================================================================
+--- target/linux/brcm2708/image/config.txt	(revision 0)
++++ target/linux/brcm2708/image/config.txt	(working copy)
+@@ -0,0 +1,6 @@
++gpu_mem=32
++arm_freq=800
++arm_freq_min=700
++sdram_freq=400
++core_freq=250
++
+Index: target/linux/brcm2708/image/gen_rpi_sdcard_img.sh
+===================================================================
+--- target/linux/brcm2708/image/gen_rpi_sdcard_img.sh	(revision 36720)
++++ target/linux/brcm2708/image/gen_rpi_sdcard_img.sh	(working copy)
+@@ -12,7 +12,7 @@
+ BOOTFSSIZE="$4"
+ ROOTFSSIZE="$5"
+ 
+-head=4
++head=255
+ sect=63
+ 
+ set `ptgen -o $OUTPUT -h $head -s $sect -l 4096 -t c -p ${BOOTFSSIZE}M -t 83 -p ${ROOTFSSIZE}M`
