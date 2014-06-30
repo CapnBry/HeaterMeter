@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # OpenWrt version: Attitude Adjustment (r36422)
-# Thu Jun 12 22:45:47 2014
+# Mon Jun 30 16:03:14 2014
 #
 CONFIG_HAVE_DOT_CONFIG=y
 # CONFIG_TARGET_ppc40x is not set
@@ -1303,11 +1303,131 @@ CONFIG_PACKAGE_uci=y
 CONFIG_PACKAGE_brcm2708-gpu-fw=y
 
 #
-# Mail
+# Utilities
 #
-CONFIG_PACKAGE_msmtp=y
-# CONFIG_PACKAGE_msmtp-nossl is not set
-# CONFIG_PACKAGE_msmtp-queue is not set
+
+#
+# Boot Loaders
+#
+
+#
+# Filesystem
+#
+# CONFIG_PACKAGE_badblocks is not set
+# CONFIG_PACKAGE_e2fsprogs is not set
+# CONFIG_PACKAGE_fuse-utils is not set
+# CONFIG_PACKAGE_owfs is not set
+# CONFIG_PACKAGE_owshell is not set
+# CONFIG_PACKAGE_resize2fs is not set
+# CONFIG_PACKAGE_sysfsutils is not set
+# CONFIG_PACKAGE_tune2fs is not set
+
+#
+# SSL
+#
+# CONFIG_PACKAGE_certtool is not set
+# CONFIG_PACKAGE_gnutls-utils is not set
+
+#
+# Terminal
+#
+# CONFIG_PACKAGE_agetty is not set
+# CONFIG_PACKAGE_script-utils is not set
+# CONFIG_PACKAGE_setterm is not set
+# CONFIG_PACKAGE_wall is not set
+
+#
+# database
+#
+# CONFIG_PACKAGE_mysql-server is not set
+# CONFIG_PACKAGE_pgsql-cli is not set
+# CONFIG_PACKAGE_pgsql-server is not set
+# CONFIG_PACKAGE_sqlite3-cli is not set
+
+#
+# disc
+#
+# CONFIG_PACKAGE_blkid is not set
+# CONFIG_PACKAGE_cfdisk is not set
+# CONFIG_PACKAGE_fdisk is not set
+# CONFIG_PACKAGE_findfs is not set
+# CONFIG_PACKAGE_hd-idle is not set
+# CONFIG_PACKAGE_lsblk is not set
+CONFIG_PACKAGE_parted=y
+# CONFIG_PACKAGE_partx-utils is not set
+# CONFIG_PACKAGE_sfdisk is not set
+# CONFIG_PACKAGE_swap-utils is not set
+# CONFIG_PACKAGE_wipefs is not set
+# CONFIG_PACKAGE_bash is not set
+# CONFIG_PACKAGE_bzip2 is not set
+# CONFIG_PACKAGE_cal is not set
+# CONFIG_PACKAGE_collectd is not set
+# CONFIG_PACKAGE_dbus is not set
+# CONFIG_PACKAGE_dmesg is not set
+# CONFIG_PACKAGE_dropbearconvert is not set
+# CONFIG_PACKAGE_fbtest is not set
+# CONFIG_PACKAGE_fconfig is not set
+# CONFIG_PACKAGE_flock is not set
+# CONFIG_PACKAGE_gdb is not set
+# CONFIG_PACKAGE_gdbserver is not set
+# CONFIG_PACKAGE_getopt is not set
+# CONFIG_PACKAGE_gpioctl is not set
+# CONFIG_PACKAGE_hwclock is not set
+# CONFIG_PACKAGE_iconv is not set
+# CONFIG_PACKAGE_iwcap is not set
+CONFIG_PACKAGE_iwinfo=y
+# CONFIG_PACKAGE_jpeg-tools is not set
+CONFIG_PACKAGE_jshn=y
+# CONFIG_PACKAGE_kexec-tools is not set
+# CONFIG_PACKAGE_ldconfig is not set
+# CONFIG_PACKAGE_ldd is not set
+CONFIG_PACKAGE_linkmeter=y
+# CONFIG_PACKAGE_lm-sensors is not set
+# CONFIG_PACKAGE_lm-sensors-detect is not set
+# CONFIG_PACKAGE_logger is not set
+# CONFIG_PACKAGE_look is not set
+# CONFIG_PACKAGE_losetup is not set
+# CONFIG_PACKAGE_maccalc is not set
+# CONFIG_PACKAGE_mcookie is not set
+# CONFIG_PACKAGE_mount-utils is not set
+# CONFIG_PACKAGE_mountd is not set
+# CONFIG_PACKAGE_namei is not set
+# CONFIG_PACKAGE_ocf-crypto-headers is not set
+# CONFIG_PACKAGE_openssl-util is not set
+# CONFIG_PACKAGE_owipcalc is not set
+# CONFIG_PACKAGE_px5g is not set
+# CONFIG_PACKAGE_rename is not set
+# CONFIG_PACKAGE_robocfg is not set
+# CONFIG_PACKAGE_rrdcgi1 is not set
+CONFIG_PACKAGE_rrdtool=y
+# CONFIG_PACKAGE_rrdtool1 is not set
+# CONFIG_PACKAGE_shadow is not set
+# CONFIG_PACKAGE_shadow-common is not set
+# CONFIG_PACKAGE_shadow-groupadd is not set
+# CONFIG_PACKAGE_shadow-groupdel is not set
+# CONFIG_PACKAGE_shadow-groupmod is not set
+# CONFIG_PACKAGE_shadow-groups is not set
+# CONFIG_PACKAGE_shadow-passwd is not set
+# CONFIG_PACKAGE_shadow-su is not set
+# CONFIG_PACKAGE_shadow-useradd is not set
+# CONFIG_PACKAGE_shadow-userdel is not set
+# CONFIG_PACKAGE_shadow-usermod is not set
+# CONFIG_PACKAGE_spidev-test is not set
+# CONFIG_PACKAGE_strace is not set
+# CONFIG_PACKAGE_tiff-utils is not set
+# CONFIG_PACKAGE_uboot-envtools is not set
+# CONFIG_PACKAGE_usbreset is not set
+# CONFIG_PACKAGE_uuidd is not set
+# CONFIG_PACKAGE_uuidgen is not set
+# CONFIG_PACKAGE_watchcat is not set
+# CONFIG_PACKAGE_whereis is not set
+# CONFIG_PACKAGE_xfs-fsck is not set
+# CONFIG_PACKAGE_xfs-growfs is not set
+# CONFIG_PACKAGE_xfs-mkfs is not set
+
+#
+# Emulators
+#
 
 #
 # Kernel modules
@@ -1684,6 +1804,13 @@ CONFIG_PACKAGE_lua=y
 # CONFIG_PACKAGE_python-sqlite3 is not set
 
 #
+# Multimedia
+#
+# CONFIG_PACKAGE_ffmpeg is not set
+# CONFIG_PACKAGE_ffprobe is not set
+# CONFIG_PACKAGE_ffserver is not set
+
+#
 # Network
 #
 
@@ -1795,19 +1922,27 @@ CONFIG_PACKAGE_wpad-mini=y
 # CONFIG_PACKAGE_wshaper is not set
 
 #
-# IPv6
+# LuCI2
 #
 
 #
-# Firewall
+# Libraries
 #
-# CONFIG_PACKAGE_ip6tables is not set
-# CONFIG_PACKAGE_6in4 is not set
-# CONFIG_PACKAGE_6rd is not set
-# CONFIG_PACKAGE_6to4 is not set
-# CONFIG_PACKAGE_ahcpd is not set
-# CONFIG_PACKAGE_radvd is not set
-# CONFIG_PACKAGE_radvdump is not set
+CONFIG_PACKAGE_libubus=y
+CONFIG_PACKAGE_libubus-lua=y
+
+#
+# System
+#
+CONFIG_PACKAGE_ubus=y
+CONFIG_PACKAGE_ubusd=y
+
+#
+# Mail
+#
+CONFIG_PACKAGE_msmtp=y
+# CONFIG_PACKAGE_msmtp-nossl is not set
+# CONFIG_PACKAGE_msmtp-queue is not set
 
 #
 # LuCI
@@ -1952,8 +2087,8 @@ CONFIG_PACKAGE_luci-lib-web=y
 #
 # Filesystem
 #
-CONFIG_PACKAGE_libcom_err=y
-CONFIG_PACKAGE_libext2fs=y
+# CONFIG_PACKAGE_libcom_err is not set
+# CONFIG_PACKAGE_libext2fs is not set
 # CONFIG_PACKAGE_libfuse is not set
 # CONFIG_PACKAGE_libow is not set
 # CONFIG_PACKAGE_libow-capi is not set
@@ -1994,7 +2129,7 @@ CONFIG_PACKAGE_libopenssl=y
 CONFIG_PACKAGE_libavahi=y
 # CONFIG_PACKAGE_libavahi-client is not set
 # CONFIG_PACKAGE_libavahi-dbus-support is not set
-CONFIG_PACKAGE_libblkid=y
+# CONFIG_PACKAGE_libblkid is not set
 CONFIG_PACKAGE_libblobmsg-json=y
 # CONFIG_PACKAGE_libbz2 is not set
 # CONFIG_PACKAGE_libcharset is not set
@@ -2077,151 +2212,16 @@ CONFIG_PACKAGE_libuuid=y
 CONFIG_PACKAGE_zlib=y
 
 #
-# Utilities
+# IPv6
 #
 
 #
-# Boot Loaders
+# Firewall
 #
-
-#
-# Filesystem
-#
-# CONFIG_PACKAGE_badblocks is not set
-CONFIG_PACKAGE_e2fsprogs=y
-# CONFIG_PACKAGE_fuse-utils is not set
-# CONFIG_PACKAGE_owfs is not set
-# CONFIG_PACKAGE_owshell is not set
-CONFIG_PACKAGE_resize2fs=y
-# CONFIG_PACKAGE_sysfsutils is not set
-# CONFIG_PACKAGE_tune2fs is not set
-
-#
-# SSL
-#
-# CONFIG_PACKAGE_certtool is not set
-# CONFIG_PACKAGE_gnutls-utils is not set
-
-#
-# Terminal
-#
-# CONFIG_PACKAGE_agetty is not set
-# CONFIG_PACKAGE_script-utils is not set
-# CONFIG_PACKAGE_setterm is not set
-# CONFIG_PACKAGE_wall is not set
-
-#
-# database
-#
-# CONFIG_PACKAGE_mysql-server is not set
-# CONFIG_PACKAGE_pgsql-cli is not set
-# CONFIG_PACKAGE_pgsql-server is not set
-# CONFIG_PACKAGE_sqlite3-cli is not set
-
-#
-# disc
-#
-# CONFIG_PACKAGE_blkid is not set
-# CONFIG_PACKAGE_cfdisk is not set
-# CONFIG_PACKAGE_fdisk is not set
-# CONFIG_PACKAGE_findfs is not set
-# CONFIG_PACKAGE_hd-idle is not set
-# CONFIG_PACKAGE_lsblk is not set
-CONFIG_PACKAGE_parted=y
-# CONFIG_PACKAGE_partx-utils is not set
-# CONFIG_PACKAGE_sfdisk is not set
-# CONFIG_PACKAGE_swap-utils is not set
-# CONFIG_PACKAGE_wipefs is not set
-# CONFIG_PACKAGE_bash is not set
-# CONFIG_PACKAGE_bzip2 is not set
-# CONFIG_PACKAGE_cal is not set
-# CONFIG_PACKAGE_collectd is not set
-# CONFIG_PACKAGE_dbus is not set
-# CONFIG_PACKAGE_dmesg is not set
-# CONFIG_PACKAGE_dropbearconvert is not set
-# CONFIG_PACKAGE_fbtest is not set
-# CONFIG_PACKAGE_fconfig is not set
-# CONFIG_PACKAGE_flock is not set
-# CONFIG_PACKAGE_gdb is not set
-# CONFIG_PACKAGE_gdbserver is not set
-# CONFIG_PACKAGE_getopt is not set
-# CONFIG_PACKAGE_gpioctl is not set
-# CONFIG_PACKAGE_hwclock is not set
-# CONFIG_PACKAGE_iconv is not set
-# CONFIG_PACKAGE_iwcap is not set
-CONFIG_PACKAGE_iwinfo=y
-# CONFIG_PACKAGE_jpeg-tools is not set
-CONFIG_PACKAGE_jshn=y
-# CONFIG_PACKAGE_kexec-tools is not set
-# CONFIG_PACKAGE_ldconfig is not set
-# CONFIG_PACKAGE_ldd is not set
-CONFIG_PACKAGE_linkmeter=y
-# CONFIG_PACKAGE_lm-sensors is not set
-# CONFIG_PACKAGE_lm-sensors-detect is not set
-# CONFIG_PACKAGE_logger is not set
-# CONFIG_PACKAGE_look is not set
-# CONFIG_PACKAGE_losetup is not set
-# CONFIG_PACKAGE_maccalc is not set
-# CONFIG_PACKAGE_mcookie is not set
-# CONFIG_PACKAGE_mount-utils is not set
-# CONFIG_PACKAGE_mountd is not set
-# CONFIG_PACKAGE_namei is not set
-# CONFIG_PACKAGE_ocf-crypto-headers is not set
-# CONFIG_PACKAGE_openssl-util is not set
-# CONFIG_PACKAGE_owipcalc is not set
-# CONFIG_PACKAGE_px5g is not set
-# CONFIG_PACKAGE_rename is not set
-# CONFIG_PACKAGE_robocfg is not set
-# CONFIG_PACKAGE_rrdcgi1 is not set
-CONFIG_PACKAGE_rrdtool=y
-# CONFIG_PACKAGE_rrdtool1 is not set
-# CONFIG_PACKAGE_shadow is not set
-# CONFIG_PACKAGE_shadow-common is not set
-# CONFIG_PACKAGE_shadow-groupadd is not set
-# CONFIG_PACKAGE_shadow-groupdel is not set
-# CONFIG_PACKAGE_shadow-groupmod is not set
-# CONFIG_PACKAGE_shadow-groups is not set
-# CONFIG_PACKAGE_shadow-passwd is not set
-# CONFIG_PACKAGE_shadow-su is not set
-# CONFIG_PACKAGE_shadow-useradd is not set
-# CONFIG_PACKAGE_shadow-userdel is not set
-# CONFIG_PACKAGE_shadow-usermod is not set
-# CONFIG_PACKAGE_spidev-test is not set
-# CONFIG_PACKAGE_strace is not set
-# CONFIG_PACKAGE_tiff-utils is not set
-# CONFIG_PACKAGE_uboot-envtools is not set
-# CONFIG_PACKAGE_usbreset is not set
-# CONFIG_PACKAGE_uuidd is not set
-# CONFIG_PACKAGE_uuidgen is not set
-# CONFIG_PACKAGE_watchcat is not set
-# CONFIG_PACKAGE_whereis is not set
-# CONFIG_PACKAGE_xfs-fsck is not set
-# CONFIG_PACKAGE_xfs-growfs is not set
-# CONFIG_PACKAGE_xfs-mkfs is not set
-
-#
-# Emulators
-#
-
-#
-# Multimedia
-#
-# CONFIG_PACKAGE_ffmpeg is not set
-# CONFIG_PACKAGE_ffprobe is not set
-# CONFIG_PACKAGE_ffserver is not set
-
-#
-# LuCI2
-#
-
-#
-# Libraries
-#
-CONFIG_PACKAGE_libubus=y
-CONFIG_PACKAGE_libubus-lua=y
-
-#
-# System
-#
-CONFIG_PACKAGE_ubus=y
-CONFIG_PACKAGE_ubusd=y
+# CONFIG_PACKAGE_ip6tables is not set
+# CONFIG_PACKAGE_6in4 is not set
+# CONFIG_PACKAGE_6rd is not set
+# CONFIG_PACKAGE_6to4 is not set
+# CONFIG_PACKAGE_ahcpd is not set
+# CONFIG_PACKAGE_radvd is not set
+# CONFIG_PACKAGE_radvdump is not set
