@@ -68,29 +68,29 @@ static const struct __eeprom_data {
   unsigned char homeDisplayMode;
   unsigned char unused;
   unsigned char ledConf[LED_COUNT];
-  unsigned char minServoPos;  // in percent
-  unsigned char maxServoPos;  // in percent
+  unsigned char minServoPos;  // in 10us
+  unsigned char maxServoPos;  // in 10us
 } DEFAULT_CONFIG[] PROGMEM = {
  {
   EEPROM_MAGIC,  // magic
   225,  // setpoint
   6,    // lid open offset %
   240,  // lid open duration
-  { 4.0f, 3.0f, 0.005f, 5.0f },  // PID constants
+  { 0.0f, 4.0f, 0.02f, 5.0f },  // PID constants
   false, // manual mode
   50,   // lcd backlight (%)
 #ifdef HEATERMETER_RFM12
   { RFSOURCEID_ANY, RFSOURCEID_ANY, RFSOURCEID_ANY, RFSOURCEID_ANY },  // rfMap
 #endif
   'F',  // Units
-  10,   // min fan speed  
+  0,    // min fan speed
   100,  // max fan speed
-  0x00, // PID output flags bitmask
+  bit(PIDFLAG_FAN_FEEDVOLT), // PID output flags bitmask
   0xff, // 2-line home
   0xff, // unused
-  { LEDSTIMULUS_RfReceive, LEDSTIMULUS_LidOpen, LEDSTIMULUS_FanOn, LEDSTIMULUS_Off },
-  60, // min servo pos = 600us
-  250  // max servo pos = 2500us
+  { LEDSTIMULUS_FanMax, LEDSTIMULUS_LidOpen, LEDSTIMULUS_FanOn, LEDSTIMULUS_Off },
+  150-50, // min servo pos = 1000us
+  150+50  // max servo pos = 2000us
 }
 };
 
