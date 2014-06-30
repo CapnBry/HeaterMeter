@@ -85,13 +85,15 @@ if [ "$INSTALL_PARAM" = "new" ] ; then
   # On applicable platforms, avrupdate loads HeaterMeter onto the AVR
   avrupdate
 
-  # Enable the config backup/restore service
-  [ "$HARDWARE_MODEL" = "BCM2708" ] && \
+  if [ "$HARDWARE_MODEL" = "BCM2708" ] ; then
+    # Enable the config backup/restore service
     /etc/init.d/config_restore enable
 
-  # New install, disable dhcp server on the lan interface
-  if [ "$HARDWARE_MODEL" = "BCM2708" ] ; then
+    # Disable dhcp server on the lan interface
     uci set dhcp.lan.ignore=1
     uci commit dhcp
+
+    # Setup wifi to be an AP on channel 6 with no encryption
+    /usr/bin/wifi-ap -s heatermeter -c 6 -e none
   fi
 fi
