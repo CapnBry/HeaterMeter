@@ -1,0 +1,14 @@
+--- luci-0.11.1/modules/admin-full/luasrc/model/cbi/admin_network/wifi_add.lua.orig	2014-06-30 10:48:53.630440606 -0400
++++ luci-0.11.1/modules/admin-full/luasrc/model/cbi/admin_network/wifi_add.lua	2014-06-30 10:50:15.842438032 -0400
+@@ -168,6 +168,11 @@
+ 			uci:save("network")
+ 			uci:save("firewall")
+ 
++			if net:proto() == "dhcp" then
++				uci:set("dhcp", net:name() .. ".ignore", "1")
++				uci:save("dhcp")
++			end
++
+ 			luci.http.redirect(wnet:adminlink())
+ 		end
+ 	end
