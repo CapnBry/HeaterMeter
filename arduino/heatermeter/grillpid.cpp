@@ -145,6 +145,7 @@ unsigned int analogReadRange(unsigned char pin)
   return retVal;
 }
 
+#if defined(GRILLPID_DYNAMIC_RANGE)
 bool analogIsBandgapReference(unsigned char pin)
 {
   return adcState.useBandgapReference[pin];
@@ -154,6 +155,7 @@ void analogSetBandgapReference(unsigned char pin, bool enable)
 {
   adcState.useBandgapReference[pin] = enable;
 }
+#endif /* GRILLPID_DYNAMIC_RANGE */
 
 static void adcDump(void)
 {
