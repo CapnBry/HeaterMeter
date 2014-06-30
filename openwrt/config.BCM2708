@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # OpenWrt version: Attitude Adjustment (r36422)
-# Mon Jun 30 16:03:14 2014
+# Mon Jun 30 17:54:25 2014
 #
 CONFIG_HAVE_DOT_CONFIG=y
 # CONFIG_TARGET_ppc40x is not set
@@ -1314,7 +1314,7 @@ CONFIG_PACKAGE_brcm2708-gpu-fw=y
 # Filesystem
 #
 # CONFIG_PACKAGE_badblocks is not set
-# CONFIG_PACKAGE_e2fsprogs is not set
+CONFIG_PACKAGE_e2fsprogs=y
 # CONFIG_PACKAGE_fuse-utils is not set
 # CONFIG_PACKAGE_owfs is not set
 # CONFIG_PACKAGE_owshell is not set
@@ -2087,8 +2087,8 @@ CONFIG_PACKAGE_luci-lib-web=y
 #
 # Filesystem
 #
-# CONFIG_PACKAGE_libcom_err is not set
-# CONFIG_PACKAGE_libext2fs is not set
+CONFIG_PACKAGE_libcom_err=y
+CONFIG_PACKAGE_libext2fs=y
 # CONFIG_PACKAGE_libfuse is not set
 # CONFIG_PACKAGE_libow is not set
 # CONFIG_PACKAGE_libow-capi is not set
@@ -2129,7 +2129,7 @@ CONFIG_PACKAGE_libopenssl=y
 CONFIG_PACKAGE_libavahi=y
 # CONFIG_PACKAGE_libavahi-client is not set
 # CONFIG_PACKAGE_libavahi-dbus-support is not set
-# CONFIG_PACKAGE_libblkid is not set
+CONFIG_PACKAGE_libblkid=y
 CONFIG_PACKAGE_libblobmsg-json=y
 # CONFIG_PACKAGE_libbz2 is not set
 # CONFIG_PACKAGE_libcharset is not set
