@@ -370,7 +370,7 @@ local function checkDphUpdate(now)
 
     local dph = "null"
     if #x > 180 then
-      local ok, p, status, evals = pcall(lmfit.linear, x, y, dphEstimates[1])
+      local ok, p, status, evals = pcall(lmfit.linear, x, y, dphEstimates[probe])
       if ok and status >= 1 and status <= 3 then
         dph = ("%.2f"):format(p[1])
         dphEstimates[probe] = p
