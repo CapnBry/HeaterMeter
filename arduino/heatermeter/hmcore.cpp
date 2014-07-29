@@ -66,7 +66,7 @@ static const struct __eeprom_data {
   unsigned char maxFanSpeed;  // in percent
   unsigned char pidOutputFlags;
   unsigned char homeDisplayMode;
-  unsigned char unused;
+  unsigned char maxStartupFanSpeed; // in percent
   unsigned char ledConf[LED_COUNT];
   unsigned char minServoPos;  // in 10us
   unsigned char maxServoPos;  // in 10us
@@ -87,7 +87,7 @@ static const struct __eeprom_data {
   100,  // max fan speed
   bit(PIDFLAG_FAN_FEEDVOLT), // PID output flags bitmask
   0xff, // 2-line home
-  0xff, // unused
+  100, // max startup fan speed
   { LEDSTIMULUS_FanMax, LEDSTIMULUS_LidOpen, LEDSTIMULUS_FanOn, LEDSTIMULUS_Off },
   150-50, // min servo pos = 1000us
   150+50  // max servo pos = 2000us
@@ -271,16 +271,20 @@ static void storeProbeTypeOrMap(unsigned char probeIndex, unsigned char probeTyp
 
 static void storeMinFanSpeed(unsigned char minFanSpeed)
 {
-  minFanSpeed = constrain(minFanSpeed, 0, 100);
   pid.setMinFanSpeed(minFanSpeed);
-  config_store_byte(minFanSpeed, minFanSpeed);
+  config_store_byte(minFanSpeed, pid.getMinFanSpeed());
 }
 
 static void storeMaxFanSpeed(unsigned char maxFanSpeed)
 {
-  maxFanSpeed = constrain(maxFanSpeed, 0, 100);
   pid.setMaxFanSpeed(maxFanSpeed);
-  config_store_byte(maxFanSpeed, maxFanSpeed);
+  config_store_byte(maxFanSpeed, pid.getMaxFanSpeed());
+}
+
+static void storeMaxStartupFanSpeed(unsigned char maxStartupFanSpeed)
+{
+  pid.setMaxStartupFanSpeed(maxStartupFanSpeed);
+  config_store_byte(maxStartupFanSpeed, pid.getMaxStartupFanSpeed());
 }
 
 static void storeMinServoPos(unsigned char minServoPos)
@@ -295,7 +299,7 @@ static void storeMaxServoPos(unsigned char maxServoPos)
   config_store_byte(maxServoPos, maxServoPos);
 }
 
-static void storeInvertPidOutput(unsigned char pidOutputFlags)
+static void storePidOutputFlags(unsigned char pidOutputFlags)
 {
   pid.setOutputFlags(pidOutputFlags);
   config_store_byte(pidOutputFlags, pidOutputFlags);
@@ -749,6 +753,8 @@ static void reportFanParams(void)
   SerialX.print(pid.getMaxServoPos(), DEC);
   Serial_csv();
   SerialX.print(pid.getOutputFlags(), DEC);
+  Serial_csv();
+  SerialX.print(pid.getMaxStartupFanSpeed(), DEC);
   Serial_nl();
 }
 
@@ -866,7 +872,10 @@ static void storeFanParams(unsigned char idx, int val)
       storeMaxServoPos(val);
       break;
     case 4:
-      storeInvertPidOutput(val);
+      storePidOutputFlags(val);
+      break;
+    case 5:
+      storeMaxStartupFanSpeed(val);
       break;
   }
 }
@@ -1116,6 +1125,7 @@ static void eepromLoadBaseConfig(unsigned char forceDefault)
   pid.setUnits(config.base.pidUnits == 'C' ? 'C' : 'F');
   pid.setMinFanSpeed(config.base.minFanSpeed);
   pid.setMaxFanSpeed(config.base.maxFanSpeed);
+  pid.setMaxStartupFanSpeed(config.base.maxStartupFanSpeed);
   pid.setOutputFlags(config.base.pidOutputFlags);
   g_HomeDisplayMode = config.base.homeDisplayMode;
   pid.setMinServoPos(config.base.minServoPos);
@@ -1233,6 +1243,8 @@ static void newTempsAvail(void)
   ledmanager.publish(LEDSTIMULUS_FanOn, pid.isOutputActive());
   ledmanager.publish(LEDSTIMULUS_FanMax, pid.isOutputMaxed());
   ledmanager.publish(LEDSTIMULUS_PitTempReached, pid.isPitTempReached());
+  ledmanager.publish(LEDSTIMULUS_Startup, pid.getPitStartRecover() == PIDSTARTRECOVER_STARTUP);
+  ledmanager.publish(LEDSTIMULUS_Recovery, pid.getPitStartRecover() == PIDSTARTRECOVER_RECOVERY);
 
 #ifdef HEATERMETER_RFM12
   rfmanager.sendUpdate(pid.getPidOutput());
