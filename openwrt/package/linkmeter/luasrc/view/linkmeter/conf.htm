@@ -446,7 +446,7 @@ function updateConfigUrl(divname, h)
   csvItems(h, aValues, "po", ["po0", "po1", "po2", "po3"]);
   csvItems(h, aValues, "al", ["pall0", "palh0", "pall1", "palh1",
     "pall2", "palh2", "pall3", "palh3"]);
-  csvItems(h, aValues, "fn", ["fmin", "fmax", "smin", "smax", "oflag"]);
+  csvItems(h, aValues, "fn", ["fmin", "fmax", "smin", "smax", "oflag", "fsmax"]);
   for (var i=0; i<4; ++i)
     csvItems(h, aValues, "pc"+i, ["pca"+i, "pcb"+i, "pcc"+i, "pcr"+i, 
       function () { return getProbeTypeForSend(h, i); } ]);
@@ -638,7 +638,8 @@ time they are restarted.</div>
       <option value="1">Voltage</option>
     </select>
     min <input type="text" maxlength="3" id="fmin" style="width: 2em;"/>% max
-      <input type="text" maxlength="3" id="fmax" style="width: 2em;"/>%
+      <input type="text" maxlength="3" id="fmax" style="width: 2em;"/>% startup max
+      <input type="text" maxlength="3" id="fsmax" style="width: 2em;"/>%
     <label><input type="checkbox" id="oflag0"/> Invert output</label>
     <label><input type="checkbox" id="oflag2"/> On at max only</label>
   </div>
@@ -691,6 +692,8 @@ time they are restarted.</div>
       <option value="11">Fan speed > 0%</option>
       <option value="13">Fan speed = Max</option>
       <option value="12">Pit Temp Reached</option>
+      <option value="15">Pit Startup Mode</option>
+      <option value="16">Pit Recovery Mode</option>
       <option value="127">Unset</option>
     </select>
     </li>
