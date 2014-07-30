@@ -311,7 +311,11 @@ void TempProbe::calcTemp(unsigned int adcval)
       setTemperatureC(T - 273.15f);
     } /* if PROBETYPE_INTERNAL */
   } /* if ADCval */
+}
 
+void TempProbe::processPeriod(void)
+{
+  // Called once per measurement period after temperature has been calculated
   if (hasTemperature())
   {
     if (!_hasTempAvg)
@@ -654,9 +658,12 @@ boolean GrillPid::doWork(void)
 
 #if defined(GRILLPID_CALC_TEMP) 
   for (unsigned char i=0; i<TEMP_COUNT; i++)
+  {
     if (Probes[i]->getProbeType() == PROBETYPE_INTERNAL ||
         Probes[i]->getProbeType() == PROBETYPE_TC_ANALOG)
       Probes[i]->calcTemp(analogReadOver(Probes[i]->getPin(), 10+TEMP_OVERSAMPLE_BITS));
+    Probes[i]->processPeriod();
+  }
 
   if (!_manualOutputMode)
   {
