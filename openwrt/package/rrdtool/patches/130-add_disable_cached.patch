@@ -37,7 +37,7 @@
  	rrd_restore.c	
  endif
  
-+if BUILD_RRDRESTORE
++if BUILD_RRDCACHED
 +RRD_C_FILES +=          \
 +	rrd_flushcached.c 
 +endif
@@ -56,7 +56,7 @@
  bin_PROGRAMS += rrdcgi
  endif
  
-+if BUILD_RRDRESTORE
++if BUILD_RRDCACHED
 +bin_PROGRAMS += rrdcached
 +endif
 +
