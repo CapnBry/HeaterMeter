@@ -69,21 +69,21 @@ local JSON_TEMPLATE_SRC = {
   '{"time":', 0, -- 3
   ',"set":', 0,  -- 5
   ',"lid":', 0,  -- 7
-  ',"fan":{"c":', 0, ',"a":', 0, -- 11
-  '},"adc":[', '', -- 13
-  '],"temps":[{"n":"', 'Pit', '","c":', 0, '', ',"dph":', 'null', -- 20
-    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 26
-  '}},{"n":"', 'Food Probe1', '","c":', 0, '', ',"dph":', 'null', -- 33
-    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 39
-  '}},{"n":"', 'Food Probe2', '","c":', 0, '', ',"dph":', 'null', -- 46
-    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 52
-  '}},{"n":"', 'Ambient', '","c":', 0, '', ',"dph":', 'null', -- 59
-    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 65
-  '}}]}', -- 66
-  '' -- 67
+  ',"fan":{"c":', 0, ',"a":', 0, ',"f":', 0, -- 13
+  '},"adc":[', '', -- 15
+  '],"temps":[{"n":"', 'Pit', '","c":', 0, '', ',"dph":', 'null', -- 22
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 28
+  '}},{"n":"', 'Food Probe1', '","c":', 0, '', ',"dph":', 'null', -- 35
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 41
+  '}},{"n":"', 'Food Probe2', '","c":', 0, '', ',"dph":', 'null', -- 48
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 54
+  '}},{"n":"', 'Ambient', '","c":', 0, '', ',"dph":', 'null', -- 61
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 67
+  '}}]}', -- 68
+  '' -- 69
 }
 local JSON_TEMPLATE
-local JSON_FROM_CSV = {3, 5, 17, 30, 43, 56, 9, 11, 7 }
+local JSON_FROM_CSV = {3, 5, 19, 32, 45, 58, 9, 11, 7, 13 }
 
 local function jsonWrite(vals)
   local i,v
@@ -105,7 +105,7 @@ local function jsonWrite(vals)
     else
       rfval = ''
     end
-    JSON_TEMPLATE[5+(i*13)] = rfval
+    JSON_TEMPLATE[7+(i*13)] = rfval
   end
 end
 
@@ -136,7 +136,7 @@ local function buildConfigMap()
   if JSON_TEMPLATE[3] ~= 0 then
     -- Current temperatures
     for i = 0, 3 do
-      r["pcurr"..i] = tonumber(JSON_TEMPLATE[17+(i*13)])
+      r["pcurr"..i] = tonumber(JSON_TEMPLATE[19+(i*13)])
     end
     -- Setpoint
     r["sp"] = JSON_TEMPLATE[5]
@@ -217,7 +217,7 @@ local function segProbeNames(line)
   local vals = segConfig(line, {"pn0", "pn1", "pn2", "pn3"})
  
   for i,v in ipairs(vals) do
-    JSON_TEMPLATE[2+i*13] = v
+    JSON_TEMPLATE[4+i*13] = v
   end
 end
 
@@ -379,7 +379,7 @@ local function checkDphUpdate(now)
       end
     end -- if #x
 
-    JSON_TEMPLATE[7+(probe*13)] = dph
+    JSON_TEMPLATE[9+(probe*13)] = dph
   end -- for probe
 end
 
@@ -434,7 +434,7 @@ local function segStateUpdate(line)
     if throttleUpdate(line) then return end
     local vals = segSplit(line)
 
-    if #vals == 8 then
+    if #vals >= 8 then
       if unkProbe then setStateUpdateUnk(vals) end
       
       -- If the time has shifted more than 24 hours since the last update
@@ -459,12 +459,13 @@ local function segStateUpdate(line)
       jsonWrite(vals)
 
       local lid = tonumber(vals[9]) or 0
-      -- If the lid value is non-zero, it replaces the fan value
+      -- If the lid value is non-zero, it replaces the output value
       if lid ~= 0 then
         vals[7] = -lid
       end
+      if #vals > 9 then table.remove(vals, 10) end -- fan
       table.remove(vals, 9) -- lid
-      table.remove(vals, 8) -- fan avg
+      table.remove(vals, 8) -- output avg
 
       -- update() can throw an error if you try to insert something it
       -- doesn't like, which will take down the whole server, so just
@@ -483,8 +484,8 @@ local function segStateUpdate(line)
 end
 
 local function broadcastAlarm(probeIdx, alarmType, thresh)
-  local pname = JSON_TEMPLATE[15+(probeIdx*13)]
-  local curTemp = JSON_TEMPLATE[17+(probeIdx*13)]
+  local pname = JSON_TEMPLATE[17+(probeIdx*13)]
+  local curTemp = JSON_TEMPLATE[19+(probeIdx*13)]
   local retVal
   
   if alarmType then
@@ -509,7 +510,7 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
   end
 
   unthrottleUpdates() -- force the next update
-  JSON_TEMPLATE[26+(probeIdx*13)] = alarmType
+  JSON_TEMPLATE[28+(probeIdx*13)] = alarmType
   broadcastStatus(function ()
     return ('event: alarm\ndata: {"atype":%s,"p":%d,"pn":"%s","c":%s,"t":%s}\n\n'):format(
       alarmType, probeIdx, pname, curTemp, thresh)
@@ -531,7 +532,7 @@ local function segAlarmLimits(line)
     local curr = hmAlarms[i] or {}
     local probeIdx = math.floor(alarmId/2)
     local alarmType = alarmId % 2
-    JSON_TEMPLATE[22+(probeIdx*13)+(alarmType*2)] = v
+    JSON_TEMPLATE[24+(probeIdx*13)+(alarmType*2)] = v
     -- Wait until we at least have some config before broadcasting
     if (ringing and not curr.ringing) and (hmConfig and hmConfig.ucid) then
       curr.ringing = os.time()
@@ -547,7 +548,7 @@ local function segAlarmLimits(line)
 end
 
 local function segAdcRange(line)
-  JSON_TEMPLATE[13] = line:sub(7)
+  JSON_TEMPLATE[15] = line:sub(7)
 end
 
 local function segmentValidate(line)
@@ -809,7 +810,7 @@ local function segLmAlarmTest(line)
 
     -- If thresh is blank, use current
     thresh = thresh and tonumber(thresh) or
-      math.floor(tonumber(JSON_TEMPLATE[17+(probeIdx*13)]) or 0)
+      math.floor(tonumber(JSON_TEMPLATE[19+(probeIdx*13)]) or 0)
 
     local pid = broadcastAlarm(probeIdx, alarmType, thresh)
     return "OK " .. pid
