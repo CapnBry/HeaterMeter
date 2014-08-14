@@ -13,6 +13,7 @@ function lmclient_json(query)
   local result, err = LmClient():query(query) 
   if result then
     luci.http.prepare_content("application/json")
+    luci.http.header("Access-Control-Allow-Origin", "*")
     luci.http.write(result)
     return true
   else
