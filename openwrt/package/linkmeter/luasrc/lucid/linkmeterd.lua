@@ -324,8 +324,8 @@ end
 
 local lastIpCheck
 local lastIp
-local lastIfaceJson
-local lastIfaceJsonTime
+local lastIfaceHash
+local lastIfaceHashTime
 local function checkIpUpdate()
   local newIp
   local ifaces = nixio.getifaddrs()
@@ -341,13 +341,13 @@ local function checkIpUpdate()
   -- Static interfaces are always 'up' just not 'running' but nixio does not
   -- have a flag for running so look for an interface that has sent packets
   local ifaceJson = '{"ifaces":['
-  local mutli
+  local ifaceHash = ""
   for _,v in ipairs(ifaces) do
     if not v.flags.loopback and v.flags.up and v.family == "inet" then
-      if multi then ifaceJson = ifaceJson .. "," end
+      if ifaceHash ~= "" then ifaceJson = ifaceJson .. "," end
       ifaceJson = ifaceJson ..('{"name":"%s","addr":"%s","cnt":%s}'):format(
         v.name, v.addr, packets[v.name])
-      multi = true
+      ifaceHash = ifaceHash .. v.name .. v.addr
 
       if packets[v.name] > 0 then
         newIp = v.addr
@@ -361,9 +361,9 @@ local function checkIpUpdate()
   end
 
   local time = os.time()
-  if ifaceJson ~= lastIfaceJson or time - lastIfaceJsonTime > 3600 then
-    lastIfaceJsonTime = time
-    lastIfaceJson = ifaceJson
+  if ifaceHash ~= lastIfaceHash or time - lastIfaceHashTime > 3600 then
+    lastIfaceHashTime = time
+    lastIfaceHash = ifaceHash
     postDeviceData(ifaceJson)
   end
 end
