@@ -1,5 +1,6 @@
 local os = require "os"
 local rrd = require "rrd" 
+local sys = require "luci.sys"
 local nixio = require "nixio" 
       nixio.fs = require "nixio.fs" 
       nixio.util = require "nixio.util" 
@@ -8,7 +9,7 @@ local lucid = require "luci.lucid"
 local lmfit, t = pcall(require,"lmfit"); lmfit = lmfit and t
 
 local pairs, ipairs, table, pcall, type = pairs, ipairs, table, pcall, type
-local tonumber, tostring, print, next = tonumber, tostring, print, next
+local tonumber, tostring, print, next, io = tonumber, tostring, print, next, io
 local collectgarbage, math, bxor = collectgarbage, math, nixio.bit.bxor
 
 module "luci.lucid.linkmeterd"
@@ -302,8 +303,29 @@ function stsLmStateUpdate()
   return table.concat(JSON_TEMPLATE)
 end
 
+local function postDeviceData(dd)
+  cpuinfo = {}
+  for line in io.lines("/proc/cpuinfo") do
+    local iPos = line:find(":")
+    if iPos then
+      cpuinfo[line:sub(1, iPos-1):gsub("%s+$", "")] = line:sub(iPos+1):gsub("^%s+","")
+    end
+  end
+
+  local uptime = sys.uptime()
+  local hostname = sys.hostname()
+  dd = dd ..
+    ('],"serial":"%s","revision":"%s","model":"%s","uptime":%s,"hostname":"%s"}'):format(
+    cpuinfo['Serial'], cpuinfo['Revision'], cpuinfo['Hardware'], uptime, hostname)
+
+  os.execute(("curl --silent -o /dev/null -d devicedata='%s' %s &"):format(
+   dd, 'http://heatermeter.com/devices/'));
+end
+
 local lastIpCheck
 local lastIp
+local lastIfaceJson
+local lastIfaceJsonTime
 local function checkIpUpdate()
   local newIp
   local ifaces = nixio.getifaddrs()
@@ -318,16 +340,31 @@ local function checkIpUpdate()
 
   -- Static interfaces are always 'up' just not 'running' but nixio does not
   -- have a flag for running so look for an interface that has sent packets
+  local ifaceJson = '{"ifaces":['
+  local mutli
   for _,v in ipairs(ifaces) do
-    if not v.flags.loopback and v.flags.up and
-      v.family == "inet" and packets[v.name] > 0 then
-      newIp = v.addr
+    if not v.flags.loopback and v.flags.up and v.family == "inet" then
+      if multi then ifaceJson = ifaceJson .. "," end
+      ifaceJson = ifaceJson ..('{"name":"%s","addr":"%s","cnt":%s}'):format(
+        v.name, v.addr, packets[v.name])
+      multi = true
+
+      if packets[v.name] > 0 then
+        newIp = v.addr
+      end
     end
   end
 
-  if newIp and newIp ~= lastIp then
+  if newIp and newIp ~= lastIp and serialPolle then
     serialPolle.fd:write("/set?tt=Network Address,"..newIp.."\n")
     lastIp = newIp
+  end
+
+  local time = os.time()
+  if ifaceJson ~= lastIfaceJson or time - lastIfaceJsonTime > 3600 then
+    lastIfaceJsonTime = time
+    lastIfaceJson = ifaceJson
+    postDeviceData(ifaceJson)
   end
 end
 
@@ -474,10 +511,6 @@ local function segStateUpdate(line)
       if not status then nixio.syslog("err", "RRD error: " .. err) end
       
       broadcastStatus(stsLmStateUpdate)
-      if lastIp == nil or time - lastIpCheck > 60 then
-        checkIpUpdate()
-        lastIpCheck = time
-      end
       checkAutobackup(time, vals)
       checkDphUpdate(time)
     end
@@ -826,20 +859,21 @@ end
 local lucid_server
 local lmdStartTime
 local function lmdTick()
-  if os.time() - lmdStartTime > 10 then
-    if serialPolle and not hmConfig then
-      nixio.syslog("warning", "No response from HeaterMeter, running avrupdate")
-      lmdStop()
-      if os.execute("/usr/bin/avrupdate -d") ~= 0 then
-        nixio.syslog("err", "avrupdate failed")
-      else
-        nixio.syslog("info", "avrupdate OK")
-      end
-      lmdStart()
+  local time = os.time()
+  if lastIp == nil or time - lastIpCheck > 60 then
+    checkIpUpdate()
+    lastIpCheck = time
+  end
+
+  if serialPolle and not hmConfig and time - lmdStartTime > 10 then
+    nixio.syslog("warning", "No response from HeaterMeter, running avrupdate")
+    lmdStop()
+    if os.execute("/usr/bin/avrupdate -d") ~= 0 then
+      nixio.syslog("err", "avrupdate failed")
+    else
+      nixio.syslog("info", "avrupdate OK")
     end
-    
-    lucid_server.unregister_tick(lmdTick)
-    lucid_server = nil
+    lmdStart()
   end
 end
 
