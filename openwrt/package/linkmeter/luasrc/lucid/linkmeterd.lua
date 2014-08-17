@@ -856,7 +856,6 @@ local function registerStreamingStatus(fn)
   statusListeners[#statusListeners + 1] = fn
 end
 
-local lucid_server
 local lmdStartTime
 local function lmdTick()
   local time = os.time()
@@ -865,7 +864,8 @@ local function lmdTick()
     lastIpCheck = time
   end
 
-  if serialPolle and not hmConfig and time - lmdStartTime > 10 then
+  if lmdStartTime and serialPolle and not hmConfig and time - lmdStartTime > 10 then
+    lmdStartTime = nil -- prevent from running more than once
     nixio.syslog("warning", "No response from HeaterMeter, running avrupdate")
     lmdStop()
     if os.execute("/usr/bin/avrupdate -d") ~= 0 then
@@ -942,7 +942,6 @@ function prepare_daemon(config, server)
     end
   }) 
 
-  lucid_server = server  
   lmdStartTime = os.time()
   server.register_tick(lmdTick)
   
