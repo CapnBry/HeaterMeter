@@ -27,6 +27,17 @@ done
 . /lib/functions.sh
 config_load linkmeter
 
+# Auto-silence/disable
+config_get doit alarms ra${al_type}${al_probe} 0
+if [ "$doit" -eq 1 ] ; then
+  echo -n "Auto-silencing alarm... "
+  al_set 0
+fi
+if [ "$doit" -eq 2 ] ; then
+  echo -n "Auto-disabling alarm... "
+  al_set -$al_thresh
+fi
+
 # Setpoint change
 config_get doit alarms sp${al_type}${al_probe} 0
 if [ "$doit" -gt 0 ] ; then
@@ -49,7 +60,7 @@ if [ "$doit" -gt 0 -a -n "$dest" ] ; then
   fname=$(eval echo "$fname \<$faddr\>")
   echo "Sending email from $fname to $dname"
 
-  # Bulld the message
+  # Build the message
 cat > /tmp/alert << EOF
 From: $fname
 To: $dname

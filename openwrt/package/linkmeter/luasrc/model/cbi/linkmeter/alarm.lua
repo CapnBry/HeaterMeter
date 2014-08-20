@@ -8,7 +8,6 @@ m = Map("linkmeter", "Alarm Settings",
   [[ Select the types of notifications to receive when the alarm is trigged.
     Enable an alarm by setting
     its threshold to a positive value, or using the button beside it.
-    Inputting a 'Setpoint' will adjust the Pit setpoint.
     Test results can be seen in the <a href="]] ..
     luci.dispatcher.build_url("admin/status/syslog/") ..
     [[">System Log</a>.
@@ -81,15 +80,27 @@ local function probe_conf_value(self, section)
   return m:get("alarms", self.option .. section)
 end
 local function probe_conf_write(self, section, value)
-  return m:set("alarms", self.option .. section, value)
+  if self.default == value then
+    self:remove(section)
+  else
+    return m:set("alarms", self.option .. section, value)
+  end
 end
 local function probe_conf_remove(self, section)
   return m:del("alarms", self.option .. section)
 end
 
-local PROBE_CONF = { "emailL", "smsL", "spL", "emailH", "smsH", "spH" }
+local PROBE_CONF = { "emailL", "smsL", "spL", "raL", "emailH", "smsH", "spH", "raH" }
 for _,kv in ipairs(PROBE_CONF) do
-  v = s:option(Value, kv, kv)
+  if kv == "raL" or kv == "raH" then
+    v = s:option(ListValue, kv, kv)
+    v.default = "0"
+    v:value(0, "Ring")
+    v:value(1, "Silence")
+    v:value(2, "Disable")
+  else
+    v = s:option(Value, kv, kv)
+  end
   v.cfgvalue = probe_conf_value
   v.write = probe_conf_write
   v.remove = probe_conf_remove

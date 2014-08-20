@@ -1,7 +1,18 @@
-<% cbid = "cbid." .. self.config .. "." .. section -%>
+<% cbid = "cbid." .. self.config .. "." .. section
+  local function actionSelect(self)
+    local s = '<select name="' .. cbid .. '.' .. self.option .. '">'
+    for i, key in pairs(self.keylist) do
+      s = s .. '<option value="' .. key .. '"' ..
+        ifattr(tostring(self:cfgvalue(section) or self.default) == key, "selected", "selected") ..
+        '>' .. self.vallist[i] .. '</option>'
+    end
+    s = s .. '</select>'
+    return s
+  end
+-%>
   <tr class="cbi-section-table-row cbi-rowstyle-<%=tonumber(section)%2+1%>">
     <td class="pnum<%=section%>"><%=section%></td>
-    <td><%=self:field("pn"):cfgvalue(section)%></td>
+    <td><%= self:field("pn"):cfgvalue(section) %></td>
     <td><%
       local curr = self:field("pcurr"):cfgvalue(section)
       if curr then 
@@ -23,6 +34,7 @@
       <%=ifattr(self:field("smsL"):cfgvalue(section), "checked", "checked")%>/></td>
     <td><input type="text" class="alval" name="<%=cbid%>.spL"
       value="<%=self:field("spL"):cfgvalue(section)%>"/></td>
+    <td><%=actionSelect(self:field("raL"))%></td>
     <td class="pnum<%=section%>">
       <input class="cbi-button alarm-test" type="button"
         data-pnum="<%=section%>" data-altype="L"/>
@@ -45,6 +57,7 @@
       <%=ifattr(self:field("smsH"):cfgvalue(section), "checked", "checked")%>/></td>
     <td><input type="text" class="alval" name="<%=cbid%>.spH"
       value="<%=self:field("spH"):cfgvalue(section)%>"/></td>
+    <td><%=actionSelect(self:field("raH"))%></td>
     <td class="pnum<%=section%>">
       <input class="cbi-button alarm-test" type="button"
         data-pnum="<%=section%>" data-altype="H"/>
