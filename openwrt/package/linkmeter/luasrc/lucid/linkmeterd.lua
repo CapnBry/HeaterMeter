@@ -304,6 +304,9 @@ function stsLmStateUpdate()
 end
 
 local function postDeviceData(dd)
+  if uci.cursor():get("linkmeter", "live", "optout") == "1" then
+    return
+  end
   cpuinfo = {}
   for line in io.lines("/proc/cpuinfo") do
     local iPos = line:find(":")
@@ -312,11 +315,22 @@ local function postDeviceData(dd)
     end
   end
 
+  local hardware, revision, serial
+  if cpuinfo['Hardware'] == 'BCM2708' then
+    hardware = cpuinfo['Hardware']
+    revision = cpuinfo['Revision']
+    serial = cpuinfo['Serial']
+  elseif cpuinfo['system type'] == 'Ralink SoC' then
+    hardware = cpuinfo['system type']
+    revision = cpuinfo['cpu model']
+    serial = ""
+  end
+
   local uptime = sys.uptime()
   local hostname = sys.hostname()
   dd = dd ..
     ('],"serial":"%s","revision":"%s","model":"%s","uptime":%s,"hostname":"%s"}'):format(
-    cpuinfo['Serial'], cpuinfo['Revision'], cpuinfo['Hardware'], uptime, hostname)
+    serial, revision, hardware, uptime, hostname)
 
   os.execute(("curl --silent -o /dev/null -d devicedata='%s' %s &"):format(
    dd, 'http://heatermeter.com/devices/'));
