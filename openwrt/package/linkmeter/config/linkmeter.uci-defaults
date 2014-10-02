@@ -90,7 +90,9 @@ if [ "$INSTALL_PARAM" = "new" ] ; then
   uci commit luci
 
   # On applicable platforms, avrupdate loads HeaterMeter onto the AVR
-  avrupdate
+  # pasing the firmware file forces it to overwrite even if AVR already
+  # contains HeaterMeter
+  avrupdate /lib/firmware/hm.hex
 
   if [ "$HARDWARE_MODEL" = "BCM2708" ] ; then
     # Disable dhcp server on the lan interface

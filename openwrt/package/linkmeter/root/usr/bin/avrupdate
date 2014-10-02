@@ -29,6 +29,7 @@ platform_setup_BCM2708() {
       hmdude -v -b 128 -P/dev/spidev0.0 \
         -U/lib/firmware/hm.hex \
         -U lfuse:w:0xff -U hfuse:w:0xd7 -U efuse:w:0x05
+      [ "$HEX" = "/lib/firmware/hm.hex" ] && HEX=""
       ;;
     ffdf*)
       echo " Arduino fuses, switching to preserve EEPROM"
