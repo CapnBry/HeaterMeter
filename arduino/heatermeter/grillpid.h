@@ -98,7 +98,7 @@ public:
   void calcTemp(unsigned int _accumulator);
   // Perform once-per-period processing
   void processPeriod(void);
-  
+
   ProbeAlarm Alarms;
 };
 
@@ -108,6 +108,11 @@ public:
 #define PIDI 2
 #define PIDD 3
 
+// Indexes into the _deriv array
+#define DRV_FILT 0
+#define DRV_PRV1 1
+#define DRV_PRV2 2
+#define DRV_PRV3 3
 // Indexes into outputFlags bitfield
 // Invert the fan PWM - pidOutput=100 would generate no PWM pulses
 #define PIDFLAG_INVERT_FAN    0
@@ -119,6 +124,8 @@ public:
 #define PIDFLAG_SERVO_ANY_MAX 3
 // Try to output a constant voltage instead of PWM
 #define PIDFLAG_FAN_FEEDVOLT  4
+// PID control only on servo. Fan is ganged to servo endpoints
+#define PIDFLAG_FAN_GANGED    5
 
 // pitStartRecover constants
 // STARTUP - Attempting to reach temperature for the first time
@@ -139,11 +146,23 @@ bool analogIsBandgapReference(unsigned char pin);
 void analogSetBandgapReference(unsigned char pin, bool enable);
 #endif /* GRILLPID_DYNAMIC_RANGE */
 
+#if defined(FAN_PWM_FRACTION)
+	ISR(TIMER2_COMPB_vect);
+#endif
+
 class GrillPid
 {
+#if defined(FAN_PWM_FRACTION)
+	friend void TIMER2_COMPB_vect();
+#endif /* FAN_PWM_FRACTION */
 private:
   unsigned char _pidOutput;
+  float _deriv[4]; // tracking values for Derivative formula
   unsigned long _lastWorkMillis;
+#if defined(GRILLPID_GANG_ENABLED)
+  unsigned long _lastFanMillis;
+	unsigned char _lastFanSpeed;
+#endif /* GRILLPID_GANG_ENABLED */
   unsigned char _pitStartRecover;
   int _setPoint;
   boolean _manualOutputMode;
@@ -155,15 +174,18 @@ private:
   float _pidCurrent[4];
   char _units;
   unsigned char _maxFanSpeed;
-  unsigned char _maxStartupFanSpeed;
+	unsigned char _maxStartupFanSpeed;
   unsigned char _minFanSpeed;
   unsigned char _maxServoPos;
   unsigned char _minServoPos;
   unsigned char _outputFlags;
 
-  // Current fan speed (percent)
+	// Current fan speed (percent)
   unsigned char _fanSpeed;
   // Feedback switching mode voltage controller
+#if defined(FAN_PWM_FRACTION)
+	unsigned char _feedvoltOutputFrac;
+#endif
   unsigned char _feedvoltLastOutput;
   // Desired fan target (0-255)
   unsigned char _lastBlowerOutput;
@@ -175,6 +197,9 @@ private:
   void commitFanOutput(void);
   void commitServoOutput(void);
   void commitPidOutput(void);
+#if defined(FAN_PWM_FRACTION)
+	void fanVoltWrite(void);
+#endif
   void adjustFeedbackVoltage(void);
 public:
   GrillPid(void) : _periodCounter(0x80), _units('F') {};
@@ -199,6 +224,9 @@ public:
   void setPidConstant(unsigned char idx, float value);
 
   // Fan Speed
+#if defined(FAN_PWM_FRACTION)
+	unsigned char getOutputFrac(void) const { return _feedvoltOutputFrac; }
+#endif /* FAN_PWM_FRACTION */
   // The maximum fan speed percent that will be used in automatic mode
   unsigned char getMaxFanSpeed(void) const { return _maxFanSpeed; }
   void setMaxFanSpeed(unsigned char value) { _maxFanSpeed = constrain(value, 0, 100); }
@@ -248,7 +276,7 @@ public:
   // true if temperature was >= setpoint since last set / lid event
   boolean isPitTempReached(void) const { return _pitStartRecover == PIDSTARTRECOVER_NORMAL; }
   unsigned char getPitStartRecover(void) const { return _pitStartRecover; }
-  
+
   // Call this in loop()
   boolean doWork(void);
   void resetLidOpenResumeCountdown(void);

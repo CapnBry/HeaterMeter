@@ -58,15 +58,18 @@ static const struct __eeprom_data {
   float pidConstants[4]; // constants are stored Kb, Kp, Ki, Kd
   boolean manualMode;
   unsigned char lcdBacklight; // in PWM (max 100)
-#ifdef HEATERMETER_RFM12
+  /* Need to rethink this. If you disable RMF12 then on a reflash the eeprom data no longer matches
+		 Possibly put at the end of the structure so it gets truncated?
+  */
+//#ifdef HEATERMETER_RFM12
   unsigned char rfMap[TEMP_COUNT];
-#endif
+//#endif
   char pidUnits;
   unsigned char minFanSpeed;  // in percent
   unsigned char maxFanSpeed;  // in percent
   unsigned char pidOutputFlags;
   unsigned char homeDisplayMode;
-  unsigned char maxStartupFanSpeed; // in percent
+  unsigned char maxStartupFanSpeed; // in percent;
   unsigned char ledConf[LED_COUNT];
   unsigned char minServoPos;  // in 10us
   unsigned char maxServoPos;  // in 10us
@@ -76,7 +79,7 @@ static const struct __eeprom_data {
   225,  // setpoint
   6,    // lid open offset %
   240,  // lid open duration
-  { 0.0f, 4.0f, 0.02f, 5.0f },  // PID constants
+  { 0.0f, 4.0f, 0.0025f, 25.0f },  // PID constants
   false, // manual mode
   50,   // lcd backlight (%)
 #ifdef HEATERMETER_RFM12
@@ -271,6 +274,7 @@ static void storeProbeTypeOrMap(unsigned char probeIndex, unsigned char probeTyp
 
 static void storeMinFanSpeed(unsigned char minFanSpeed)
 {
+  minFanSpeed = constrain(minFanSpeed, 0, 100);
   pid.setMinFanSpeed(minFanSpeed);
   config_store_byte(minFanSpeed, pid.getMinFanSpeed());
 }
@@ -753,7 +757,7 @@ static void reportFanParams(void)
   SerialX.print(pid.getMaxServoPos(), DEC);
   Serial_csv();
   SerialX.print(pid.getOutputFlags(), DEC);
-  Serial_csv();
+	Serial_csv();
   SerialX.print(pid.getMaxStartupFanSpeed(), DEC);
   Serial_nl();
 }
@@ -876,7 +880,7 @@ static void storeFanParams(unsigned char idx, int val)
       break;
     case 5:
       storeMaxStartupFanSpeed(val);
-      break;
+			break;
   }
 }
 

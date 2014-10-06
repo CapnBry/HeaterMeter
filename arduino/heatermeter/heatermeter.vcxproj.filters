@@ -17,6 +17,9 @@
   <ItemGroup>
     <None Include="heatermeter.ino" />
     <None Include="README.txt" />
+    <None Include="..\Arduino.mk">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bigchars.h">
@@ -41,9 +44,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="wishieldconf.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Visual Micro\.heatermeter.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ledmanager.h">
