@@ -147,7 +147,7 @@ void analogSetBandgapReference(unsigned char pin, bool enable);
 #endif /* GRILLPID_DYNAMIC_RANGE */
 
 #if defined(FAN_PWM_FRACTION)
-	ISR(TIMER2_COMPB_vect);
+ISR(TIMER2_COMPB_vect);
 #endif
 
 class GrillPid
