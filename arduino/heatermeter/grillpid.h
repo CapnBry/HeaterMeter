@@ -96,8 +96,6 @@ public:
   boolean hasTemperatureAvg(void) const { return _hasTempAvg; }
   // Convert ADC to Temperature
   void calcTemp(unsigned int _accumulator);
-  // Perform once-per-period processing
-  void processPeriod(void);
   
   ProbeAlarm Alarms;
 };
