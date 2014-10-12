@@ -57,7 +57,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>F:\HeaterMeter\arduino-1.0.6\hardware\arduino\cores\arduino;F:\HeaterMeter\arduino-1.0.6\hardware\arduino\variants\standard;F:\HeaterMeter\arduino-1.0.6\hardware\tools\avr\avr\include\;F:\HeaterMeter\arduino-1.0.6\hardware\tools\avr\avr\include\avr\;F:\HeaterMeter\arduino-1.0.6\hardware\tools\avr\avr\;F:\HeaterMeter\arduino-1.0.6\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Arduino\arduino-1.0.5\hardware\arduino\cores\arduino;C:\Arduino\arduino-1.0.5\hardware\arduino\variants\standard;C:\Users\bmayland\Documents\Arduino\libraries\rf12_itplus;C:\Users\bmayland\Documents\Arduino\libraries\rf12_itplus\utility;c:\arduino\arduino-1.0.5\hardware\tools\avr\avr\include\;c:\arduino\arduino-1.0.5\hardware\tools\avr\avr\include\avr\;c:\arduino\arduino-1.0.5\hardware\tools\avr\avr\;c:\arduino\arduino-1.0.5\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>C:\Users\bmayland\Documents\GitHub Projects\heatermeter\arduino\heatermeter\Visual Micro\.heatermeter.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
       <PreprocessorDefinitions>__AVR_ATmega328P__;_DEBUG=1;_VMDEBUG=1;ARDUINO=105;ARDUINO_MAIN;__AVR__;F_CPU=16000000L;__cplusplus;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -90,7 +90,7 @@
       <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>C:\Program Files %28x86%29\Arduino\hardware\arduino\cores\arduino;C:\Program Files %28x86%29\Arduino\hardware\arduino\variants\standard;C:\Program Files %28x86%29\Arduino\hardware\tools\avr\avr\include;C:\Program Files %28x86%29\Arduino\hardware\tools\avr\avr\include\avr;C:\Program Files %28x86%29\Arduino\hardware\tools\avr\avr;C:\Program Files %28x86%29\Arduino\hardware\tools\avr\lib\gcc\avr\4.3.2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Arduino\arduino-1.0.5\hardware\arduino\cores\arduino;C:\Arduino\arduino-1.0.5\hardware\arduino\variants\standard;c:\arduino\arduino-1.0.5\hardware\tools\avr\avr\include\;c:\arduino\arduino-1.0.5\hardware\tools\avr\avr\include\avr\;c:\arduino\arduino-1.0.5\hardware\tools\avr\avr\;c:\arduino\arduino-1.0.5\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>C:\Users\bmayland\Documents\GitHub Projects\heatermeter\arduino\heatermeter\Visual Micro\.heatermeter.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
       <WholeProgramOptimization>false</WholeProgramOptimization>
@@ -103,7 +103,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="..\Arduino.mk" />
     <None Include="heatermeter.ino">
       <FileType>CppCode</FileType>
     </None>
@@ -139,6 +138,7 @@
       <FileType>CppHeader</FileType>
     </ClInclude>
     <ClInclude Include="tone_4khz.h" />
+    <ClInclude Include="Visual Micro\.heatermeter.vsarduino.h" />
     <ClInclude Include="wishieldconf.h">
       <FileType>CppHeader</FileType>
     </ClInclude>
