@@ -23,14 +23,13 @@
 // Use oversample/decimation to increase ADC resolution to 2^(10+n) bits n=[0..4]
 #define TEMP_OVERSAMPLE_BITS 4
 
-// Points at which fan while speed up or slow down at each FAN_GANG_PERIOD
+// Points at which fan will speed up or slow down at each FAN_GANG_PERIOD
 #define FAN_GANG_DNSHIFT 30
 #define FAN_GANG_UPSHIFT 70
 // How much fan speed is changed each time a shift is need
 #define FAN_GANG_SHIFT   10
 // Min time period to wait between fan speed shifts when ganged to servo
 #define FAN_GANG_PERIOD 30000
-// The time (ms) of the measurement period
 // The time (ms) of the measurement period
 #define TEMP_MEASURE_PERIOD 1000
 // Number of times the ouput is adusted over TEMP_MEASURE_PERIOD
