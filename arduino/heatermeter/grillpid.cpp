@@ -647,9 +647,11 @@ void GrillPid::setLidOpenDuration(unsigned int value)
 void GrillPid::setPidConstant(unsigned char idx, float value)
 {
   Pid[idx] = value;
-  if (idx == PIDI)
+  // No need to reset the PIDI as it's already been scaled before integration
+  // Zeroing just causes the controller to slam shut and makes tuning harder
+  //if (idx == PIDI)
     // Proably should scale the error sum by newval / oldval instead of resetting
-    _pidCurrent[PIDI] = 0.0f;
+    //_pidCurrent[PIDI] = 0.0f;
 }
 
 void GrillPid::status(void) const
