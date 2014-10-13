@@ -479,7 +479,14 @@ unsigned char GrillPid::getFanSpeed(void) const
 {
   if (bit_is_set(_outputFlags, PIDFLAG_FAN_ONLY_MAX) && _pidOutput < 100)
     return 0;
-  return (unsigned int)_pidOutput * _maxFanSpeed / 100;
+
+  unsigned char max;
+  if (_pitStartRecover == PIDSTARTRECOVER_STARTUP)
+    max = _maxStartupFanSpeed;
+  else
+    max = _maxFanSpeed;
+
+  return (unsigned int)_pidOutput * max / 100;
 }
 
 void GrillPid::adjustFeedbackVoltage(void)
@@ -620,13 +627,13 @@ boolean GrillPid::isAnyFoodProbeActive(void) const
 void GrillPid::resetLidOpenResumeCountdown(void)
 {
   LidOpenResumeCountdown = _lidOpenDuration;
-  _pitTemperatureReached = false;
+  _pitStartRecover = PIDSTARTRECOVER_RECOVERY;
 }
 
 void GrillPid::setSetPoint(int value)
 {
   _setPoint = value;
-  _pitTemperatureReached = false;
+  _pitStartRecover = PIDSTARTRECOVER_STARTUP;
   _manualOutputMode = false;
   _pidCurrent[PIDI] = 0.0f;
   LidOpenResumeCountdown = 0;
@@ -711,11 +718,11 @@ boolean GrillPid::doWork(void)
       // When we first achieve temperature, reduce any I sum we accumulated during startup
       // If we actually neded that sum to achieve temperature we'll rebuild it, and it
       // prevents bouncing around above the temperature when you first start up
-      if (!_pitTemperatureReached)
+      if (_pitStartRecover == PIDSTARTRECOVER_STARTUP)
       {
-        _pitTemperatureReached = true;
         _pidCurrent[PIDI] *= 0.50f;
       }
+      _pitStartRecover = PIDSTARTRECOVER_NORMAL;
       LidOpenResumeCountdown = 0;
     }
     else if (LidOpenResumeCountdown != 0)
@@ -726,7 +733,7 @@ boolean GrillPid::doWork(void)
     // and if the pit temperature is [lidOpenOffset]% less that the setpoint
     // and if the fan has been running less than 90% (more than 90% would indicate probable out of fuel)
     // Note that the code assumes we're not currently counting down
-    else if (_pitTemperatureReached && 
+    else if (isPitTempReached() && 
       (((_setPoint-pitTemp)*100/_setPoint) >= (int)LidOpenOffset) &&
       ((int)PidOutputAvg < 90))
     {

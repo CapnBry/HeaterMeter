@@ -124,6 +124,15 @@ public:
 // Try to output a constant voltage instead of PWM
 #define PIDFLAG_FAN_FEEDVOLT  4
 
+// pitStartRecover constants
+// STARTUP - Attempting to reach temperature for the first time
+// after a setpoint change
+#define PIDSTARTRECOVER_STARTUP  0
+// RECOVERY - Is attempting to return to temperature after a lid event
+#define PIDSTARTRECOVER_RECOVERY 1
+// NORMAL - Setpoint has been attained, normal operation
+#define PIDSTARTRECOVER_NORMAL   2
+
 // oversampled analogRead from current freerunning ADC
 unsigned int analogReadOver(unsigned char pin, unsigned char bits);
 // Range of the last ADC period for this pin, always 10bit
@@ -140,7 +149,7 @@ private:
   unsigned char _pidOutput;
   float _deriv[4]; // tracking values for Derivative formula
   unsigned long _lastWorkMillis;
-  boolean _pitTemperatureReached;
+  unsigned char _pitStartRecover;
   int _setPoint;
   boolean _manualOutputMode;
   unsigned char _periodCounter;
@@ -151,6 +160,7 @@ private:
   float _pidCurrent[4];
   char _units;
   unsigned char _maxFanSpeed;
+  unsigned char _maxStartupFanSpeed;
   unsigned char _minFanSpeed;
   unsigned char _maxServoPos;
   unsigned char _minServoPos;
@@ -192,10 +202,12 @@ public:
   // Fan Speed
   // The maximum fan speed percent that will be used in automatic mode
   unsigned char getMaxFanSpeed(void) const { return _maxFanSpeed; }
-  void setMaxFanSpeed(unsigned char value) { _maxFanSpeed = value; }
+  void setMaxFanSpeed(unsigned char value) { _maxFanSpeed = constrain(value, 0, 100); }
+  unsigned char getMaxStartupFanSpeed(void) const { return _maxStartupFanSpeed; }
+  void setMaxStartupFanSpeed(unsigned char value) { _maxStartupFanSpeed = constrain(value, 0, 100); }
   // The minimum fan speed percent before converting to "long PID" (SRTP) mode
   unsigned char getMinFanSpeed(void) const { return _minFanSpeed; }
-  void setMinFanSpeed(unsigned char value) { _minFanSpeed = value; }
+  void setMinFanSpeed(unsigned char value) { _minFanSpeed = constrain(value, 0, 100); }
 
   // Servo timing
   // The duration (in 10x usec) for the maxium servo position
@@ -235,7 +247,8 @@ public:
   // true if fan is running at maximum speed or servo wide open
   boolean isOutputMaxed(void) const { return _pidOutput >= 100; }
   // true if temperature was >= setpoint since last set / lid event
-  boolean isPitTempReached(void) const { return _pitTemperatureReached; }
+  boolean isPitTempReached(void) const { return _pitStartRecover == PIDSTARTRECOVER_NORMAL; }
+  unsigned char getPitStartRecover(void) const { return _pitStartRecover; }
   
   // Call this in loop()
   boolean doWork(void);
