@@ -663,6 +663,10 @@ inline void GrillPid::commitFanOutput(void)
         }
       }
       _fanSpeed = (unsigned int)_lastFanSpeed * max / 100;
+#if defined(ROB_OUTPUT_HACK)
+      // Simply to show on web page
+			Probes[TEMP_AMB]->Temperature = _fanSpeed;
+#endif /* ROB_OUTPUT_HACK)
     }
     else {
 #endif /* GRILLPID_GANG_ENABLED */
@@ -812,7 +816,11 @@ void GrillPid::status(void) const
 
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
+#if defined(ROB_OUTPUT_HACK)
+		if ((Probes[i]->hasTemperature()) || (i == TEMP_AMB))
+#else
     if (Probes[i]->hasTemperature())
+#endif /* ROB_OUTPUT_HACK */
       SerialX.print(Probes[i]->Temperature, 1);
     else
       Serial_char('U');

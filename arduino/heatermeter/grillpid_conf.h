@@ -8,6 +8,7 @@
 #define ADC_ROUND
 #define GRILLPID_GANG_ENABLED
 #define FAN_PWM_FRACTION
+#define ROB_OUTPUT_HACK
 
 #define TEMP_PIT    0
 #define TEMP_FOOD1  1
