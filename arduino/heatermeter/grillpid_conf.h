@@ -5,6 +5,7 @@
 #define GRILLPID_SERVO_ENABLED
 #define GRILLPID_DYNAMIC_RANGE
 //#define GRILLPID_FEEDVOLT_DEBUG
+#define ADC_ROUND
 
 #define TEMP_PIT    0
 #define TEMP_FOOD1  1
@@ -16,8 +17,8 @@
 #define PIN_BLOWER  3
 #define PIN_SERVO   8
 
-// Use oversample/decimation to increase ADC resolution to 2^(10+n) bits n=[0..6]
-#define TEMP_OVERSAMPLE_BITS 6
+// Use oversample/decimation to increase ADC resolution to 2^(10+n) bits n=[0..4]
+#define TEMP_OVERSAMPLE_BITS 4
 
 // The time (ms) of the measurement period
 #define TEMP_MEASURE_PERIOD 1000

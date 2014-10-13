@@ -97,7 +97,11 @@ ISR(ADC_vect)
     else
 #endif // GRILLPID_DYNAMIC_RANGE
     {
-      adcState.analogReads[pin] = adcState.accumulator >> 2;
+#if defined(ADC_ROUND)
+      // round off to bring error to 1/2 LSB instead of 1 LSB
+      adcState.accumulator += (1 << (8 - TEMP_OVERSAMPLE_BITS-1) );
+#endif
+      adcState.analogReads[pin] = adcState.accumulator >> (8 - TEMP_OVERSAMPLE_BITS);
       adcState.analogRange[pin] = adcState.thisHigh - adcState.thisLow;
     }
     adcState.thisHigh = 0;
@@ -132,7 +136,16 @@ unsigned int analogReadOver(unsigned char pin, unsigned char bits)
   {
     retVal = adcState.analogReads[pin];
   }
-  return retVal >> (16 - bits);
+  // Calc 1/2 LSB of the bits we are dropping and add back to round
+#if defined(ADC_ROUND)
+  unsigned int round = (10 + TEMP_OVERSAMPLE_BITS - bits);
+  if (round > 1 )
+  {
+    round = 1 << (10 + TEMP_OVERSAMPLE_BITS - bits - 1);
+    retVal += round;
+  }
+#endif /* ADC_ROUND */
+  return (retVal >> (10 + TEMP_OVERSAMPLE_BITS - bits));
 }
 
 unsigned int analogReadRange(unsigned char pin)
