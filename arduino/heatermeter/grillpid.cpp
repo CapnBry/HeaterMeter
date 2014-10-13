@@ -23,6 +23,9 @@ extern const GrillPid pid;
 
 #define satlimit(orig,filt) ((orig)<(filt)?(-1):((orig)>(filt)?(1):(0)))
 
+//Changing the PWM to Inverted PWM
+#define INVERT(x) (255-x)
+
 #if defined(GRILLPID_SERVO_ENABLED)
 ISR(TIMER1_CAPT_vect)
 {
@@ -39,6 +42,22 @@ ISR(TIMER1_COMPB_vect)
   digitalWriteFast(PIN_SERVO, LOW);
 }
 #endif
+
+#if defined(FAN_PWM_FRACTION)
+volatile unsigned char fracPwmComp;  //Value to emulate the shutoff point for duty cycle
+ISR(TIMER2_COMPB_vect) 
+{
+	static unsigned char frac;  //Accumulator for compare to duty cycle value
+
+	++frac;
+	if (frac == 0) {
+		OCR2B = INVERT(0); // Output is off (pulses are being dropped)
+	}
+	if (frac == fracPwmComp) {
+		OCR2B = INVERT(1); // Output compare match of 1/256 duty cycle
+	}
+}
+#endif /* FAN_PWM_FRACTION */
 
 static struct tagAdcState
 {
@@ -393,8 +412,13 @@ void GrillPid::init(void) const
 void GrillPid::setOutputFlags(unsigned char value)
 {
   _outputFlags = value;
+#if defined(FAN_PWM_FRACTION)
+  // Timer2 Inverted Fast PWM
+  TCCR2A = bit(COM2B1)|bit(COM2B0)|bit(WGM21) | bit(WGM20);
+#else
   // Timer2 Fast PWM
   TCCR2A = bit(WGM21) | bit(WGM20);
+#endif /* FAN_PWM_FRACTION */
   if (bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
     TCCR2B = bit(CS20); // 62kHz
   else
@@ -479,8 +503,80 @@ inline void GrillPid::calcPidOutput(void)
   }
 }
 
+#if defined(FAN_PWM_FRACTION)
+void GrillPid::fanVoltWrite(void)
+{
+  if (_lastBlowerOutput == 0 ) {
+    // disable the Fractional ISR
+    TIMSK2 = TIMSK2 & ~bit(OCIE2B);
+    analogWrite(PIN_BLOWER, 0);  //Use the analogwrite special case for 0 to shutoff the pin
+    return;
+  }
+
+  unsigned char output = _feedvoltLastOutput;
+
+  // If we have a whole amount then use original method and return
+  //Duty cycle control at 62.5 Khz
+  if ( output > 0 ) {
+    if ( output == 255) //sending 255 to analogWrite when we are inverted is going to be wrong
+      output = 254; 
+    // disable the Fractional ISR
+    TIMSK2 = TIMSK2 & ~bit(OCIE2B);
+    analogWrite(PIN_BLOWER, INVERT(output));
+    return;
+  }
+
+  output = _feedvoltOutputFrac;
+  // Make sure we aren't shutting off the voltage output completely
+  if (output == 0 )
+    output++;
+  // Set compare match for PWM ISR
+  // We can't lower the duty cycle anymore so now will drop pulses to lower output
+  fracPwmComp = INVERT(output);
+  if (!(bit_is_set(TIMSK2, OCIE2B))) {
+    TIMSK2 |= bit(OCIE2B);  // Output Compare Interupt Enable Time2 Channel B
+  }
+}
+#endif /* FAN_PWM_FRACTION */
+
 void GrillPid::adjustFeedbackVoltage(void)
 {
+#if defined(FAN_PWM_FRACTION)
+  if (_lastBlowerOutput != 0 && bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT)) {
+    union fpm_type
+    {
+      unsigned char ch[2];
+      unsigned int full;
+    } currentFPM, newOutputFPM;
+    
+    currentFPM.ch[1] = _feedvoltLastOutput; //whole number
+    // Radix point should be here
+    currentFPM.ch[0] = _feedvoltOutputFrac; //fractional number
+
+    // _lastBlowerOutput is the voltage we want on the feedback pin
+    // adjust _feedvoltLastOutput until the ffeedback == _lastBlowerOutput
+    unsigned int ffeedback = analogReadOver(APIN_FFEEDBACK, 10);
+    signed int error = (_lastBlowerOutput<<2) - ffeedback;
+    error /= 2;
+
+    // percentage of error in 8:8 format
+    // multiply by 8 to get into 8:8 format, another 8 for percentage form
+    signed long fracErrorFPM = (error * pow(2,16)) / ffeedback;
+
+    // temp should now contain the amount of offset needed
+    // shift 8 to correct for FPM, another 8 to get back to whole number form
+    signed long tempFPM = (fracErrorFPM * (unsigned long)currentFPM.full) / pow(2,16);
+
+    newOutputFPM.full = currentFPM.full + tempFPM;
+
+    _feedvoltLastOutput = newOutputFPM.ch[1];
+    _feedvoltOutputFrac = newOutputFPM.ch[0];
+  }
+  else {
+    _feedvoltLastOutput = _lastBlowerOutput;
+  }
+  fanVoltWrite();
+#else
   if (_lastBlowerOutput != 0 && bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
   {
     // _lastBlowerOutput is the voltage we want on the feedback pin
@@ -502,6 +598,7 @@ void GrillPid::adjustFeedbackVoltage(void)
     _feedvoltLastOutput = _lastBlowerOutput;
 
   analogWrite(PIN_BLOWER, _feedvoltLastOutput);
+#endif /* FAN_PWM_FRACTION */
 }
 
 inline unsigned char FeedvoltToAdc(float v)
@@ -614,7 +711,11 @@ inline void GrillPid::commitFanOutput(void)
       analogWrite(PIN_BLOWER, 255);
       // give the FFEEDBACK control a high starting point so when it reads
       // for the first time and sees full voltage it doesn't turn off
+#if defined(FAN_PWM_FRACTION)
+      _feedvoltLastOutput = 254;
+#else
       _feedvoltLastOutput = 128;
+#endif /* FAN_PWM_FRACTION */
       return;
     }
   }

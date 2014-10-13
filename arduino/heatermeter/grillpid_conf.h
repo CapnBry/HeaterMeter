@@ -7,6 +7,7 @@
 //#define GRILLPID_FEEDVOLT_DEBUG
 #define ADC_ROUND
 #define GRILLPID_GANG_ENABLED
+#define FAN_PWM_FRACTION
 
 #define TEMP_PIT    0
 #define TEMP_FOOD1  1
@@ -33,7 +34,7 @@
 #define TEMP_MEASURE_PERIOD 1000
 // Number of times the ouput is adusted over TEMP_MEASURE_PERIOD
 // This affects fan boost mode and FFEEDBACK output
-#define TEMP_OUTADJUST_CNT 3
+#define TEMP_OUTADJUST_CNT 4
 // 2/(1+Number of samples used in the exponential moving average)
 #define DERIV_AVG_SMOOTH (2.0f/(1.0f+4.0f))
 #define TEMPPROBE_AVG_SMOOTH (2.0f/(1.0f+60.0f))

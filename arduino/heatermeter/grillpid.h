@@ -177,6 +177,9 @@ private:
   // Current fan speed (percent)
   unsigned char _fanSpeed;
   // Feedback switching mode voltage controller
+#if defined(FAN_PWM_FRACTION)
+  unsigned char _feedvoltOutputFrac;
+#endif /* FAN_PWM_FRACTION */
   unsigned char _feedvoltLastOutput;
   // Desired fan target (0-255)
   unsigned char _lastBlowerOutput;
@@ -188,6 +191,9 @@ private:
   void commitFanOutput(void);
   void commitServoOutput(void);
   void commitPidOutput(void);
+#if defined(FAN_PWM_FRACTION)
+  void fanVoltWrite(void);
+#endif /* FAN_PWM_FRACTION */
   void adjustFeedbackVoltage(void);
 public:
   GrillPid(void) : _periodCounter(0x80), _units('F') {};
