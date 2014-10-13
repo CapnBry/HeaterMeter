@@ -475,20 +475,6 @@ inline void GrillPid::calcPidOutput(void)
   }
 }
 
-unsigned char GrillPid::getFanSpeed(void) const
-{
-  if (bit_is_set(_outputFlags, PIDFLAG_FAN_ONLY_MAX) && _pidOutput < 100)
-    return 0;
-
-  unsigned char max;
-  if (_pitStartRecover == PIDSTARTRECOVER_STARTUP)
-    max = _maxStartupFanSpeed;
-  else
-    max = _maxFanSpeed;
-
-  return (unsigned int)_pidOutput * max / 100;
-}
-
 void GrillPid::adjustFeedbackVoltage(void)
 {
   if (_lastBlowerOutput != 0 && bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
@@ -532,39 +518,51 @@ inline void GrillPid::commitFanOutput(void)
   const unsigned int LONG_PWM_PERIOD = 10000;
   const unsigned int PERIOD_SCALE = (LONG_PWM_PERIOD / TEMP_MEASURE_PERIOD);
 
-  unsigned char fanSpeed = getFanSpeed();
+  if (bit_is_set(_outputFlags, PIDFLAG_FAN_ONLY_MAX) && _pidOutput < 100)
+    _fanSpeed = 0;
+  else
+  {
+    unsigned char max;
+    if (_pitStartRecover == PIDSTARTRECOVER_STARTUP)
+      max = _maxStartupFanSpeed;
+    else
+      max = _maxFanSpeed;
+
+    _fanSpeed = (unsigned int)_pidOutput * max / 100;
+  }
+
   /* For anything above _minFanSpeed, do a nomal PWM write.
      For below _minFanSpeed we use a "long pulse PWM", where
      the pulse is 10 seconds in length.  For each percent we are
      emulating, run the fan for one interval. */
-  if (fanSpeed >= _minFanSpeed)
+  if (_fanSpeed >= _minFanSpeed)
     _longPwmTmr = 0;
   else
   {
     // Simple PWM, ON for first [FanSpeed] intervals then OFF
     // for the remainder of the period
-    if (((PERIOD_SCALE * fanSpeed / _minFanSpeed) > _longPwmTmr))
-      fanSpeed = _minFanSpeed;
+    if (((PERIOD_SCALE * _fanSpeed / _minFanSpeed) > _longPwmTmr))
+      _fanSpeed = _minFanSpeed;
     else
-      fanSpeed = 0;
+      _fanSpeed = 0;
 
     if (++_longPwmTmr > (PERIOD_SCALE - 1))
       _longPwmTmr = 0;
   }  /* long PWM */
 
   if (bit_is_set(_outputFlags, PIDFLAG_INVERT_FAN))
-    fanSpeed = _maxFanSpeed - fanSpeed;
+    _fanSpeed = _maxFanSpeed - _fanSpeed;
 
   // 0 is always 0
-  if (fanSpeed == 0)
+  if (_fanSpeed == 0)
     _lastBlowerOutput = 0;
   else
   {
     bool needBoost = _lastBlowerOutput == 0;
     if (bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
-      _lastBlowerOutput = mappct(fanSpeed, FeedvoltToAdc(5.0f), FeedvoltToAdc(12.1f));
+      _lastBlowerOutput = mappct(_fanSpeed, FeedvoltToAdc(5.0f), FeedvoltToAdc(12.1f));
     else
-      _lastBlowerOutput = mappct(fanSpeed, 0, 255);
+      _lastBlowerOutput = mappct(_fanSpeed, 0, 255);
     // If going from 0% to non-0%, turn the blower fully on for one period
     // to get it moving (boost mode)
     if (needBoost)
@@ -681,6 +679,8 @@ void GrillPid::status(void) const
   SerialX.print((int)PidOutputAvg, DEC);
   Serial_csv();
   SerialX.print(LidOpenResumeCountdown, DEC);
+  Serial_csv();
+  SerialX.print(getFanSpeed(), DEC);
 #endif
 }
 
