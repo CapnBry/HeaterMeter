@@ -76,16 +76,19 @@ static const struct __eeprom_data {
   225,  // setpoint
   6,    // lid open offset %
   240,  // lid open duration
-  { 0.0f, 4.0f, 0.02f, 5.0f },  // PID constants
+  { 0.0f, 4.0f, 0.004f, 50.0f },  // PID constants
   false, // manual mode
   50,   // lcd backlight (%)
 #ifdef HEATERMETER_RFM12
+  /* Need to rethink this. If you disable RMF12 then on a reflash the eeprom data no longer matches
+		 Possibly put at the end of the structure so it gets truncated if compiled out?
+  */
   { RFSOURCEID_ANY, RFSOURCEID_ANY, RFSOURCEID_ANY, RFSOURCEID_ANY },  // rfMap
 #endif
   'F',  // Units
   0,    // min fan speed
   100,  // max fan speed
-  bit(PIDFLAG_FAN_FEEDVOLT), // PID output flags bitmask
+  bit(PIDFLAG_FAN_FEEDVOLT)|bit(PIDFLAG_FAN_GANGED), // PID output flags bitmask
   0xff, // 2-line home
   100, // max startup fan speed
   { LEDSTIMULUS_FanMax, LEDSTIMULUS_LidOpen, LEDSTIMULUS_FanOn, LEDSTIMULUS_Off },
