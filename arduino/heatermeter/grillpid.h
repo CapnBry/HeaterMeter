@@ -125,6 +125,8 @@ public:
 #define PIDFLAG_SERVO_ANY_MAX 3
 // Try to output a constant voltage instead of PWM
 #define PIDFLAG_FAN_FEEDVOLT  4
+// PID control only on servo. Fan is ganged to servo endpoints
+#define PIDFLAG_FAN_GANGED    5
 
 // pitStartRecover constants
 // STARTUP - Attempting to reach temperature for the first time
@@ -151,6 +153,10 @@ private:
   unsigned char _pidOutput;
   float _deriv[4]; // tracking values for Derivative formula
   unsigned long _lastWorkMillis;
+#if defined(GRILLPID_GANG_ENABLED)
+  unsigned long _lastFanMillis;
+  unsigned char _lastFanSpeed;
+#endif /* GRILLPID_GANG_ENABLED */
   unsigned char _pitStartRecover;
   int _setPoint;
   boolean _manualOutputMode;
