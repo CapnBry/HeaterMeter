@@ -21,6 +21,11 @@ extern const GrillPid pid;
 
 #define DIFFMAX(x,y,d) ((x - y + d) <= (d*2U))
 
+#define satlimit(orig,filt) ((orig)<(filt)?(-1):((orig)>(filt)?(1):(0)))
+
+//Changing the PWM to Inverted PWM
+#define INVERT(x) (255-x)
+
 #if defined(GRILLPID_SERVO_ENABLED)
 ISR(TIMER1_CAPT_vect)
 {
@@ -37,6 +42,22 @@ ISR(TIMER1_COMPB_vect)
   digitalWriteFast(PIN_SERVO, LOW);
 }
 #endif
+
+#if defined(FAN_PWM_FRACTION)
+volatile unsigned char fracPwmComp;  //Value to emulate the shutoff point for duty cycle
+ISR(TIMER2_COMPB_vect) 
+{
+	static unsigned char frac;  //Accumulator for compare to duty cycle value
+
+	++frac;
+	if (frac == 0) {
+		OCR2B = INVERT(0); // Output is off (pulses are being dropped)
+	}
+	if (frac == fracPwmComp) {
+		OCR2B = INVERT(1); // Output compare match of 1/256 duty cycle
+	}
+}
+#endif /* FAN_PWM_FRACTION */
 
 static struct tagAdcState
 {
@@ -97,7 +118,11 @@ ISR(ADC_vect)
     else
 #endif // GRILLPID_DYNAMIC_RANGE
     {
-      adcState.analogReads[pin] = adcState.accumulator >> 2;
+#if defined(ADC_ROUND)
+      // round off to bring error to 1/2 LSB instead of 1 LSB
+      adcState.accumulator += (1 << (8 - TEMP_OVERSAMPLE_BITS-1) );
+#endif
+      adcState.analogReads[pin] = adcState.accumulator >> (8 - TEMP_OVERSAMPLE_BITS);
       adcState.analogRange[pin] = adcState.thisHigh - adcState.thisLow;
     }
     adcState.thisHigh = 0;
@@ -132,7 +157,16 @@ unsigned int analogReadOver(unsigned char pin, unsigned char bits)
   {
     retVal = adcState.analogReads[pin];
   }
-  return retVal >> (16 - bits);
+  // Calc 1/2 LSB of the bits we are dropping and add back to round
+#if defined(ADC_ROUND)
+  unsigned int round = (10 + TEMP_OVERSAMPLE_BITS - bits);
+  if (round > 1 )
+  {
+    round = 1 << (10 + TEMP_OVERSAMPLE_BITS - bits - 1);
+    retVal += round;
+  }
+#endif /* ADC_ROUND */
+  return (retVal >> (10 + TEMP_OVERSAMPLE_BITS - bits));
 }
 
 unsigned int analogReadRange(unsigned char pin)
@@ -378,8 +412,13 @@ void GrillPid::init(void) const
 void GrillPid::setOutputFlags(unsigned char value)
 {
   _outputFlags = value;
+#if defined(FAN_PWM_FRACTION)
+  // Timer2 Inverted Fast PWM
+  TCCR2A = bit(COM2B1)|bit(COM2B0)|bit(WGM21) | bit(WGM20);
+#else
   // Timer2 Fast PWM
   TCCR2A = bit(WGM21) | bit(WGM20);
+#endif /* FAN_PWM_FRACTION */
   if (bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
     TCCR2B = bit(CS20); // 62kHz
   else
@@ -402,7 +441,6 @@ unsigned int GrillPid::countOfType(unsigned char probeType) const
 /* Calucluate the desired output percentage using the proportional–integral-derivative (PID) controller algorithm */
 inline void GrillPid::calcPidOutput(void)
 {
-  unsigned char lastOutput = _pidOutput;
   _pidOutput = 0;
 
   // If the pit probe is registering 0 degrees, don't jack the fan up to MAX
@@ -420,22 +458,125 @@ inline void GrillPid::calcPidOutput(void)
   // PPPPP = fan speed percent per degree of error
   _pidCurrent[PIDP] = Pid[PIDP] * error;
 
-  // IIIII = fan speed percent per degree of accumulated error
-  // anti-windup: Make sure we only adjust the I term while inside the proportional control range
-  if ((error > 0 && lastOutput < 100) || (error < 0 && lastOutput > 0))
-    _pidCurrent[PIDI] += Pid[PIDI] * error;
-
   // DDDDD = fan speed percent per degree of change over TEMPPROBE_AVG_SMOOTH period
-  _pidCurrent[PIDD] = Pid[PIDD] * (Probes[TEMP_PIT]->TemperatureAvg - currentTemp);
+  if ( _deriv[DRV_FILT] != 0 ) 
+  {
+    calcExpMovingAverage(DERIV_AVG_SMOOTH, &_deriv[DRV_FILT], currentTemp);
+  }
+  else
+  {
+    _deriv[DRV_FILT] = currentTemp;
+    _deriv[DRV_PRV1] = _deriv[DRV_PRV2] = _deriv[DRV_PRV3] = 0;
+  }
+  _pidCurrent[PIDD] = (Probes[TEMP_PIT]->TemperatureAvg - _deriv[DRV_FILT]);
+  float secondDrv = _pidCurrent[PIDD] - _deriv[DRV_PRV3];
+  secondDrv /= 4; // Average derivative change over last 4 seconds
+  //Save values
+  _deriv[DRV_PRV3] = _deriv[DRV_PRV2];
+  _deriv[DRV_PRV2] = _deriv[DRV_PRV1];
+  _deriv[DRV_PRV1] = _pidCurrent[PIDD];
+  // Add in the calculated second order derivative. Attempt to reduce the lag created by making derivative filter
+  _pidCurrent[PIDD] += secondDrv;
+  _pidCurrent[PIDD] = Pid[PIDD] * _pidCurrent[PIDD];
+
   // BBBBB = fan speed percent
   _pidCurrent[PIDB] = Pid[PIDB];
 
   int control = _pidCurrent[PIDB] + _pidCurrent[PIDP] + _pidCurrent[PIDI] + _pidCurrent[PIDD];
   _pidOutput = constrain(control, 0, 100);
+
+  // Check if we are trying to drive the controller beyond full saturation
+  // sat 0 is ok, -1 is controller is out of saturated low, 1 is saturated high
+  signed char sat = satlimit(control,(int)_pidOutput);
+  
+  // IIIII = fan speed percent per degree of accumulated error
+  // Integral latching: Make sure we only adjust the I term while inside the proportional control range
+  if ( sat == 0 )
+  {
+    _pidCurrent[PIDI] += Pid[PIDI] * error;
+  } 
+  else {
+  // Additional check to see if we way over saturated. Keeps integrator from bouncing off the control limits
+    if ( (control - (int)_pidOutput) * sat > 2 )
+      //Integral Anti-windup will slowly bring the integral back to 0 as long as the control is saturated
+    _pidCurrent[PIDI] = (1- (Pid[PIDI]*10)) * _pidCurrent[PIDI];
+  }
 }
+
+#if defined(FAN_PWM_FRACTION)
+void GrillPid::fanVoltWrite(void)
+{
+  if (_lastBlowerOutput == 0 ) {
+    // disable the Fractional ISR
+    TIMSK2 = TIMSK2 & ~bit(OCIE2B);
+    analogWrite(PIN_BLOWER, 0);  //Use the analogwrite special case for 0 to shutoff the pin
+    return;
+  }
+
+  unsigned char output = _feedvoltLastOutput;
+
+  // If we have a whole amount then use original method and return
+  //Duty cycle control at 62.5 Khz
+  if ( output > 0 ) {
+    if ( output == 255) //sending 255 to analogWrite when we are inverted is going to be wrong
+      output = 254; 
+    // disable the Fractional ISR
+    TIMSK2 = TIMSK2 & ~bit(OCIE2B);
+    analogWrite(PIN_BLOWER, INVERT(output));
+    return;
+  }
+
+  output = _feedvoltOutputFrac;
+  // Make sure we aren't shutting off the voltage output completely
+  if (output == 0 )
+    output++;
+  // Set compare match for PWM ISR
+  // We can't lower the duty cycle anymore so now will drop pulses to lower output
+  fracPwmComp = INVERT(output);
+  if (!(bit_is_set(TIMSK2, OCIE2B))) {
+    TIMSK2 |= bit(OCIE2B);  // Output Compare Interupt Enable Time2 Channel B
+  }
+}
+#endif /* FAN_PWM_FRACTION */
 
 void GrillPid::adjustFeedbackVoltage(void)
 {
+#if defined(FAN_PWM_FRACTION)
+  if (_lastBlowerOutput != 0 && bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT)) {
+    union fpm_type
+    {
+      unsigned char ch[2];
+      unsigned int full;
+    } currentFPM, newOutputFPM;
+    
+    currentFPM.ch[1] = _feedvoltLastOutput; //whole number
+    // Radix point should be here
+    currentFPM.ch[0] = _feedvoltOutputFrac; //fractional number
+
+    // _lastBlowerOutput is the voltage we want on the feedback pin
+    // adjust _feedvoltLastOutput until the ffeedback == _lastBlowerOutput
+    unsigned int ffeedback = analogReadOver(APIN_FFEEDBACK, 10);
+    signed int error = (_lastBlowerOutput<<2) - ffeedback;
+    error /= 2;
+
+    // percentage of error in 8:8 format
+    // multiply by 8 to get into 8:8 format, another 8 for percentage form
+    signed long fracErrorFPM = (error * pow(2,16)) / ffeedback;
+
+    // temp should now contain the amount of offset needed
+    // shift 8 to correct for FPM, another 8 to get back to whole number form
+    signed long tempFPM = (fracErrorFPM * (unsigned long)currentFPM.full) / pow(2,16);
+
+    newOutputFPM.full = currentFPM.full + tempFPM;
+
+    _feedvoltLastOutput = newOutputFPM.ch[1];
+    _feedvoltOutputFrac = newOutputFPM.ch[0];
+  }
+  else {
+    _feedvoltLastOutput = _lastBlowerOutput;
+  }
+  fanVoltWrite();
+#else
   if (_lastBlowerOutput != 0 && bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
   {
     // _lastBlowerOutput is the voltage we want on the feedback pin
@@ -457,6 +598,7 @@ void GrillPid::adjustFeedbackVoltage(void)
     _feedvoltLastOutput = _lastBlowerOutput;
 
   analogWrite(PIN_BLOWER, _feedvoltLastOutput);
+#endif /* FAN_PWM_FRACTION */
 }
 
 inline unsigned char FeedvoltToAdc(float v)
@@ -487,7 +629,51 @@ inline void GrillPid::commitFanOutput(void)
     else
       max = _maxFanSpeed;
 
+#if defined(GRILLPID_GANG_ENABLED)
+    if (bit_is_set(_outputFlags, PIDFLAG_FAN_GANGED) && (!_manualOutputMode)) {
+      boolean madeSpeedShift = false;
+      unsigned long elapsed = millis() - _lastFanMillis;
+      if (elapsed > FAN_GANG_PERIOD ) {
+        if ( (_pidOutput > FAN_GANG_UPSHIFT) ) {
+          if  (_lastFanSpeed < (100 - FAN_GANG_SHIFT) ) {
+            _lastFanSpeed += FAN_GANG_SHIFT;
+            madeSpeedShift = true;
+            // Knock the integrator back down as we are going to push more air
+            _pidCurrent[PIDI] = _pidCurrent[PIDI] - 5.0;
+          }
+        }
+        if ( _pidOutput < FAN_GANG_DNSHIFT ) {
+          //Jump to 0 if servo has went to 0
+          if ( _pidOutput == 0 ) {
+            _lastFanSpeed = 0;
+          }
+          if ( _lastFanSpeed > FAN_GANG_SHIFT ) {
+            _lastFanSpeed -= FAN_GANG_SHIFT;
+            madeSpeedShift = true;
+            // Give the integrator a bit more as we reduced airflow
+            _pidCurrent[PIDI] = _pidCurrent[PIDI] + 5.0;
+          }
+        }
+        constrain(_lastFanSpeed,0,100);
+        /* Check if we actually did anything and if so then update to lock out
+           for FAN_GANG_PERIOD
+        */
+        if ( madeSpeedShift ) {
+          _lastFanMillis = millis();
+        }
+      }
+      _fanSpeed = (unsigned int)_lastFanSpeed * max / 100;
+#if defined(ROB_OUTPUT_HACK)
+      // Simply to show on web page
+			Probes[TEMP_AMB]->Temperature = _fanSpeed;
+#endif /* ROB_OUTPUT_HACK)
+    }
+    else {
+#endif /* GRILLPID_GANG_ENABLED */
     _fanSpeed = (unsigned int)_pidOutput * max / 100;
+#if defined(GRILLPID_GANG_ENABLED)
+    }
+#endif /* GRILLPID_GANG_ENABLED */
   }
 
   /* For anything above _minFanSpeed, do a nomal PWM write.
@@ -529,7 +715,11 @@ inline void GrillPid::commitFanOutput(void)
       analogWrite(PIN_BLOWER, 255);
       // give the FFEEDBACK control a high starting point so when it reads
       // for the first time and sees full voltage it doesn't turn off
+#if defined(FAN_PWM_FRACTION)
+      _feedvoltLastOutput = 254;
+#else
       _feedvoltLastOutput = 128;
+#endif /* FAN_PWM_FRACTION */
       return;
     }
   }
@@ -611,9 +801,11 @@ void GrillPid::setLidOpenDuration(unsigned int value)
 void GrillPid::setPidConstant(unsigned char idx, float value)
 {
   Pid[idx] = value;
-  if (idx == PIDI)
+  // No need to reset the PIDI as it's already been scaled before integration
+  // Zeroing just causes the controller to slam shut and makes tuning harder
+  //if (idx == PIDI)
     // Proably should scale the error sum by newval / oldval instead of resetting
-    _pidCurrent[PIDI] = 0.0f;
+    //_pidCurrent[PIDI] = 0.0f;
 }
 
 void GrillPid::status(void) const
@@ -624,7 +816,11 @@ void GrillPid::status(void) const
 
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
+#if defined(ROB_OUTPUT_HACK)
+		if ((Probes[i]->hasTemperature()) || (i == TEMP_AMB))
+#else
     if (Probes[i]->hasTemperature())
+#endif /* ROB_OUTPUT_HACK */
       SerialX.print(Probes[i]->Temperature, 1);
     else
       Serial_char('U');

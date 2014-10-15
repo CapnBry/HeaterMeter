@@ -108,6 +108,12 @@ public:
 #define PIDI 2
 #define PIDD 3
 
+// Indexes into the _deriv array
+#define DRV_FILT 0
+#define DRV_PRV1 1
+#define DRV_PRV2 2
+#define DRV_PRV3 3
+
 // Indexes into outputFlags bitfield
 // Invert the fan PWM - pidOutput=100 would generate no PWM pulses
 #define PIDFLAG_INVERT_FAN    0
@@ -119,6 +125,8 @@ public:
 #define PIDFLAG_SERVO_ANY_MAX 3
 // Try to output a constant voltage instead of PWM
 #define PIDFLAG_FAN_FEEDVOLT  4
+// PID control only on servo. Fan is ganged to servo endpoints
+#define PIDFLAG_FAN_GANGED    5
 
 // pitStartRecover constants
 // STARTUP - Attempting to reach temperature for the first time
@@ -143,7 +151,12 @@ class GrillPid
 {
 private:
   unsigned char _pidOutput;
+  float _deriv[4]; // tracking values for Derivative formula
   unsigned long _lastWorkMillis;
+#if defined(GRILLPID_GANG_ENABLED)
+  unsigned long _lastFanMillis;
+  unsigned char _lastFanSpeed;
+#endif /* GRILLPID_GANG_ENABLED */
   unsigned char _pitStartRecover;
   int _setPoint;
   boolean _manualOutputMode;
@@ -164,6 +177,9 @@ private:
   // Current fan speed (percent)
   unsigned char _fanSpeed;
   // Feedback switching mode voltage controller
+#if defined(FAN_PWM_FRACTION)
+  unsigned char _feedvoltOutputFrac;
+#endif /* FAN_PWM_FRACTION */
   unsigned char _feedvoltLastOutput;
   // Desired fan target (0-255)
   unsigned char _lastBlowerOutput;
@@ -175,6 +191,9 @@ private:
   void commitFanOutput(void);
   void commitServoOutput(void);
   void commitPidOutput(void);
+#if defined(FAN_PWM_FRACTION)
+  void fanVoltWrite(void);
+#endif /* FAN_PWM_FRACTION */
   void adjustFeedbackVoltage(void);
 public:
   GrillPid(void) : _periodCounter(0x80), _units('F') {};
