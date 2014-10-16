@@ -21,6 +21,8 @@ extern const GrillPid pid;
 
 #define DIFFMAX(x,y,d) ((x - y + d) <= (d*2U))
 
+#define satlimit(orig,filt) ((orig)<(filt)?(-1):((orig)>(filt)?(1):(0)))
+
 #if defined(GRILLPID_SERVO_ENABLED)
 ISR(TIMER1_CAPT_vect)
 {
@@ -402,7 +404,6 @@ unsigned int GrillPid::countOfType(unsigned char probeType) const
 /* Calucluate the desired output percentage using the proportional–integral-derivative (PID) controller algorithm */
 inline void GrillPid::calcPidOutput(void)
 {
-  unsigned char lastOutput = _pidOutput;
   _pidOutput = 0;
 
   // If the pit probe is registering 0 degrees, don't jack the fan up to MAX
@@ -420,18 +421,46 @@ inline void GrillPid::calcPidOutput(void)
   // PPPPP = fan speed percent per degree of error
   _pidCurrent[PIDP] = Pid[PIDP] * error;
 
-  // IIIII = fan speed percent per degree of accumulated error
-  // anti-windup: Make sure we only adjust the I term while inside the proportional control range
-  if ((error > 0 && lastOutput < 100) || (error < 0 && lastOutput > 0))
-    _pidCurrent[PIDI] += Pid[PIDI] * error;
-
   // DDDDD = fan speed percent per degree of change over TEMPPROBE_AVG_SMOOTH period
-  _pidCurrent[PIDD] = Pid[PIDD] * (Probes[TEMP_PIT]->TemperatureAvg - currentTemp);
+  if ( _deriv[DRV_FILT] != 0 ) {
+    calcExpMovingAverage(DERIV_AVG_SMOOTH, &_deriv[DRV_FILT], currentTemp);
+  }
+  else {
+    _deriv[DRV_FILT] = currentTemp;
+    _deriv[DRV_PRV1] = _deriv[DRV_PRV2] = _deriv[DRV_PRV3] = 0;
+  }
+  _pidCurrent[PIDD] = (Probes[TEMP_PIT]->TemperatureAvg - _deriv[DRV_FILT]);
+  float secondDrv = _pidCurrent[PIDD] - _deriv[DRV_PRV3];
+  secondDrv /= 4; // Average derivative change over last 4 seconds
+  //Save values
+  _deriv[DRV_PRV3] = _deriv[DRV_PRV2];
+  _deriv[DRV_PRV2] = _deriv[DRV_PRV1];
+  _deriv[DRV_PRV1] = _pidCurrent[PIDD];
+  // Add in the calculated second order derivative. Attempt to reduce the lag created by making derivative filter
+  _pidCurrent[PIDD] += secondDrv;
+  _pidCurrent[PIDD] = Pid[PIDD] * _pidCurrent[PIDD];
+
   // BBBBB = fan speed percent
   _pidCurrent[PIDB] = Pid[PIDB];
 
   int control = _pidCurrent[PIDB] + _pidCurrent[PIDP] + _pidCurrent[PIDI] + _pidCurrent[PIDD];
   _pidOutput = constrain(control, 0, 100);
+  
+  // Check if we are trying to drive the controller beyond full saturation
+  // sat 0 is ok, -1 is controller is out of saturated low, 1 is saturated high
+  signed char sat = satlimit(control,(int)_pidOutput);
+
+  // IIIII = fan speed percent per degree of accumulated error
+  // Integral latching: Make sure we only adjust the I term while inside the proportional control range
+  if ( sat == 0 ) {
+    _pidCurrent[PIDI] += Pid[PIDI] * error;
+  } 
+  else {
+    // Additional check to see if we way over saturated. Keeps integrator from bouncing off the control limits
+    if ( (control - (int)_pidOutput) * sat > 2 )
+      //Integral Anti-windup will slowly bring the integral back to 0 as long as the control is saturated
+      _pidCurrent[PIDI] = (1- (Pid[PIDI]*10)) * _pidCurrent[PIDI];
+  }
 }
 
 void GrillPid::adjustFeedbackVoltage(void)
