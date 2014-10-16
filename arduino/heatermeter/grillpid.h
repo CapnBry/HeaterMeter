@@ -119,6 +119,8 @@ public:
 #define PIDFLAG_SERVO_ANY_MAX 3
 // Try to output a constant voltage instead of PWM
 #define PIDFLAG_FAN_FEEDVOLT  4
+// PID control only on servo. Fan speed is based on servo versus SHIFT points
+#define PIDFLAG_FAN_BY_SERVO  5
 
 // pitStartRecover constants
 // STARTUP - Attempting to reach temperature for the first time
@@ -144,6 +146,10 @@ class GrillPid
 private:
   unsigned char _pidOutput;
   unsigned long _lastWorkMillis;
+#if defined(GRILLPID_FAN_BY_SERVO)
+  unsigned long _lastFanMillis;
+  unsigned char _lastFanSpeed;
+#endif /* GRILLPID_FAN_BY_SERVO */
   unsigned char _pitStartRecover;
   int _setPoint;
   boolean _manualOutputMode;
