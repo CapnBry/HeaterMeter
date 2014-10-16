@@ -640,9 +640,6 @@ void GrillPid::setLidOpenDuration(unsigned int value)
 void GrillPid::setPidConstant(unsigned char idx, float value)
 {
   Pid[idx] = value;
-  if (idx == PIDI)
-    // Proably should scale the error sum by newval / oldval instead of resetting
-    _pidCurrent[PIDI] = 0.0f;
 }
 
 void GrillPid::status(void) const
