@@ -20,13 +20,14 @@ var lastLidOpen = -1;
 var mapJson = [6,5,4,3];
 var graphLoaded = false;
 var graphData =  [
-        { label: "", color: "#6cf", lines: { show: true, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // fanspeed
-        { label: "", color: "#fd9", lines: { show: true, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // lidopen
+        { label: "", color: "#6cf", lines: { show: true, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  //Controller Output
+        { label: "", color: "#fd9", lines: { show: true, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  //lid
         { label: "Set", color: "rgba(255,0,0,0.8)", lines: { show: true, lineWidth: 1 }, shadowSize: 0, data: [] },
         { label: "Amb", color: "#789", lines: { show: true }, data: [] },
         { label: "Food2", color: "#297", lines: { show: true }, data: [] },
         { label: "Food1", color: "#6c3", lines: { show: true }, data: [] },
-        { label: "Pit", color: "#e73", lines: { show: true, lineWidth: 3 }, data: [] }
+        { label: "Pit", color: "#e73", lines: { show: true, lineWidth: 3 }, data: [] },
+        { label: "Fan", color: "#6cf", lines: { show: true, lineWidth: 3 }, shadowSize: 0, yaxis: 2, data: [] }  //Fan Speed
     ];
 
     var graphOpts = {
@@ -85,6 +86,8 @@ $(document).ready(function()
     $(".pname").editable(nameChanged, {maxlength: 13, select: true});
     $("#pn0").editable(nameChanged, {maxlength: 13, width: "13em", select: true});
     $("#set").editable(tempChanged, {style: "display: inline", select: true});
+	//Soon as login as root showing the PidInt. I can't sent a keypress on phone or tablet
+    $.get("<%=build_url("admin/lm/set")%>", {tp: 1});
     
     $("#lid").click(function () { 
         if (lastLidOpen == -1) return;
@@ -140,6 +143,12 @@ $(window).load(function ()
 <% end %>
 });
 
+$(window).resize(function() {
+    // erase the flot graph and then redraw
+    $('#graph').text('');
+    doPlot();
+});
+	
 function storePref(k, v)
 {
   if ("localStorage" in window && window["localStorage"] !== null)
@@ -151,10 +160,11 @@ function loadPrefs()
   if ("localStorage" in window && window["localStorage"] !== null)
   {
     $("#rangeselect").val(localStorage["prefs.graphrange"] || "");
-    var graphlines = localStorage["pref.graphlines"] || "0123456";
+    var graphlines = localStorage["pref.graphlines"] || "01234567";
     $("#showfan").prop("checked", graphlines.indexOf("0") != -1);
-    for (i=0; i<graphData.length; ++i)
+    for (i=0; i<graphData.length; ++i) {
       graphData[i].lines.show = graphlines.indexOf(i) != -1;
+	  }
   }
 }
 
@@ -327,12 +337,14 @@ function showFanChanged()
     {
         graphData[0].lines.show = true;
         graphData[1].lines.show = true;
+		graphData[7].lines.show = true;
         storePrefGraphlines();
     }
     else
     {
         graphData[0].lines.show = false;
         graphData[1].lines.show = false;
+		graphData[7].lines.show = false;
         storePrefGraphlines();
     }
     updateGraph();
@@ -421,8 +433,8 @@ function graphClicked(event, pos, item)
     var sInfo = "";
     var srsClosestY = -1;
     var srsClosestYIdx;
-    // Display on tooltip as Pit, Food1, Food2, Amb, Set, Fan
-    var SERIES_DISPLAY_ORDER = [ 6, 5, 4, 3, 2, 0 ];
+    // Display on tooltip as Pit, Food1, Food2, Amb, Set, FanSpeed, PidOutput
+    var SERIES_DISPLAY_ORDER = [ 6, 5, 4, 3, 2, 7, 0 ];
     for (var idx=0; idx<SERIES_DISPLAY_ORDER.length; ++idx)
     {
         var srs = SERIES_DISPLAY_ORDER[idx];
@@ -460,8 +472,13 @@ function graphClicked(event, pos, item)
             if (srs == 0)
             {
                 if (val >= 0)
-                    sInfo = sInfo + "Fan " + Math.round(val) + "%<br />";
+                    sInfo = sInfo + "PidOutput " + Math.round(val) + "%<br />";
             }
+            if (srs == 7)
+			{
+			    if (val >= 0)
+				    sInfo = sInfo + graphData[srs].label + " " + Math.round(val) + "%<br/>";
+			}
             else 
             {
                 sInfo = sInfo + graphData[srs].label + " " + val.toFixed(1) + "&deg;<br />";
@@ -569,7 +586,8 @@ function tstatSuccess(csv)
 {
     // mapCsv translates csv field index to graphData index
     // a graphData index of -1 means not to map it
-    var mapCsv = [-1,2,6,5,4,3,0];
+    //var mapCsv = [-1,3,7,6,5,4,0,2];
+    var mapCsv = [-1,2,6,5,4,3,0,7];
     
     clearLoadingIndic();
     $.each(csv.split('\n'), function (){
@@ -672,7 +690,8 @@ function connectionSuccess(o)
     if (graphLoaded)
     {
         addFanGraphPoint(o.time, o.lid > 0 ? -o.lid : o.fan.c);
-        addGraphPoint(graphData[2].data, o.time, o.set);
+		addGraphPoint(graphData[2].data, o.time, o.set);
+		addGraphPoint(graphData[7].data, o.time, o.fan.f);
     }
 
     for(var i = 0; i < 4; i++)
@@ -877,8 +896,8 @@ td.probe { width: 33%; position: relative; }
 #png { display: none; height: 350px; margin: 8px auto 0px auto; }
 #noisegraph { display: none; height: 256px; width: 1058px; margin: 8px auto 0px auto; }
 #noisegraph_g { height: 256px; width: 1024px; float: left; }
-#graph { height: 350px; width: 700px; margin: 8px auto 0px auto; }
-#graph_overview { height: 90px; width: 700px; margin-left: auto; margin-right: auto; }
+#graph { height: 350px; width: 95%; margin: 8px auto 0px auto; }
+#graph_overview { height: 90px; width: 95%; margin-left: auto; margin-right: auto; }
 #graph_opts { color: #000; }
 #loadindic { display: none; position: relative; top: -320px; z-index: 2; }
 #pn0 { color: #bbb; font-size: 28pt; }
@@ -889,8 +908,8 @@ td.probe { width: 33%; position: relative; }
 #fancontainer { background: #357; border: 1px solid #777; height: 20px; position: relative; }
 #fanc { position: absolute; left: 0; top: 3px; z-index: 0; background: #008db8;
   width: 0%; height: 14px; border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
-#fanf { position: absolute; left: 0; top: 3px; z-index: 1; background: #0ad;
-  width: 0%; height: 14px; border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
+#fanf { position: absolute; left: 0; top: 10px; z-index: 1; background: #0ad;
+  width: 0%; height: 7px; border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
 #fanl { position: absolute; left: 0; top: 1px; z-index: 2; color: #003; font-size: 10pt; }
 #fana { position: absolute; left: 0; top: 0; z-index: 3; width: 3px; height: 20px; background: #fe4; opacity: 0.5; }
 img.preload { display: none; }
