@@ -97,7 +97,7 @@ ISR(ADC_vect)
     else
 #endif // GRILLPID_DYNAMIC_RANGE
     {
-      adcState.analogReads[pin] = adcState.accumulator >> 2;
+      adcState.analogReads[pin] = adcState.accumulator >> 4;
       adcState.analogRange[pin] = adcState.thisHigh - adcState.thisLow;
     }
     adcState.thisHigh = 0;
@@ -132,7 +132,7 @@ unsigned int analogReadOver(unsigned char pin, unsigned char bits)
   {
     retVal = adcState.analogReads[pin];
   }
-  return retVal >> (16 - bits);
+  return retVal >> (14 - bits);
 }
 
 unsigned int analogReadRange(unsigned char pin)
