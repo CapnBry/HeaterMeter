@@ -25,6 +25,7 @@
 // This affects fan boost mode and FFEEDBACK output
 #define TEMP_OUTADJUST_CNT 3
 // 2/(1+Number of samples used in the exponential moving average)
+#define DERIV_AVG_SMOOTH (2.0f/(1.0f+4.0f))
 #define TEMPPROBE_AVG_SMOOTH (2.0f/(1.0f+60.0f))
 #define PIDOUTPUT_AVG_SMOOTH (2.0f/(1.0f+240.0f))
 // Once entering LID OPEN mode, the minimum number of seconds to stay in
