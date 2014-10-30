@@ -497,7 +497,7 @@ inline void GrillPid::commitFanOutput(void)
             _lastFanSpeed += FAN_GANG_SHIFT;
             madeSpeedShift = true;
             // Knock the integrator back down as we are going to push more air
-            _pidCurrent[PIDI] = _pidCurrent[PIDI] - 5.0;
+            _pidCurrent[PIDI] = _pidCurrent[PIDI] - max/(FAN_GANG_SHIFT*2);
           }
         }
           if ( _pidOutput < FAN_GANG_DNSHIFT ) {
@@ -505,11 +505,11 @@ inline void GrillPid::commitFanOutput(void)
             if ( _pidOutput == 0 ) {
               _lastFanSpeed = 0;
             }
-            if ( _lastFanSpeed > FAN_GANG_SHIFT ) {
+            if ( _lastFanSpeed > 0 ) {
               _lastFanSpeed -= FAN_GANG_SHIFT;
               madeSpeedShift = true;
               // Give the integrator a bit more as we reduced airflow
-              _pidCurrent[PIDI] = _pidCurrent[PIDI] + 5.0;
+              _pidCurrent[PIDI] = _pidCurrent[PIDI] + max/(FAN_GANG_SHIFT*2);
             }
           }
           constrain(_lastFanSpeed,0,100);
