@@ -487,7 +487,47 @@ inline void GrillPid::commitFanOutput(void)
     else
       max = _maxFanSpeed;
 
+#if defined(GRILLPID_FAN_BY_SERVO)
+    if (bit_is_set(_outputFlags, PIDFLAG_FAN_BY_SERVO) && (!_manualOutputMode)) {
+      boolean madeSpeedShift = false;
+      unsigned long elapsed = millis() - _lastFanMillis;
+      if (elapsed > FAN_GANG_PERIOD ) {
+        if ( (_pidOutput > FAN_GANG_UPSHIFT) ) {
+          if  (_lastFanSpeed < 100 ) {
+            _lastFanSpeed += FAN_GANG_SHIFT;
+            madeSpeedShift = true;
+            // Knock the integrator back down as we are going to push more air
+            _pidCurrent[PIDI] = _pidCurrent[PIDI] - max/(FAN_GANG_SHIFT*2);
+          }
+        }
+          if ( _pidOutput < FAN_GANG_DNSHIFT ) {
+            //Jump to 0 if servo has went to 0
+            if ( _pidOutput == 0 ) {
+              _lastFanSpeed = 0;
+            }
+            if ( _lastFanSpeed > 0 ) {
+              _lastFanSpeed -= FAN_GANG_SHIFT;
+              madeSpeedShift = true;
+              // Give the integrator a bit more as we reduced airflow
+              _pidCurrent[PIDI] = _pidCurrent[PIDI] + max/(FAN_GANG_SHIFT*2);
+            }
+          }
+          constrain(_lastFanSpeed,0,100);
+          /* Check if we actually did anything and if so then update to lock out
+             for FAN_GANG_PERIOD 
+          */
+          if ( madeSpeedShift ) {
+            _lastFanMillis = millis();
+          }
+      }
+      _fanSpeed = (unsigned int)_lastFanSpeed * max / 100;
+    }
+    else {
+#endif /* GRILLPID_FAN_BY_SERVO */
     _fanSpeed = (unsigned int)_pidOutput * max / 100;
+#if defined(GRILLPID_FAN_BY_SERVO)
+    }
+#endif /* GRILLPID_FAN_BY_SERVO */
   }
 
   /* For anything above _minFanSpeed, do a nomal PWM write.

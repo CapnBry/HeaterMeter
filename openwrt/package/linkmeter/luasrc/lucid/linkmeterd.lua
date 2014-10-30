@@ -48,17 +48,18 @@ local function rrdCreate()
 
  return rrd.create(
    RRD_FILE,
-   "--step", "2",
-   "DS:sp:GAUGE:30:0:1000",
-   "DS:t0:GAUGE:30:0:1000",
-   "DS:t1:GAUGE:30:0:1000",
-   "DS:t2:GAUGE:30:0:1000",
-   "DS:t3:GAUGE:30:0:1000",
-   "DS:f:GAUGE:30:-1000:100",
-   "RRA:AVERAGE:0.6:5:360",
-   "RRA:AVERAGE:0.6:30:360",
-   "RRA:AVERAGE:0.6:60:360",
-   "RRA:AVERAGE:0.6:90:480"
+   "--step", "2",  --Time entry every 2 seconds
+   "DS:sp:GAUGE:30:0:1000",  --data source named SP, Gauge type, expects every 30 seconds, no extra wait, min of 0, max of 1000
+   "DS:t0:GAUGE:30:0:1000",  -- temp0
+   "DS:t1:GAUGE:30:0:1000",  -- temp1
+   "DS:t2:GAUGE:30:0:1000",   --temp2
+   "DS:t3:GAUGE:30:0:1000",  --temp3
+   "DS:co:GAUGE:30:-1000:100",  --Controller Output. IE - PidOutput
+   "DS:fn:GAUGE:30:0:100",    -- Fan Speed
+   "RRA:AVERAGE:0.6:5:360",   --Archive, Average type, ,5 PDP averaged into one row, 360 rows archived - Each record is 10 seconds( PDP * 5). 1 hour
+   "RRA:AVERAGE:0.6:30:360",  --Archive, average type, ,30 CDP averaged into one row, 360 rows archived - Each record is 1 min ( PDP * 30). 6 hours
+   "RRA:AVERAGE:0.6:60:360",  --Archive, Average type, ,60 CDP averaged into one row, 360 rows archived  - Each recod is 2 min ( PDP * 60). 12 hours
+   "RRA:AVERAGE:0.6:90:480"   --Archive, Average type, ,90 CDP averaged into one row, 480 rows archived - Each record is 3 mins ( PDP * 90). 24 hours
  )
 end
 
@@ -514,7 +515,7 @@ local function segStateUpdate(line)
       if lid ~= 0 then
         vals[7] = -lid
       end
-      if #vals > 9 then table.remove(vals, 10) end -- fan
+      --if #vals > 9 then table.remove(vals, 10) end -- fan
       table.remove(vals, 9) -- lid
       table.remove(vals, 8) -- output avg
 

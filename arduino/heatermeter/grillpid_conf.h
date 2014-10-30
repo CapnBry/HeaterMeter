@@ -5,6 +5,7 @@
 #define GRILLPID_SERVO_ENABLED
 #define GRILLPID_DYNAMIC_RANGE
 //#define GRILLPID_FEEDVOLT_DEBUG
+#define GRILLPID_FAN_BY_SERVO
 
 #define TEMP_PIT    0
 #define TEMP_FOOD1  1
@@ -18,6 +19,15 @@
 
 // Use oversample/decimation to increase ADC resolution to 2^(10+n) bits n=[0..4]
 #define TEMP_OVERSAMPLE_BITS 4
+
+//Controls for FAN_BY_SERVO mode
+// Points at which fan will speed up or slow down
+#define FAN_GANG_DNSHIFT 30
+#define FAN_GANG_UPSHIFT 70
+// How much fan speed is changed each shift
+#define FAN_GANG_SHIFT   10
+// Min time period to wait between fan speed shifts
+#define FAN_GANG_PERIOD 30000
 
 // The time (ms) of the measurement period
 #define TEMP_MEASURE_PERIOD 1000
