@@ -388,6 +388,8 @@ void GrillPid::setOutputFlags(unsigned char value)
   //TCCR2B = bit(CS21);
   // 61Hz
   //TCCR2B = bit(CS22) | bit(CS21) | bit(CS20);
+  //Not using analogWrite so need to make sure pin is initialized
+  pinMode(PIN_BLOWER, OUTPUT);
 }
 
 unsigned int GrillPid::countOfType(unsigned char probeType) const
@@ -434,29 +436,71 @@ inline void GrillPid::calcPidOutput(void)
   _pidOutput = constrain(control, 0, 100);
 }
 
+void GrillPid::fanVoltWrite(unsigned char val)
+{
+  if (_lastBlowerOutput == 0 ) {
+    //Disconnect pin from Timer 2B
+    TCCR2A = TCCR2A & ~bit(COM2B1);
+    //Turn off the Fan SMPS
+    digitalWriteFast(PIN_BLOWER, LOW);
+    return;
+  }
+
+  // Make sure pin is connected to PWM timer 2 channel B
+   TCCR2A |= bit(COM2B1);
+   //Set duty cycle for Timer2B that is controlling the fan SMPS
+   //Note this is actually off by 1 in fast PWM
+   //so real range is (0-255)+1/256 or 1/256 to 256/256
+   OCR2B = val;
+}
+
 void GrillPid::adjustFeedbackVoltage(void)
 {
   if (_lastBlowerOutput != 0 && bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
   {
+    signed int newOutput;
+
     // _lastBlowerOutput is the voltage we want on the feedback pin
     // adjust _feedvoltLastOutput until the ffeedback == _lastBlowerOutput
     unsigned char ffeedback = analogReadOver(APIN_FFEEDBACK, 8);
-    int error = ((int)_lastBlowerOutput - (int)ffeedback);
-    int newOutput = (int)_feedvoltLastOutput + (error / 2);
-    _feedvoltLastOutput = constrain(newOutput, 0, 255);
+    signed char error = _lastBlowerOutput - ffeedback;
+
+    //Gain control as the PWM output gets less the ratio of feedback to _feedvoltLastOutput gets huge
+    //Using fixed point math with a Q of 7 in _feedvoltLastOuput
+    //Sign<bit16> Whole<bit8-15> radix<betwen 7 and 8) Fractional<bits0-7>
+    //Fraction is needed to reduce hunting ( allows a limited type of averaging)
+    if (_feedvoltLastOutput > (16*128) )
+      newOutput = _feedvoltLastOutput + error*64;
+    else if (_feedvoltLastOutput > (8*128) )
+      newOutput = _feedvoltLastOutput + error*32;
+    else if (_feedvoltLastOutput > (4*128) )
+      newOutput = _feedvoltLastOutput + error*16;
+    else
+      newOutput = _feedvoltLastOutput + error*8;
+
+    //This is a roll over protection. Original would wrap around and then race back to low number
+    if ( newOutput < 0 )
+      _feedvoltLastOutput = 0;
+    else
+      _feedvoltLastOutput = newOutput;
 
 #if defined(GRILLPID_FEEDVOLT_DEBUG)
     SerialX.print("HMLG,");
-    SerialX.print("SMPS: ffeed="); SerialX.print(ffeedback, DEC);
-    SerialX.print(" out="); SerialX.print(newOutput, DEC);
-    SerialX.print(" fdesired="); SerialX.print(_lastBlowerOutput, DEC);
+    SerialX.print("SMPS: desire="); SerialX.print(_lastBlowerOutput, DEC);
+    SerialX.print(" ffeed="); SerialX.print(ffeedback, DEC);
+    SerialX.print(" out="); SerialX.print(_feedvoltLastOutput/128, DEC); 
+    SerialX.print("."); SerialX.print(_feedvoltLastOutput & 127,DEC);
     Serial_nl();
 #endif
+
   }
   else
     _feedvoltLastOutput = _lastBlowerOutput;
 
-  analogWrite(PIN_BLOWER, _feedvoltLastOutput);
+  if (_feedvoltLastOutput > 0)
+    fanVoltWrite(_feedvoltLastOutput/128);
+  else
+    fanVoltWrite(0);
 }
 
 inline unsigned char FeedvoltToAdc(float v)
@@ -526,10 +570,10 @@ inline void GrillPid::commitFanOutput(void)
     // to get it moving (boost mode)
     if (needBoost)
     {
-      analogWrite(PIN_BLOWER, 255);
+      fanVoltWrite(255);
       // give the FFEEDBACK control a high starting point so when it reads
       // for the first time and sees full voltage it doesn't turn off
-      _feedvoltLastOutput = 128;
+      _feedvoltLastOutput = 255*128;
       return;
     }
   }
