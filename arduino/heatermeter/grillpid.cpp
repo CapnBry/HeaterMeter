@@ -399,7 +399,7 @@ unsigned int GrillPid::countOfType(unsigned char probeType) const
   return retVal;  
 }
 
-/* Calucluate the desired output percentage using the proportional–integral-derivative (PID) controller algorithm */
+/* Calculate the desired output percentage using the proportional–integral-derivative (PID) controller algorithm */
 inline void GrillPid::calcPidOutput(void)
 {
   unsigned char lastOutput = _pidOutput;
@@ -409,24 +409,34 @@ inline void GrillPid::calcPidOutput(void)
   if (!Probes[TEMP_PIT]->hasTemperature())
     return;
 
+  float currentTemp = Probes[TEMP_PIT]->Temperature;
+  float error = Probes[TEMP_PIT]->TemperatureAvg - Probes[TEMP_PIT]->Temperature;
+  // Smooth out the Deriv some as Pid calcs are being done extremely often
+  // Will also tame huge instantaneous changes
+  // Filter needs to continue to update even during lid open events
+  calcExpMovingAverage(DERIV_FILTER_SMOOTH, &_derivFilt, error);
+  
   // If we're in lid open mode, fan should be off
   if (isLidOpen())
     return;
 
-  float currentTemp = Probes[TEMP_PIT]->Temperature;
-  float error;
   error = _setPoint - currentTemp;
 
   // PPPPP = fan speed percent per degree of error
   _pidCurrent[PIDP] = Pid[PIDP] * error;
 
   // IIIII = fan speed percent per degree of accumulated error
+   // Limit the error rate reaching Integrator
+  if ( error > INTEGRAL_STARTUP_RATE ) {
+    error = INTEGRAL_STARTUP_RATE;
+  }
   // anti-windup: Make sure we only adjust the I term while inside the proportional control range
   if ((error > 0 && lastOutput < 100) || (error < 0 && lastOutput > 0))
     _pidCurrent[PIDI] += Pid[PIDI] * error;
 
   // DDDDD = fan speed percent per degree of change over TEMPPROBE_AVG_SMOOTH period
-  _pidCurrent[PIDD] = Pid[PIDD] * (Probes[TEMP_PIT]->TemperatureAvg - currentTemp);
+  _pidCurrent[PIDD] = Pid[PIDD] * _derivFilt;
+  
   // BBBBB = fan speed percent
   _pidCurrent[PIDB] = Pid[PIDB];
 
@@ -611,9 +621,13 @@ void GrillPid::setLidOpenDuration(unsigned int value)
 void GrillPid::setPidConstant(unsigned char idx, float value)
 {
   Pid[idx] = value;
+#if 0
+  // No need to reset the PIDI as it's already scaled properly
+  // Zeroing just causes the controller to slam shut and start over confuses the fire
   if (idx == PIDI)
     // Proably should scale the error sum by newval / oldval instead of resetting
     _pidCurrent[PIDI] = 0.0f;
+#endif
 }
 
 void GrillPid::status(void) const

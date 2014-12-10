@@ -19,6 +19,13 @@
 // Use oversample/decimation to increase ADC resolution to 2^(10+n) bits n=[0..4]
 #define TEMP_OVERSAMPLE_BITS 4
 
+// PID Controls
+// Error feed limit for Integrator
+#define INTEGRAL_STARTUP_RATE 20
+// Needs to be less than TEMPPROBE_AVG_SMOOTH but high enough to average out
+// the temp noise that gets amplified by Kd. 
+#define DERIV_FILTER_SMOOTH (1.0f/15.0f)
+
 // The time (ms) of the measurement period
 #define TEMP_MEASURE_PERIOD 1000
 // Number of times the ouput is adusted over TEMP_MEASURE_PERIOD
