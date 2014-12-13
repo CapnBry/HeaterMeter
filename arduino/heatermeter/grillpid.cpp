@@ -495,7 +495,7 @@ void GrillPid::adjustFeedbackVoltage(void)
 
   }
   else
-    _feedvoltLastOutput = _lastBlowerOutput;
+    _feedvoltLastOutput = _lastBlowerOutput*128;
 
   if (_feedvoltLastOutput > 0)
     fanVoltWrite(_feedvoltLastOutput/128);
