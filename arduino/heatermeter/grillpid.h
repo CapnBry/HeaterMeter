@@ -143,6 +143,7 @@ class GrillPid
 {
 private:
   unsigned char _pidOutput;
+  float _derivFilt; // derivative filter
   unsigned long _lastWorkMillis;
   unsigned char _pitStartRecover;
   int _setPoint;
