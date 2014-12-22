@@ -178,7 +178,7 @@ private:
   void adjustFeedbackVoltage(void);
 public:
   GrillPid(void) : _periodCounter(0x80), _units('F') {};
-  void init(void) const;
+  void init(void);
 
   TempProbe *Probes[TEMP_COUNT+1];
 
@@ -198,6 +198,7 @@ public:
   float Pid[4];
   void setPidConstant(unsigned char idx, float value);
   void setProbeType(unsigned char idx, unsigned char probeType);
+  void updateControlProbe(void);
 
   // Fan Speed
   // The maximum fan speed percent that will be used in automatic mode

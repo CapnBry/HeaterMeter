@@ -349,7 +349,7 @@ void TempProbe::setTemperatureC(float T)
   }
 }
 
-void GrillPid::init(void) const
+void GrillPid::init(void)
 {
 #if defined(GRILLPID_SERVO_ENABLED)
   pinModeFast(PIN_SERVO, OUTPUT);
@@ -373,12 +373,12 @@ void GrillPid::init(void) const
 #endif // GRILLPID_DYNAMIC_RANGE
   ADCSRB = bit(ACME);
   ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADIE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0) | bit(ADSC);
+
+  updateControlProbe();
 }
 
-void GrillPid::setProbeType(unsigned char idx, unsigned char probeType)
+void __attribute__ ((noinline)) GrillPid::updateControlProbe(void)
 {
-  Probes[idx]->setProbeType(probeType);
-
   // Set control to the first non-Disabled probe. If all probes are disabled, return TEMP_PIT
   Probes[TEMP_CTRL] = Probes[TEMP_PIT];
   for (uint8_t i=0; i<TEMP_COUNT; ++i)
@@ -387,6 +387,12 @@ void GrillPid::setProbeType(unsigned char idx, unsigned char probeType)
       Probes[TEMP_CTRL] = Probes[i];
       break;
     }
+}
+
+void GrillPid::setProbeType(unsigned char idx, unsigned char probeType)
+{
+  Probes[idx]->setProbeType(probeType);
+  updateControlProbe();
 }
 
 void GrillPid::setOutputFlags(unsigned char value)
@@ -724,7 +730,7 @@ boolean GrillPid::doWork(void)
 void GrillPid::pidStatus(void) const
 {
 #if defined(GRILLPID_SERIAL_ENABLED)
-  TempProbe const* const pit = Probes[TEMP_PIT];
+  TempProbe const* const pit = Probes[TEMP_CTRL];
   if (pit->hasTemperature())
   {
     print_P(PSTR("HMPS"CSV_DELIMITER));

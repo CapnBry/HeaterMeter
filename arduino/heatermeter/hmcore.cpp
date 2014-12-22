@@ -1271,9 +1271,8 @@ void hmcoreSetup(void)
   pid.Probes[TEMP_FOOD2] = &probe2;
   pid.Probes[TEMP_AMB] = &probe3;
 
-  pid.init();
-
   eepromLoadConfig(0);
+  pid.init();
   lcdDefineChars();
 #ifdef HEATERMETER_RFM12
   checkInitRfManager();
