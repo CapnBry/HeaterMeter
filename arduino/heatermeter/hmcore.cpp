@@ -201,7 +201,7 @@ static void storeProbeType(unsigned char probeIndex, unsigned char probeType)
   unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, probeType));
   if (ofs != 0)
   {
-    pid.Probes[probeIndex]->setProbeType(probeType);
+    pid.setProbeType(probeIndex, probeType);
     econfig_write_byte((unsigned char *)ofs, probeType);
   }
 }
@@ -436,12 +436,11 @@ void updateDisplay(void)
 
     /* Default Pit / Fan Speed first line */
     int pitTemp;
-    TempProbe const * const pit = pid.getControlProbe();
-    if (pit->hasTemperature())
-      pitTemp = pit->Temperature;
+    if (pid.Probes[TEMP_CTRL]->hasTemperature())
+      pitTemp = pid.Probes[TEMP_CTRL]->Temperature;
     else
       pitTemp = 0;
-    if (!pid.getManualOutputMode() && !pit->hasTemperature())
+    if (!pid.getManualOutputMode() && !pid.Probes[TEMP_CTRL]->hasTemperature())
       memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
     else if (pid.LidOpenResumeCountdown > 0)
       snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE"%c Lid%3u"),
@@ -897,37 +896,6 @@ static void setTempParam(unsigned char idx, int val)
   }
 }
 
-static void setControlProbe(unsigned char idx)
-{
-  switch (idx)
-  {
-  case TEMP_PIT:
-    pid.Probes[TEMP_PIT] = &probe0;
-    pid.Probes[TEMP_FOOD1] = &probe1;
-    pid.Probes[TEMP_FOOD2] = &probe2;
-    pid.Probes[TEMP_AMB] = &probe3;
-    break;
-  case TEMP_FOOD1:
-    pid.Probes[TEMP_FOOD1] = &probe0;
-    pid.Probes[TEMP_PIT] = &probe1;
-    pid.Probes[TEMP_FOOD2] = &probe2;
-    pid.Probes[TEMP_AMB] = &probe3;
-    break;
-  case TEMP_FOOD2:
-    pid.Probes[TEMP_FOOD1] = &probe0;
-    pid.Probes[TEMP_FOOD2] = &probe1;
-    pid.Probes[TEMP_PIT] = &probe2;
-    pid.Probes[TEMP_AMB] = &probe3;
-    break;
-  case TEMP_AMB:
-    pid.Probes[TEMP_FOOD1] = &probe0;
-    pid.Probes[TEMP_FOOD2] = &probe1;
-    pid.Probes[TEMP_AMB] = &probe2;
-    pid.Probes[TEMP_PIT] = &probe3;
-    break;
-  }
-}
-
 static void handleCommandUrl(char *URL)
 {
   unsigned char urlLen = strlen(URL);
@@ -1298,7 +1266,11 @@ void hmcoreSetup(void)
 
   tone4khz_init();
 
-  setControlProbe(TEMP_PIT);
+  pid.Probes[TEMP_PIT] = &probe0;
+  pid.Probes[TEMP_FOOD1] = &probe1;
+  pid.Probes[TEMP_FOOD2] = &probe2;
+  pid.Probes[TEMP_AMB] = &probe3;
+
   pid.init();
 
   eepromLoadConfig(0);

@@ -297,7 +297,7 @@ void TempProbe::calcTemp(unsigned int adcval)
       //R = Steinhart[3] * ADCmax / (float)Vout - Steinhart[3];
 
       // Units 'R' = resistance, unless this is the pit probe (which should spit out Celsius)
-      if (pid.getUnits() == 'R' && this != pid.Probes[TEMP_PIT])
+      if (pid.getUnits() == 'R' && this != pid.Probes[TEMP_CTRL])
       {
         Temperature = R;
         _tempStatus = TSTATUS_OK;
@@ -375,13 +375,18 @@ void GrillPid::init(void) const
   ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADIE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0) | bit(ADSC);
 }
 
-TempProbe *GrillPid::getControlProbe(void) const
+void GrillPid::setProbeType(unsigned char idx, unsigned char probeType)
 {
-  // Return the first non-Disabled probe. If all probes are disabled, return TEMP_PIT
+  Probes[idx]->setProbeType(probeType);
+
+  // Set control to the first non-Disabled probe. If all probes are disabled, return TEMP_PIT
+  Probes[TEMP_CTRL] = Probes[TEMP_PIT];
   for (uint8_t i=0; i<TEMP_COUNT; ++i)
     if (Probes[i]->getProbeType() != PROBETYPE_DISABLED)
-      return Probes[i];
-  return Probes[TEMP_PIT];
+    {
+      Probes[TEMP_CTRL] = Probes[i];
+      break;
+    }
 }
 
 void GrillPid::setOutputFlags(unsigned char value)
@@ -414,16 +419,15 @@ inline void GrillPid::calcPidOutput(void)
   unsigned char lastOutput = _pidOutput;
   _pidOutput = 0;
 
+  // If the pit probe is registering 0 degrees, don't jack the fan up to MAX
+  if (!Probes[TEMP_CTRL]->hasTemperature())
+    return;
+
   // If we're in lid open mode, fan should be off
   if (isLidOpen())
     return;
 
-  // If the pit probe is registering 0 degrees, don't jack the fan up to MAX
-  TempProbe const * const pit = getControlProbe();
-  if (!pit->hasTemperature())
-    return;
-
-  float currentTemp = pit->Temperature;
+  float currentTemp = Probes[TEMP_CTRL]->Temperature;
   float error;
   error = _setPoint - currentTemp;
 
@@ -436,7 +440,7 @@ inline void GrillPid::calcPidOutput(void)
     _pidCurrent[PIDI] += Pid[PIDI] * error;
 
   // DDDDD = fan speed percent per degree of change over TEMPPROBE_AVG_SMOOTH period
-  _pidCurrent[PIDD] = Pid[PIDD] * (pit->TemperatureAvg - currentTemp);
+  _pidCurrent[PIDD] = Pid[PIDD] * (Probes[TEMP_CTRL]->TemperatureAvg - currentTemp);
   // BBBBB = fan speed percent
   _pidCurrent[PIDB] = Pid[PIDB];
 
@@ -681,7 +685,7 @@ boolean GrillPid::doWork(void)
     // calcPidOutput() will bail if it isn't supposed to be in control
     calcPidOutput();
     
-    int pitTemp = (int)getControlProbe()->Temperature;
+    int pitTemp = (int)Probes[TEMP_CTRL]->Temperature;
     if ((pitTemp >= _setPoint) &&
       (_lidOpenDuration - LidOpenResumeCountdown > LIDOPEN_MIN_AUTORESUME))
     {

@@ -10,6 +10,7 @@
 #define TEMP_FOOD1  1
 #define TEMP_FOOD2  2
 #define TEMP_AMB    3
+#define TEMP_CTRL   4 // Just a copy of one of the others
 #define TEMP_COUNT  4
 
 #define APIN_FFEEDBACK 1
