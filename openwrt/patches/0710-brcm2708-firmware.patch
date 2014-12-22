@@ -8,7 +8,7 @@ Index: package/brcm2708-gpu-fw/Makefile
  PKG_NAME:=brcm2708-gpu-fw
 -PKG_REV:=29ce6bcf278e7e79cd8a2b84c6aa9db9864ca91d
 -PKG_VERSION:=20120529
-+PKG_REV:=4b25df65b53ee38aad6cc9d69c8680057edddf3d
++PKG_REV:=ba43047bec24d5f0a4150f09a37884240f8926d2
 +PKG_VERSION:=20130828
  PKG_RELEASE:=1
  
@@ -19,7 +19,7 @@ Index: package/brcm2708-gpu-fw/Makefile
 -PKG_SOURCE_VERSION:=$(PKG_REV)
 +PKG_SOURCE:=$(PKG_REV).tar.gz
 +PKG_SOURCE_URL:=https://github.com/Hexxeh/rpi-firmware/archive/
-+PKG_MD5SUM:=1859494461659f4773f306626b16e903
++PKG_MD5SUM:=c857f01c54f7336e8c5d897b9bf259e4
  
 -PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 +PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)/rpi-firmware-$(PKG_REV)
