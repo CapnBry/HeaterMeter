@@ -181,6 +181,7 @@ public:
   void init(void) const;
 
   TempProbe *Probes[TEMP_COUNT];
+  TempProbe *getControlProbe(void) const;
 
   /* Configuration */
   int getSetPoint(void) const { return _setPoint; }

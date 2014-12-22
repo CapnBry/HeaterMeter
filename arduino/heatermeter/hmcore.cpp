@@ -436,11 +436,12 @@ void updateDisplay(void)
 
     /* Default Pit / Fan Speed first line */
     int pitTemp;
-    if (pid.Probes[TEMP_PIT]->hasTemperature())
-      pitTemp = pid.Probes[TEMP_PIT]->Temperature;
+    TempProbe const * const pit = pid.getControlProbe();
+    if (pit->hasTemperature())
+      pitTemp = pit->Temperature;
     else
       pitTemp = 0;
-    if (!pid.getManualOutputMode() && !pid.Probes[TEMP_PIT]->hasTemperature())
+    if (!pid.getManualOutputMode() && !pit->hasTemperature())
       memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
     else if (pid.LidOpenResumeCountdown > 0)
       snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE"%c Lid%3u"),
