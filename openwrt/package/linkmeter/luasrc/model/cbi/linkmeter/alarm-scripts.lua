@@ -34,7 +34,12 @@ local function script_write(self, section, value)
 end
 
 local function script_remove(self, section)
-  luci.fs.unlink(SCRIPT_PATH .. self.config)
+  -- This function is called with formvalue=nil when the user didn't use the
+  -- Submit button for that section, and formvalue="" when they submitted
+  -- an empty textarea. Only remove when blank
+  if self:formvalue(section) == "" then
+    luci.fs.unlink(SCRIPT_PATH .. self.config)
+  end
 end
 
 local scriptitems = {
@@ -79,7 +84,6 @@ for i, item in pairs(scriptitems) do
 
   local fld = f:field(TextValue, "script")
     fld.isexec = isexec
-    fld.optional = true
     fld.rows = 10
     fld.cfgvalue = script_cfgvalue
     fld.write = script_write
