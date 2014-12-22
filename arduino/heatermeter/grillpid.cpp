@@ -628,14 +628,6 @@ void GrillPid::setLidOpenDuration(unsigned int value)
   _lidOpenDuration = (value > LIDOPEN_MIN_AUTORESUME) ? value : LIDOPEN_MIN_AUTORESUME;
 }
 
-void GrillPid::setPidConstant(unsigned char idx, float value)
-{
-  Pid[idx] = value;
-  if (idx == PIDI)
-    // Proably should scale the error sum by newval / oldval instead of resetting
-    _pidCurrent[PIDI] = 0.0f;
-}
-
 void GrillPid::status(void) const
 {
 #if defined(GRILLPID_SERIAL_ENABLED)

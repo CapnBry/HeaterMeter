@@ -196,7 +196,7 @@ public:
   unsigned char getAdcBits(void) const { return 10 + TEMP_OVERSAMPLE_BITS; }
   // The PID constants
   float Pid[4];
-  void setPidConstant(unsigned char idx, float value);
+  void setPidConstant(unsigned char idx, float value) { Pid[idx] = value; }
   void setProbeType(unsigned char idx, unsigned char probeType);
   void updateControlProbe(void);
 
