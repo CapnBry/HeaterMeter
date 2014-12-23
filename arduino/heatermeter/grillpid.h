@@ -164,7 +164,7 @@ private:
   // Current fan speed (percent)
   unsigned char _fanSpeed;
   // Feedback switching mode voltage controller
-  unsigned char _feedvoltLastOutput;
+  signed int _feedvoltLastOutput;
   // Desired fan target (0-255)
   unsigned char _lastBlowerOutput;
   // Target servo position (ticks)
@@ -175,6 +175,7 @@ private:
   void commitFanOutput(void);
   void commitServoOutput(void);
   void commitPidOutput(void);
+  void fanVoltWrite(unsigned char val);
   void adjustFeedbackVoltage(void);
 public:
   GrillPid(void) : _periodCounter(0x80), _units('F') {};
