@@ -463,7 +463,7 @@ void GrillPid::adjustFeedbackVoltage(void)
     unsigned char ffeedback = analogReadOver(APIN_FFEEDBACK, 8);
     int error = ((int)_lastBlowerOutput - (int)ffeedback);
     int newOutput = (int)_feedvoltLastOutput + (error / 2);
-    _feedvoltLastOutput = constrain(newOutput, 0, 255);
+    _feedvoltLastOutput = constrain(newOutput, 1, 255);
 
 #if defined(GRILLPID_FEEDVOLT_DEBUG)
     SerialX.print("HMLG,");
