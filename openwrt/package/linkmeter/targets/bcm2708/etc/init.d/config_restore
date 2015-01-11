@@ -113,6 +113,8 @@ reload() {
     echo Restoring default configuration...
     lmclient LMTT,Resetting,configuration...
     sysupgrade -r $MNT/default-config.tar.gz
+    # remove root password because /etc/shadow isn't in the backup
+    passwd -d root
     sync
     reboot
   else
