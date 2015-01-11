@@ -412,7 +412,10 @@ static state_t menuResetConfig(button_t button)
   else if (button == BUTTON_LEAVE)
   {
     if (editInt != 0)
+    {
       eepromLoadConfig(1);
+      print_P(PSTR("HMRC,USER")); Serial_nl();
+    }
   }
   menuBooleanEdit(button, NULL);
   return ST_AUTO;
