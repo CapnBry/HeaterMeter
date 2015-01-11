@@ -274,6 +274,10 @@ local function segRfUpdate(line)
   end
 end
 
+local function segResetConfig(line)
+  os.execute("/etc/init.d/config_restore reload")
+end
+
 local function segRfMap(line)
   local vals = segSplit(line)
   rfMap = {}
@@ -301,6 +305,16 @@ function stsLmStateUpdate()
   JSON_TEMPLATE[1] = "event: hmstatus\ndata: "
   JSON_TEMPLATE[#JSON_TEMPLATE] = "\n\n"
   return table.concat(JSON_TEMPLATE)
+end
+
+local function segLmToast(line)
+  local vals = segSplit(line)
+  if serialPolle and #vals > 0 then
+    serialPolle.fd:write(("/set?tt=%s,%s\n"):format(vals[1],vals[2] or ""))
+    return "OK"
+  end
+
+  return "ERR"
 end
 
 local function postDeviceData(dd)
@@ -370,7 +384,7 @@ local function checkIpUpdate()
   end
 
   if newIp and newIp ~= lastIp and serialPolle then
-    serialPolle.fd:write("/set?tt=Network Address,"..newIp.."\n")
+    segLmToast("$LMTT,Network Address," .. newIp)
     lastIp = newIp
   end
 
@@ -903,6 +917,7 @@ local segmentMap = {
   ["$HMPN"] = segProbeNames,
   ["$HMPO"] = segProbeOffsets,
   ["$HMPS"] = segPidInternals,
+  ["$HMRC"] = segResetConfig,
   ["$HMRF"] = segRfUpdate,
   ["$HMRM"] = segRfMap,
   ["$HMSU"] = segStateUpdate,
@@ -916,6 +931,7 @@ local segmentMap = {
   ["$LMRF"] = segLmRfStatus,
   ["$LMDC"] = segLmDaemonControl,
   ["$LMCF"] = segLmConfig,
+  ["$LMTT"] = segLmToast,
   ["$LMUP"] = segLmUnknownProbe
   -- $LMSS
 }

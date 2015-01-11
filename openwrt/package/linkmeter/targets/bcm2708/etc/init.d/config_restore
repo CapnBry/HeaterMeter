@@ -1,6 +1,10 @@
 #!/bin/sh /etc/rc.common
 
 START=90
+
+DEV="/dev/mmcblk0"
+MNT="/mnt/${DEV##/dev/}p4"
+
 start () {
 
 PARTED=`which parted`
@@ -9,7 +13,6 @@ if [ -z "$PARTED" ] ; then
   exit 1
 fi
 
-DEV="/dev/mmcblk0"
 RESTORE=0
 IS_DEFAULT=0
 PARTED="$PARTED -m -s $DEV unit s"
@@ -72,7 +75,6 @@ if ! e2fsck -n ${DEV}p4 > /dev/null ; then
 fi
 
 # Mount the device if not already mounted
-MNT="/mnt/${DEV##/dev/}p4"
 [ -d "$MNT" ] || mkdir -p $MNT
 mount | grep ${DEV}p4 || mount -t ext4 -o rw,sync ${DEV}p4 $MNT
 
@@ -102,4 +104,22 @@ if [ -d "$MNT/lost+found" ] ; then
   sysupgrade -b $MNT/backup.tar.gz
 fi
 
+  return 0
 }
+
+# Reload is reload default configuration
+reload() {
+  if [ -f "$MNT/default-config.tar.gz" ] ; then
+    echo Restoring default configuration...
+    lmclient LMTT,Resetting,configuration...
+    sysupgrade -r $MNT/default-config.tar.gz
+    sync
+    reboot
+  else
+    echo No default configuration!
+    lmclient "LMTT,No default,configuration"
+  fi
+
+  return 0
+}
+
