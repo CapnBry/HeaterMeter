@@ -26,6 +26,7 @@ local rfMap = {}
 local rfStatus = {}
 local hmAlarms = {}
 local hmConfig
+local lastIp
 
 -- forwards
 local segmentCall
@@ -150,6 +151,8 @@ local function buildConfigMap()
     r["pal"..aType..idx] = tonumber(v.t)
   end
   
+  r["ip"] = lastIp
+
   return r
 end
 
@@ -351,7 +354,6 @@ local function postDeviceData(dd)
 end
 
 local lastIpCheck
-local lastIp
 local lastIfaceHash
 local lastIfaceHashTime
 local function checkIpUpdate()
@@ -554,7 +556,6 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
     retVal = nixio.fork()
     if retVal == 0 then
       local cm = buildConfigMap()
-      cm["ip"] = lastIp
       cm["al_probe"] = probeIdx
       cm["al_type"] = alarmType
       cm["al_thresh"] = thresh
@@ -746,9 +747,10 @@ end
 
 local function segLmGet(line)
   local vals = segSplit(line)
+  local cm = buildConfigMap()
   local retVal = {}
   for i = 1, #vals, 2 do
-    retVal[#retVal+1] = hmConfig and hmConfig[vals[i]] or vals[i+1] or ""
+    retVal[#retVal+1] = cm[vals[i]] or vals[i+1] or ""
   end
   return table.concat(retVal, '\n')
 end
