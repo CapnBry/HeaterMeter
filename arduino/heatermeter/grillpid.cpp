@@ -442,7 +442,7 @@ inline void GrillPid::calcPidOutput(void)
 
   // IIIII = fan speed percent per degree of accumulated error
   // anti-windup: Make sure we only adjust the I term while inside the proportional control range
-  if ((error > 0 && lastOutput < 100) || (error < 0 && lastOutput > 0))
+  if ((error > 0 && lastOutput < _maxPidOutput) || (error < 0 && lastOutput > 0))
     _pidCurrent[PIDI] += Pid[PIDI] * error;
 
   // DDDDD = fan speed percent per degree of change over TEMPPROBE_AVG_SMOOTH period
@@ -451,7 +451,7 @@ inline void GrillPid::calcPidOutput(void)
   _pidCurrent[PIDB] = Pid[PIDB];
 
   int control = _pidCurrent[PIDB] + _pidCurrent[PIDP] + _pidCurrent[PIDI] + _pidCurrent[PIDD];
-  _pidOutput = constrain(control, 0, 100);
+  _pidOutput = constrain(control, 0, _maxPidOutput);
 }
 
 void GrillPid::adjustFeedbackVoltage(void)
@@ -507,7 +507,14 @@ inline void GrillPid::commitFanOutput(void)
     else
       max = _maxFanSpeed;
 
-    _fanSpeed = (unsigned int)_pidOutput * max / 100;
+    //Make sure _fanSpeed only sees 0 - 100 and does nothing till until _pidOutput
+    //is in the overlap region or higher
+    if  (_pidOutput > _fanOffset ) {
+      _fanSpeed = (unsigned int)(_pidOutput - _fanOffset) * max / 100;
+    }
+    else {
+      _fanSpeed = 0;
+    }
   }
 
   /* For anything above _minFanSpeed, do a nomal PWM write.
@@ -619,7 +626,7 @@ void GrillPid::setSetPoint(int value)
 void GrillPid::setPidOutput(int value)
 {
   _manualOutputMode = true;
-  _pidOutput = constrain(value, 0, 100);
+  _pidOutput = constrain(value, 0, _maxPidOutput);
   LidOpenResumeCountdown = 0;
 }
 
@@ -707,7 +714,7 @@ boolean GrillPid::doWork(void)
     // Note that the code assumes we're not currently counting down
     else if (isPitTempReached() && 
       (((_setPoint-pitTemp)*100/_setPoint) >= (int)LidOpenOffset) &&
-      ((int)PidOutputAvg < 90))
+      ((int)PidOutputAvg < (90*_maxPidOutput)/100))
     {
       resetLidOpenResumeCountdown();
     }
@@ -749,4 +756,19 @@ void GrillPid::setUnits(char units)
       _units = units;
       break;
   }
+}
+
+void GrillPid::setFanOffset(unsigned char value)
+{
+  // Prevent out of range from user input or firmware upgrade
+  if ( _fanOffset > 100) {
+    _fanOffset = 0;
+  }
+  _maxPidOutput = 100 + _fanOffset;
+#if 0
+  /* Make sure no pidflag modes are in operation if offset is being set */
+  if (_fanOffset) {
+    _outputFlags &= ~(1<<PIDFLAG_FAN_ONLY_MAX | 1<<PIDFLAG_SERVO_ANY_MAX);
+  }
+#endif
 }
