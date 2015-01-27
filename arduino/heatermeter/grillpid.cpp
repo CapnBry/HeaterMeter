@@ -572,6 +572,9 @@ inline void GrillPid::commitServoOutput(void)
   else
     output = _pidOutput;
 
+  //Make sure the servo doesn't get anything over 100 when PIDFLAG_SERVO_THEN_FAN is in use
+  output = constrain(output,0,100);    
+    
   if (bit_is_set(_outputFlags, PIDFLAG_INVERT_SERVO))
     output = 100 - output;
 
@@ -650,7 +653,8 @@ void GrillPid::status(void) const
     Serial_csv();
   }
 
-  SerialX.print(getPidOutput(), DEC);
+  //Limit PidOutput display for SERVO_THEN_FAN mode. Saves redoing graphs.
+  SerialX.print(constrain(getPidOutput(),0,100), DEC);
   Serial_csv();
   SerialX.print((int)PidOutputAvg, DEC);
   Serial_csv();
