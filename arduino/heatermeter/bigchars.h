@@ -4,7 +4,7 @@
 */
 #ifndef __BIGCHARS_H__
 #define __BIGCHARS_H__
-const prog_char BIG_CHAR_PARTS[] PROGMEM = {
+const char BIG_CHAR_PARTS[] PROGMEM = {
   // LT
   0b00111,
   0b01111,
@@ -91,7 +91,7 @@ const prog_char BIG_CHAR_PARTS[] PROGMEM = {
 
 #define C_WIDTH 3
 
-const prog_char NUMS[] PROGMEM = {
+const char NUMS[] PROGMEM = {
   C_LT, C_CT, C_RT,        C_LB, C_CB, C_RB, //0
   C_CT, C_RT, C_BLK,       C_BLK, C_RB, C_BLK, //1
   C_UMB, C_UMB, C_RT,      C_LB, C_BMB, C_BMB, //2
