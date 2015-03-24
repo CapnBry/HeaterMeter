@@ -764,6 +764,7 @@ void GrillPid::setUnits(char units)
 
 void GrillPid::setFanOffset(unsigned char value)
 {
+  _fanOffset = value;
   // Prevent out of range from user input or firmware upgrade
   if ( _fanOffset > 100) {
     _fanOffset = 0;
