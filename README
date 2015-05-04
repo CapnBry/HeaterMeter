@@ -22,4 +22,5 @@ t |    +-------+    |
 Source Layout
 openwrt/* - Files you'd push to your router for LinkMeter
 arduinio/* - AVR source code for upload to your Arduino board
+pebble/* - Source to the Pebble app
 tools/* - Miscellaneous scripts and .NET apps
