@@ -1,0 +1,42 @@
+{
+  "appKeys": {
+    "KEY_NAME_0": 0,
+    "KEY_NAME_1": 2,
+    "KEY_NAME_2": 4,
+    "KEY_NAME_3": 6,
+    "KEY_TEMP_0": 1,
+    "KEY_TEMP_1": 3,
+    "KEY_TEMP_2": 5,
+    "KEY_TEMP_3": 7,
+    "KEY_PCOMMAND": 8,
+    "KEY_ERRMSG": 9,
+    "KEY_REFRESH_INTERVAL": 10
+  },
+  "capabilities": [
+    "configurable"
+  ],
+  "companyName": "Smokin' Hardware, Inc.",
+  "longName": "HeaterMeter",
+  "projectType": "native",
+  "resources": {
+    "media": [
+      {
+        "menuIcon": true,
+        "type": "png",
+        "name": "IMAGE_MENU_ICON",
+        "file": "icon.png"
+      }
+    ]
+  },
+  "sdkVersion": "3",
+  "shortName": "HeaterMeter",
+  "targetPlatforms": [
+    "aplite"
+  ],
+  "uuid": "4fdcb650-ea4a-4414-96aa-b5d5a14f6511",
+  "versionCode": 1,
+  "versionLabel": "1.0",
+  "watchapp": {
+    "watchface": false
+  }
+}
