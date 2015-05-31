@@ -119,6 +119,9 @@ public:
 #define PIDFLAG_SERVO_ANY_MAX 3
 // Try to output a constant voltage instead of PWM
 #define PIDFLAG_FAN_FEEDVOLT  4
+// Line noise cancel is 2 bits, 00=Normal, 01=50Hz, 10=60Hz, 11=Unused
+#define PIDFLAG_LINECANCEL_50 5
+#define PIDFLAG_LINECANCEL_60 6
 
 // pitStartRecover constants
 // STARTUP - Attempting to reach temperature for the first time

@@ -40,7 +40,8 @@ ISR(TIMER1_COMPB_vect)
 
 static struct tagAdcState
 {
-  unsigned char cnt;      // count in accumulator
+  unsigned char top;      // Number of samples to take per reading
+  unsigned char cnt;      // count left to accumulate
   unsigned long accumulator;  // total
   unsigned char discard;  // Discard this many ADC readings
   unsigned int thisHigh;  // High this period
@@ -68,13 +69,13 @@ ISR(ADC_vect)
     return;
   }
 
+  --adcState.cnt;
   unsigned int adc = ADC;
 #if defined(NOISEDUMP_PIN)
   if ((ADMUX & 0x07) == g_NoisePin)
     adcState.data[adcState.cnt] = adc;
 #endif
   adcState.accumulator += adc;
-  ++adcState.cnt;
 
   if (adcState.cnt != 0)
   {
@@ -97,12 +98,14 @@ ISR(ADC_vect)
     else
 #endif // GRILLPID_DYNAMIC_RANGE
     {
-      adcState.analogReads[pin] = adcState.accumulator >> 4;
+      // Scale up to 256 samples then divide by 2^4 for 14 bit oversample
+      adcState.analogReads[pin] = adcState.accumulator * 16 / adcState.top;
       adcState.analogRange[pin] = adcState.thisHigh - adcState.thisLow;
     }
     adcState.thisHigh = 0;
     adcState.thisLow = 0xffff;
     adcState.accumulator = 0;
+    adcState.cnt = adcState.top;
 
     ++pin;
     if (pin >= NUM_ANALOG_INPUTS)
@@ -115,12 +118,12 @@ ISR(ADC_vect)
     if (curref != newref)
       adcState.discard = 48;  // 48 / 9615 samples/s = 5ms
     else
-      adcState.discard = 2;
+      adcState.discard = 3;
 
     ADMUX = newref | pin;
 #else
     ADMUX = (DEFAULT << 6) | pin;
-    adcState.discard = 2;
+    adcState.discard = 3;
 #endif
   }
 }
@@ -167,7 +170,7 @@ static void adcDump(void)
     x = 0;
     ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0);
     SerialX.print("HMLG,NOISE ");
-    for (unsigned int i=0; i<256; ++i)
+    for (unsigned int i=0; i<adcState.top; ++i)
     {
       SerialX.print(adcState.data[i], DEC);
       SerialX.print(' ');
@@ -398,9 +401,26 @@ void GrillPid::setProbeType(unsigned char idx, unsigned char probeType)
 void GrillPid::setOutputFlags(unsigned char value)
 {
   _outputFlags = value;
+
+  unsigned char newTop;
+  // 50Hz = 192.31 samples
+  if (bit_is_set(value, PIDFLAG_LINECANCEL_50))
+     newTop = 192;
+  // 60Hz = 160.25 samples
+  else if (bit_is_set(value, PIDFLAG_LINECANCEL_60))
+    newTop = 160;
+  else
+    newTop = 255;
+  ATOMIC_BLOCK(ATOMIC_FORCEON)
+  {
+    adcState.top = newTop;
+    adcState.cnt = adcState.top;
+    adcState.accumulator = 0;
+  }
+
   // Timer2 Fast PWM
   TCCR2A = bit(WGM21) | bit(WGM20);
-  if (bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
+  if (bit_is_set(value, PIDFLAG_FAN_FEEDVOLT))
     TCCR2B = bit(CS20); // 62kHz
   else
     TCCR2B = bit(CS22) | bit(CS20); // 488Hz
