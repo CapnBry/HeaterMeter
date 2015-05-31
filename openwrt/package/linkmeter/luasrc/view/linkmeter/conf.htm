@@ -245,7 +245,8 @@ function configHashToForm()
     else if (k == "oflag")
     {
       setupCheckboxBitmask(k, val);
-      $("#oflag4").val(parseInt(val) >> 4); // mode
+      $("#oflag4").val((parseInt(val) >> 4) & 0x01); // mode
+      $("#oflag5").val(parseInt(val) & 0x60); // line noise
     }
     else if (k == "smin" || k == "smax")
       $("#" + k + "X")
@@ -310,12 +311,19 @@ function configElemChange()
       val |= 0x80;
     $(target).val(val);
   }
+  else if (name == "oflag5")
+  {
+    // oflag5 is line noise filter
+    var val = $("#oflag").val();
+    val = (val & ~0x60) | parseInt($(this).val());
+    $("#oflag").val(val);
+  }
   else if (isProbeId(name, "oflag"))
   {
     var idx = +name.substr(5);
     var val = $("#oflag").val();
     var thisval =
-      // oflag4 is the PWM/Voltage dropdown
+      // oflag4 is PWM/Voltage dropdown
       ((idx == 4) && ($(this).val() == "1")) ||
       ((idx != 4) && $(this).is(":checked"));
     if (thisval)
@@ -648,7 +656,7 @@ time they are restarted.</div>
     <label><input type="checkbox" id="oflag0"/> Invert output</label>
     <label><input type="checkbox" id="oflag2"/> On at max only</label>
   </div>
-  <div class="cbi-value cbi-value-last">
+  <div class="cbi-value">
     Servo pulse duration
     <input type="hidden" id="smin"/>
       <input type="text" maxlength="4" id="sminX" style="width: 3em;"/>us -
@@ -656,6 +664,14 @@ time they are restarted.</div>
       <input type="text" maxlength="4" id="smaxX" style="width: 3em;"/>us
     <label><input type="checkbox" id="oflag1"/> Invert output</label>
     <label><input type="checkbox" id="oflag3"/> Full open/close only</label>
+  </div>
+  <div class="cbi-value cbi-value-last">
+    A/C input line noise filter
+    <select id="oflag5" style="width: 6em;">
+      <option value="0">Off</option>
+      <option value="32">50Hz</option>
+      <option value="64">60Hz</option>
+    </select>
   </div>
 </fieldset>
 
