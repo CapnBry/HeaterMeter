@@ -1,4 +1,4 @@
-module("luci.lucid.lmstats", package.seeall)    
+module("luci.lucid.linkmeter.stats", package.seeall)
 
 local HMMODE_UNPLUG  = 1
 local HMMODE_STARTUP = 2
@@ -184,7 +184,7 @@ function updatePitLog(t)
   end
 end
 
-function updateState(now, vals)
+local function updateState(now, vals)
   if not hmUpdateCount then resetUpdateCount() end
   -- SetPoint, Probe0, Probe1, Probe2, Probe3, Output, OutputAvg, Lid, Fan
   -- 1         2       3       4       5       6       7          8    9
@@ -202,7 +202,7 @@ function updateState(now, vals)
   hmSetPoint = vals[1]
 end
 
-function dumpState()
+local function dumpState(line)
   local f = {}
   f[#f+1] = 'Histogram=' .. table.concat(hmOutputHistogram or {}, ',')
   f[#f+1] = 'hmMode=' .. hmMode
@@ -213,3 +213,8 @@ function dumpState()
   return table.concat(f, '\n')
 end
 -- P=4,I=0.02,D=5 - Servo 1000-2000
+
+function init()
+  luci.lucid.linkmeterd.registerStatusListener(updateState)
+  luci.lucid.linkmeterd.registerSegmentListener("$LMDS", dumpState)
+end

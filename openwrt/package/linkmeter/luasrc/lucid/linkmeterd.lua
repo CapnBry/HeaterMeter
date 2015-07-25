@@ -7,8 +7,10 @@ local nixio = require "nixio"
 local uci = require "uci"
 local lucid = require "luci.lucid"
 local json = require "luci.json"
-local lmfit, t = pcall(require,"lmfit"); lmfit = lmfit and t
-local lmstats, t = pcall(require,"luci.lucid.lmstats"); lmstats = lmstats and t
+-- Plugins
+local lmstats = require "luci.lucid.linkmeter.stats"
+local lmunkprobe = require "luci.lucid.linkmeter.unkprobe"
+local lmdph = require "luci.lucid.linkmeter.dph"
 
 local pairs, ipairs, table, pcall, type = pairs, ipairs, table, pcall, type
 local tonumber, tostring, print, next, io = tonumber, tostring, print, next, io
@@ -19,11 +21,11 @@ module "luci.lucid.linkmeterd"
 local serialPolle
 local statusListeners = {}
 local pluginStatusListeners = {}
+local pluginSegmentListeners = {}
 local lastHmUpdate
 local lastAutoback
 local autobackActivePeriod
 local autobackInactivePeriod
-local unkProbe
 
 local rfMap = {}
 local rfStatus = {}
@@ -72,6 +74,22 @@ function publishStatusVal(k, v, probeIdx)
   end -- newVals != nil
 end
 
+function registerSegmentListener(seg, f)
+  -- function (line) line is the whole string. Use segSplit to split
+  if seg:sub(1, 1) ~= "$" then seg = "$" .. seg end
+  unregisterSegmentListener(seg)
+  pluginSegmentListeners[seg] = f
+end
+
+function unregisterSegmentListener(f)
+  for i = 1, #pluginSegmentListeners do
+    if pluginSegmentListeners[i] == f then
+      table.remove(pluginSegmentListeners, i)
+      return
+    end
+  end
+end
+
 function registerStatusListener(f)
   -- function (now, vals) vals = array of HMSU parameters
   unregisterStatusListener(f)
@@ -81,10 +99,36 @@ end
 function unregisterStatusListener(f)
   for i = 1, #pluginStatusListeners do
     if pluginStatusListeners[i] == f then
-      table.delete(i)
+      table.remove(pluginStatusListeners, i)
       return
     end
   end
+end
+
+function hmWrite(s)
+  if serialPolle then serialPolle.fd:write(s) end
+end
+
+function segSplit(line)
+  local retVal = {}
+  local fieldstart = 1
+  while true do
+    local nexti = line:find(',', fieldstart)
+    if nexti then
+      -- Don't add the segment name
+      if fieldstart > 1 then
+        retVal[#retVal+1] = line:sub(fieldstart, nexti - 1)
+      end
+      fieldstart = nexti + 1
+    else
+      if fieldstart > 1 then
+        retVal[#retVal+1] = line:sub(fieldstart)
+      end
+      break
+    end
+  end
+
+  return retVal
 end
 
 function statusValChanged(t, k, v)
@@ -181,7 +225,7 @@ local function broadcastStatus(fn)
   end
 end
 
-function doStatusListeners(now, vals)
+local function doStatusListeners(now, vals)
   for i = 1, #pluginStatusListeners do
     pluginStatusListeners[i](now, vals)
   end
@@ -214,28 +258,6 @@ local function buildConfigMap()
   r["ip"] = lastIp
 
   return r
-end
-
-local function segSplit(line)
-  local retVal = {}
-  local fieldstart = 1
-  while true do
-    local nexti = line:find(',', fieldstart)
-    if nexti then
-      -- Don't add the segment name
-      if fieldstart > 1 then
-        retVal[#retVal+1] = line:sub(fieldstart, nexti - 1)
-      end
-      fieldstart = nexti + 1
-    else
-      if fieldstart > 1 then
-        retVal[#retVal+1] = line:sub(fieldstart)
-      end
-      break
-    end
-  end
-
-  return retVal
 end
 
 local lastLogMessage
@@ -376,13 +398,6 @@ local function segUcIdentifier(line)
   end
 end
 
-local function setStateUpdateUnk(vals)
-  if vals[2] == 'U' or vals[3] == 'U' then return end
-  local t = tonumber(vals[2])
-  local r = math.floor(vals[3])
-  unkProbe[t] = r
-end
-
 function stsLmStateUpdate()
   JSON_TEMPLATE[1] = "event: hmstatus\ndata: "
   JSON_TEMPLATE[#JSON_TEMPLATE] = "\n\n"
@@ -392,7 +407,7 @@ end
 local function segLmToast(line)
   local vals = segSplit(line)
   if serialPolle and #vals > 0 then
-    serialPolle.fd:write(("/set?tt=%s,%s\n"):format(vals[1],vals[2] or ""))
+    hmWrite(("/set?tt=%s,%s\n"):format(vals[1],vals[2] or ""))
     return "OK"
   end
 
@@ -490,45 +505,6 @@ local function checkAutobackup(now, vals)
   end
 end
 
-local lastDphUpdate = 0
-local dphEstimates = { {0,0}, {0,0}, {0,0}, {0,0} }
-local function checkDphUpdate(now, _)
-  -- Update the degrees per hour estimates once every minute
-  if not lmfit or (now - lastDphUpdate) < 60 then return end
-  lastDphUpdate = now
-
-  local step = 10
-  local soff = 3600
-  local last = math.floor(rrd.last(RRD_FILE)/step) * step
-  start, step, _, data = rrd.fetch(RRD_FILE, "AVERAGE",
-    "--end", now, "--start", now - soff, "-r", step)
-
-  for probe = 1,4 do
-    local x = {}
-    local y = {}
-    for n, dp in ipairs(data) do
-      local val = dp[probe+1]
-      if (val == val) then
-        x[#x+1] = n / 360
-        y[#y+1] = val
-      end
-    end
-
-    local dph = nil
-    if #x > 180 then
-      local ok, p, status, evals = pcall(lmfit.linear, x, y, dphEstimates[probe])
-      if ok and status >= 1 and status <= 3 then
-        dph = tonumber(("%.2f"):format(p[1]))
-        dphEstimates[probe] = p
-        --print(("probe=%d m=%.3f b=%.3f evals=%d status=%d %s"):format(
-        --  probe, p[1], p[2] or 0.0, evals, status, lmfit.message(status)))
-      end
-    end -- if #x
-
-	publishStatusVal("dph", dph, probe)
-  end -- for probe
-end
-
 local lastStateUpdate
 local spareUpdates
 local skippedUpdates
@@ -584,8 +560,6 @@ local function segStateUpdate(line)
     if throttleUpdate(line) then return end
 
     if #vals >= 8 then
-      if unkProbe then setStateUpdateUnk(vals) end
-      
       -- If the time has shifted more than 24 hours since the last update
       -- the clock has probably just been set from 0 (at boot) to actual
       -- time. Recreate the rrd to prevent a 40 year long graph
@@ -725,7 +699,7 @@ local function serialHandler(polle)
     if csumOk ~= false then
       if hmConfig == nil then 
         hmConfig = {}
-        serialPolle.fd:write("\n/config\n")
+        hmWrite("\n/config\n")
       end
  
       -- Remove the checksum of it was there
@@ -756,6 +730,9 @@ local function initHmVars()
   hmAlarms = {}
   extendedStatusProbeVals = {}
   extendedStatusVals = {}
+  pluginStatusListeners = {}
+  pluginSegmentListeners = {}
+
   JSON_TEMPLATE = {}
   for _,v in pairs(JSON_TEMPLATE_SRC) do
     JSON_TEMPLATE[#JSON_TEMPLATE+1] = v
@@ -798,10 +775,11 @@ local function lmdStart()
   }
   
   lucid.register_pollfd(serialPolle)
-  
-  registerStatusListener(lmstats.updateState)
+
   registerStatusListener(checkAutobackup)
-  registerStatusListener(checkDphUpdate)
+  lmunkprobe.init()
+  lmstats.init()
+  lmdph.init()
 
   return true
 end
@@ -820,7 +798,7 @@ end
 local function segLmSet(line)
   if not serialPolle then return "ERR" end
   -- Replace the $LMST,k,v with /set?k=v
-  serialPolle.fd:write(line:gsub("^%$LMST,(%w+),(.*)", "\n/set?%1=%2\n"))
+  hmWrite(line:gsub("^%$LMST,(%w+),(.*)", "\n/set?%1=%2\n"))
   -- Let the next updates come immediately to make it seem more responsive
   unthrottleUpdates()
   return "OK"
@@ -828,7 +806,7 @@ end
 
 local function segLmReboot(line)
   if not serialPolle then return "ERR" end
-  serialPolle.fd:write("\n/reboot\n")
+  hmWrite("\n/reboot\n")
   -- Clear our cached config to request it again when reboot is complete
   initHmVars()
   return "OK"
@@ -903,53 +881,6 @@ local function segLmConfig()
   return "{" .. table.concat(r, ',') .. "}"
 end
 
-local function unkProbeCurveFit()
-  if not lmfit then return end
-  local tt = {} -- table of temps
-  local tr = {} -- table of resistances
-  for k,v in pairs(unkProbe) do
-    tr[#tr+1] = v
-    tt[#tt+1] = k
-  end
-
-  local ok, p, status, evals = pcall(lmfit.steinhart, tr, tt)
-  if ok then
-    return
-    ('{"a":%.7e,"b":%.7e,"c":%.7e,"n":%d,"e":%d,"status":%s,"message":"%s"}')
-      :format(p[1], p[2], p[3], #tt, evals, status, lmfit.message(status))
-  else
-    return "ERR: " .. p
-  end
-end
-
-local function unkProbeCsv()
-  local r = { "C,R" }
-  for k,v in pairs(unkProbe) do
-    r[#r+1] = ("%.1f,%d"):format(k,v)
-  end
-
-  return table.concat(r, '\n')
-end
-
-local function segLmUnknownProbe(line)
-  local vals = segSplit(line) 
-  if vals[1] == "start" then
-    unkProbe = {}
-    if serialPolle then serialPolle.fd:write("/set?sp=0R\n") end
-    return "OK"
-  elseif vals[1] == "fit" and unkProbe then
-    return unkProbeCurveFit()
-  elseif vals[1] == "csv" and unkProbe then
-    return unkProbeCsv()
-  elseif vals[1] == "stop" and unkProbe then
-    unkProbe = nil
-    if serialPolle then serialPolle.fd:write("/reboot\n") end
-    return "OK"
-  else
-    return "ERR"
-  end
-end
-
 local function segLmAlarmTest(line)
   local vals = segSplit(line)
   if #vals > 0 then
@@ -996,13 +927,6 @@ local function lmdTick()
   end
 end
 
-local function segLmDumpStats(vals)
-  if lmstats then
-    return lmstats.dumpState()
-  end
-  return "NOTIMPL"
-end
-
 local segmentMap = {
   ["$HMAL"] = segAlarmLimits,
   ["$HMAR"] = segAdcRange,
@@ -1030,14 +954,15 @@ local segmentMap = {
   ["$LMDC"] = segLmDaemonControl,
   ["$LMCF"] = segLmConfig,
   ["$LMTT"] = segLmToast,
-  ["$LMUP"] = segLmUnknownProbe,
+  -- "$LMUP" -- unkprobe plugin
+  -- "$LMDS" -- stats plugin
 
-  ["$LMDS"] = segLmDumpStats
   -- $LMSS
 }
 
 function segmentCall(line)
-  local segmentFunc = segmentMap[line:sub(1,5)]
+  local seg = line:sub(1,5)
+  local segmentFunc = segmentMap[seg] or pluginSegmentListeners[seg]
   if segmentFunc then 
     return segmentFunc(line)
   else
