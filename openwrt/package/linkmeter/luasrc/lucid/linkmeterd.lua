@@ -53,24 +53,24 @@ end
 function publishStatusVal(k, v, probeIdx)
   local t
   if probeIdx == nil or probeIdx < 0 then
-	probeIdx = nil
+    probeIdx = nil
     t = extendedStatusVals
   else
     while #extendedStatusProbeVals < probeIdx do
       extendedStatusProbeVals[#extendedStatusProbeVals+1] = {}
     end
-	t = extendedStatusProbeVals[probeIdx]
+    t = extendedStatusProbeVals[probeIdx]
   end
 
   local newVals = statusValChanged(t, k, v)
   if newVals ~= nil then
     if probeIdx == nil then
       newVals = newVals == "" and "" or (newVals .. ",")
-	  JSON_TEMPLATE[15] = newVals
-	else
+     JSON_TEMPLATE[15] = newVals
+    else
       newVals = newVals == "" and "" or ("," .. newVals)
       JSON_TEMPLATE[9+(probeIdx*11)] = newVals
-	end
+    end
   end -- newVals != nil
 end
 
@@ -143,11 +143,11 @@ function statusValChanged(t, k, v)
     -- Value changed, convert the k,v table to v only
     -- (because v is '"k": v' already and JSONifying it would give you "k": "k": v)
     t[k] = newVal
-	local newt = {}
-	for _,v in pairs(t) do
-	  newt[#newt+1] = v
-	end
-	return table.concat(newt, ",")
+    local newt = {}
+    for _,v in pairs(t) do
+      newt[#newt+1] = v
+    end
+    return table.concat(newt, ",")
   end
 end
 
@@ -340,14 +340,14 @@ local function rfStatusRefresh()
     if src ~= "" then
       local sts = rfStatus[src]
       if sts then
-	    rfval = { s = sts.rssi, b = sts.lobatt }
-	  else
-	    rfval = 0; -- 0 indicates mapped but offline
-	  end
+        rfval = { s = sts.rssi, b = sts.lobatt }
+      else
+        rfval = 0; -- 0 indicates mapped but offline
+      end
     else
       rfval = nil
     end
-	publishStatusVal("rf", rfval, i)
+    publishStatusVal("rf", rfval, i)
   end
 end
 
@@ -988,18 +988,18 @@ function prepare_daemon(config, server)
         local msg, addr = polle.fd:recvfrom(128)
         if not (msg and addr) then return end
 
-	if msg == "$LMSS" then
-	  registerStreamingStatus(function (o) return polle.fd:sendto(o, addr) end)
-	else
+        if msg == "$LMSS" then
+          registerStreamingStatus(function (o) return polle.fd:sendto(o, addr) end)
+        else
           lmclientSendTo(polle.fd, addr, segmentCall(msg))
         end
-      end
-    end
+      end -- while true
+    end -- handler
   }) 
 
   lmdStartTime = os.time()
   server.register_tick(lmdTick)
-  
+
   return lmdStart()
 end
 
