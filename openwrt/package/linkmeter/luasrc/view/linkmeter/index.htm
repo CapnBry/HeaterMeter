@@ -716,7 +716,7 @@ function connectionSuccess(o)
         {
             var rf = o.temps[i].rf;
             var img, detals;
-            if (rf == null)
+            if (rf == 0)
             {
                 img = 0;
                 details = "offline";
@@ -738,7 +738,7 @@ function connectionSuccess(o)
         else
         {
             $(rfsDiv).hide();
-            if (o.adc.length > 4)
+            if (o.adc && o.adc.length > 4)
             {
                 var noise = o.adc[5-i];
                 if (noise < 5)
