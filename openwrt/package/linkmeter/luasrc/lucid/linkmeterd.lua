@@ -8,7 +8,7 @@ local uci = require "uci"
 local lucid = require "luci.lucid"
 local json = require "luci.json"
 -- Plugins
-local lmstats = require "luci.lucid.linkmeter.stats"
+local lmpeaks = require "luci.lucid.linkmeter.peaks"
 local lmunkprobe = require "luci.lucid.linkmeter.unkprobe"
 local lmdph = require "luci.lucid.linkmeter.dph"
 
@@ -39,6 +39,7 @@ local lastIp
 local segmentCall
 local statusValChanged
 local JSON_TEMPLATE
+local broadcastStatus
 
 local RRD_FILE = uci.cursor():get("lucid", "linkmeter", "rrd_file")
 local RRD_AUTOBACK = "/root/autobackup.rrd"
@@ -53,9 +54,11 @@ end
 function publishStatusVal(k, v, probeIdx)
   local t
   if probeIdx == nil or probeIdx < 0 then
+    -- is a global status val
     probeIdx = nil
     t = extendedStatusVals
   else
+    -- is a probe value, make sure there is storage available in extendedStatusProbeVals
     while #extendedStatusProbeVals < probeIdx do
       extendedStatusProbeVals[#extendedStatusProbeVals+1] = {}
     end
@@ -72,6 +75,14 @@ function publishStatusVal(k, v, probeIdx)
       JSON_TEMPLATE[9+(probeIdx*11)] = newVals
     end
   end -- newVals != nil
+end
+
+function publishBroadcastMessage(event, t)
+  if type(t) == "table" then
+    broadcastStatus(function () return ('event: %s\ndata: %s\n\n'):format(event, json.encode(t)) end)
+  else
+    broadcastStatus(function () return ('event: %s\ndata: %s\n\n'):format(event, t) end)
+  end
 end
 
 function registerSegmentListener(seg, f)
@@ -209,7 +220,7 @@ local function jsonWrite(vals)
   end
 end
 
-local function broadcastStatus(fn)
+function broadcastStatus(fn)
   local o
   local i = 1
   while i <= #statusListeners do
@@ -778,7 +789,7 @@ local function lmdStart()
 
   registerStatusListener(checkAutobackup)
   lmunkprobe.init()
-  lmstats.init()
+  lmpeaks.init()
   lmdph.init()
 
   return true

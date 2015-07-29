@@ -1,4 +1,4 @@
-module("luci.lucid.linkmeter.stats", package.seeall)
+module("luci.lucid.linkmeter.peaks", package.seeall)
 
 local HMMODE_UNPLUG  = 1
 local HMMODE_STARTUP = 2
@@ -6,21 +6,25 @@ local HMMODE_NORMAL  = 3
 local HMMODE_LID     = 4
 local HMMODE_RECOVER = 5
 
--- Current detected mode, one of HMMODE_xxx
-local hmMode
--- Number of updates seen in each mode
-local hmUpdateCount
 -- Last known setpoint, used to detect setpoint change
 local hmSetPoint
--- Histogram of PID output percentage (NORMAL mode only) [1-101] = 0%-100%
-local hmOutputHistogram
 -- Last n pit temperature measurements
 local pitLog = {} 
 
-local peakTrend = 0
-local peakCurr = {}
-local peakLastHigh = {}
-local peakLastLow = {}
+local peaks = {
+  C = { trend = 0 },
+  H = { trend = 1 },
+  L = { trend = -1 },
+
+  -- Current detected mode, one of HMMODE_xxx
+  mode = nil,
+
+  -- Histogram of PID output percentage (NORMAL mode only) [1-26] = 0%-100%
+  outhist = nil,
+
+  -- Number of updates seen in each mode
+  updatecnt = nil
+}
 
 local function log(...)
   nixio.syslog("warning", ...)
@@ -28,19 +32,19 @@ local function log(...)
 end
 
 local function resetUpdateCount()
-  hmUpdateCount = {}
+  peaks.updatecnt = {}
   for i = HMMODE_UNPLUG, HMMODE_RECOVER do
-    hmUpdateCount[i] = 0
+    peaks.updatecnt[i] = 0
   end
 end
 
 local function hmModeChange(newMode)
-  hmMode = newMode
-  log("newMode=" .. hmMode)
+  peaks.mode = newMode
+  log("newMode=" .. peaks.mode)
 end
 
 local function updateHmMode(vals)
-  local newMode = hmMode
+  local newMode = peaks.mode
   
   if vals[2] == "U" then
     newMode = HMMODE_UNPLUG
@@ -58,30 +62,30 @@ local function updateHmMode(vals)
     newMode = HMMODE_NORMAL
 
   -- if was lid mode and the timer expired, recover
-  elseif hmMode == HMMODE_LID then
+  elseif peaks.mode == HMMODE_LID then
     newMode = HMMODE_RECOVER
   end
   
-  if hmMode ~= newMode then hmModeChange(newMode) end
+  if peaks.mode ~= newMode then hmModeChange(newMode) end
 end
 
 local function updateOutputHist(output)
   output = tonumber(output)
-  if not hmOutputHistogram then
-    hmOutputHistogram = {}
+  if not peaks.outhist then
+    peaks.outhist = {}
     -- presize array
-    for i = 1, 101 do
-      hmOutputHistogram[i] = 0
+    for i = 1, 26 do
+      peaks.outhist[i] = 0
     end
   end
   
-  output = output + 1
-  hmOutputHistogram[output] = hmOutputHistogram[output] + 1
+  output = math.ceil(output / 4) + 1
+  peaks.outhist[output] = peaks.outhist[output] + 1
 end
 
-local function setPeakCurr(t)
-  peakCurr.time = os.time()
-  peakCurr.val = t
+local function setPeakCurr(now, t)
+  peaks.C.time = now
+  peaks.C.val = t
 end
 
 local function peakStr(self)
@@ -94,28 +98,28 @@ local function peakChange(newTrend)
   local halfref, fullref
   -- Halfref is the last opposite peak (high to low, or low to high)
   -- Fullref is the last peak of the same type (high to high, low to low)
-  if peakTrend > 0 then
-    halfref = peakLastLow 
-    fullref = peakLastHigh
-  elseif peakTrend < 0 then
-    halfref = peakLastHigh
-    fullref = peakLastLow
+  if peaks.C.trend > 0 then
+    halfref = peaks.L
+    fullref = peaks.H
+  elseif peaks.C.trend < 0 then
+    halfref = peaks.H
+    fullref = peaks.L
   end
   
   if halfref.time then
-    halfPeriod = peakCurr.time - halfref.time
+    halfPeriod = peaks.C.time - halfref.time
     -- amplitude of the low to high or high to low
-    amp = peakCurr.val - halfref.val
+    amp = peaks.C.val - halfref.val
   end
   if fullref.time then
-    period = peakCurr.time - fullref.time
+    period = peaks.C.time - fullref.time
     -- gain, how much the peak has changed from the last peak
-    gain = peakCurr.val - fullref.val
+    gain = peaks.C.val - fullref.val
   end
   
   -- Save the new peak values
-  fullref.time = peakCurr.time
-  fullref.val = peakCurr.val
+  fullref.time = peaks.C.time
+  fullref.val = peaks.C.val
   fullref.half = halfPeriod
   fullref.period = period
   fullref.amp = amp
@@ -123,7 +127,7 @@ local function peakChange(newTrend)
   
   pitLog = { fullref.val }
 
-  log(("New %d peak %s"):format(peakTrend, peakStr(fullref)))
+  log(("New %d peak %s"):format(peaks.C.trend, peakStr(fullref)))
   local Ku = tonumber(luci.lucid.linkmeterd.getConf('pidp') or 1)
   if period then
     local p = 0.6 * Ku
@@ -133,10 +137,10 @@ local function peakChange(newTrend)
     --log(("  TLC Rules P=%.1f I=%.3f D=%.1f"):format(p, i, d))
   end
   
-  peakTrend = newTrend
+  peaks.C.trend = newTrend
 end
 
-local function peakDetect(t)
+local function peakDetect(now, t)
   local newTrend = 0
   for i = #pitLog,1,-1 do
     local diff = t - pitLog[i]
@@ -152,21 +156,21 @@ local function peakDetect(t)
     end
   end
   
-  --log(("Trend=%d newtrend=%d t=%.1f"):format(peakTrend, newTrend, t))
-  if peakTrend == 0 then
+  --log(("Trend=%d newtrend=%d t=%.1f"):format(peaks.C.trend, newTrend, t))
+  if peaks.C.trend == 0 then
     if newTrend ~= 0 then
-      peakTrend = newTrend
-      setPeakCurr(t)
+      peaks.C.trend = newTrend
+      setPeakCurr(now, t)
     end
-  elseif peakTrend > 0 then
-    if t > peakCurr.val then
-      setPeakCurr(t)
+  elseif peaks.C.trend > 0 then
+    if t > peaks.C.val then
+      setPeakCurr(now, t)
     elseif newTrend < 0 then
       peakChange(newTrend)
     end
-  elseif peakTrend < 0 then
-    if t < peakCurr.val then
-      setPeakCurr(t)
+  elseif peaks.C.trend < 0 then
+    if t < peaks.C.val then
+      setPeakCurr(now, t)
     elseif newTrend > 0 then
       peakChange(newTrend)
     end
@@ -179,23 +183,25 @@ function updatePitLog(t)
     pitLog[#pitLog+1] = t
     if #pitLog > 180 then table.remove(pitLog, 1) end
     pitLogPeriodCnt = 10
+
+    luci.lucid.linkmeterd.publishBroadcastMessage("peaks", peaks)
   else
     pitLogPeriodCnt = pitLogPeriodCnt - 1
   end
 end
 
 local function updateState(now, vals)
-  if not hmUpdateCount then resetUpdateCount() end
+  if not peaks.updatecnt then resetUpdateCount() end
   -- SetPoint, Probe0, Probe1, Probe2, Probe3, Output, OutputAvg, Lid, Fan
   -- 1         2       3       4       5       6       7          8    9
   updateHmMode(vals)
-  if hmMode == HMMODE_UNPLUG then return end
+  if peaks.mode == HMMODE_UNPLUG then return end
   
-  hmUpdateCount[hmMode] = hmUpdateCount[hmMode] + 1
+  peaks.updatecnt[peaks.mode] = peaks.updatecnt[peaks.mode] + 1
   updatePitLog(tonumber(vals[2]))
-  peakDetect(tonumber(vals[2]))
+  peakDetect(now, tonumber(vals[2]))
 
-  if hmMode == HMMODE_NORMAL then
+  if peaks.mode == HMMODE_NORMAL then
     updateOutputHist(vals[6])
   end
   
@@ -204,12 +210,12 @@ end
 
 local function dumpState(line)
   local f = {}
-  f[#f+1] = 'Histogram=' .. table.concat(hmOutputHistogram or {}, ',')
-  f[#f+1] = 'hmMode=' .. hmMode
-  f[#f+1] = 'hmUpdateCount=' .. table.concat(hmUpdateCount, ',')
-  if peakCurr.time then f[#f+1] = ("peakCurr (%02d) %s"):format(peakTrend, peakStr(peakCurr)) end
-  if peakLastHigh.time then f[#f+1] = ("peakLastHigh  %s"):format(peakStr(peakLastHigh)) end
-  if peakLastLow.time then f[#f+1] = ("peakLastLow   %s"):format(peakStr(peakLastLow)) end
+  f[#f+1] = 'Histogram=' .. table.concat(peaks.outhist or {}, ',')
+  f[#f+1] = 'peaks.mode=' .. peaks.mode
+  f[#f+1] = 'peaks.updatecnt=' .. table.concat(peaks.updatecnt, ',')
+  if peaks.C.time then f[#f+1] = ("peaks.C (%02d) %s"):format(peaks.C.trend, peakStr(peaks.C)) end
+  if peaks.H.time then f[#f+1] = ("peaks.H  %s"):format(peakStr(peaks.H)) end
+  if peaks.L.time then f[#f+1] = ("peaks.L  %s"):format(peakStr(peaks.L)) end
   return table.concat(f, '\n')
 end
 -- P=4,I=0.02,D=5 - Servo 1000-2000
