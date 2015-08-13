@@ -9,33 +9,41 @@ local HMMODE_RECOVER = 5
 -- Last known setpoint, used to detect setpoint change
 local hmSetPoint
 -- Last n pit temperature measurements
-local pitLog = {} 
-
-local peaks = {
-  C = { trend = 0 },
-  H = { trend = 1 },
-  L = { trend = -1 },
-
-  -- Current detected mode, one of HMMODE_xxx
-  mode = nil,
-
-  -- Histogram of PID output percentage (NORMAL mode only) [1-26] = 0%-100%
-  outhist = nil,
-
-  -- Number of updates seen in each mode
-  updatecnt = nil
-}
-
-local function log(...)
-  nixio.syslog("warning", ...)
-  --print(...)
-end
+local pitLog
+-- Peaks state (published)
+local peaks
 
 local function resetUpdateCount()
   peaks.updatecnt = {}
   for i = HMMODE_UNPLUG, HMMODE_RECOVER do
     peaks.updatecnt[i] = 0
   end
+end
+
+local function initState()
+  peaks = {
+    C = { trend = 0 },
+    H = { trend = 1 },
+    L = { trend = -1 },
+
+    -- Current detected mode, one of HMMODE_xxx
+    mode = nil,
+
+    -- Histogram of PID output percentage (NORMAL mode only) [1-26] = 0%-100%
+    outhist = nil,
+
+    -- Number of updates seen in each mode
+    updatecnt = nil
+  }
+  resetUpdateCount()
+
+  hmSetPoint = nil
+  pitLog = {}
+end
+
+local function log(...)
+  nixio.syslog("warning", ...)
+  --print(...)
 end
 
 local function hmModeChange(newMode)
@@ -191,7 +199,6 @@ function updatePitLog(t)
 end
 
 local function updateState(now, vals)
-  if not peaks.updatecnt then resetUpdateCount() end
   -- SetPoint, Probe0, Probe1, Probe2, Probe3, Output, OutputAvg, Lid, Fan
   -- 1         2       3       4       5       6       7          8    9
   updateHmMode(vals)
@@ -221,6 +228,8 @@ end
 -- P=4,I=0.02,D=5 - Servo 1000-2000
 
 function init()
+  initState()
+
   luci.lucid.linkmeterd.registerStatusListener(updateState)
   luci.lucid.linkmeterd.registerSegmentListener("$LMDS", dumpState)
 end
