@@ -240,7 +240,7 @@ local function notifyRampChanged()
   LmClient():query("$LMRA")
 end
 
-v = s:option(ListValue, "watch", "Provider")
+v = s:option(ListValue, "watch", "Watch probe")
 v.write = rampValueChangeNotify
 v:value(0, "Disabled")
 for probe = 1,3 do
