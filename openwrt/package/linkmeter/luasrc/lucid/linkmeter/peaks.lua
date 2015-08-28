@@ -48,7 +48,7 @@ end
 
 local function hmModeChange(newMode)
   peaks.mode = newMode
-  log("newMode=" .. peaks.mode)
+  --log("newMode=" .. peaks.mode)
 end
 
 local function updateHmMode(vals)
