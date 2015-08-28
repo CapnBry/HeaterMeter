@@ -57,8 +57,6 @@ local function reloadRampParameters()
   if ctx.params.watch ~= 0 then
     ctx.startSetpoint = tonumber(uci:get("linkmeter", "ramp", "startsetpoint"))
   end
-
-  ctx.state = RAMPSTATE_NONE
 end
 
 local function updateState(now, vals)
@@ -69,7 +67,7 @@ local function updateState(now, vals)
 
   -- watch probe 0 = Disabled
   if (ctx.params.watch or 0) == 0 then
-    ctx.state = RAMPSTATE_NONE
+    if ctx.state ~= RAMPSTATE_NONE then cancelRamp() end
     return
   end
 
@@ -89,8 +87,8 @@ local function updateState(now, vals)
       -- to be able to restore in case of power loss
       uciSetSingle("startsetpoint", setpoint)
     end
-    log(("Beginning ramp: Set(%d->%d) Watch(%d->%d)"):format(
-      ctx.startSetpoint, ctx.params.target, ctx.params.trigger, ctx.params.target))
+    log(("Beginning ramp: Set(%d->%d) Watch-%d(%d->%d)"):format(
+      ctx.startSetpoint, ctx.params.target, ctx.params.watch, ctx.params.trigger, ctx.params.target))
   end
 
   if ctx.state == RAMPSTATE_RAMPING then
