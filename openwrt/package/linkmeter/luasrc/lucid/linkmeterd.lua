@@ -11,6 +11,7 @@ local json = require "luci.json"
 local lmpeaks = require "luci.lucid.linkmeter.peaks"
 local lmunkprobe = require "luci.lucid.linkmeter.unkprobe"
 local lmdph = require "luci.lucid.linkmeter.dph"
+local lmramp = require "luci.lucid.linkmeter.ramp"
 
 local pairs, ipairs, table, pcall, type = pairs, ipairs, table, pcall, type
 local tonumber, tostring, print, next, io = tonumber, tostring, print, next, io
@@ -791,6 +792,7 @@ local function lmdStart()
   lmunkprobe.init()
   lmpeaks.init()
   lmdph.init()
+  lmramp.init()
 
   return true
 end

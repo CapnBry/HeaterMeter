@@ -801,6 +801,17 @@ function connectionSuccess(o)
             }
         }
     }
+    if (o.ramp)
+    {
+        $("#ramp").html("Ramping " + o.ramp.s + "&deg; to " + o.ramp.ta + "&deg;")
+          .show();
+        $("#setcontainer").addClass("ramp");
+    }
+    else
+    {
+        $("#ramp").hide();
+        $("#setcontainer").removeClass("ramp");
+    }
     $("#fana").animate({left: o.fan.a + "%"});
     $("#fanc").animate({width: o.fan.c + "%"});
     $("#fanf").animate({width: o.fan.f + "%"});
@@ -937,6 +948,8 @@ td.probe { width: 33%; position: relative; }
 #loadindic { display: none; position: relative; top: -320px; z-index: 2; }
 #pn0 { color: #bbb; font-size: 28pt; }
 #p0container { font-size: 120pt; line-height: 100pt; color: #fff; position: relative; }
+.ramp { color: #bbb; }
+#ramp { font-size: 22pt; line-height: 22pt; display: none; }
 #setcontainer { font-size: 22pt; line-height: 22pt; position: absolute; bottom: 0; right:0; }
 #backimage { font-family: Trebuchet MS; background: #000 url('<%=resource%>/fire.png') repeat-x scroll left bottom; }
 #backoverlay { background: rgba(76,135,199,0.5); }
@@ -969,6 +982,7 @@ img.preload { display: none; }
         <div id="lid" title="Click to toggle lid mode"></div>
         <div id="p0container" >
           <span id="temp0">---</span>
+          <div id="ramp" class="ramp"></div>
           <div id="setcontainer">Set <span id="set">---</span>&deg;
           </div>
           <div id="pidint">
