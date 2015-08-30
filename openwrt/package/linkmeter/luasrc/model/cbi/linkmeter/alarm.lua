@@ -106,6 +106,44 @@ for _,kv in ipairs(PROBE_CONF) do
   v.remove = probe_conf_remove
 end
 
+---
+--- Ramp Mode
+---
+
+s = m:section(NamedSection, "ramp", "ramp", "Ramp Mode",
+  [[Lowers the setpoint between a food probe's trigger and target temperatures
+  until both the watched probe and the setpoint meet at the target tempeature.
+  Manually changing the setpoint will disable ramp mode.
+  ]])
+
+local rampValueChanged
+local function rampValueChangeNotify(self, section, value)
+  rampValueChanged = true
+  m:set(section, self.option, value)
+
+  -- if switching to disabled clear any start setpoint
+  if self.option == "watch" and value == "0" then
+    m:del(section, "startsetpoint")
+  end
+end
+
+local function notifyRampChanged()
+  LmClient():query("$LMRA")
+end
+
+v = s:option(ListValue, "watch", "Watch probe")
+v.write = rampValueChangeNotify
+v:value(0, "Disabled")
+for probe = 1,3 do
+  v:value(probe, lmcf["pn" .. probe])
+end
+v = s:option(Value, "trigger", "Trigger temperature")
+v.write = rampValueChangeNotify
+v.default = "180"
+v = s:option(Value, "target", "Target temperature")
+v.write = rampValueChangeNotify
+v.default = "200"
+
 --
 -- Email Notifications
 --
@@ -214,44 +252,6 @@ v.write = smsprovider_write
 
 v = s:option(Value, "smsmessage", "Message")
 v.description = ESCAPE_HELP
-
----
---- Ramp Mode
----
-
-s = m:section(NamedSection, "ramp", "ramp", "Ramp Mode",
-  [[Lowers the setpoint between a food probe's trigger and target temperatures
-  until both the watched probe and the setpoint meet at the target tempeature.
-  Manually changing the setpoint will disable ramp mode.
-  ]])
-
-local rampValueChanged
-local function rampValueChangeNotify(self, section, value)
-  rampValueChanged = true
-  m:set(section, self.option, value)
-
-  -- if switching to disabled clear any start setpoint
-  if self.option == "watch" and value == "0" then
-    m:del(section, "startsetpoint")
-  end
-end
-
-local function notifyRampChanged()
-  LmClient():query("$LMRA")
-end
-
-v = s:option(ListValue, "watch", "Watch probe")
-v.write = rampValueChangeNotify
-v:value(0, "Disabled")
-for probe = 1,3 do
-  v:value(probe, lmcf["pn" .. probe])
-end
-v = s:option(Value, "trigger", "Trigger temperature")
-v.write = rampValueChangeNotify
-v.default = "180"
-v = s:option(Value, "target", "Target temperature")
-v.write = rampValueChangeNotify
-v.default = "200"
 
 --
 -- Map Functions
