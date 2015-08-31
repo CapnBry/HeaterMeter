@@ -90,7 +90,7 @@ local function probe_conf_remove(self, section)
   return m:del("alarms", self.option .. section)
 end
 
-local PROBE_CONF = { "emailL", "smsL", "spL", "raL", "emailH", "smsH", "spH", "raH" }
+local PROBE_CONF = { "emailL", "smsL", "pushbulletL", "spL", "raL", "emailH", "smsH", "pushbulletH", "spH", "raH" }
 for _,kv in ipairs(PROBE_CONF) do
   if kv == "raL" or kv == "raH" then
     v = s:option(ListValue, kv, kv)
@@ -252,6 +252,19 @@ v.write = smsprovider_write
 
 v = s:option(Value, "smsmessage", "Message")
 v.description = ESCAPE_HELP
+
+--
+-- Pushbullet Notifications
+--
+
+s = m:section(NamedSection, "alarms", "pushbullet", "Pushbullet Notifications",
+  [[<a href="https://www.pushbullet.com/">Pushbullet</a> is a unified notification
+  system for mobile and desktop devices. Find your Access Token in your account settings.]]
+  )
+
+v = s:option(Value, "pushbulletkey", "Access token")
+v = s:option(Value, "pushbullettitle", "Message title")
+v = s:option(Value, "pushbulletmsg", "Message body")
 
 --
 -- Map Functions
