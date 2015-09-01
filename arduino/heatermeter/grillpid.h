@@ -143,6 +143,7 @@ class GrillPid
 {
 private:
   unsigned char _pidOutput;
+  unsigned char _maxPidOutput;
   unsigned long _lastWorkMillis;
   unsigned char _pitStartRecover;
   int _setPoint;
@@ -160,6 +161,7 @@ private:
   unsigned char _maxServoPos;
   unsigned char _minServoPos;
   unsigned char _outputFlags;
+  unsigned char _fanOffset;
 
   // Current fan speed (percent)
   unsigned char _fanSpeed;
@@ -209,6 +211,8 @@ public:
   // The minimum fan speed percent before converting to "long PID" (SRTP) mode
   unsigned char getMinFanSpeed(void) const { return _minFanSpeed; }
   void setMinFanSpeed(unsigned char value) { _minFanSpeed = constrain(value, 0, 100); }
+  unsigned char getFanOffset(void) const { return _fanOffset; }
+  void setFanOffset(unsigned char value);
 
   // Servo timing
   // The duration (in 10x usec) for the maxium servo position

@@ -60,6 +60,9 @@ static const struct __eeprom_data {
   unsigned char lcdBacklight; // in PWM (max 100)
 #ifdef HEATERMETER_RFM12
   unsigned char rfMap[TEMP_COUNT];
+#else
+  /* Added to keep eeprom memory structure intact on already in use avr */
+  unsigned char open_spot[TEMP_COUNT];
 #endif
   char pidUnits;
   unsigned char minFanSpeed;  // in percent
@@ -70,6 +73,7 @@ static const struct __eeprom_data {
   unsigned char ledConf[LED_COUNT];
   unsigned char minServoPos;  // in 10us
   unsigned char maxServoPos;  // in 10us
+  unsigned char fanOffset;
 } DEFAULT_CONFIG[] PROGMEM = {
  {
   EEPROM_MAGIC,  // magic
@@ -81,6 +85,8 @@ static const struct __eeprom_data {
   50,   // lcd backlight (%)
 #ifdef HEATERMETER_RFM12
   { RFSOURCEID_ANY, RFSOURCEID_ANY, RFSOURCEID_ANY, RFSOURCEID_ANY },  // rfMap
+#else
+  { 0, 0, 0, 0}, // unused
 #endif
   'F',  // Units
   0,    // min fan speed
@@ -90,7 +96,8 @@ static const struct __eeprom_data {
   100, // max startup fan speed
   { LEDSTIMULUS_FanMax, LEDSTIMULUS_LidOpen, LEDSTIMULUS_FanOn, LEDSTIMULUS_Off },
   150-50, // min servo pos = 1000us
-  150+50  // max servo pos = 2000us
+  150+50, // max servo pos = 2000us
+  0   // fanOffset = 0, fan and server can run in parallel depending on PIDOUTPUTFLAGS
 }
 };
 
@@ -279,6 +286,12 @@ static void storeMaxFanSpeed(unsigned char maxFanSpeed)
 {
   pid.setMaxFanSpeed(maxFanSpeed);
   config_store_byte(maxFanSpeed, pid.getMaxFanSpeed());
+}
+
+static void storeFanOffset(unsigned char fanOffset)
+{
+  pid.setFanOffset(fanOffset);
+  config_store_byte(fanOffset, pid.getFanOffset());
 }
 
 static void storeMaxStartupFanSpeed(unsigned char maxStartupFanSpeed)
@@ -755,6 +768,8 @@ static void reportFanParams(void)
   SerialX.print(pid.getOutputFlags(), DEC);
   Serial_csv();
   SerialX.print(pid.getMaxStartupFanSpeed(), DEC);
+  Serial_csv();
+  SerialX.print(pid.getFanOffset(), DEC);
   Serial_nl();
 }
 
@@ -876,7 +891,9 @@ static void storeFanParams(unsigned char idx, int val)
       break;
     case 5:
       storeMaxStartupFanSpeed(val);
-      break;
+    case 6:
+      storeFanOffset(val);
+    break;
   }
 }
 
@@ -1099,7 +1116,8 @@ static void eepromLoadBaseConfig(unsigned char forceDefault)
   g_HomeDisplayMode = config.base.homeDisplayMode;
   pid.setMinServoPos(config.base.minServoPos);
   pid.setMaxServoPos(config.base.maxServoPos);
-
+  pid.setFanOffset(config.base.fanOffset);
+  
   for (unsigned char led = 0; led<LED_COUNT; ++led)
     ledmanager.setAssignment(led, config.base.ledConf[led]);
 }
