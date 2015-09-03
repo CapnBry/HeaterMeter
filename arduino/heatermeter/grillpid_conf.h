@@ -34,6 +34,11 @@
 
 // Servo refresh period in usec, 20000 usec = 20ms = 50Hz
 #define SERVO_REFRESH          20000
+// Miniumum number of uS of difference in servo position to force immediate move
+// undefine to force continuous servo operation
+#define SERVO_MIN_THRESH       100
+// Max number of seconds to hold off a servo write due to being below threshold
+#define SERVO_MAX_HOLDOFF      10
 
 #define PROBE_NAME_SIZE 13
 

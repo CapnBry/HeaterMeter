@@ -595,12 +595,24 @@ inline void GrillPid::commitServoOutput(void)
     _servoTarget = uSecToTicks(10U * _minServoPos);
   int targetTicks = uSecToTicks(10U * output);
   int targetDiff = targetTicks - _servoTarget;
-  ATOMIC_BLOCK(ATOMIC_FORCEON)
+#if defined(SERVO_MIN_THRESH)
+  // never pulse the servo if change isn't needed
+  // and only trigger the servo if a large movement is needed or holdoff expired
+  if ((targetDiff == 0) ||
+    ((abs(targetDiff) < uSecToTicks(SERVO_MIN_THRESH)) && (++_servoHoldoff < SERVO_MAX_HOLDOFF)))
+    OCR1B = 0;
+  else
+#endif
   {
-    _servoStep = targetDiff / (TEMP_MEASURE_PERIOD / (SERVO_REFRESH / 1000));
-    OCR1B = _servoTarget + _servoStep;
+    int newStep = targetDiff / (TEMP_MEASURE_PERIOD / (SERVO_REFRESH / 1000));
+    ATOMIC_BLOCK(ATOMIC_FORCEON)
+    {
+      _servoStep = newStep;
+      OCR1B = _servoTarget + _servoStep;
+    }
+    _servoTarget = targetTicks;
+    _servoHoldoff = 0;
   }
-  _servoTarget = targetTicks;
 #endif
 }
 

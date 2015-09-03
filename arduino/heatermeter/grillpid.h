@@ -173,6 +173,8 @@ private:
   // Target servo position (ticks)
   int _servoTarget;
   int _servoStep;
+  // count of periods a servo write has been delayed
+  unsigned char _servoHoldoff;
   
   void calcPidOutput(void);
   void commitFanOutput(void);
