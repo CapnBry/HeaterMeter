@@ -590,10 +590,16 @@ inline void GrillPid::commitServoOutput(void)
 
   // Get the output speed in 10x usec by LERPing between min and max
   output = mappct(output, _minServoPos, _maxServoPos);
+  int targetTicks = uSecToTicks(10U * output);
   // _servoTarget could be 0 if this is the first set, set to min and slope from there
   if (_servoTarget == 0)
-    _servoTarget = uSecToTicks(10U * _minServoPos);
-  int targetTicks = uSecToTicks(10U * output);
+  {
+    _servoStep = 0;
+    _servoTarget = targetTicks;
+    OCR1B = _servoTarget;
+    return;
+  }
+
   int targetDiff = targetTicks - _servoTarget;
 #if defined(SERVO_MIN_THRESH)
   // never pulse the servo if change isn't needed
