@@ -249,11 +249,12 @@ function pidIntEvent(o)
 function peakEvent(o)
 {
   lastPeaks = o;
-  var data = [];
-  if (o.H.time) { o.H.time *= 1000; data.push([o.H.time, o.H.val]); }
-  if (o.L.time) { o.L.time *= 1000; data.push([o.L.time, o.L.val]); }
-  if (o.C.time) { o.C.time *= 1000; /*data.push([o.C.time, o.C.val]); */ }
-  graphData[7].data = data;
+  //var data = [];
+  if (o.H.time) { o.H.time *= 1000; /* data.push([o.H.time, o.H.val]); */ }
+  if (o.L.time) { o.L.time *= 1000; /* data.push([o.L.time, o.L.val]); */ }
+  if (o.C.time) { o.C.time *= 1000; /* data.push([o.C.time, o.C.val]); */ }
+  // do not display the peaks on the graph
+  //graphData[7].data = data;
   // Wait until next updateGraph() to display
 }
 
