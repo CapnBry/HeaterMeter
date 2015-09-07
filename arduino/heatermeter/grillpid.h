@@ -157,11 +157,12 @@ private:
   // Last values used in PID calculation = B + P + I + D;
   float _pidCurrent[4];
   char _units;
-  unsigned char _maxFanSpeed;
-  unsigned char _maxStartupFanSpeed;
-  unsigned char _minFanSpeed;
-  unsigned char _maxServoPos;
-  unsigned char _minServoPos;
+  unsigned char _fanMaxSpeed;
+  unsigned char _fanMaxStartupSpeed;
+  unsigned char _fanMinSpeed;
+  unsigned char _fanActiveFloor;
+  unsigned char _servoMaxPos;
+  unsigned char _servoMinPos;
   unsigned char _outputFlags;
 
   // Current fan speed (percent)
@@ -207,21 +208,23 @@ public:
 
   // Fan Speed
   // The maximum fan speed percent that will be used in automatic mode
-  unsigned char getMaxFanSpeed(void) const { return _maxFanSpeed; }
-  void setMaxFanSpeed(unsigned char value) { _maxFanSpeed = constrain(value, 0, 100); }
-  unsigned char getMaxStartupFanSpeed(void) const { return _maxStartupFanSpeed; }
-  void setMaxStartupFanSpeed(unsigned char value) { _maxStartupFanSpeed = constrain(value, 0, 100); }
+  unsigned char getFanMaxSpeed(void) const { return _fanMaxSpeed; }
+  void setFanMaxSpeed(unsigned char value) { _fanMaxSpeed = constrain(value, 0, 100); }
+  unsigned char getFanMaxStartupSpeed(void) const { return _fanMaxStartupSpeed; }
+  void setFanMaxStartupSpeed(unsigned char value) { _fanMaxStartupSpeed = constrain(value, 0, 100); }
+  unsigned char getFanActiveFloor(void) const { return _fanActiveFloor; }
+  void setFanActiveFloor(unsigned char value) { _fanActiveFloor = (value < 101) ? value : 0; }
   // The minimum fan speed percent before converting to "long PID" (SRTP) mode
-  unsigned char getMinFanSpeed(void) const { return _minFanSpeed; }
-  void setMinFanSpeed(unsigned char value) { _minFanSpeed = constrain(value, 0, 100); }
+  unsigned char getFanMinSpeed(void) const { return _fanMinSpeed; }
+  void setFanMinSpeed(unsigned char value) { _fanMinSpeed = constrain(value, 0, 100); }
 
   // Servo timing
   // The duration (in 10x usec) for the maxium servo position
-  unsigned char getMaxServoPos(void) const { return _maxServoPos; }
-  void setMaxServoPos(unsigned char value) { _maxServoPos = value; }
+  unsigned char getServoMaxPos(void) const { return _servoMaxPos; }
+  void setServoMaxPos(unsigned char value) { _servoMaxPos = value; }
   // The duration (in 10x usec) for the minimum servo position
-  unsigned char getMinServoPos(void) const { return _minServoPos; }
-  void setMinServoPos(unsigned char value) { _minServoPos = value; }
+  unsigned char getServoMinPos(void) const { return _servoMinPos; }
+  void setServoMinPos(unsigned char value) { _servoMinPos = value; }
   // The number of timer ticks the servo is moving to
   int getServoTarget(void) const { return _servoTarget; }
   // Step size moving toward the target

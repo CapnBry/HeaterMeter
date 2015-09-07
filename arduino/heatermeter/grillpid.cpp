@@ -523,9 +523,9 @@ inline void GrillPid::commitFanOutput(void)
   {
     unsigned char max;
     if (_pitStartRecover == PIDSTARTRECOVER_STARTUP)
-      max = _maxStartupFanSpeed;
+      max = _fanMaxStartupSpeed;
     else
-      max = _maxFanSpeed;
+      max = _fanMaxSpeed;
 
     _fanSpeed = (unsigned int)_pidOutput * max / 100;
   }
@@ -534,14 +534,14 @@ inline void GrillPid::commitFanOutput(void)
      For below _minFanSpeed we use a "long pulse PWM", where
      the pulse is 10 seconds in length.  For each percent we are
      emulating, run the fan for one interval. */
-  if (_fanSpeed >= _minFanSpeed)
+  if (_fanSpeed >= _fanMinSpeed)
     _longPwmTmr = 0;
   else
   {
     // Simple PWM, ON for first [FanSpeed] intervals then OFF
     // for the remainder of the period
-    if (((PERIOD_SCALE * _fanSpeed / _minFanSpeed) > _longPwmTmr))
-      _fanSpeed = _minFanSpeed;
+    if (((PERIOD_SCALE * _fanSpeed / _fanMinSpeed) > _longPwmTmr))
+      _fanSpeed = _fanMinSpeed;
     else
       _fanSpeed = 0;
 
@@ -550,7 +550,7 @@ inline void GrillPid::commitFanOutput(void)
   }  /* long PWM */
 
   if (bit_is_set(_outputFlags, PIDFLAG_INVERT_FAN))
-    _fanSpeed = _maxFanSpeed - _fanSpeed;
+    _fanSpeed = _fanMaxSpeed - _fanSpeed;
 
   // 0 is always 0
   if (_fanSpeed == 0)
@@ -589,7 +589,7 @@ inline void GrillPid::commitServoOutput(void)
     output = 100 - output;
 
   // Get the output speed in 10x usec by LERPing between min and max
-  output = mappct(output, _minServoPos, _maxServoPos);
+  output = mappct(output, _servoMinPos, _servoMaxPos);
   int targetTicks = uSecToTicks(10U * output);
   // _servoTarget could be 0 if this is the first set, set to min and slope from there
   if (_servoTarget == 0)
