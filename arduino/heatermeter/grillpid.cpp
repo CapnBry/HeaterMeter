@@ -517,7 +517,7 @@ inline void GrillPid::commitFanOutput(void)
   const unsigned int LONG_PWM_PERIOD = 10000;
   const unsigned int PERIOD_SCALE = (LONG_PWM_PERIOD / TEMP_MEASURE_PERIOD);
 
-  if (bit_is_set(_outputFlags, PIDFLAG_FAN_ONLY_MAX) && _pidOutput < 100)
+  if (_pidOutput < _fanActiveFloor)
     _fanSpeed = 0;
   else
   {
@@ -527,7 +527,7 @@ inline void GrillPid::commitFanOutput(void)
     else
       max = _fanMaxSpeed;
 
-    _fanSpeed = (unsigned int)_pidOutput * max / 100;
+    _fanSpeed = (unsigned int)(_pidOutput - _fanActiveFloor) * max / 100;
   }
 
   /* For anything above _minFanSpeed, do a nomal PWM write.
