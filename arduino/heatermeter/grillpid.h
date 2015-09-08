@@ -212,8 +212,9 @@ public:
   void setFanMaxSpeed(unsigned char value) { _fanMaxSpeed = constrain(value, 0, 100); }
   unsigned char getFanMaxStartupSpeed(void) const { return _fanMaxStartupSpeed; }
   void setFanMaxStartupSpeed(unsigned char value) { _fanMaxStartupSpeed = constrain(value, 0, 100); }
+  // Active floor means "fan on above this PID output". Must be < 100!
   unsigned char getFanActiveFloor(void) const { return _fanActiveFloor; }
-  void setFanActiveFloor(unsigned char value) { _fanActiveFloor = (value < 101) ? value : 0; }
+  void setFanActiveFloor(unsigned char value) { _fanActiveFloor = (value < 100) ? value : 0; }
   // The minimum fan speed percent before converting to "long PID" (SRTP) mode
   unsigned char getFanMinSpeed(void) const { return _fanMinSpeed; }
   void setFanMinSpeed(unsigned char value) { _fanMinSpeed = constrain(value, 0, 100); }

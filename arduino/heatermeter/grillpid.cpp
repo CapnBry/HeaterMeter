@@ -527,7 +527,9 @@ inline void GrillPid::commitFanOutput(void)
     else
       max = _fanMaxSpeed;
 
-    _fanSpeed = (unsigned int)(_pidOutput - _fanActiveFloor) * max / 100;
+    // _fanActiveFloor should be constrained to 0-99 to prevent a divide by 0
+    unsigned char range = 100 - _fanActiveFloor;
+    _fanSpeed = (unsigned int)(_pidOutput - _fanActiveFloor) * max / range;
   }
 
   /* For anything above _minFanSpeed, do a nomal PWM write.
