@@ -442,7 +442,7 @@ function updateConfigUrl(divname, h)
 {
   var aValues = new Array();
   var STATIC_MAP = [ "pn0", "pn1", "pn2", "pn3", 
-    "sp", "pidb", "pidp", "pidi", "pidd" ];
+    "sp", "pidp", "pidi", "pidd" ];
   for (var k in h)
   {
     if ($.inArray(k, STATIC_MAP) != -1)
@@ -638,7 +638,6 @@ time they are restarted.</div>
 <fieldset class="cbi-section" id="cbi-lm-pid">
 <legend>PID Output Parameters</legend>
   <div class="cbi-value">
-    Bias <input type="text" maxlength="12" id="pidb" style="width: 5em;"/>
     Proportional <input type="text" maxlength="12" id="pidp" style="width: 5em;"/>
     Integral <input type="text" maxlength="12" id="pidi" style="width: 5em;"/>
     Derivative <input type="text" maxlength="12" id="pidd" style="width: 5em;"/>

@@ -239,7 +239,6 @@ function pidIntBar(target, val)
 function pidIntEvent(o)
 {
   $("#pidint").show('fast');
-  $("#pivb").html(o.b.toFixed(1) + "%"); pidIntBar("#pibb", o.b);
   $("#pivp").html(o.p.toFixed(1) + "%"); pidIntBar("#pibp", o.p);
   $("#pivi").html(o.i.toFixed(1) + "%"); pidIntBar("#pibi", o.i);
   $("#pivd").html(o.d.toFixed(1) + "%"); pidIntBar("#pibd", o.d);
@@ -988,16 +987,13 @@ img.preload { display: none; }
           </div>
           <div id="pidint">
             <div class="pibarcont">
-              <div class="pibar" id="pibb">&nbsp;</div>
               <div class="pibar" id="pibp">&nbsp;</div>
               <div class="pibar" id="pibi">&nbsp;</div>
               <div class="pibar" id="pibd">&nbsp;</div>
               <div class="pipip"></div>
             </div>
-            <div class="pilabel first">B</div>
-            <div class="pival first" id="pivb">-%</div>
-            <div class="pilabel">P</div>
-            <div class="pival" id="pivp">-%</div>
+            <div class="pilabel first">P</div>
+            <div class="pival first" id="pivp">-%</div>
             <div class="pilabel">I</div>
             <div class="pival" id="pivi">-%</div>
             <div class="pilabel">D</div>
