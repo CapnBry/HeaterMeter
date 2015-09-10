@@ -154,7 +154,7 @@ private:
   // Counter used for "long PWM" mode
   unsigned char _longPwmTmr;
   unsigned int _lidOpenDuration;
-  // Last values used in PID calculation = B + P + I + D;
+  // Last values used in PID calculation = B + P + I + D (B is always 0)
   float _pidCurrent[4];
   char _units;
   unsigned char _fanMaxSpeed;
