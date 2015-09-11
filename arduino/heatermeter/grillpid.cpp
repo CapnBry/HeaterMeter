@@ -663,6 +663,13 @@ void GrillPid::setPidOutput(int value)
   LidOpenResumeCountdown = 0;
 }
 
+void GrillPid::setPidConstant(unsigned char idx, float value)
+{
+  Pid[idx] = value;
+  if (idx == PIDI && value == 0)
+    _pidCurrent[PIDI] = 0;
+}
+
 void GrillPid::setLidOpenDuration(unsigned int value)
 {
   _lidOpenDuration = (value > LIDOPEN_MIN_AUTORESUME) ? value : LIDOPEN_MIN_AUTORESUME;
