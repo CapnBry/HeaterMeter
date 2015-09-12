@@ -752,6 +752,14 @@ local function initHmVars()
   unthrottleUpdates()
 end
 
+local function initPlugins()
+  registerStatusListener(checkAutobackup)
+  lmunkprobe.init()
+  lmpeaks.init()
+  lmdph.init()
+  lmramp.init()
+end
+
 local function lmdStart()
   if serialPolle then return true end
   local cfg = uci.cursor()
@@ -787,12 +795,7 @@ local function lmdStart()
   }
   
   lucid.register_pollfd(serialPolle)
-
-  registerStatusListener(checkAutobackup)
-  lmunkprobe.init()
-  lmpeaks.init()
-  lmdph.init()
-  lmramp.init()
+  initPlugins();
 
   return true
 end
@@ -822,6 +825,7 @@ local function segLmReboot(line)
   hmWrite("\n/reboot\n")
   -- Clear our cached config to request it again when reboot is complete
   initHmVars()
+  initPlugins()
   return "OK"
 end
 
