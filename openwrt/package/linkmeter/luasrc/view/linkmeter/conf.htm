@@ -6,8 +6,8 @@ var configHash = <%= LmClient():query("$LMCF") or "{}" %>;
 var rfInterval;
 var coeffPresets = [
   {"name": "ET-72/73", "desc": "Maverick Industries", "stein": "2.4723753e-04,2.3402251e-04,1.3879768e-07"},
-  {"name": "ET-732", "desc": "Maverick Industries", "stein": "5.36924e-4,1.91396e-4,6.60399e-8"},
-  {"name": "TX-1001X-OP", "desc": "Thermoworks Pro-Series", "stein": "6.6853001e-04,2.2231022e-04,9.9680632e-08"},
+  {"name": "ET-732", "desc": "Maverick Industries", "stein": "5.2668241e-04,2.0037400e-04,2.5703090e-08"},
+  {"name": "TX-1001X-OP", "desc": "Thermoworks Pro-Series", "stein": "7.0798257e-04,2.1983532e-04,9.3692565e-08"},
   {"name": "Vishay 10k", "desc": "Part NTCLE203E3103FB0", "stein": "1.14061e-3,2.32134e-4,9.63666e-8"},
   {"name": "iGrill", "desc": "iGrill Probe", "stein": "0.7739251279e-3,2.088025997e-4,1.154400438e-7"}
   //{"name": "RadioShack 10k", "desc": "Part 271-110A", "stein": "8.9805316e-4,2.4926333e-4,2.0404753e-7"},
@@ -245,7 +245,8 @@ function configHashToForm()
     else if (k == "oflag")
     {
       setupCheckboxBitmask(k, val);
-      $("#oflag4").val(parseInt(val) >> 4); // mode
+      $("#oflag4").val((parseInt(val) >> 4) & 0x01); // mode
+      $("#oflag5").val(parseInt(val) & 0x60); // line noise
     }
     else if (k == "smin" || k == "smax")
       $("#" + k + "X")
@@ -310,12 +311,19 @@ function configElemChange()
       val |= 0x80;
     $(target).val(val);
   }
+  else if (name == "oflag5")
+  {
+    // oflag5 is line noise filter
+    var val = $("#oflag").val();
+    val = (val & ~0x60) | parseInt($(this).val());
+    $("#oflag").val(val);
+  }
   else if (isProbeId(name, "oflag"))
   {
     var idx = +name.substr(5);
     var val = $("#oflag").val();
     var thisval =
-      // oflag4 is the PWM/Voltage dropdown
+      // oflag4 is PWM/Voltage dropdown
       ((idx == 4) && ($(this).val() == "1")) ||
       ((idx != 4) && $(this).is(":checked"));
     if (thisval)
@@ -446,7 +454,7 @@ function updateConfigUrl(divname, h)
   csvItems(h, aValues, "po", ["po0", "po1", "po2", "po3"]);
   csvItems(h, aValues, "al", ["pall0", "palh0", "pall1", "palh1",
     "pall2", "palh2", "pall3", "palh3"]);
-  csvItems(h, aValues, "fn", ["fmin", "fmax", "smin", "smax", "oflag", "fsmax"]);
+  csvItems(h, aValues, "fn", ["fmin", "fmax", "smin", "smax", "oflag", "fsmax", "fflor"]);
   for (var i=0; i<4; ++i)
     csvItems(h, aValues, "pc"+i, ["pca"+i, "pcb"+i, "pcc"+i, "pcr"+i, 
       function () { return getProbeTypeForSend(h, i); } ]);
@@ -642,13 +650,13 @@ time they are restarted.</div>
       <option value="0">Pulse</option>
       <option value="1">Voltage</option>
     </select>
+    on above <input type="text" maxlength="3" id="fflor" style="width: 2em;"/>%
     min <input type="text" maxlength="3" id="fmin" style="width: 2em;"/>% max
       <input type="text" maxlength="3" id="fmax" style="width: 2em;"/>% startup max
       <input type="text" maxlength="3" id="fsmax" style="width: 2em;"/>%
     <label><input type="checkbox" id="oflag0"/> Invert output</label>
-    <label><input type="checkbox" id="oflag2"/> On at max only</label>
   </div>
-  <div class="cbi-value cbi-value-last">
+  <div class="cbi-value">
     Servo pulse duration
     <input type="hidden" id="smin"/>
       <input type="text" maxlength="4" id="sminX" style="width: 3em;"/>us -
@@ -656,6 +664,14 @@ time they are restarted.</div>
       <input type="text" maxlength="4" id="smaxX" style="width: 3em;"/>us
     <label><input type="checkbox" id="oflag1"/> Invert output</label>
     <label><input type="checkbox" id="oflag3"/> Full open/close only</label>
+  </div>
+  <div class="cbi-value cbi-value-last">
+    A/C input line noise filter
+    <select id="oflag5" style="width: 6em;">
+      <option value="0">Off</option>
+      <option value="32">50Hz</option>
+      <option value="64">60Hz</option>
+    </select>
   </div>
 </fieldset>
 

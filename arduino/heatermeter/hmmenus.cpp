@@ -426,11 +426,11 @@ static state_t menuMaxFanSpeed(button_t button)
   if (button == BUTTON_ENTER)
   {
     lcdprint_P(PSTR("Maximum auto fan"), true);
-    editInt = pid.getMaxFanSpeed();
+    editInt = pid.getFanMaxSpeed();
   }
   else if (button == BUTTON_LEAVE)
   {
-    if (editInt != pid.getMaxFanSpeed())
+    if (editInt != pid.getFanMaxSpeed())
       storeAndReportMaxFanSpeed(editInt);
   }
   

@@ -6,7 +6,12 @@ local nixio = require "nixio"
       nixio.util = require "nixio.util" 
 local uci = require "uci"
 local lucid = require "luci.lucid"
-local lmfit, t = pcall(require,"lmfit"); lmfit = lmfit and t
+local json = require "luci.json"
+-- Plugins
+local lmpeaks = require "luci.lucid.linkmeter.peaks"
+local lmunkprobe = require "luci.lucid.linkmeter.unkprobe"
+local lmdph = require "luci.lucid.linkmeter.dph"
+local lmramp = require "luci.lucid.linkmeter.ramp"
 
 local pairs, ipairs, table, pcall, type = pairs, ipairs, table, pcall, type
 local tonumber, tostring, print, next, io = tonumber, tostring, print, next, io
@@ -16,25 +21,147 @@ module "luci.lucid.linkmeterd"
 
 local serialPolle
 local statusListeners = {}
+local pluginStatusListeners = {}
+local pluginSegmentListeners = {}
 local lastHmUpdate
 local lastAutoback
 local autobackActivePeriod
 local autobackInactivePeriod
-local unkProbe
 
 local rfMap = {}
 local rfStatus = {}
 local hmAlarms = {}
+local extendedStatusProbeVals = {} -- array[probeIdx] of tables of kv pairs, per probe
+local extendedStatusVals = {} -- standard kv pairs of items to include in status, global
 local hmConfig
 local lastIp
 
 -- forwards
 local segmentCall
+local statusValChanged
+local JSON_TEMPLATE
+local broadcastStatus
 
 local RRD_FILE = uci.cursor():get("lucid", "linkmeter", "rrd_file")
 local RRD_AUTOBACK = "/root/autobackup.rrd"
 -- Must match recv size in lmclient if messages exceed this size
 local LMCLIENT_BUFSIZE = 8192
+
+--- External API functions
+function getConf(k, default)
+  return hmConfig and hmConfig[k] or default
+end
+
+function publishStatusVal(k, v, probeIdx)
+  local t
+  if probeIdx == nil or probeIdx < 0 then
+    -- is a global status val
+    probeIdx = nil
+    t = extendedStatusVals
+  else
+    -- is a probe value, make sure there is storage available in extendedStatusProbeVals
+    while #extendedStatusProbeVals < probeIdx do
+      extendedStatusProbeVals[#extendedStatusProbeVals+1] = {}
+    end
+    t = extendedStatusProbeVals[probeIdx]
+  end
+
+  local newVals = statusValChanged(t, k, v)
+  if newVals ~= nil then
+    if probeIdx == nil then
+      newVals = newVals == "" and "" or (newVals .. ",")
+     JSON_TEMPLATE[15] = newVals
+    else
+      newVals = newVals == "" and "" or ("," .. newVals)
+      JSON_TEMPLATE[9+(probeIdx*11)] = newVals
+    end
+  end -- newVals != nil
+end
+
+function publishBroadcastMessage(event, t)
+  if type(t) == "table" then
+    broadcastStatus(function () return ('event: %s\ndata: %s\n\n'):format(event, json.encode(t)) end)
+  else
+    broadcastStatus(function () return ('event: %s\ndata: %s\n\n'):format(event, t) end)
+  end
+end
+
+function registerSegmentListener(seg, f)
+  -- function (line) line is the whole string. Use segSplit to split
+  if seg:sub(1, 1) ~= "$" then seg = "$" .. seg end
+  unregisterSegmentListener(seg)
+  pluginSegmentListeners[seg] = f
+end
+
+function unregisterSegmentListener(f)
+  for i = 1, #pluginSegmentListeners do
+    if pluginSegmentListeners[i] == f then
+      table.remove(pluginSegmentListeners, i)
+      return
+    end
+  end
+end
+
+function registerStatusListener(f)
+  -- function (now, vals) vals = array of HMSU parameters
+  unregisterStatusListener(f)
+  pluginStatusListeners[#pluginStatusListeners+1] = f
+end
+
+function unregisterStatusListener(f)
+  for i = 1, #pluginStatusListeners do
+    if pluginStatusListeners[i] == f then
+      table.remove(pluginStatusListeners, i)
+      return
+    end
+  end
+end
+
+function hmWrite(s)
+  if serialPolle then serialPolle.fd:write(s) end
+end
+
+function segSplit(line)
+  local retVal = {}
+  local fieldstart = 1
+  while true do
+    local nexti = line:find(',', fieldstart)
+    if nexti then
+      -- Don't add the segment name
+      if fieldstart > 1 then
+        retVal[#retVal+1] = line:sub(fieldstart, nexti - 1)
+      end
+      fieldstart = nexti + 1
+    else
+      if fieldstart > 1 then
+        retVal[#retVal+1] = line:sub(fieldstart)
+      end
+      break
+    end
+  end
+
+  return retVal
+end
+
+function statusValChanged(t, k, v)
+  -- JSON encode the new value
+  local tkv = {}
+  tkv[k] = v
+  local newVal = json.encode(tkv):sub(2, -2)
+  newVal = newVal ~= "" and newVal or nil
+  -- See if the value has changed
+  local oldVal = t[k]
+  if oldVal ~= newVal then
+    -- Value changed, convert the k,v table to v only
+    -- (because v is '"k": v' already and JSONifying it would give you "k": "k": v)
+    t[k] = newVal
+    local newt = {}
+    for _,v in pairs(t) do
+      newt[#newt+1] = v
+    end
+    return table.concat(newt, ",")
+  end
+end
 
 local function rrdCreate()
   local status, last = pcall(rrd.last, RRD_AUTOBACK)
@@ -72,20 +199,19 @@ local JSON_TEMPLATE_SRC = {
   ',"set":', 0,  -- 5
   ',"lid":', 0,  -- 7
   ',"fan":{"c":', 0, ',"a":', 0, ',"f":', 0, -- 13
-  '},"adc":[', '', -- 15
-  '],"temps":[{"n":"', 'Pit', '","c":', 0, '', ',"dph":', 'null', -- 22
-    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 28
-  '}},{"n":"', 'Food Probe1', '","c":', 0, '', ',"dph":', 'null', -- 35
-    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 41
-  '}},{"n":"', 'Food Probe2', '","c":', 0, '', ',"dph":', 'null', -- 48
-    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 54
-  '}},{"n":"', 'Ambient', '","c":', 0, '', ',"dph":', 'null', -- 61
-    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 67
-  '}}]}', -- 68
-  '' -- 69
+  '},', '', -- 15 (placeholder: extendedStatusVals)
+  '"temps":[{"n":"', 'Pit',   '","c":', 0, '', -- 20 (placeholder: extendedStatusProbeVals)
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 26
+  '}},{"n":"', 'Food Probe1', '","c":', 0, '', -- 31 (placeholder: extendedStatusProbeVals)
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 37
+  '}},{"n":"', 'Food Probe2', '","c":', 0, '', -- 42 (placeholder: extendedStatusProbeVals)
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 48
+  '}},{"n":"', 'Ambient',     '","c":', 0, '', -- 53 (placeholder: extendedStatusProbeVals)
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 59
+  '}}]}', -- 60
+  '' -- 61
 }
-local JSON_TEMPLATE
-local JSON_FROM_CSV = {3, 5, 19, 32, 45, 58, 9, 11, 7, 13 }
+local JSON_FROM_CSV = {3, 5, 19, 30, 41, 52, 9, 11, 7, 13 }
 
 local function jsonWrite(vals)
   local i,v
@@ -93,25 +219,9 @@ local function jsonWrite(vals)
     if tonumber(v) == nil then v = "null" end
     JSON_TEMPLATE[JSON_FROM_CSV[i]] = v
   end
-
-  -- add the rfstatus where applicable
-  for i,src in ipairs(rfMap) do
-    local rfval
-    if src ~= "" then
-      local sts = rfStatus[src]
-      if sts then
-        rfval = (',"rf":{"s":%d,"b":%d}'):format(sts.rssi,sts.lobatt)
-      else
-        rfval = ',"rf":null'
-      end
-    else
-      rfval = ''
-    end
-    JSON_TEMPLATE[7+(i*13)] = rfval
-  end
 end
 
-local function broadcastStatus(fn)
+function broadcastStatus(fn)
   local o
   local i = 1
   while i <= #statusListeners do
@@ -127,6 +237,12 @@ local function broadcastStatus(fn)
   end
 end
 
+local function doStatusListeners(now, vals)
+  for i = 1, #pluginStatusListeners do
+    pluginStatusListeners[i](now, vals)
+  end
+end
+
 local function buildConfigMap()
   if not hmConfig then return {} end
 
@@ -138,7 +254,7 @@ local function buildConfigMap()
   if JSON_TEMPLATE[3] ~= 0 then
     -- Current temperatures
     for i = 0, 3 do
-      r["pcurr"..i] = tonumber(JSON_TEMPLATE[19+(i*13)])
+      r["pcurr"..i] = tonumber(JSON_TEMPLATE[19+(i*11)])
     end
     -- Setpoint
     r["sp"] = JSON_TEMPLATE[5]
@@ -154,28 +270,6 @@ local function buildConfigMap()
   r["ip"] = lastIp
 
   return r
-end
-
-local function segSplit(line)
-  local retVal = {}
-  local fieldstart = 1
-  while true do
-    local nexti = line:find(',', fieldstart)
-    if nexti then
-      -- Don't add the segment name
-      if fieldstart > 1 then
-        retVal[#retVal+1] = line:sub(fieldstart, nexti - 1)
-      end
-      fieldstart = nexti + 1
-    else
-      if fieldstart > 1 then
-        retVal[#retVal+1] = line:sub(fieldstart)
-      end
-      break
-    end
-  end
-
-  return retVal
 end
 
 local lastLogMessage
@@ -221,7 +315,7 @@ local function segProbeNames(line)
   local vals = segConfig(line, {"pn0", "pn1", "pn2", "pn3"})
  
   for i,v in ipairs(vals) do
-    JSON_TEMPLATE[4+i*13] = v
+    JSON_TEMPLATE[6+i*11] = v
   end
 end
 
@@ -238,7 +332,7 @@ local function segLidParams(line)
 end
 
 local function segFanParams(line)
-  return segConfig(line, {"fmin", "fmax", "smin", "smax", "oflag", "fsmax"}, true)
+  return segConfig(line, {"fmin", "fmax", "smin", "smax", "oflag", "fsmax", "fflor"}, true)
 end
 
 local function segProbeCoeffs(line)
@@ -250,6 +344,23 @@ end
 
 local function segLcdBacklight(line)
   return segConfig(line, {"lb", "lbn", "le0", "le1", "le2", "le3"})
+end
+
+local function rfStatusRefresh()
+  local rfval
+  for i,src in ipairs(rfMap) do
+    if src ~= "" then
+      local sts = rfStatus[src]
+      if sts then
+        rfval = { s = sts.rssi, b = sts.lobatt }
+      else
+        rfval = 0; -- 0 indicates mapped but offline
+      end
+    else
+      rfval = nil
+    end
+    publishStatusVal("rf", rfval, i)
+  end
 end
 
 local function segRfUpdate(line)
@@ -265,7 +376,7 @@ local function segRfUpdate(line)
       lobatt = band(flags, 0x01) == 0 and 0 or 1,
       reset = band(flags, 0x02) == 0 and 0 or 1,
       native = band(flags, 0x04) == 0 and 0 or 1,
-      rssi = vals[idx+2]
+      rssi = tonumber(vals[idx+2])
     }
     
     -- If this isn't the NONE source, save the stats as the ANY source
@@ -275,10 +386,7 @@ local function segRfUpdate(line)
     
     idx = idx + 3
   end
-end
-
-local function segResetConfig(line)
-  os.execute("/etc/init.d/config_restore reload")
+  rfStatusRefresh()
 end
 
 local function segRfMap(line)
@@ -288,6 +396,11 @@ local function segRfMap(line)
     rfMap[i] = s
     hmConfig["prfn"..(i-1)] = s
   end
+  rfStatusRefresh()
+end
+
+local function segResetConfig(line)
+  os.execute("/etc/init.d/config_restore reload")
 end
 
 local function segUcIdentifier(line)
@@ -295,13 +408,6 @@ local function segUcIdentifier(line)
   if #vals > 1 then
     hmConfig.ucid = vals[2]
   end
-end
-
-local function setStateUpdateUnk(vals)
-  if vals[2] == 'U' or vals[3] == 'U' then return end
-  local t = tonumber(vals[2])
-  local r = math.floor(vals[3])
-  unkProbe[t] = r
 end
 
 function stsLmStateUpdate()
@@ -313,7 +419,7 @@ end
 local function segLmToast(line)
   local vals = segSplit(line)
   if serialPolle and #vals > 0 then
-    serialPolle.fd:write(("/set?tt=%s,%s\n"):format(vals[1],vals[2] or ""))
+    hmWrite(("/set?tt=%s,%s\n"):format(vals[1],vals[2] or ""))
     return "OK"
   end
 
@@ -411,45 +517,6 @@ local function checkAutobackup(now, vals)
   end
 end
 
-local lastDphUpdate = 0
-local dphEstimates = { {0,0}, {0,0}, {0,0}, {0,0} }
-local function checkDphUpdate(now)
-  -- Update the degrees per hour estimates once every minute
-  if not lmfit or (now - lastDphUpdate) < 60 then return end
-  lastDphUpdate = now
-
-  local step = 10
-  local soff = 3600
-  local last = math.floor(rrd.last(RRD_FILE)/step) * step
-  start, step, _, data = rrd.fetch(RRD_FILE, "AVERAGE",
-    "--end", now, "--start", now - soff, "-r", step)
-
-  for probe = 1,4 do
-    local x = {}
-    local y = {}
-    for n, dp in ipairs(data) do
-      local val = dp[probe+1]
-      if (val == val) then
-        x[#x+1] = n / 360
-        y[#y+1] = val
-      end
-    end
-
-    local dph = "null"
-    if #x > 180 then
-      local ok, p, status, evals = pcall(lmfit.linear, x, y, dphEstimates[probe])
-      if ok and status >= 1 and status <= 3 then
-        dph = ("%.2f"):format(p[1])
-        dphEstimates[probe] = p
-        --print(("probe=%d m=%.3f b=%.3f evals=%d status=%d %s"):format(
-        --  probe, p[1], p[2] or 0.0, evals, status, lmfit.message(status)))
-      end
-    end -- if #x
-
-    JSON_TEMPLATE[9+(probe*13)] = dph
-  end -- for probe
-end
-
 local lastStateUpdate
 local spareUpdates
 local skippedUpdates
@@ -498,16 +565,16 @@ local function throttleUpdate(line)
 end
 
 local function segStateUpdate(line)
-    if throttleUpdate(line) then return end
     local vals = segSplit(line)
+    local time = os.time()
+    doStatusListeners(time, vals)
+
+    if throttleUpdate(line) then return end
 
     if #vals >= 8 then
-      if unkProbe then setStateUpdateUnk(vals) end
-      
       -- If the time has shifted more than 24 hours since the last update
       -- the clock has probably just been set from 0 (at boot) to actual
       -- time. Recreate the rrd to prevent a 40 year long graph
-      local time = os.time()
       if time - lastHmUpdate > (24*60*60) then
         nixio.syslog("notice", 
           "Time jumped forward by "..(time-lastHmUpdate)..", restarting database")
@@ -541,14 +608,12 @@ local function segStateUpdate(line)
       if not status then nixio.syslog("err", "RRD error: " .. err) end
       
       broadcastStatus(stsLmStateUpdate)
-      checkAutobackup(time, vals)
-      checkDphUpdate(time)
     end
 end
 
 local function broadcastAlarm(probeIdx, alarmType, thresh)
-  local pname = JSON_TEMPLATE[17+(probeIdx*13)]
-  local curTemp = JSON_TEMPLATE[19+(probeIdx*13)]
+  local pname = JSON_TEMPLATE[17+(probeIdx*11)]
+  local curTemp = JSON_TEMPLATE[19+(probeIdx*11)]
   local retVal
   
   if alarmType then
@@ -572,7 +637,7 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
   end
 
   unthrottleUpdates() -- force the next update
-  JSON_TEMPLATE[28+(probeIdx*13)] = alarmType
+  JSON_TEMPLATE[26+(probeIdx*11)] = alarmType
   broadcastStatus(function ()
     return ('event: alarm\ndata: {"atype":%s,"p":%d,"pn":"%s","c":%s,"t":%s}\n\n'):format(
       alarmType, probeIdx, pname, curTemp, thresh)
@@ -594,7 +659,7 @@ local function segAlarmLimits(line)
     local curr = hmAlarms[i] or {}
     local probeIdx = math.floor(alarmId/2)
     local alarmType = alarmId % 2
-    JSON_TEMPLATE[24+(probeIdx*13)+(alarmType*2)] = v
+    JSON_TEMPLATE[22+(probeIdx*11)+(alarmType*2)] = v
     -- Wait until we at least have some config before broadcasting
     if (ringing and not curr.ringing) and (hmConfig and hmConfig.ucid) then
       curr.ringing = os.time()
@@ -610,7 +675,11 @@ local function segAlarmLimits(line)
 end
 
 local function segAdcRange(line)
-  JSON_TEMPLATE[15] = line:sub(7)
+  local vals = segSplit(line)
+  for i = 1, #vals do
+    vals[i] = tonumber(vals[i])
+  end
+  publishStatusVal("adc", vals)
 end
 
 local function segmentValidate(line)
@@ -642,7 +711,7 @@ local function serialHandler(polle)
     if csumOk ~= false then
       if hmConfig == nil then 
         hmConfig = {}
-        serialPolle.fd:write("\n/config\n")
+        hmWrite("\n/config\n")
       end
  
       -- Remove the checksum of it was there
@@ -671,6 +740,11 @@ local function initHmVars()
   rfMap = {}
   rfStatus = {}
   hmAlarms = {}
+  extendedStatusProbeVals = {}
+  extendedStatusVals = {}
+  pluginStatusListeners = {}
+  pluginSegmentListeners = {}
+
   JSON_TEMPLATE = {}
   for _,v in pairs(JSON_TEMPLATE_SRC) do
     JSON_TEMPLATE[#JSON_TEMPLATE+1] = v
@@ -713,7 +787,13 @@ local function lmdStart()
   }
   
   lucid.register_pollfd(serialPolle)
-  
+
+  registerStatusListener(checkAutobackup)
+  lmunkprobe.init()
+  lmpeaks.init()
+  lmdph.init()
+  lmramp.init()
+
   return true
 end
 
@@ -731,7 +811,7 @@ end
 local function segLmSet(line)
   if not serialPolle then return "ERR" end
   -- Replace the $LMST,k,v with /set?k=v
-  serialPolle.fd:write(line:gsub("^%$LMST,(%w+),(.*)", "\n/set?%1=%2\n"))
+  hmWrite(line:gsub("^%$LMST,(%w+),(.*)", "\n/set?%1=%2\n"))
   -- Let the next updates come immediately to make it seem more responsive
   unthrottleUpdates()
   return "OK"
@@ -739,7 +819,7 @@ end
 
 local function segLmReboot(line)
   if not serialPolle then return "ERR" end
-  serialPolle.fd:write("\n/reboot\n")
+  hmWrite("\n/reboot\n")
   -- Clear our cached config to request it again when reboot is complete
   initHmVars()
   return "OK"
@@ -814,53 +894,6 @@ local function segLmConfig()
   return "{" .. table.concat(r, ',') .. "}"
 end
 
-local function unkProbeCurveFit()
-  if not lmfit then return end
-  local tt = {} -- table of temps
-  local tr = {} -- table of resistances
-  for k,v in pairs(unkProbe) do
-    tr[#tr+1] = v
-    tt[#tt+1] = k
-  end
-
-  local ok, p, status, evals = pcall(lmfit.steinhart, tr, tt)
-  if ok then
-    return
-    ('{"a":%.7e,"b":%.7e,"c":%.7e,"n":%d,"e":%d,"status":%s,"message":"%s"}')
-      :format(p[1], p[2], p[3], #tt, evals, status, lmfit.message(status))
-  else
-    return "ERR: " .. p
-  end
-end
-
-local function unkProbeCsv()
-  local r = { "C,R" }
-  for k,v in pairs(unkProbe) do
-    r[#r+1] = ("%.1f,%d"):format(k,v)
-  end
-
-  return table.concat(r, '\n')
-end
-
-local function segLmUnknownProbe(line)
-  local vals = segSplit(line) 
-  if vals[1] == "start" then
-    unkProbe = {}
-    if serialPolle then serialPolle.fd:write("/set?sp=0R\n") end
-    return "OK"
-  elseif vals[1] == "fit" and unkProbe then
-    return unkProbeCurveFit()
-  elseif vals[1] == "csv" and unkProbe then
-    return unkProbeCsv()
-  elseif vals[1] == "stop" and unkProbe then
-    unkProbe = nil
-    if serialPolle then serialPolle.fd:write("/reboot\n") end
-    return "OK"
-  else
-    return "ERR"
-  end
-end
-
 local function segLmAlarmTest(line)
   local vals = segSplit(line)
   if #vals > 0 then
@@ -873,7 +906,7 @@ local function segLmAlarmTest(line)
 
     -- If thresh is blank, use current
     thresh = thresh and tonumber(thresh) or
-      math.floor(tonumber(JSON_TEMPLATE[19+(probeIdx*13)]) or 0)
+      math.floor(tonumber(JSON_TEMPLATE[19+(probeIdx*11)]) or 0)
 
     local pid = broadcastAlarm(probeIdx, alarmType, thresh)
     return "OK " .. pid
@@ -934,12 +967,15 @@ local segmentMap = {
   ["$LMDC"] = segLmDaemonControl,
   ["$LMCF"] = segLmConfig,
   ["$LMTT"] = segLmToast,
-  ["$LMUP"] = segLmUnknownProbe
+  -- "$LMUP" -- unkprobe plugin
+  -- "$LMDS" -- stats plugin
+
   -- $LMSS
 }
 
 function segmentCall(line)
-  local segmentFunc = segmentMap[line:sub(1,5)]
+  local seg = line:sub(1,5)
+  local segmentFunc = segmentMap[seg] or pluginSegmentListeners[seg]
   if segmentFunc then 
     return segmentFunc(line)
   else
@@ -965,18 +1001,18 @@ function prepare_daemon(config, server)
         local msg, addr = polle.fd:recvfrom(128)
         if not (msg and addr) then return end
 
-	if msg == "$LMSS" then
-	  registerStreamingStatus(function (o) return polle.fd:sendto(o, addr) end)
-	else
+        if msg == "$LMSS" then
+          registerStreamingStatus(function (o) return polle.fd:sendto(o, addr) end)
+        else
           lmclientSendTo(polle.fd, addr, segmentCall(msg))
         end
-      end
-    end
+      end -- while true
+    end -- handler
   }) 
 
   lmdStartTime = os.time()
   server.register_tick(lmdTick)
-  
+
   return lmdStart()
 end
 

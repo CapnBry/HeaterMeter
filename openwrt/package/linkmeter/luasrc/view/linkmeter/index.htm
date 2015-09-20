@@ -15,6 +15,7 @@ var lastPlot;
 var lastOverviewPlot;
 var lastGraphHover = 0;
 var lastLidOpen = -1;
+var lastPeaks;
 
 // mapJson translates the json temps array index to graphData index
 var mapJson = [6,5,4,3];
@@ -26,7 +27,8 @@ var graphData =  [
         { label: "Amb", color: "#789", lines: { show: true }, data: [] },
         { label: "Food2", color: "#297", lines: { show: true }, data: [] },
         { label: "Food1", color: "#6c3", lines: { show: true }, data: [] },
-        { label: "Pit", color: "#e73", lines: { show: true, lineWidth: 3 }, data: [] }
+        { label: "Pit", color: "#e73", lines: { show: true, lineWidth: 3 }, data: [] },
+        { label: "Peaks", color: "#fff", lines: { show: false }, points: { show: true, radius: 3 }, data: [], noclear: true }
     ];
 
     var graphOpts = {
@@ -49,7 +51,7 @@ var graphData =  [
         canvas: false,
         series: {
             lines: { show: true, lineWidth: 1 },
-            points: { show: false },
+            points: { show: false, radius: 0 },
             shadowSize: 0
         },
         xaxis: graphOpts.xaxis,
@@ -131,6 +133,10 @@ $(window).load(function ()
         source.addEventListener("pidint", function (e) {
             var o = JSON.parse(e.data);
             pidIntEvent(o);
+        });
+        source.addEventListener("peaks", function (e) {
+            var o = JSON.parse(e.data);
+            peakEvent(o);
         });
     } else {
         if (!lastUpdateUtc)
@@ -240,6 +246,18 @@ function pidIntEvent(o)
   $("#pivdt").html(o.t.toFixed(2) + "&deg;");
 }
 
+function peakEvent(o)
+{
+  lastPeaks = o;
+  //var data = [];
+  if (o.H.time) { o.H.time *= 1000; /* data.push([o.H.time, o.H.val]); */ }
+  if (o.L.time) { o.L.time *= 1000; /* data.push([o.L.time, o.L.val]); */ }
+  if (o.C.time) { o.C.time *= 1000; /* data.push([o.C.time, o.C.val]); */ }
+  // do not display the peaks on the graph
+  //graphData[7].data = data;
+  // Wait until next updateGraph() to display
+}
+
 function graphNoise(s)
 {
   var FREQ = 16000000 / 128 / 13;
@@ -300,7 +318,7 @@ function refreshGraphData()
     graphLoaded = false;
 
     $.each(graphData, function() {
-        this.data = [];
+        if (!this.noclear) this.data = [];
     });
     
     var params = {nancnt: range};
@@ -489,10 +507,41 @@ function graphClicked(event, pos, item)
             pos.pageY = axisY.p2c(valY) + 
                 lastPlot.offset().top + lastPlot.getPlotOffset().top;
         }
+        var sPeakInfo = "";
+        var sPeakClass = "";
+        if (lastPeaks)
+        {
+          var distH, distL;
+          if (lastPeaks.H.time) distH = Math.abs(pos.x - lastPeaks.H.time);
+          if (lastPeaks.L.time) distL = Math.abs(pos.x - lastPeaks.L.time);
+          var peakRef;
+          if (distH && distL)
+          {
+            if (distH < distL)
+              peakRef = lastPeaks.H;
+            else
+              peakRef = lastPeaks.L;
+          }
+          else if (distH)
+            peakRef = lastPeaks.H;
+          else if (distL)
+            peakRef = lastPeaks.L;
+          if (peakRef && Math.abs(pos.x - peakRef.time) < 300000)
+          {
+            var peakDesc = peakRef.trend > 0 ? "High" : "Low";
+            sPeakClass = peakRef.trend > 0 ? "hotback" : "coldback";
+            sPeakInfo = peakDesc + " Peak " + peakRef.val + "&deg;<br />";
+            if (peakRef.period)
+              sPeakInfo += "Period: " + peakRef.period + "s ";
+            if (peakRef.half)
+              sPeakInfo += "Half: " + peakRef.half + "s " + peakRef.amp + "&deg;<br />";
+          }
+        }
         
         var d = new Date(pos.x);
         $("#graphtt_title").html(formatTime(d, false));
         $("#graphtt_content").html(sInfo);
+        $("#graphtt_peak").html(sPeakInfo).removeClass("hotback coldback").addClass(sPeakClass);
         var ttWidth = $("#graphtt").outerWidth();
         var ttHeight = $("#graphtt").outerHeight();
         $("#graphtt_arrow").css({left: ttWidth/2 - 7, top: ttHeight - 1});
@@ -538,7 +587,10 @@ function updateGraph()
     if (selectedArea)
       lastOverviewPlot.clearSelection(false); 
       
+    // Hide the peaks on the overview graph
+    graphData[7].points.show = false;
     lastOverviewPlot = $.plot($("#graph_overview"), graphData, graphOpts2);
+    graphData[7].points.show = true;
     
     if (extendSelection)
         selectedArea.xaxis.to = lastOverviewPlot.getAxes().xaxis.max;
@@ -716,7 +768,7 @@ function connectionSuccess(o)
         {
             var rf = o.temps[i].rf;
             var img, detals;
-            if (rf == null)
+            if (rf == 0)
             {
                 img = 0;
                 details = "offline";
@@ -738,7 +790,7 @@ function connectionSuccess(o)
         else
         {
             $(rfsDiv).hide();
-            if (o.adc.length > 4)
+            if (o.adc && o.adc.length > 4)
             {
                 var noise = o.adc[5-i];
                 if (noise < 5)
@@ -749,6 +801,17 @@ function connectionSuccess(o)
                       .show();
             }
         }
+    }
+    if (o.ramp)
+    {
+        $("#ramp").html("Ramping " + o.ramp.s + "&deg; to " + o.ramp.ta + "&deg;")
+          .show();
+        $("#setcontainer").addClass("ramp");
+    }
+    else
+    {
+        $("#ramp").hide();
+        $("#setcontainer").removeClass("ramp");
     }
     $("#fana").animate({left: o.fan.a + "%"});
     $("#fanc").animate({width: o.fan.c + "%"});
@@ -836,6 +899,9 @@ td.probe { width: 33%; position: relative; }
 #graphtt { display: none; position: absolute; border: 1px solid #89c; background: #eef;
     opacity: 0.9; padding: 2px; color: #003; pointer-events: none; }
 #graphtt_title { color: #fff; border: 1px solid #008; background-color: #357; }
+#graphtt_peak { font-size: smaller; color: #fff; }
+.hotback { background-color: #d20; }
+.coldback { background-color: #08F; }
 #graphtt_arrow { position: absolute; left: 0; top: 0; }
 #dialog-overlay { width: 100%; height: 100%; position: fixed;
     top: 0px; left: 0px; display: none; background-color: #000;
@@ -883,6 +949,8 @@ td.probe { width: 33%; position: relative; }
 #loadindic { display: none; position: relative; top: -320px; z-index: 2; }
 #pn0 { color: #bbb; font-size: 28pt; }
 #p0container { font-size: 120pt; line-height: 100pt; color: #fff; position: relative; }
+.ramp { color: #bbb; }
+#ramp { font-size: 22pt; line-height: 22pt; display: none; }
 #setcontainer { font-size: 22pt; line-height: 22pt; position: absolute; bottom: 0; right:0; }
 #backimage { font-family: Trebuchet MS; background: #000 url('<%=resource%>/fire.png') repeat-x scroll left bottom; }
 #backoverlay { background: rgba(76,135,199,0.5); }
@@ -915,6 +983,7 @@ img.preload { display: none; }
         <div id="lid" title="Click to toggle lid mode"></div>
         <div id="p0container" >
           <span id="temp0">---</span>
+          <div id="ramp" class="ramp"></div>
           <div id="setcontainer">Set <span id="set">---</span>&deg;
           </div>
           <div id="pidint">
@@ -1019,6 +1088,7 @@ img.preload { display: none; }
 <div id="graphtt">
     <div id="graphtt_title"></div>
     <div id="graphtt_content"></div>
+    <div id="graphtt_peak"></div>
     <img id="graphtt_arrow" src="<%=resource%>/ttarrow.png">
 </div>
 <div id="dialog-overlay"></div>

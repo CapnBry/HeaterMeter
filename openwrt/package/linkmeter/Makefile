@@ -64,6 +64,8 @@ define Package/linkmeter/install
 
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/lucid
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/lucid/linkmeterd.lua $(1)/usr/lib/lua/luci/lucid/
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/lucid/linkmeter
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/lucid/linkmeter/* $(1)/usr/lib/lua/luci/lucid/linkmeter/
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller/linkmeter
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/controller/linkmeter/* $(1)/usr/lib/lua/luci/controller/linkmeter/
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/linkmeter

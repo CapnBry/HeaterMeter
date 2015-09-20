@@ -68,11 +68,11 @@ public:
   void shiftDecrement();
 
   void createChar(uint8_t, uint8_t[]);
-  void createChar_P(uint8_t location, const prog_char *p);
+  void createChar_P(uint8_t location, const char *p);
   void setCursor(uint8_t, uint8_t);
   using Print::write;
   virtual size_t write(uint8_t);
-  void write_P(const prog_char *p, uint8_t len);
+  void write_P(const char *p, uint8_t len);
   void command(uint8_t);
   
   // Two pins not used for the LCD but are sent to the shiftreg

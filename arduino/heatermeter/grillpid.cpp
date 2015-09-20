@@ -40,7 +40,8 @@ ISR(TIMER1_COMPB_vect)
 
 static struct tagAdcState
 {
-  unsigned char cnt;      // count in accumulator
+  unsigned char top;      // Number of samples to take per reading
+  unsigned char cnt;      // count left to accumulate
   unsigned long accumulator;  // total
   unsigned char discard;  // Discard this many ADC readings
   unsigned int thisHigh;  // High this period
@@ -68,13 +69,13 @@ ISR(ADC_vect)
     return;
   }
 
+  --adcState.cnt;
   unsigned int adc = ADC;
 #if defined(NOISEDUMP_PIN)
   if ((ADMUX & 0x07) == g_NoisePin)
     adcState.data[adcState.cnt] = adc;
 #endif
   adcState.accumulator += adc;
-  ++adcState.cnt;
 
   if (adcState.cnt != 0)
   {
@@ -97,12 +98,14 @@ ISR(ADC_vect)
     else
 #endif // GRILLPID_DYNAMIC_RANGE
     {
-      adcState.analogReads[pin] = adcState.accumulator >> 4;
+      // Scale up to 256 samples then divide by 2^4 for 14 bit oversample
+      adcState.analogReads[pin] = adcState.accumulator * 16 / adcState.top;
       adcState.analogRange[pin] = adcState.thisHigh - adcState.thisLow;
     }
     adcState.thisHigh = 0;
     adcState.thisLow = 0xffff;
     adcState.accumulator = 0;
+    adcState.cnt = adcState.top;
 
     ++pin;
     if (pin >= NUM_ANALOG_INPUTS)
@@ -115,12 +118,12 @@ ISR(ADC_vect)
     if (curref != newref)
       adcState.discard = 48;  // 48 / 9615 samples/s = 5ms
     else
-      adcState.discard = 2;
+      adcState.discard = 3;
 
     ADMUX = newref | pin;
 #else
     ADMUX = (DEFAULT << 6) | pin;
-    adcState.discard = 2;
+    adcState.discard = 3;
 #endif
   }
 }
@@ -167,7 +170,7 @@ static void adcDump(void)
     x = 0;
     ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0);
     SerialX.print("HMLG,NOISE ");
-    for (unsigned int i=0; i<256; ++i)
+    for (unsigned int i=0; i<adcState.top; ++i)
     {
       SerialX.print(adcState.data[i], DEC);
       SerialX.print(' ');
@@ -398,9 +401,26 @@ void GrillPid::setProbeType(unsigned char idx, unsigned char probeType)
 void GrillPid::setOutputFlags(unsigned char value)
 {
   _outputFlags = value;
+
+  unsigned char newTop;
+  // 50Hz = 192.31 samples
+  if (bit_is_set(value, PIDFLAG_LINECANCEL_50))
+     newTop = 192;
+  // 60Hz = 160.25 samples
+  else if (bit_is_set(value, PIDFLAG_LINECANCEL_60))
+    newTop = 160;
+  else
+    newTop = 255;
+  ATOMIC_BLOCK(ATOMIC_FORCEON)
+  {
+    adcState.top = newTop;
+    adcState.cnt = adcState.top;
+    adcState.accumulator = 0;
+  }
+
   // Timer2 Fast PWM
   TCCR2A = bit(WGM21) | bit(WGM20);
-  if (bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
+  if (bit_is_set(value, PIDFLAG_FAN_FEEDVOLT))
     TCCR2B = bit(CS20); // 62kHz
   else
     TCCR2B = bit(CS22) | bit(CS20); // 488Hz
@@ -497,31 +517,33 @@ inline void GrillPid::commitFanOutput(void)
   const unsigned int LONG_PWM_PERIOD = 10000;
   const unsigned int PERIOD_SCALE = (LONG_PWM_PERIOD / TEMP_MEASURE_PERIOD);
 
-  if (bit_is_set(_outputFlags, PIDFLAG_FAN_ONLY_MAX) && _pidOutput < 100)
+  if (_pidOutput < _fanActiveFloor)
     _fanSpeed = 0;
   else
   {
     unsigned char max;
     if (_pitStartRecover == PIDSTARTRECOVER_STARTUP)
-      max = _maxStartupFanSpeed;
+      max = _fanMaxStartupSpeed;
     else
-      max = _maxFanSpeed;
+      max = _fanMaxSpeed;
 
-    _fanSpeed = (unsigned int)_pidOutput * max / 100;
+    // _fanActiveFloor should be constrained to 0-99 to prevent a divide by 0
+    unsigned char range = 100 - _fanActiveFloor;
+    _fanSpeed = (unsigned int)(_pidOutput - _fanActiveFloor) * max / range;
   }
 
   /* For anything above _minFanSpeed, do a nomal PWM write.
      For below _minFanSpeed we use a "long pulse PWM", where
      the pulse is 10 seconds in length.  For each percent we are
      emulating, run the fan for one interval. */
-  if (_fanSpeed >= _minFanSpeed)
+  if (_fanSpeed >= _fanMinSpeed)
     _longPwmTmr = 0;
   else
   {
     // Simple PWM, ON for first [FanSpeed] intervals then OFF
     // for the remainder of the period
-    if (((PERIOD_SCALE * _fanSpeed / _minFanSpeed) > _longPwmTmr))
-      _fanSpeed = _minFanSpeed;
+    if (((PERIOD_SCALE * _fanSpeed / _fanMinSpeed) > _longPwmTmr))
+      _fanSpeed = _fanMinSpeed;
     else
       _fanSpeed = 0;
 
@@ -530,7 +552,7 @@ inline void GrillPid::commitFanOutput(void)
   }  /* long PWM */
 
   if (bit_is_set(_outputFlags, PIDFLAG_INVERT_FAN))
-    _fanSpeed = _maxFanSpeed - _fanSpeed;
+    _fanSpeed = _fanMaxSpeed - _fanSpeed;
 
   // 0 is always 0
   if (_fanSpeed == 0)
@@ -569,18 +591,36 @@ inline void GrillPid::commitServoOutput(void)
     output = 100 - output;
 
   // Get the output speed in 10x usec by LERPing between min and max
-  output = mappct(output, _minServoPos, _maxServoPos);
+  output = mappct(output, _servoMinPos, _servoMaxPos);
+  int targetTicks = uSecToTicks(10U * output);
   // _servoTarget could be 0 if this is the first set, set to min and slope from there
   if (_servoTarget == 0)
-    _servoTarget = uSecToTicks(10U * _minServoPos);
-  int targetTicks = uSecToTicks(10U * output);
-  int targetDiff = targetTicks - _servoTarget;
-  ATOMIC_BLOCK(ATOMIC_FORCEON)
   {
-    _servoStep = targetDiff / (TEMP_MEASURE_PERIOD / (SERVO_REFRESH / 1000));
-    OCR1B = _servoTarget + _servoStep;
+    _servoStep = 0;
+    _servoTarget = targetTicks;
+    OCR1B = _servoTarget;
+    return;
   }
-  _servoTarget = targetTicks;
+
+  int targetDiff = targetTicks - _servoTarget;
+#if defined(SERVO_MIN_THRESH)
+  // never pulse the servo if change isn't needed
+  // and only trigger the servo if a large movement is needed or holdoff expired
+  if ((targetDiff == 0) ||
+    ((abs(targetDiff) < uSecToTicks(SERVO_MIN_THRESH)) && (++_servoHoldoff < SERVO_MAX_HOLDOFF)))
+    OCR1B = 0;
+  else
+#endif
+  {
+    int newStep = targetDiff / (TEMP_MEASURE_PERIOD / (SERVO_REFRESH / 1000));
+    ATOMIC_BLOCK(ATOMIC_FORCEON)
+    {
+      _servoStep = newStep;
+      OCR1B = _servoTarget + _servoStep;
+    }
+    _servoTarget = targetTicks;
+    _servoHoldoff = 0;
+  }
 #endif
 }
 

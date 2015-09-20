@@ -90,7 +90,7 @@ local function probe_conf_remove(self, section)
   return m:del("alarms", self.option .. section)
 end
 
-local PROBE_CONF = { "emailL", "smsL", "spL", "raL", "emailH", "smsH", "spH", "raH" }
+local PROBE_CONF = { "emailL", "smsL", "pushbulletL", "spL", "raL", "emailH", "smsH", "pushbulletH", "spH", "raH" }
 for _,kv in ipairs(PROBE_CONF) do
   if kv == "raL" or kv == "raH" then
     v = s:option(ListValue, kv, kv)
@@ -106,11 +106,49 @@ for _,kv in ipairs(PROBE_CONF) do
   v.remove = probe_conf_remove
 end
 
+---
+--- Ramp Mode
+---
+
+s = m:section(NamedSection, "ramp", "ramp", "Ramp Mode",
+  [[Lowers the setpoint between a food probe's trigger and target temperatures
+  until both the watched probe and the setpoint meet at the target tempeature.
+  Manually changing the setpoint will disable ramp mode.
+  ]])
+
+local rampValueChanged
+local function rampValueChangeNotify(self, section, value)
+  rampValueChanged = true
+  m:set(section, self.option, value)
+
+  -- if switching to disabled clear any start setpoint
+  if self.option == "watch" and value == "0" then
+    m:del(section, "startsetpoint")
+  end
+end
+
+local function notifyRampChanged()
+  LmClient():query("$LMRA")
+end
+
+v = s:option(ListValue, "watch", "Watch probe")
+v.write = rampValueChangeNotify
+v:value(0, "Disabled")
+for probe = 1,3 do
+  v:value(probe, lmcf["pn" .. probe])
+end
+v = s:option(Value, "trigger", "Trigger temperature")
+v.write = rampValueChangeNotify
+v.default = "180"
+v = s:option(Value, "target", "Target temperature")
+v.write = rampValueChangeNotify
+v.default = "200"
+
 --
 -- Email Notifications
 --
 
-s = m:section(NamedSection, "alarms", "email", "Email Notifications", 
+s = m:section(NamedSection, "alarms", "email", "Email Notifications",
   [[Email notifications only work if <a href="]] ..
   luci.dispatcher.build_url("admin/services/msmtp") ..
   [[">SMTP Client</a> is configured.]])
@@ -129,7 +167,7 @@ local MSG_TEMPLATE = "/usr/share/linkmeter/email.txt"
 function msg.cfgvalue()
   return nixio.fs.readfile(MSG_TEMPLATE) or ""
 end
-        
+
 function msg.write(self, section, value)
   if value then
     value = value:gsub("\r\n", "\n")
@@ -141,7 +179,7 @@ end
 
 --
 -- SMS Notifications
--- 
+--
 
 s = m:section(NamedSection, "alarms", "sms", "SMS Notifications",
   [[SMS notifications only work if <a href="]] ..
@@ -216,12 +254,26 @@ v = s:option(Value, "smsmessage", "Message")
 v.description = ESCAPE_HELP
 
 --
+-- Pushbullet Notifications
+--
+
+s = m:section(NamedSection, "alarms", "pushbullet", "Pushbullet Notifications",
+  [[<a href="https://www.pushbullet.com/">Pushbullet</a> is a unified notification
+  system for mobile and desktop devices. Find your Access Token in your account settings.]]
+  )
+
+v = s:option(Value, "pushbulletkey", "Access token")
+v = s:option(Value, "pushbullettitle", "Message title")
+v = s:option(Value, "pushbulletmsg", "Message body")
+
+--
 -- Map Functions
 --
 
 m.apply_on_parse = true
-m.on_save = function (self) 
+m.on_after_save = function (self)
   saveProbeLm()
+  if rampValueChanged then notifyRampChanged() end
 end
 
 return m

@@ -89,6 +89,24 @@ if [ "$doit" -gt 0 -a -n "$dest" ] ; then
 
   echo $msg | sendmail $dest
 fi
-}
+
+# Send Pushbullet
+config_get_bool doit alarms pushbullet${al_type}${al_probe} 0
+config_get key alarms pushbulletkey ""
+if [ "$doit" -gt 0 -a -n "$key" ] ; then
+  echo "Sending pushbullet notification"
+  config_get title alarms pushbullettitle ""
+  config_get msg alarms pushbulletmsg ""
+  title=$(eval echo "$title")
+  msg=$(eval echo "$msg")
+
+  PB_MSG="{\"type\": \"note\", \"title\": \"$title\", \"body\": \"$msg\"}"
+
+  curl -k -o /dev/null -s -H "Content-Type: application/json" \
+    -u "$key": -d "$PB_MSG" \
+    https://api.pushbullet.com/v2/pushes
+fi
+
+} # end of the do_alarms function
 
 do_alarms 2>&1 | logger -t lmalarm
