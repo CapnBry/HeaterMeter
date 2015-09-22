@@ -127,7 +127,7 @@ static button_t readButton(void)
     return BUTTON_LEFT;  
   if (button > 60 && button < 100)
     return BUTTON_DOWN;  
-  if (button > 140 && button < 160)
+  if (button > 120 && button < 160)
     return BUTTON_UP;  
   if (button > 160 && button < 200)
     return BUTTON_RIGHT;  
