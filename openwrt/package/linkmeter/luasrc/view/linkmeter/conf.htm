@@ -189,6 +189,9 @@ function typeChanged()
   // If switching to 'Thermocouple', default to 5 mV/C if was 10k
   else if (this.value == "3" && $("#pcr" + name).val() == "10000")
     $("#pcr" + name).val("5");
+
+  // Chain the standard event handler after this one
+  configElemChange.call(this);
 }
 
 function isProbeId(hay, need)
