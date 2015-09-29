@@ -167,6 +167,7 @@ local function rrdCreate()
   local status, last = pcall(rrd.last, RRD_AUTOBACK)
   if status then
     last = tonumber(last)
+    --nixio.syslog("err", ("Autoback restore: last=%d now=%d"):format(last or -1, os.time()))
     if last and last <= os.time() then
       return nixio.fs.copy(RRD_AUTOBACK, RRD_FILE)
     end
@@ -174,20 +175,20 @@ local function rrdCreate()
     nixio.syslog("err", "RRD last failed:"..last)
   end
 
- return rrd.create(
-   RRD_FILE,
-   "--step", "2",
-   "DS:sp:GAUGE:30:0:1000",
-   "DS:t0:GAUGE:30:0:1000",
-   "DS:t1:GAUGE:30:0:1000",
-   "DS:t2:GAUGE:30:0:1000",
-   "DS:t3:GAUGE:30:0:1000",
-   "DS:f:GAUGE:30:-1000:100",
-   "RRA:AVERAGE:0.6:5:360",
-   "RRA:AVERAGE:0.6:30:360",
-   "RRA:AVERAGE:0.6:60:360",
-   "RRA:AVERAGE:0.6:90:480"
- )
+  return rrd.create(
+    RRD_FILE,
+    "--step", "2",
+    "DS:sp:GAUGE:30:0:1000",
+    "DS:t0:GAUGE:30:0:1000",
+    "DS:t1:GAUGE:30:0:1000",
+    "DS:t2:GAUGE:30:0:1000",
+    "DS:t3:GAUGE:30:0:1000",
+    "DS:f:GAUGE:30:-1000:100",
+    "RRA:AVERAGE:0.6:5:360",
+    "RRA:AVERAGE:0.6:30:360",
+    "RRA:AVERAGE:0.6:60:360",
+    "RRA:AVERAGE:0.6:90:480"
+  )
 end
 
 -- This might look a big hokey but rather than build the string
@@ -511,6 +512,7 @@ local function checkAutobackup(now, vals)
     now - lastAutoBackup > (autobackActivePeriod * 60)) or
     (autobackInactivePeriod ~= 0 and
     now - lastAutoBackup > (autobackInactivePeriod * 60)) then
+    --nixio.syslog("err", ("Autobackup last=%d now=%d"):format(lastAutoBackup, now))
     nixio.fs.copy(RRD_FILE, RRD_AUTOBACK)
 
     lastAutoBackup = now
@@ -608,6 +610,7 @@ local function segStateUpdate(line)
       if not status then nixio.syslog("err", "RRD error: " .. err) end
       
       broadcastStatus(stsLmStateUpdate)
+      checkAutobackup(lastHmUpdate, vals)
     end
 end
 
@@ -753,7 +756,6 @@ local function initHmVars()
 end
 
 local function initPlugins()
-  registerStatusListener(checkAutobackup)
   lmunkprobe.init()
   lmpeaks.init()
   lmdph.init()
