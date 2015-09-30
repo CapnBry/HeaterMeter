@@ -8,7 +8,7 @@ if [ -z "$WRT_PATH" ] ; then
   echo "Usage: ./install.sh <target> <wrt path>"
   echo "    Target: BCM47XX or BCM2708 (case sensitive)"
   echo "BCM47XX - svn://svn.openwrt.org/openwrt/trunk@29665"
-  echo "BCM2708 - svn://svn.openwrt.org/openwrt/tags/attitude_adjustment_12.09"
+  echo "BCM2708 - svn://svn.openwrt.org/openwrt/tags/attitude_adjustment_12.09@36422"
   exit 1
 fi
 
@@ -23,7 +23,7 @@ fi
 if [ "$TARGET" = "BCM2708" ] ; then
   cat << EOFEEDS > $WRT_PATH/feeds.conf
 src-svn packages svn://svn.openwrt.org/openwrt/branches/packages_12.09
-src-git luci http://github.com/openwrt/luci.git;luci-0.11
+src-git luci http://github.com/openwrt/luci.git;0.11.1
 src-link linkmeter $REPO_PATH/package
 EOFEEDS
 fi
