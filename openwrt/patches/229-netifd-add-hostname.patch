@@ -1,0 +1,12 @@
+Index: package/netifd/files/lib/netifd/proto/dhcp.sh
+===================================================================
+--- package/netifd/files/lib/netifd/proto/dhcp.sh	(revision 36720)
++++ package/netifd/files/lib/netifd/proto/dhcp.sh	(working copy)
+@@ -28,6 +28,7 @@
+ 
+ 	[ "$broadcast" = 1 ] && broadcast="-B" || broadcast=
+ 	[ -n "$clientid" ] && clientid="-x 0x3d:${clientid//:/}" || clientid="-C"
++	[ -z "$hostname" ] && hostname="$(uci_get system @system[0] hostname OpenWrt)"
+ 
+ 	proto_export "INTERFACE=$config"
+ 	proto_run_command "$config" udhcpc \
