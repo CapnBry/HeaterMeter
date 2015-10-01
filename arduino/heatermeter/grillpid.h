@@ -113,8 +113,8 @@ public:
 #define PIDFLAG_INVERT_FAN    0
 // Invert servo direction - scale from max to min rather than min to max
 #define PIDFLAG_INVERT_SERVO  1
-// Fan only runs (at max) when pidOutput=100 (max)
-#define PIDFLAG_FAN_ONLY_MAX  2
+// Fan only runs (at max) when pidOutput=100 (max) OBSOLETE by FanActiveFloor
+//#define PIDFLAG_FAN_ONLY_MAX  2
 // Servo opens (to max) when pidOutput>0 (any output)
 #define PIDFLAG_SERVO_ANY_MAX 3
 // Try to output a constant voltage instead of PWM
@@ -182,6 +182,7 @@ private:
   void commitServoOutput(void);
   void commitPidOutput(void);
   void adjustFeedbackVoltage(void);
+  void servoRangeChanged(void);
 public:
   GrillPid(void) : _periodCounter(0x80), _units('F') {};
   void init(void);
@@ -222,10 +223,10 @@ public:
   // Servo timing
   // The duration (in 10x usec) for the maxium servo position
   unsigned char getServoMaxPos(void) const { return _servoMaxPos; }
-  void setServoMaxPos(unsigned char value) { _servoMaxPos = value; }
+  void setServoMaxPos(unsigned char value);
   // The duration (in 10x usec) for the minimum servo position
   unsigned char getServoMinPos(void) const { return _servoMinPos; }
-  void setServoMinPos(unsigned char value) { _servoMinPos = value; }
+  void setServoMinPos(unsigned char value);
   // The number of timer ticks the servo is moving to
   int getServoTarget(void) const { return _servoTarget; }
   // Step size moving toward the target

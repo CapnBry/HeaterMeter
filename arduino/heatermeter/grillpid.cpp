@@ -430,6 +430,25 @@ void GrillPid::setOutputFlags(unsigned char value)
   //TCCR2B = bit(CS22) | bit(CS21) | bit(CS20);
 }
 
+void GrillPid::servoRangeChanged(void)
+{
+#if defined(SERVO_MIN_THRESH)
+  _servoHoldoff = SERVO_MAX_HOLDOFF;
+#endif
+}
+
+void GrillPid::setServoMinPos(unsigned char value)
+{
+  _servoMinPos = value;
+  servoRangeChanged();
+}
+
+void GrillPid::setServoMaxPos(unsigned char value)
+{
+  _servoMaxPos = value;
+  servoRangeChanged();
+}
+
 unsigned int GrillPid::countOfType(unsigned char probeType) const
 {
   unsigned char retVal = 0;
