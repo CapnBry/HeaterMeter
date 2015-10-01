@@ -5,7 +5,3 @@ Edimax EW-7811Un
 Rosewill RNX-MiniN2
 
 Patches are based on the v3.4.3_4369 driver source from realtek.
--- Unzip driver download
--- Extract the tar file located in the driver subdirectory
--- Copy the source extracted from the tarball to the source directory of the OpenWrt package
-cp -a /tmp/driver/rtl8188C_8192C_usb_linux_v3.4.3_4369.20120622/* 8192cu/src/.
