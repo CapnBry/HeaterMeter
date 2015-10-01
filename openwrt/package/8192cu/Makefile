@@ -11,8 +11,13 @@ include $(INCLUDE_DIR)/kernel.mk
 PKG_NAME:=8192cu
 PKG_VERSION:=3.4.3
 PKG_RELEASE:=2
+PKG_SOURCE_URL:=http://heatermeter.com/devel/depends/
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+PKG_MD5SUM:=f6a051d38f1941b784a497f5b09a53c1
 
 PKG_BUILD_PARALLEL:=1
+
+TAR_OPTIONS += --strip-components=1 -C $(PKG_BUILD_DIR)
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -38,12 +43,6 @@ MAKE_OPTS:= \
 	CROSS_COMPILE="$(TARGET_CROSS)" \
 	USER_EXTRA_CFLAGS="-DCONFIG_LITTLE_ENDIAN" \
 	KSRC=$(LINUX_DIR)
-
-define Build/Prepare
-	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) ./src/* $(PKG_BUILD_DIR)/
-	$(Build/Patch)
-endef
 
 define Build/Compile
 	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR) $(MAKE_OPTS)
