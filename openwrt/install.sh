@@ -1,5 +1,4 @@
 #!/bin/sh
-set -x
 
 REPO_PATH=$(pwd)
 TARGET="$1"
