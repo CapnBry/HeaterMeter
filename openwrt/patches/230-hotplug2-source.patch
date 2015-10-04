@@ -1,0 +1,19 @@
+--- package/hotplug2/Makefile.orig	2015-10-02 16:17:52.381500288 -0400
++++ package/hotplug2/Makefile	2015-10-02 15:56:18.593500288 -0400
+@@ -12,13 +12,9 @@ PKG_REV:=201
+ PKG_VERSION:=$(PKG_REV)
+ PKG_RELEASE:=4
+ 
+-PKG_SOURCE_PROTO:=svn
+-PKG_SOURCE_VERSION:=$(PKG_REV)
+-PKG_SOURCE_SUBDIR:=hotplug2-$(PKG_VERSION)
+-PKG_SOURCE_URL:=http://svn.nomi.cz/svn/isteve/hotplug2
+-PKG_SOURCE:=$(PKG_SOURCE_SUBDIR).tar.gz
+-#PKG_SOURCE_URL:=http://isteve.bofh.cz/~isteve/hotplug2
+-#PKG_MD5SUM:=ea2c01d027b4002e4e6b0ff266f51a51
++PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
++PKG_SOURCE_URL:=http://downloads.openwrt.org/sources/
++PKG_MD5SUM:=7bab8ba67555a8400424f3c92ec67579
+ 
+ include $(INCLUDE_DIR)/package.mk
+ 
