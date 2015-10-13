@@ -38,7 +38,7 @@
 // undefine to force continuous servo operation
 #define SERVO_MIN_THRESH       100
 // Max number of seconds to hold off a servo write due to being below threshold
-#define SERVO_MAX_HOLDOFF      10
+#define SERVO_MAX_HOLDOFF      5
 
 #define PROBE_NAME_SIZE 13
 
