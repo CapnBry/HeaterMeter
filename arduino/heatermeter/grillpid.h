@@ -173,9 +173,13 @@ private:
   unsigned char _lastBlowerOutput;
   // Target servo position (ticks)
   int _servoTarget;
-  int _servoStep;
+  // Last servo target position (ticks)
+  int _servoTargetPrev;
+  unsigned char _servoStepTicks;
   // count of periods a servo write has been delayed
   unsigned char _servoHoldoff;
+  // true if generating servo pulses
+  bool _servoEnabled;
   
   void calcPidOutput(void);
   void commitFanOutput(void);
@@ -229,8 +233,9 @@ public:
   void setServoMinPos(unsigned char value);
   // The number of timer ticks the servo is moving to
   int getServoTarget(void) const { return _servoTarget; }
-  // Step size moving toward the target
-  int getServoStep(void) const { return _servoStep; }
+  // Calculate the next step of servo movement in ticks
+  unsigned int getServoStepNext(void);
+  bool getServoEnabled(void) const { return _servoEnabled; }
 
   // Collection of PIDFLAG_*
   void setOutputFlags(unsigned char value);

@@ -11,7 +11,7 @@
 #include "strings.h"
 #include "grillpid.h"
 
-extern const GrillPid pid;
+extern GrillPid pid;
 
 // For this calculation to work, ccpm()/8 must return a round number
 #define uSecToTicks(x) ((unsigned int)(clockCyclesPerMicrosecond() / 8) * x)
@@ -24,11 +24,10 @@ extern const GrillPid pid;
 #if defined(GRILLPID_SERVO_ENABLED)
 ISR(TIMER1_CAPT_vect)
 {
-  unsigned int cnt = OCR1B;
-  if (cnt != 0)
+  if (pid.getServoEnabled())
   {
-    OCR1B = cnt + pid.getServoStep();
     digitalWriteFast(PIN_SERVO, HIGH);
+    OCR1B = pid.getServoStepNext();
   }
 }
 
@@ -597,6 +596,31 @@ inline void GrillPid::commitFanOutput(void)
   adjustFeedbackVoltage();
 }
 
+unsigned int GrillPid::getServoStepNext(void)
+{
+#if defined(GRILLPID_SERVO_ENABLED)
+  // This lookup table approximates the "smootherstep" easing interpolation of the function
+  // f(t) = 6t^5 - 15t^4 + 10t^3 see: https://en.wikipedia.org/wiki/Smoothstep
+  // The number of steps t=0..1 is 40.
+  unsigned char SMOOTHERSTEP[] = {
+    /* 0, 0, 0 */ 1, 2, 4, 7, 10, 15, 20,
+    27, 34, 42, 51, 60, 70, 81, 93, 104, 116,
+    128, 140, 152, 163, 175, 186, 196, 205, 214, 222,
+    230, 236, 241, 246, 249, 252, 254, 255 /* 256, 256, 256 */
+  };
+
+  if (_servoStepTicks < sizeof(SMOOTHERSTEP))
+  {
+    long int diff = _servoTarget - _servoTargetPrev;
+    unsigned int retVal = (diff * SMOOTHERSTEP[_servoStepTicks++] / 256) + _servoTargetPrev;
+    //SerialX.print("HMLG,"); SerialX.print(retVal); SerialX.nl();
+    return retVal;
+  }
+  else
+    return _servoTarget;
+#endif
+}
+
 inline void GrillPid::commitServoOutput(void)
 {
 #if defined(GRILLPID_SERVO_ENABLED)
@@ -612,12 +636,11 @@ inline void GrillPid::commitServoOutput(void)
   // Get the output speed in 10x usec by LERPing between min and max
   output = mappct(output, _servoMinPos, _servoMaxPos);
   int targetTicks = uSecToTicks(10U * output);
-  // _servoTarget could be 0 if this is the first set, set to min and slope from there
+  // _servoTarget would be 0 if this is the first set, just go right to target
   if (_servoTarget == 0)
   {
-    _servoStep = 0;
-    _servoTarget = targetTicks;
-    OCR1B = _servoTarget;
+    _servoTarget = _servoTargetPrev = targetTicks;
+    _servoEnabled = true;
     return;
   }
 
@@ -627,17 +650,17 @@ inline void GrillPid::commitServoOutput(void)
   // and only trigger the servo if a large movement is needed or holdoff expired
   if ((targetDiff == 0) ||
     ((abs(targetDiff) < uSecToTicks(SERVO_MIN_THRESH)) && (++_servoHoldoff < SERVO_MAX_HOLDOFF)))
-    OCR1B = 0;
+    _servoEnabled = false;
   else
 #endif
   {
-    int newStep = targetDiff / (TEMP_MEASURE_PERIOD / (SERVO_REFRESH / 1000));
     ATOMIC_BLOCK(ATOMIC_FORCEON)
     {
-      _servoStep = newStep;
-      OCR1B = _servoTarget + _servoStep;
+      _servoStepTicks = 0;
+      _servoTargetPrev = _servoTarget;
+      _servoTarget = targetTicks;
     }
-    _servoTarget = targetTicks;
+    _servoEnabled = true;
     _servoHoldoff = 0;
   }
 #endif
