@@ -64,8 +64,9 @@ uci_set_nomodify linkmeter.alarms.smstoaddress '2125551212@txt.att.net'
 uci_set_nomodify linkmeter.alarms.smsmessage 'ALERT $pn is $al_prep $al_thresh \($pcurr\)'
 uci -q set linkmeter.ramp='section'
 uci_set_nomodify linkmeter.ramp.watch '0'
+uci_set_nomodify linkmeter.alarms.pushprovider 'pushbullet'
 uci_set_nomodify linkmeter.alarms.pushbullettitle '$pn HM Alert'
-uci_set_nomodify linkmeter.alarms.pushbulletmsg '$pn $al_type alarm $al_prep $al_thresh, currently $pcurr'
+uci_set_nomodify linkmeter.alarms.pushmsg '$pn $al_type alarm $al_prep $al_thresh, currently $pcurr'
 
 uci commit linkmeter
 
