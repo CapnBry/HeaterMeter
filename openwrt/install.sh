@@ -42,7 +42,7 @@ cp patches/226-lucid-no-redirect.patch $LUCIP
 cp patches/227-lucid-keepalive-fix.patch $LUCIP
 cp patches/228-luci-no-dhcp-dhcpc.patch $LUCIP
 
-LMPACKS="rrdtool kmod-broadcom-sdhc26 linkmeter kmod-8192cu kmod-spi-bcm2708 luci-app-msmtp parted avahi-daemon kmod-incompat-wireless ca-certificates"
+LMPACKS="rrdtool kmod-broadcom-sdhc26 linkmeter kmod-8192cu kmod-spi-bcm2708 luci-app-msmtp parted avahi-daemon kmod-incompat-wireless ca-certificates liblmfit-lua"
 for PACK in $LMPACKS ; do
   $WRT_PATH/scripts/feeds install -p linkmeter $PACK
 done
