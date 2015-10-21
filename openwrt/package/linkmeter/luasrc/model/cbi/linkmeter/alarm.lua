@@ -90,7 +90,7 @@ local function probe_conf_remove(self, section)
   return m:del("alarms", self.option .. section)
 end
 
-local PROBE_CONF = { "emailL", "smsL", "pushbulletL", "spL", "raL", "emailH", "smsH", "pushbulletH", "spH", "raH" }
+local PROBE_CONF = { "emailL", "smsL", "pushL", "spL", "raL", "emailH", "smsH", "pushH", "spH", "raH" }
 for _,kv in ipairs(PROBE_CONF) do
   if kv == "raL" or kv == "raH" then
     v = s:option(ListValue, kv, kv)
@@ -254,17 +254,71 @@ v = s:option(Value, "smsmessage", "Message")
 v.description = ESCAPE_HELP
 
 --
--- Pushbullet Notifications
+-- Push Notifications
 --
 
-s = m:section(NamedSection, "alarms", "pushbullet", "Pushbullet Notifications",
-  [[<a href="https://www.pushbullet.com/">Pushbullet</a> is a unified notification
-  system for mobile and desktop devices. Find your Access Token in your account settings.]]
-  )
+s = m:section(NamedSection, "alarms", "push", "Push Notifications",
+  [[<ul><li><a href="www.pushbullet.com">Pushbullet</a> is a unified notification system for mobile and desktop devices.
+    Find your Access Token in your account settings.</li><li><a href="www.pushover.net">Pushover</a>
+    makes it easy to get real-time notifications on your Android, iPhone, iPad, and Desktop (Pebble, Android Wear, and Apple watches, too!)</li></ul>
+  ]])
 
+-- Providers Array
+local PUSHPROVIDERS = {
+  { "Pushbullet", "pushbullet" },
+  { "Pushover", "pushover" }
+}
+
+-- Create dropdown list of providers
+v = s:option(ListValue, "pushprovider", "Push Provider")
+for _,p in ipairs(PUSHPROVIDERS) do
+  v:value(p[2], p[1])
+end
+
+-- Pushbullet Settings
 v = s:option(Value, "pushbulletkey", "Access token")
+v:depends("linkmeter.alarms.pushprovider", "pushbullet")
 v = s:option(Value, "pushbullettitle", "Message title")
-v = s:option(Value, "pushbulletmsg", "Message body")
+v:depends("linkmeter.alarms.pushprovider", "pushbullet")
+
+-- Pushover Settings
+local PUSHOVERSOUNDS = {
+  { "Default" , "pushover" },
+  { "Bike" , "bike" },
+  { "Bugle" , "bugle" },
+  { "Cash register" , "cashregister" },
+  { "Classical" , "classical" },
+  { "Cosmic" , "cosmic" },
+  { "Falling" , "falling" },
+  { "Gamelan" , "gamelan" },
+  { "Incoming" , "incoming" },
+  { "Intermission" , "intermission" },
+  { "Magic" , "magic" },
+  { "Mechanical" , "mechanical" },
+  { "Piano bar" , "pianobar" },
+  { "Siren" , "siren" },
+  { "Space alarm" , "spacealarm" },
+  { "Tug boat" , "tugboat" },
+  { "Alien" , "alien" },
+  { "Climb" , "climb" },
+  { "Persistent" , "persistent" },
+  { "Pushover Echo" , "echo" },
+  { "Up down" , "updown" },
+  { "None Silent" , "none" }
+}
+
+v = s:option(Value, "pushoveruser", "User key")
+v:depends("linkmeter.alarms.pushprovider", "pushover")
+v = s:option(Value, "pushovertoken", "Application API token/key")
+v:depends("linkmeter.alarms.pushprovider", "pushover")
+v = s:option(ListValue, "pushoversound", "Alert sound")
+for _,p in ipairs(PUSHOVERSOUNDS) do
+  v:value(p[2], p[1])
+end
+v:depends("linkmeter.alarms.pushprovider", "pushover")
+
+-- Push Message Body
+v = s:option(Value, "pushmsg", "Message body")
 
 --
 -- Map Functions
