@@ -24,10 +24,11 @@ extern GrillPid pid;
 #if defined(GRILLPID_SERVO_ENABLED)
 ISR(TIMER1_CAPT_vect)
 {
-  if (pid.getServoEnabled())
+  unsigned int nextStep = pid.getServoStepNext(OCR1B);
+  if (nextStep != 0)
   {
     digitalWriteFast(PIN_SERVO, HIGH);
-    OCR1B = pid.getServoStepNext(OCR1B);
+    OCR1B = nextStep;
   }
 }
 
@@ -604,10 +605,7 @@ unsigned int GrillPid::getServoStepNext(unsigned int curr)
 
   // Hold the servo for SERVO_HOLD_SECS seconds then turn off on the next period
   if (_servoStepTicks >= (SERVO_HOLD_SECS * 1000000UL / SERVO_REFRESH))
-  {
-    _servoEnabled = false;
-    return curr;
-  }
+    return 0;
 
   // If at or close to target, snap to target
   // curr is 0 on first interrupt
@@ -654,7 +652,6 @@ inline void GrillPid::commitServoOutput(void)
       _servoStepTicks = 0;
       _servoTarget = targetTicks;
     }
-    _servoEnabled = true;
     _servoHoldoff = 0;
   }
 #endif
