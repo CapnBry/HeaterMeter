@@ -27,7 +27,7 @@ ISR(TIMER1_CAPT_vect)
   if (pid.getServoEnabled())
   {
     digitalWriteFast(PIN_SERVO, HIGH);
-    OCR1B = pid.getServoStepNext();
+    OCR1B = pid.getServoStepNext(OCR1B);
   }
 }
 
@@ -596,28 +596,31 @@ inline void GrillPid::commitFanOutput(void)
   adjustFeedbackVoltage();
 }
 
-unsigned int GrillPid::getServoStepNext(void)
+unsigned int GrillPid::getServoStepNext(unsigned int curr)
 {
 #if defined(GRILLPID_SERVO_ENABLED)
-  // This lookup table approximates the "smootherstep" easing interpolation of the function
-  // f(t) = 6t^5 - 15t^4 + 10t^3 see: https://en.wikipedia.org/wiki/Smoothstep
-  // The number of steps t=0..1 is 40.
-  unsigned char SMOOTHERSTEP[] = {
-    /* 0, 0, 0 */ 1, 2, 4, 7, 10, 15, 20,
-    27, 34, 42, 51, 60, 70, 81, 93, 104, 116,
-    128, 140, 152, 163, 175, 186, 196, 205, 214, 222,
-    230, 236, 241, 246, 249, 252, 254, 255 /* 256, 256, 256 */
-  };
+  const unsigned int SERVO_STEP = uSecToTicks(15U);
+  const unsigned int SERVO_HOLD_SECS = 2U;
 
-  if (_servoStepTicks < sizeof(SMOOTHERSTEP))
+  // Hold the servo for SERVO_HOLD_SECS seconds then turn off on the next period
+  if (_servoStepTicks >= (SERVO_HOLD_SECS * 1000000UL / SERVO_REFRESH))
   {
-    long int diff = _servoTarget - _servoTargetPrev;
-    unsigned int retVal = (diff * SMOOTHERSTEP[_servoStepTicks++] / 256) + _servoTargetPrev;
-    //SerialX.print("HMLG,"); SerialX.print(retVal); SerialX.nl();
-    return retVal;
+    _servoEnabled = false;
+    return curr;
   }
-  else
+
+  // If at or close to target, snap to target
+  // curr is 0 on first interrupt
+  if (DIFFMAX(_servoTarget, curr, SERVO_STEP) || curr == 0)
+  {
+    ++_servoStepTicks;
     return _servoTarget;
+  }
+  // Else slew toward target
+  else if (_servoTarget > curr)
+    return curr + SERVO_STEP;
+  else
+    return curr - SERVO_STEP;
 #endif
 }
 
@@ -635,29 +638,20 @@ inline void GrillPid::commitServoOutput(void)
 
   // Get the output speed in 10x usec by LERPing between min and max
   output = mappct(output, _servoMinPos, _servoMaxPos);
-  int targetTicks = uSecToTicks(10U * output);
-  // _servoTarget would be 0 if this is the first set, just go right to target
-  if (_servoTarget == 0)
-  {
-    _servoTarget = _servoTargetPrev = targetTicks;
-    _servoEnabled = true;
-    return;
-  }
-
-  int targetDiff = targetTicks - _servoTarget;
+  unsigned int targetTicks = uSecToTicks(10U * output);
 #if defined(SERVO_MIN_THRESH)
   // never pulse the servo if change isn't needed
+  if (_servoTarget == targetTicks)
+    return;
+
   // and only trigger the servo if a large movement is needed or holdoff expired
-  if ((targetDiff == 0) ||
-    ((abs(targetDiff) < uSecToTicks(SERVO_MIN_THRESH)) && (++_servoHoldoff < SERVO_MAX_HOLDOFF)))
-    _servoEnabled = false;
-  else
+  if (!DIFFMAX(_servoTarget, targetTicks, uSecToTicks(SERVO_MIN_THRESH)) ||
+    (++_servoHoldoff >= SERVO_MAX_HOLDOFF))
 #endif
   {
     ATOMIC_BLOCK(ATOMIC_FORCEON)
     {
       _servoStepTicks = 0;
-      _servoTargetPrev = _servoTarget;
       _servoTarget = targetTicks;
     }
     _servoEnabled = true;

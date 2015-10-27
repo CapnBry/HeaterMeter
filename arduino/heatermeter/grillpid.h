@@ -172,9 +172,7 @@ private:
   // Desired fan target (0-255)
   unsigned char _lastBlowerOutput;
   // Target servo position (ticks)
-  int _servoTarget;
-  // Last servo target position (ticks)
-  int _servoTargetPrev;
+  unsigned int _servoTarget;
   unsigned char _servoStepTicks;
   // count of periods a servo write has been delayed
   unsigned char _servoHoldoff;
@@ -234,7 +232,7 @@ public:
   // The number of timer ticks the servo is moving to
   int getServoTarget(void) const { return _servoTarget; }
   // Calculate the next step of servo movement in ticks
-  unsigned int getServoStepNext(void);
+  unsigned int getServoStepNext(unsigned int curr);
   bool getServoEnabled(void) const { return _servoEnabled; }
 
   // Collection of PIDFLAG_*
