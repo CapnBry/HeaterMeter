@@ -30,17 +30,15 @@ fi
 
 $WRT_PATH/scripts/feeds update
 
-LUCIP=$WRT_PATH/feeds/luci/patches
-rm -fR $LUCIP
-mkdir $LUCIP
-cp patches/200-luci-inreq-fix.patch $LUCIP
-cp patches/215-luci-adminfull-inreq.patch $LUCIP
-cp patches/217-luci-login-urltok.patch $LUCIP
-cp patches/218-lucid-cacheloader.patch $LUCIP
-cp patches/219-luci-sysupgrade-url.patch $LUCIP
-cp patches/226-lucid-no-redirect.patch $LUCIP
-cp patches/227-lucid-keepalive-fix.patch $LUCIP
-cp patches/228-luci-no-dhcp-dhcpc.patch $LUCIP
+LUCIP=$WRT_PATH/feeds/luci
+patch -N -p1 -d $LUCIP < patches/200-luci-inreq-fix.patch
+patch -N -p1 -d $LUCIP < patches/215-luci-adminfull-inreq.patch
+patch -N -p1 -d $LUCIP < patches/217-luci-login-urltok.patch
+patch -N -p1 -d $LUCIP < patches/218-lucid-cacheloader.patch
+patch -N -p1 -d $LUCIP < patches/219-luci-sysupgrade-url.patch
+patch -N -p1 -d $LUCIP < patches/226-lucid-no-redirect.patch
+patch -N -p1 -d $LUCIP < patches/227-lucid-keepalive-fix.patch
+patch -N -p1 -d $LUCIP < patches/228-luci-no-dhcp-dhcpc.patch
 
 LMPACKS="rrdtool kmod-broadcom-sdhc26 linkmeter kmod-8192cu kmod-spi-bcm2708 luci-app-msmtp parted avahi-daemon kmod-incompat-wireless ca-certificates liblmfit-lua"
 for PACK in $LMPACKS ; do
