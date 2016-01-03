@@ -30,7 +30,7 @@ fi
 
 $WRT_PATH/scripts/feeds update
 
-LUCIP=$WRT_PATH/feeds/luci/patches
+LUCIP=$WRT_PATH/feeds/luci/contrib/package/luci/patches
 rm -fR $LUCIP
 mkdir $LUCIP
 cp patches/200-luci-inreq-fix.patch $LUCIP
