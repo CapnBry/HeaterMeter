@@ -30,17 +30,10 @@ fi
 
 $WRT_PATH/scripts/feeds update
 
-LUCIP=$WRT_PATH/feeds/luci/contrib/package/luci/patches
-rm -fR $LUCIP
-mkdir $LUCIP
-cp patches/200-luci-inreq-fix.patch $LUCIP
-cp patches/215-luci-adminfull-inreq.patch $LUCIP
-cp patches/217-luci-login-urltok.patch $LUCIP
-cp patches/218-lucid-cacheloader.patch $LUCIP
-cp patches/219-luci-sysupgrade-url.patch $LUCIP
-cp patches/226-lucid-no-redirect.patch $LUCIP
-cp patches/227-lucid-keepalive-fix.patch $LUCIP
-cp patches/228-luci-no-dhcp-dhcpc.patch $LUCIP
+LUCIP=$WRT_PATH/feeds/luci
+for X in patches/2??-luci-* ; do
+  patch -N -p1 -d $LUCIP < $X
+done
 
 LMPACKS="rrdtool kmod-broadcom-sdhc26 linkmeter kmod-8192cu kmod-spi-bcm2708 luci-app-msmtp parted avahi-daemon kmod-incompat-wireless ca-certificates liblmfit-lua"
 for PACK in $LMPACKS ; do
@@ -61,6 +54,7 @@ if [ "$TARGET" = "BCM2708" ] ; then
   patch -N -p0 -d $WRT_PATH < patches/225-iwinfo-scan-wo-vintf.patch
   patch -N -p0 -d $WRT_PATH < patches/229-netifd-add-hostname.patch
   patch -N -p0 -d $WRT_PATH < patches/230-hotplug2-source.patch
+  patch -N -p0 -d $WRT_PATH < patches/231-clearsilver-utf8.patch
   cp patches/06??-rpi-patches-*.patch \
     $WRT_PATH/target/linux/brcm2708/patches-3.3/.
 fi
