@@ -299,13 +299,26 @@ Index: target/linux/brcm2708/image/config.txt
 ===================================================================
 --- target/linux/brcm2708/image/config.txt	(revision 0)
 +++ target/linux/brcm2708/image/config.txt	(working copy)
-@@ -0,0 +1,6 @@
+@@ -0,0 +1,19 @@
 +gpu_mem=32
 +arm_freq=800
 +arm_freq_min=700
 +sdram_freq=400
 +core_freq=250
 +
++##
++## wifi configuration
++##
++# SSID (network name)
++#wifi_ssid=heatermeter
++# Password for encrytption
++#wifi_password=password
++# Encryption mode psk2 (WPA2-PSK default), psk, wep, none
++#wifi_encryption=psk2
++# Mode ap (Access Point) or sta (Client mode, default). Must be lowercase!
++#wifi_mode=ap
++# wifi channel, only used in AP mode
++#wifi_channel=6
 Index: target/linux/brcm2708/image/gen_rpi_sdcard_img.sh
 ===================================================================
 --- target/linux/brcm2708/image/gen_rpi_sdcard_img.sh	(revision 36720)
