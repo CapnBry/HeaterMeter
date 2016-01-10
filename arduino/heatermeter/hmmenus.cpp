@@ -150,7 +150,14 @@ static void menuNumberEdit(button_t button, unsigned char increment,
   int minVal, int maxVal, const char PROGMEM *format)
 {
   char buffer[17];
-  
+
+  // If button is being held down, accelerate the increment
+  unsigned char repCnt = Menus.getButtonRepeatCnt();
+  if (repCnt > 10)
+    increment *= 4;
+  else if (repCnt > 5)
+    increment *= 2;
+
   if (button == BUTTON_UP)
     editInt += increment;
   else if (button == BUTTON_DOWN)

@@ -49,6 +49,7 @@ public:
   state_t getState(void) const { return m_state; }
   state_t getLastState(void) const { return m_lastState; }
   button_t getButton(void) const { return m_lastButton; }
+  unsigned char getButtonRepeatCnt(void) const { return m_buttonRepeatCnt; }
 private:
   const menu_definition_t *m_definitions;
   const menu_transition_t *m_transitions;
@@ -57,6 +58,7 @@ private:
   state_t m_state;
   state_t m_lastState;
   button_t m_lastButton;
+  unsigned char m_buttonRepeatCnt;
   unsigned long m_lastActivity;
 
   unsigned long getTimeoutDuration(void) const;

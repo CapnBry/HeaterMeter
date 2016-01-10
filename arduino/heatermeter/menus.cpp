@@ -93,7 +93,18 @@ void MenuSystem::doWork(void)
   if (elapsed < 250)
     return;
   if (button != BUTTON_TIMEOUT)
-    m_lastButton = button;
+  {
+    if (button == m_lastButton)
+    {
+      if (m_buttonRepeatCnt < 0xff)
+        ++m_buttonRepeatCnt;
+    }
+    else
+    {
+      m_lastButton = button;
+      m_buttonRepeatCnt = 0;
+    }
+  }
   if (button == BUTTON_NONE)
     return;
 
