@@ -116,7 +116,7 @@ public:
 // Fan only runs (at max) when pidOutput=100 (max) OBSOLETE by FanActiveFloor
 //#define PIDFLAG_FAN_ONLY_MAX  2
 // Servo opens (to max) when pidOutput>0 (any output)
-#define PIDFLAG_SERVO_ANY_MAX 3
+//#define PIDFLAG_SERVO_ANY_MAX 3
 // Try to output a constant voltage instead of PWM
 #define PIDFLAG_FAN_FEEDVOLT  4
 // Line noise cancel is 2 bits, 00=Normal, 01=50Hz, 10=60Hz, 11=Unused
@@ -163,6 +163,7 @@ private:
   unsigned char _fanActiveFloor;
   unsigned char _servoMaxPos;
   unsigned char _servoMinPos;
+  unsigned char _servoActiveCeil;
   unsigned char _outputFlags;
 
   // Current fan speed (percent)
@@ -231,6 +232,9 @@ public:
   int getServoTarget(void) const { return _servoTarget; }
   // Calculate the next step of servo movement in ticks
   unsigned int getServoStepNext(unsigned int curr);
+  // Active ceil means "servo open the maximum amount at this PID output"
+  unsigned char getServoActiveCeil(void) const { return _servoActiveCeil; }
+  void setServoActiveCeil(unsigned char value) { _servoActiveCeil = constrain(value, 0, 100); }
 
   // Collection of PIDFLAG_*
   void setOutputFlags(unsigned char value);

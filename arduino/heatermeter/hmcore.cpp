@@ -71,6 +71,7 @@ static const struct __eeprom_data {
   unsigned char servoMinPos;  // in 10us
   unsigned char servoMaxPos;  // in 10us
   unsigned char fanActiveFloor; // in percent
+  unsigned char servoActiveCeil; // in percent
 } DEFAULT_CONFIG[] PROGMEM = {
  {
   EEPROM_MAGIC,  // magic
@@ -92,7 +93,8 @@ static const struct __eeprom_data {
   { LEDSTIMULUS_FanMax, LEDSTIMULUS_LidOpen, LEDSTIMULUS_FanOn, LEDSTIMULUS_Off },
   150-50, // min servo pos = 1000us
   150+50,  // max servo pos = 2000us
-  0 // fan active floor
+  0, // fan active floor
+  100 // servo active ceil
 }
 };
 
@@ -293,6 +295,12 @@ static void storeFanActiveFloor(unsigned char fanActiveFloor)
 {
   pid.setFanActiveFloor(fanActiveFloor);
   config_store_byte(fanActiveFloor, pid.getFanActiveFloor());
+}
+
+static void storeServoActiveCeil(unsigned char servoActiveCeil)
+{
+  pid.setServoActiveCeil(servoActiveCeil);
+  config_store_byte(servoActiveCeil, pid.getServoActiveCeil());
 }
 
 static void storeServoMinPos(unsigned char servoMinPos)
@@ -765,6 +773,8 @@ static void reportFanParams(void)
   SerialX.print(pid.getFanMaxStartupSpeed(), DEC);
   Serial_csv();
   SerialX.print(pid.getFanActiveFloor(), DEC);
+  Serial_csv();
+  SerialX.print(pid.getServoActiveCeil(), DEC);
   Serial_nl();
 }
 
@@ -889,6 +899,8 @@ static void storeFanParams(unsigned char idx, int val)
       break;
     case 6:
       storeFanActiveFloor(val);
+    case 7:
+      storeServoActiveCeil(val);
       break;
   }
 }
@@ -1113,6 +1125,7 @@ static void eepromLoadBaseConfig(unsigned char forceDefault)
   g_HomeDisplayMode = config.base.homeDisplayMode;
   pid.setServoMinPos(config.base.servoMinPos);
   pid.setServoMaxPos(config.base.servoMaxPos);
+  pid.setServoActiveCeil(config.base.servoActiveCeil);
 
   for (unsigned char led = 0; led<LED_COUNT; ++led)
     ledmanager.setAssignment(led, config.base.ledConf[led]);

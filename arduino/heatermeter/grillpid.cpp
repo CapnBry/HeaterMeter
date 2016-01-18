@@ -626,10 +626,11 @@ inline void GrillPid::commitServoOutput(void)
 {
 #if defined(GRILLPID_SERVO_ENABLED)
   unsigned char output;
-  if (bit_is_set(_outputFlags, PIDFLAG_SERVO_ANY_MAX) && _pidOutput > 0)
+  // Servo is open 0% at 0 PID output and 100% at _servoActiveCeil PID output
+  if (_pidOutput >= _servoActiveCeil)
     output = 100;
   else
-    output = _pidOutput;
+    output = (unsigned int)_pidOutput * 100U / _servoActiveCeil;
 
   if (bit_is_set(_outputFlags, PIDFLAG_INVERT_SERVO))
     output = 100 - output;
