@@ -447,7 +447,7 @@ function updateConfigUrl(divname, h)
   csvItems(h, aValues, "po", ["po0", "po1", "po2", "po3"]);
   csvItems(h, aValues, "al", ["pall0", "palh0", "pall1", "palh1",
     "pall2", "palh2", "pall3", "palh3"]);
-  csvItems(h, aValues, "fn", ["fmin", "fmax", "smin", "smax", "oflag", "fsmax", "fflor"]);
+  csvItems(h, aValues, "fn", ["fmin", "fmax", "smin", "smax", "oflag", "fsmax", "fflor", "sceil"]);
   for (var i=0; i<4; ++i)
     csvItems(h, aValues, "pc"+i, ["pca"+i, "pcb"+i, "pcc"+i, "pcr"+i, 
       function () { return getProbeTypeForSend(h, i); } ]);
@@ -634,9 +634,9 @@ time they are restarted.</div>
     <input type="hidden" id="smin"/>
       <input type="text" maxlength="4" id="sminX" style="width: 3em;"/>us -
     <input type="hidden" id="smax"/>
-      <input type="text" maxlength="4" id="smaxX" style="width: 3em;"/>us
+      <input type="text" maxlength="4" id="smaxX" style="width: 3em;"/>us,
+    fully open at <input type="text" maxlength="3" id="sceil" style="width: 2em;"/>%
     <label><input type="checkbox" id="oflag1"/> Invert output</label>
-    <label><input type="checkbox" id="oflag3"/> Full open/close only</label>
   </div>
   <div class="cbi-value cbi-value-last">
     A/C input line noise filter

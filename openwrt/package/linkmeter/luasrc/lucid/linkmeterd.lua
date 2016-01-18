@@ -333,7 +333,7 @@ local function segLidParams(line)
 end
 
 local function segFanParams(line)
-  return segConfig(line, {"fmin", "fmax", "smin", "smax", "oflag", "fsmax", "fflor"}, true)
+  return segConfig(line, {"fmin", "fmax", "smin", "smax", "oflag", "fsmax", "fflor", "sceil"}, true)
 end
 
 local function segProbeCoeffs(line)
