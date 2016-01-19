@@ -70,9 +70,8 @@ $(document).ready(function()
     $("#showfan").click(showFanChanged);
     $("#graphtt").click(graphttClicked);
     $("#rangeselect").change(rangeSelectChanged);
-    $("#graph").bind("plotclick", graphClicked);
     $("#graph").bind("plothover", graphHover);
-    $("#graph").mouseout(function () { $("#graphtt").fadeOut(); });
+    $("#graphcontainer").bind("mouseleave", function () { $("#graphtt").fadeOut(); });
     $("div.legfill").click(legendClicked);
     $("div.noisebtn").click(noisebtnClicked);
     $(document).keydown(keyPressed);
@@ -427,10 +426,15 @@ function graphHover(event, pos, item)
 
 function graphttClicked()
 {
-    // After clicking the tooltip to dismiss it, don't show again for 1s
-    lastGraphHover = +new Date();
-    lastGraphHover += 1000;
-    $(this).fadeOut(); 
+    // Only dismiss if it has been less than 100ms since the tooltip cam up
+    // to prevent immediate dismiss on touch devices
+    var now = +new Date();
+    if (now - lastGraphHover > 100)
+    {
+        // After clicking the tooltip to dismiss it, don't show again for 1s
+        lastGraphHover = now + 1000;
+        $(this).fadeOut();
+    }
 }
 
 function graphClicked(event, pos, item)
@@ -503,8 +507,11 @@ function graphClicked(event, pos, item)
         {
             var axisY = lastPlot.getYAxes()[0];
             var valY = graphData[srsClosestY].data[srsClosestYIdx][1];
-            pos.pageY = axisY.p2c(valY) + 
-                lastPlot.offset().top + lastPlot.getPlotOffset().top;
+            // Adjust page positions to be relative to #graphcontainer
+            // 8 = lastPlot.getPlotOffset().top
+            pos.pageY = axisY.p2c(valY) + 8;
+            // 11 = calculated inset of #graphcontainer
+            pos.pageX = pos.pageX - 11;
         }
         var sPeakInfo = "";
         var sPeakClass = "";
@@ -543,9 +550,9 @@ function graphClicked(event, pos, item)
         $("#graphtt_peak").html(sPeakInfo).removeClass("hotback coldback").addClass(sPeakClass);
         var ttWidth = $("#graphtt").outerWidth();
         var ttHeight = $("#graphtt").outerHeight();
-        $("#graphtt_arrow").css({left: ttWidth/2 - 7, top: ttHeight - 1});
+        $("#graphtt_arrow").css({left: ttWidth/2 - 7});
         $("#graphtt")
-            .css({left: pos.pageX - (ttWidth/2) - 1, top: pos.pageY - ttHeight - 15})
+            .css({left: pos.pageX - (ttWidth/2), top: pos.pageY - ttHeight - 15})
             .show();
     }
 }
@@ -896,12 +903,12 @@ td.probe { width: 33%; position: relative; }
 .alarmHigh { color: #c00 !important; }
 .alarmLow { color: #33f !important; }
 #graphtt { display: none; position: absolute; border: 1px solid #89c; background: #eef;
-    opacity: 0.9; padding: 2px; color: #003; pointer-events: none; }
+    opacity: 0.9; padding: 2px; color: #003; }
 #graphtt_title { color: #fff; border: 1px solid #008; background-color: #357; }
 #graphtt_peak { font-size: smaller; color: #fff; }
 .hotback { background-color: #d20; }
 .coldback { background-color: #08F; }
-#graphtt_arrow { position: absolute; left: 0; top: 0; }
+#graphtt_arrow { position: absolute; left: 0; bottom: -9px; }
 #dialog-overlay { width: 100%; height: 100%; position: fixed;
     top: 0px; left: 0px; display: none; background-color: #000;
     opacity: 0.6; z-index: 2; }
@@ -1053,7 +1060,15 @@ img.preload { display: none; }
           <div class="noisebtn last">5</div>
 <% end %>
         </div>
-        <div id="graph"></div>
+        <div id="graphcontainer">
+          <div id="graph"></div>
+          <div id="graphtt">
+            <div id="graphtt_title"></div>
+            <div id="graphtt_content"></div>
+            <div id="graphtt_peak"></div>
+            <img id="graphtt_arrow" src="<%=resource%>/ttarrow.png">
+          </div>
+        </div>
         <div id="graph_overview"></div>
         <div id="loadindic"><img src="<%=resource%>/loading.gif" style="width: 126px; height: 22px;"></div>
       </div>
@@ -1080,12 +1095,6 @@ img.preload { display: none; }
         <option value="240">12 hours</option>
         <option value="0">24 hours</option>
     </select>
-</div>
-<div id="graphtt">
-    <div id="graphtt_title"></div>
-    <div id="graphtt_content"></div>
-    <div id="graphtt_peak"></div>
-    <img id="graphtt_arrow" src="<%=resource%>/ttarrow.png">
 </div>
 <div id="dialog-overlay"></div>
 <div id="alarm">
