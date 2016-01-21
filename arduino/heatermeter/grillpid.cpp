@@ -764,8 +764,8 @@ boolean GrillPid::doWork(void)
     // calcPidOutput() will bail if it isn't supposed to be in control
     calcPidOutput();
     
-    int pitTemp = (int)Probes[TEMP_CTRL]->Temperature;
-    if ((pitTemp >= _setPoint) &&
+    int tempDiff = _setPoint - (int)Probes[TEMP_CTRL]->Temperature;
+    if ((tempDiff <= 0) &&
       (_lidOpenDuration - LidOpenResumeCountdown > LIDOPEN_MIN_AUTORESUME))
     {
       // When we first achieve temperature, reduce any I sum we accumulated during startup
@@ -787,7 +787,7 @@ boolean GrillPid::doWork(void)
     // and if the fan has been running less than 90% (more than 90% would indicate probable out of fuel)
     // Note that the code assumes we're not currently counting down
     else if (isPitTempReached() && 
-      (((_setPoint-pitTemp)*100/_setPoint) >= (int)LidOpenOffset) &&
+      ((tempDiff*100/_setPoint) >= (int)LidOpenOffset) &&
       ((int)PidOutputAvg < 90))
     {
       resetLidOpenResumeCountdown();
