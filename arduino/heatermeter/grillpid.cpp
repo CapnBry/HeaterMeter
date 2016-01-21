@@ -765,6 +765,9 @@ boolean GrillPid::doWork(void)
     calcPidOutput();
     
     int pitTemp = (int)Probes[TEMP_CTRL]->Temperature;
+    float trueDeriv = pitTemp - Probes[TEMP_CTRL]->TemperatureAvg;
+    trueDeriv *= 2; // degrees per minute form
+    
     if ((pitTemp >= _setPoint) &&
       (_lidOpenDuration - LidOpenResumeCountdown > LIDOPEN_MIN_AUTORESUME))
     {
@@ -773,7 +776,7 @@ boolean GrillPid::doWork(void)
       // prevents bouncing around above the temperature when you first start up
       if (_pitStartRecover == PIDSTARTRECOVER_STARTUP)
       {
-        _pidCurrent[PIDI] *= 0.50f;
+        _pidCurrent[PIDI] *= 5.0f / (5.0f + pow(trueDeriv/2.0f,2));
       }
       _pitStartRecover = PIDSTARTRECOVER_NORMAL;
       LidOpenResumeCountdown = 0;
