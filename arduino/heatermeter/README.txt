@@ -52,7 +52,7 @@ Both Serial and Web
 /set?lb=A,B,C[,C...] - Set display parameters.  A = LCD backlight Range is 0 (off) to 255 (full). B = Home screen mode 254=4-line 255=2-line 0, 1, 2, 3 = BigNum. C = Set LED config byte for Nth LED. See ledmanager.h::LedStimulus for values. High bit means invert.
 /set?ld=A,B,C - Set Lid Detect offset to A%, duration to B seconds. C is used to enable or disable a currently running lid detect mode. Non-zero will enter lid open mode, zero will disable lid open mode.
 /set?al=L,H[,L,H...] - Set probe alarms thresholds. Setting to a negative number will disable the alarm, setting to 0 will stop a ringing alarm and disarm it.
-/set?fn=FL,FH,SL,SH,Flags - Set the fan output parameters. FL = min fan speed before "long PID" mode, FH = max fan speed, SL = Servo Low (in 10x usec), SH = Servo High (in 10x usec). Flags = Bitfield 0=Invert Fan, 1=Invert Servo, 2=Fan at max only, 3=Servo mix/max only
+/set?fn=FL,FH,SL,SH,Flags,MSS,FAF,SAC - Set the fan output parameters. FL = min fan speed before "long PID" mode, FH = max fan speed, SL = Servo Low (in 10x usec), SH = Servo High (in 10x usec), MSS = Max Startup Speed, FAF = Fan active floor, SAC = Servo active ceiling. Flags = Bitfield 0=Invert Fan, 1=Invert Servo
 /set?tt=XXX[,YYY] - Display a "toast" message on the LCD which is temporarily displayed over any other menu and is cleared either by timeout or any button press. XXX and YYY are the two lines to displau and can be up to 16 characters each.
 /set?tp=A - Set a "temp param". A = Log PID Internals ($HMPS)
 /reboot - Reboots the microcontroller.  Only if wired to do so (LinkMeter)
@@ -73,7 +73,7 @@ $UCID,HeaterMeter,VersionID
 Alarm Indicator
 $HMAL,LowProbe0,HighProbe0[,...] (L or H suffix indicates ringing, negative values indicated disabled alarms)
 Fan Parameters
-$HMFN,Low,High,Invert (0=off 1=on),Output (0=Fan 1=Servo)
+$HMFN,Low,High,ServoMin,ServoMax,Flags,MaxStartup,FanActiveFloor,ServoActiveCeil
 Display Parameters
 $HMLB,LCDBacklight,LCDHomeMode,LED0,LED1,LED2,LED3
 Lid Detect Parameters
