@@ -43,14 +43,15 @@ ISR(TIMER1_COMPB_vect, ISR_NAKED)
 
 static struct tagAdcState
 {
-  unsigned char top;      // Number of samples to take per reading
-  unsigned char cnt;      // count left to accumulate
+  unsigned char top;       // Number of samples to take per reading
+  unsigned char cnt;       // count left to accumulate
   unsigned long accumulator;  // total
-  unsigned char discard;  // Discard this many ADC readings
-  unsigned int thisHigh;  // High this period
-  unsigned int thisLow;   // Low this period
-  unsigned int analogReads[NUM_ANALOG_INPUTS]; // Current values
-  unsigned int analogRange[NUM_ANALOG_INPUTS]; // high-low on last period
+  unsigned char discard;   // Discard this many ADC readings
+  unsigned char thisHigh;  // High this period
+  unsigned char thisLow;   // Low this period
+  unsigned char pin;       // pin for which these readings were made
+  unsigned long analogReads[NUM_ANALOG_INPUTS]; // Current values
+  unsigned char analogRange[NUM_ANALOG_INPUTS]; // high-low on last period
 #if defined(GRILLPID_DYNAMIC_RANGE)
   bool useBandgapReference[NUM_ANALOG_INPUTS]; // Use 1.1V reference instead of AVCC
   unsigned int bandgapAdc;                     // 10-bit adc reading of BG with AVCC ref
@@ -69,25 +70,40 @@ ISR(ADC_vect)
   if (adcState.discard != 0)
   {
     --adcState.discard;
+    // Actually do the calculations for the previous set of reads while in the
+    // discard period of the next set of reads. Break the code up into chunks
+    // of roughly the same number of clock cycles.
+    if (adcState.discard == 1)
+    {
+      adcState.analogReads[adcState.pin] = adcState.accumulator;
+      adcState.analogRange[adcState.pin] = adcState.thisHigh - adcState.thisLow;
+    }
+    else if (adcState.discard == 0)
+    {
+      adcState.thisHigh = 0;
+      adcState.accumulator = 0;
+      adcState.thisLow = 0xff;
+      adcState.cnt = adcState.top;
+      adcState.pin = ADMUX & 0x0f;
+    }
     return;
   }
 
-  --adcState.cnt;
-  unsigned int adc = ADC;
-#if defined(NOISEDUMP_PIN)
-  if ((ADMUX & 0x07) == g_NoisePin)
-    adcState.data[adcState.cnt] = adc;
-#endif
-  adcState.accumulator += adc;
-
   if (adcState.cnt != 0)
   {
-    // Not checking the range on the 256th sample saves some clock cycles
-    // and helps offset the penalty of the end of period calculations
-    if (adc > adcState.thisHigh)
-      adcState.thisHigh = adc;
-    if (adc < adcState.thisLow)
-      adcState.thisLow = adc;
+    --adcState.cnt;
+    unsigned int adc = ADC;
+#if defined(NOISEDUMP_PIN)
+    if ((ADMUX & 0x07) == g_NoisePin)
+      adcState.data[adcState.cnt] = adc;
+#endif
+    adcState.accumulator += adc;
+
+    unsigned char a = adc >> 2;
+    if (a > adcState.thisHigh)
+      adcState.thisHigh = a;
+    if (a < adcState.thisLow)
+      adcState.thisLow = a;
   }
   else
   {
@@ -96,19 +112,9 @@ ISR(ADC_vect)
     if (pin > NUM_ANALOG_INPUTS)
     {
       // Store only the last ADC value, giving the bandgap ~25ms to stabilize
-      adcState.bandgapAdc = adc;
+      adcState.bandgapAdc = ADC;
     }
-    else
 #endif // GRILLPID_DYNAMIC_RANGE
-    {
-      // Scale up to 256 samples then divide by 2^4 for 14 bit oversample
-      adcState.analogReads[pin] = adcState.accumulator * 16 / adcState.top;
-      adcState.analogRange[pin] = adcState.thisHigh - adcState.thisLow;
-    }
-    adcState.thisHigh = 0;
-    adcState.thisLow = 0xffff;
-    adcState.accumulator = 0;
-    adcState.cnt = adcState.top;
 
     ++pin;
     if (pin >= NUM_ANALOG_INPUTS)
@@ -133,22 +139,19 @@ ISR(ADC_vect)
 
 unsigned int analogReadOver(unsigned char pin, unsigned char bits)
 {
-  unsigned int retVal;
+  unsigned long a;
   ATOMIC_BLOCK(ATOMIC_FORCEON)
   {
-    retVal = adcState.analogReads[pin];
+    a = adcState.analogReads[pin];
   }
+  // Scale up to 256 samples then divide by 2^4 for 14 bit oversample
+  unsigned int retVal = a * 16 / adcState.top;
   return retVal >> (14 - bits);
 }
 
 unsigned int analogReadRange(unsigned char pin)
 {
-  unsigned int retVal;
-  ATOMIC_BLOCK(ATOMIC_FORCEON)
-  {
-    retVal = adcState.analogRange[pin];
-  }
-  return retVal;
+  return adcState.analogRange[pin];
 }
 
 #if defined(GRILLPID_DYNAMIC_RANGE)
@@ -417,8 +420,7 @@ void GrillPid::setOutputFlags(unsigned char value)
   ATOMIC_BLOCK(ATOMIC_FORCEON)
   {
     adcState.top = newTop;
-    adcState.cnt = adcState.top;
-    adcState.accumulator = 0;
+    adcState.discard = 3;
   }
 
   // Timer2 Fast PWM
