@@ -28,13 +28,16 @@ ISR(TIMER1_CAPT_vect)
   if (nextStep != 0)
   {
     digitalWriteFast(PIN_SERVO, HIGH);
-    OCR1B = nextStep;
+    // Add the current timer1 count to offset the delay of calculating
+    // the next move, and any interrupt latency due to the ADC code
+    OCR1B = TCNT1 + nextStep;
   }
 }
 
-ISR(TIMER1_COMPB_vect)
+ISR(TIMER1_COMPB_vect, ISR_NAKED)
 {
   digitalWriteFast(PIN_SERVO, LOW);
+  asm("reti\n");
 }
 #endif
 
