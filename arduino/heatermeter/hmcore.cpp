@@ -899,6 +899,7 @@ static void storeFanParams(unsigned char idx, int val)
       break;
     case 6:
       storeFanActiveFloor(val);
+      break;
     case 7:
       storeServoActiveCeil(val);
       break;
