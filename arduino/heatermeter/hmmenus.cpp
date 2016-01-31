@@ -113,7 +113,7 @@ char editString[17];
 static button_t readButton(void)
 {
   // Wait until reading stabilizes
-  if (analogReadRange(PIN_BUTTONS) > 16)
+  if (analogReadRange(PIN_BUTTONS) > 4)
     return BUTTON_NONE;
 
   unsigned char button = analogReadOver(PIN_BUTTONS, 8);

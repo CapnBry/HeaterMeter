@@ -149,7 +149,7 @@ unsigned int analogReadOver(unsigned char pin, unsigned char bits)
   return retVal >> (14 - bits);
 }
 
-unsigned int analogReadRange(unsigned char pin)
+unsigned char analogReadRange(unsigned char pin)
 {
   return adcState.analogRange[pin];
 }

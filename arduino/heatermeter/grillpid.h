@@ -134,8 +134,8 @@ public:
 
 // oversampled analogRead from current freerunning ADC
 unsigned int analogReadOver(unsigned char pin, unsigned char bits);
-// Range of the last ADC period for this pin, always 10bit
-unsigned int analogReadRange(unsigned char pin);
+// Range of the last ADC period for this pin, always 10bit >> 2
+unsigned char analogReadRange(unsigned char pin);
 #if defined(GRILLPID_DYNAMIC_RANGE)
 // Is the pin using the 1.1V reference
 bool analogIsBandgapReference(unsigned char pin);
