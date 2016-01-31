@@ -799,10 +799,10 @@ function connectionSuccess(o)
             if (o.adc && o.adc.length > 4)
             {
                 var noise = o.adc[5-i];
-                if (noise < 5)
+                if (noise < 2)
                   $(noiseDiv).hide();
                 else
-                  $(noiseDiv).css('background-position', (noise < 20) ? "0px" : "16px")
+                  $(noiseDiv).css('background-position', (noise < 5) ? "0px" : "16px")
                       .attr('title', "Noise: " + noise.toString())
                       .show();
             }
