@@ -644,13 +644,15 @@ inline void GrillPid::commitServoOutput(void)
   output = mappct(output, _servoMinPos, _servoMaxPos);
   unsigned int targetTicks = uSecToTicks(10U * output);
 #if defined(SERVO_MIN_THRESH)
+  if (_servoHoldoff < 0xff)
+    ++_servoHoldoff;
   // never pulse the servo if change isn't needed
   if (_servoTarget == targetTicks)
     return;
 
   // and only trigger the servo if a large movement is needed or holdoff expired
-  if (!DIFFMAX(_servoTarget, targetTicks, uSecToTicks(SERVO_MIN_THRESH)) ||
-    (++_servoHoldoff >= SERVO_MAX_HOLDOFF))
+  boolean isBigMove = !DIFFMAX(_servoTarget, targetTicks, uSecToTicks(SERVO_MIN_THRESH));
+  if (isBigMove || _servoHoldoff > SERVO_MAX_HOLDOFF)
 #endif
   {
     ATOMIC_BLOCK(ATOMIC_FORCEON)
