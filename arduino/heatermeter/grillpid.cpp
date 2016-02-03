@@ -487,7 +487,11 @@ inline void GrillPid::calcPidOutput(void)
   // IIIII = fan speed percent per degree of accumulated error
   // anti-windup: Make sure we only adjust the I term while inside the proportional control range
   if ((error > 0 && lastOutput < 100) || (error < 0 && lastOutput > 0))
+  {
     _pidCurrent[PIDI] += Pid[PIDI] * error;
+    // I term can never be negative, because if curr = set, then P and D are 0, so I must be output
+    if (_pidCurrent[PIDI] < 0.0f) _pidCurrent[PIDI] = 0.0f;
+  }
 
   // DDDDD = fan speed percent per degree of change over TEMPPROBE_AVG_SMOOTH period
   _pidCurrent[PIDD] = Pid[PIDD] * (Probes[TEMP_CTRL]->TemperatureAvg - currentTemp);
