@@ -510,8 +510,6 @@ function graphClicked(event, pos, item)
             // Adjust page positions to be relative to #graphcontainer
             // 8 = lastPlot.getPlotOffset().top
             pos.pageY = axisY.p2c(valY) + 8;
-            // 11 = calculated inset of #graphcontainer
-            pos.pageX = pos.pageX - 11;
         }
         var sPeakInfo = "";
         var sPeakClass = "";
@@ -552,7 +550,7 @@ function graphClicked(event, pos, item)
         var ttHeight = $("#graphtt").outerHeight();
         $("#graphtt_arrow").css({left: ttWidth/2 - 7});
         $("#graphtt")
-            .css({left: pos.pageX - (ttWidth/2), top: pos.pageY - ttHeight - 15})
+            .css({left: pos.pageX - (ttWidth/2) - 11, top: pos.pageY - ttHeight - 5})
             .show();
     }
 }

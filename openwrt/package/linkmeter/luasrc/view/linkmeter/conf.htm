@@ -105,7 +105,7 @@ function checkCoeffForPresets()
 function queryRfNodes()
 {
   // If no probetypes are set to RF12 (option 2) then exit
-  if ($("select.pt option[value='2']").filter(":selected").length == 0)
+  if ($("select.pt option[value='2']:selected").length == 0)
     return;
     
   $.ajax({
@@ -478,14 +478,16 @@ function updateConfigUrl(divname, h)
   }
 }
 
+var frameLoadFired; // hack to prevent multiple "load" callbacks per iframe load
 function ifrmTarget(url,title)
 {
   clearInterval(rfInterval);
   if (arguments.length < 2)
     title = "Updating configuration...";
     
+  frameLoadFired = false;
   $("#overlay_ifrm")
-    .load(function () { setTimeout(ifrmLoaded, 2000); })
+    .on("load", function () { setTimeout(ifrmLoaded, 2000); })
     .attr("src", url);
 
   $("#dialog-title").text(title);
@@ -496,10 +498,12 @@ function ifrmTarget(url,title)
 
 function ifrmLoaded()
 {
+  if (frameLoadFired) return;
+  frameLoadFired = true;
   $.get("<%=build_url("lm/conf")%>",
     function (o) { configHash = o; configToForm(); windowLoaded(); })
-    .error(function () { window.location.reload(); })
-    .complete(ifrmHide);
+    .fail(function () { window.location.reload(); })
+    .always(ifrmHide);
 }
 
 function ifrmHide()
@@ -514,6 +518,7 @@ function ifrmHide()
   .pn { width: 120px !important; }
   .pc { width: 120px !important; }
   .pt { width: 122px !important; }
+  .pcp { width: 122px !important; }
   .good { color: #0c0; }
   .bad { color: #c00; }
   .pconfig { vertical-align: top; width: 25%; }
@@ -576,7 +581,7 @@ The look of the Home page can be modified using the
 </select></div>
 <div id="disppc<%=i%>">
   <div><b>Probe Coefficients</b></div>
-  <div class="cbi-value"><label><a class="nodest" href="https://github.com/CapnBry/HeaterMeter/wiki/HeaterMeter-Probes">Preset</a></label><select class="pt pcp" id="pcp<%=i%>">
+  <div class="cbi-value"><label><a class="nodest" href="https://github.com/CapnBry/HeaterMeter/wiki/HeaterMeter-Probes">Preset</a></label><select class="pcp" id="pcp<%=i%>">
     </select><div id="pcad<%=i%>" class="pcpreset"></div>
   </div>
   <div id="disppcc<%=i%>" style="display: none">
