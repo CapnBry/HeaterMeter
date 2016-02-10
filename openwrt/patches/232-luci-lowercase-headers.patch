@@ -1,0 +1,32 @@
+--- luci-0.11.1/libs/lucid-http/luasrc/lucid/http/server.lua.orig       2016-02-10 16:35:29.513819642 +0000
++++ luci-0.11.1/libs/lucid-http/luasrc/lucid/http/server.lua    2016-02-10 16:37:18.465820974 +0000
+@@ -342,17 +342,28 @@ end
+ 
+ local hdr2env = {
+ 	["Content-Length"] = "CONTENT_LENGTH",
++	["content-length"] = "CONTENT_LENGTH",
+ 	["Content-Type"] = "CONTENT_TYPE",
+ 	["Content-type"] = "CONTENT_TYPE",
++	["content-type"] = "CONTENT_TYPE",
+ 	["Accept"] = "HTTP_ACCEPT",
++	["accept"] = "HTTP_ACCEPT",
+ 	["Accept-Charset"] = "HTTP_ACCEPT_CHARSET",
++	["accept-charset"] = "HTTP_ACCEPT_CHARSET",
+ 	["Accept-Encoding"] = "HTTP_ACCEPT_ENCODING",
++	["accept-encoding"] = "HTTP_ACCEPT_ENCODING",
+ 	["Accept-Language"] = "HTTP_ACCEPT_LANGUAGE",
++	["accept-language"] = "HTTP_ACCEPT_LANGUAGE",
+ 	["Connection"] = "HTTP_CONNECTION",
++	["connection"] = "HTTP_CONNECTION",
+ 	["Cookie"] = "HTTP_COOKIE",
++	["cookie"] = "HTTP_COOKIE",
+ 	["Host"] = "HTTP_HOST",
++	["host"] = "HTTP_HOST",
+ 	["Referer"] = "HTTP_REFERER",
+-	["User-Agent"] = "HTTP_USER_AGENT"
++	["referer"] = "HTTP_REFERER",
++	["User-Agent"] = "HTTP_USER_AGENT",
++	["user-agent"] = "HTTP_USER_AGENT"
+ }
+ 
+ --- Parse the request headers and prepare the environment.
