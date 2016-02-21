@@ -1,5 +1,6 @@
 #!/bin/sh
 
+# Install param will be update, restore, or blank (new)
 INSTALL_PARAM="$1"
 [ -z "$INSTALL_PARAM" ] && INSTALL_PARAM="new"
 
@@ -94,11 +95,6 @@ if [ "$INSTALL_PARAM" = "new" ] ; then
   uci set luci.ccache.enable=$LUCI_CCACHE
   uci commit luci
 
-  # On applicable platforms, avrupdate loads HeaterMeter onto the AVR
-  # pasing the firmware file forces it to overwrite even if AVR already
-  # contains HeaterMeter
-  avrupdate /lib/firmware/hm.hex
-
   if [ "$HARDWARE_MODEL" = "BCM2708" ] ; then
     # Disable dhcp server on the lan interface
     uci set dhcp.lan.ignore=1
@@ -108,3 +104,9 @@ if [ "$INSTALL_PARAM" = "new" ] ; then
     /usr/bin/wifi-ap -s heatermeter -c 6 -e none
   fi
 fi
+
+# On applicable platforms, avrupdate loads HeaterMeter onto the AVR
+# pasing the firmware file forces it to overwrite even if AVR already
+# contains HeaterMeter unless the noupdate file exists
+[ ! -f "/lib/firmware/noupdate" ] && avrupdate /lib/firmware/hm.hex
+
