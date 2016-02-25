@@ -22,7 +22,7 @@ fi
 
 if [ "$TARGET" = "BCM2708" ] ; then
   cat << EOFEEDS > $WRT_PATH/feeds.conf
-src-svn packages svn://svn.openwrt.org/openwrt/branches/packages_12.09
+src-git packages git://git.openwrt.org/12.09/packages.git
 src-git luci http://github.com/openwrt/luci.git;0.11.1
 src-link linkmeter $REPO_PATH/package
 EOFEEDS
