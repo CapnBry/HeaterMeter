@@ -1,5 +1,5 @@
---- libs/lucid-http/luasrc/lucid/http/server.lua.orig	2016-02-20 08:43:54.476971044 -0500
-+++ libs/lucid-http/luasrc/lucid/http/server.lua	2016-02-20 08:45:34.520744877 -0500
+--- luci-0.11.1/libs/lucid-http/luasrc/lucid/http/server.lua.orig	2016-02-20 08:43:54.476971044 -0500
++++ luci-0.11.1/libs/lucid-http/luasrc/lucid/http/server.lua	2016-02-20 08:45:34.520744877 -0500
 @@ -341,18 +341,17 @@
  end
  
