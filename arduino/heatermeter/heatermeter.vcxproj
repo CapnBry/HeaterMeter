@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -23,21 +23,21 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release A|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -57,10 +57,10 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>C:\Arduino\arduino-1.0.5\hardware\arduino\cores\arduino;C:\Arduino\arduino-1.0.5\hardware\arduino\variants\standard;C:\Users\bmayland\Documents\Arduino\libraries\rf12_itplus;C:\Users\bmayland\Documents\Arduino\libraries\rf12_itplus\utility;c:\arduino\arduino-1.0.5\hardware\tools\avr\avr\include\;c:\arduino\arduino-1.0.5\hardware\tools\avr\avr\include\avr\;c:\arduino\arduino-1.0.5\hardware\tools\avr\avr\;c:\arduino\arduino-1.0.5\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <ForcedIncludeFiles>C:\Users\bmayland\Documents\GitHub Projects\heatermeter\arduino\heatermeter\Visual Micro\.heatermeter.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
-      <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
-      <PreprocessorDefinitions>__AVR_ATmega328P__;_DEBUG=1;_VMDEBUG=1;ARDUINO=105;ARDUINO_MAIN;__AVR__;F_CPU=16000000L;__cplusplus;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Arduino\arduino-1.6.8\hardware\arduino\avr\cores\arduino;C:\Arduino\arduino-1.6.8\hardware\arduino\avr\variants\standard;C:\Users\bmayland\Documents\GitHub Projects\HeaterMeter\arduino\heatermeter;C:\Arduino\arduino-1.6.8\libraries;C:\Arduino\arduino-1.6.8\hardware\arduino\avr\libraries;C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\IDE\Extensions\0zk4kefs.fdm\Micro Platforms\default\debuggers;C:\Users\bmayland\Documents\Arduino\libraries;C:\Arduino\arduino-1.6.8\hardware\tools\avr/avr/include/;C:\Arduino\arduino-1.6.8\hardware\tools\avr//avr/include/avr/;C:\Arduino\arduino-1.6.8\hardware\tools\avr/lib\gcc\avr\4.8.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>C:\Users\bmayland\Documents\GitHub Projects\HeaterMeter\arduino\heatermeter\__vm\.heatermeter.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <IgnoreStandardIncludePath>false</IgnoreStandardIncludePath>
+      <PreprocessorDefinitions>__AVR_ATmega328p__;__AVR_ATmega328P__;F_CPU=16000000L;ARDUINO=10608;ARDUINO_AVR_UNO;ARDUINO_ARCH_AVR;__cplusplus=201103L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -142,6 +142,7 @@
     <ClInclude Include="wishieldconf.h">
       <FileType>CppHeader</FileType>
     </ClInclude>
+    <ClInclude Include="__vm\.heatermeter.vsarduino.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="econfig.c" />
