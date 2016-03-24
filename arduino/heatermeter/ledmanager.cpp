@@ -1,4 +1,4 @@
-// HeaterMeter Copyright 2013 Bryan Mayland <bmayland@capnbry.net>
+// HeaterMeter Copyright 2016 Bryan Mayland <bmayland@capnbry.net>
 #include "ledmanager.h"
 
 #define LED_BLINK_MILLIS 500U

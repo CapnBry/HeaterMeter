@@ -1,4 +1,4 @@
-// HeaterMeter Copyright 2011 Bryan Mayland <bmayland@capnbry.net>
+// HeaterMeter Copyright 2016 Bryan Mayland <bmayland@capnbry.net>
 #include "ShiftRegLCD.h"
 #include <digitalWriteFast.h>
 #include "hmcore.h"

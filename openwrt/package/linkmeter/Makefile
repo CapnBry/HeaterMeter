@@ -1,4 +1,4 @@
-# Copyright 2011 Bryan Mayland <bmayland@capnbry.net>
+# Copyright 2016 Bryan Mayland <bmayland@capnbry.net>
 
 include $(TOPDIR)/rules.mk
 
