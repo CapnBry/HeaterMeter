@@ -110,3 +110,4 @@ fi
 # contains HeaterMeter unless the noupdate file exists
 [ ! -f "/lib/firmware/noupdate" ] && avrupdate /lib/firmware/hm.hex
 
+exit 0
