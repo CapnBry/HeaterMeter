@@ -50,7 +50,7 @@ module screwhole2() {
 
 module pic_ex_cube() {
   translate([0,33.75,2])
-    cube_fillet([pic_ex+e, 60, 20.8], 
+    cube_fillet([pic_ex+e, 59.5, 20.8], 
       vertical=[0, pic_ex, pic_ex, 0],
       top=[0,pic_ex,0,0],
       bottom=[0,pic_ex,0,0]);
@@ -180,10 +180,10 @@ module lcd_mount() {
 
 module lcd_neg() {
   // Assuming starting at bottom left screw hole
-  translate([1.50, 2.10, 0])
+  translate([1.0, 2.1, 0])
     cube([73.0, 26.3, lcd_mount_t+wall_t-0.8]); // black bezel inset
-  translate([5.75, 7.8, 0])
-    cube([63.5, 15.4, lcd_mount_t+wall_t+2*e]); // LCD active area
+  translate([5.5, 7.8, 0])
+    cube([64.0, 15.4, lcd_mount_t+wall_t+2*e]); // LCD active area
   translate([4.23, -2.5, 0])
     cube([16*2.54, 5, lcd_mount_t+wall_t-0.8]); // pins cutout
 }
@@ -227,16 +227,16 @@ difference() {
     translate([0,0,5]) {
       // ethernet
       if (Pi_Model == "3B/2B/1B+") {
-        translate([0,81,-1]) jhole(15,13);
-        translate([0,81,-2]) jhole(5,5);
+        translate([0,81.5,-1]) jhole(15,13);
+        translate([0,81.5,-2]) jhole(5,5);
       }
       // USB 0+1
       if (Pi_Model == "3B/2B/1B+") {
-        translate([0,62.25,0]) jhole(13,14.8);
-        translate([0,44.25,0]) jhole(13,14.8);
+        translate([0,62.75,0]) jhole(13,14.8);
+        translate([0,44.75,0]) jhole(13,14.8);
       }
       if (Pi_Model == "1A+")
-        translate([0,44.25,0]) jhole(13,7.4);
+        translate([0,44.75,0]) jhole(13,7.4);
     }
     // HeaterMeter connectors
     translate([0,0,0]) {
@@ -296,8 +296,8 @@ difference() {
   // Top locklip (negative)
   translate([wall, d+wall, probe_centerline+wall_t+e])
     rotate([180]) {
-      locklip_n(27);
-      translate([w-33,0,0]) locklip_n(33);
+      locklip_n(28);
+      translate([w-34,0,0]) locklip_n(34);
     }
   
   // LCD mount
@@ -328,8 +328,8 @@ module hm43_split() {
     }
     // bottom locklip (postive)
     translate([wall, d+wall, probe_centerline+wall_t]) {
-      locklip_p(27);
-      translate([w-33,0,0]) locklip_p(33);
+      locklip_p(28);
+      translate([w-34,0,0]) locklip_p(34);
     }
   } // if include bottom
   
