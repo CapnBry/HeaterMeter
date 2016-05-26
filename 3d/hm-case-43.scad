@@ -23,6 +23,19 @@ wall = 2.1*1.41; // thickness of side walls
 wall_t = 2; // thickness of top and bottom walls
 e = 0.01;
 
+module cube_fillet_chamfer(size,f,c,$fn=32) {
+  hull() {
+    translate([f,f,c]) linear_extrude(height=size[2]-2*c) minkowski() {
+      square([size[0]-2*f, size[1]-2*f]);
+      circle(r=f, $fn=$fn);
+    }
+    translate([f+c,f+c,0]) linear_extrude(height=size[2]) minkowski() {
+      square([size[0]-2*(f+c), size[1]-2*(f+c)]);
+      circle(r=f, $fn=$fn);
+    }
+  }
+}
+
 module jhole(d, h) {
   translate([0,0,h/2]) cube([2*(wall+pic_ex),d,h], center=true);
 }
