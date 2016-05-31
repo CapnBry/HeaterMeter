@@ -55,6 +55,7 @@ if [ "$TARGET" = "BCM2708" ] ; then
   patch -N -p0 -d $WRT_PATH < patches/229-netifd-add-hostname.patch
   patch -N -p0 -d $WRT_PATH < patches/230-hotplug2-source.patch
   patch -N -p0 -d $WRT_PATH < patches/231-clearsilver-utf8.patch
+  patch -N -p0 -d $WRT_PATH < patches/233-opkg-source.patch
   cp patches/06??-rpi-patches-*.patch \
     $WRT_PATH/target/linux/brcm2708/patches-3.3/.
 fi
