@@ -79,7 +79,7 @@ module screw_pimount() {
 
 module btn_rnd(dia=10) {
   cylinder(wall_t+2*e, d1=dia, d2=dia+1.5*wall_t, $fn=24);
-  translate([-6.25,-6.25,0]) cube([12.5,12.5,0.75+e]);
+  translate([-6.5,-6.5,0]) cube([13,13,0.75+e]);
 }
 
 module btn_square(sq=13) {
@@ -256,7 +256,7 @@ difference() {
       // Blower/Servo output
       translate([0,25.25,0.2]) jhole(16.7,13);
       // HM power jack
-      translate([0,5.25,2.5]) jhole(9.2,11);
+      translate([0,5.25,2.5]) jhole(9.4,11);
     }
   }
   
