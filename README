@@ -20,7 +20,9 @@ t |    +-------+    |
   +-----------------+
   
 Source Layout
+3d/* - 3D printed parts source files
 openwrt/* - Files you'd push to your router for LinkMeter
 arduino/* - AVR source code for upload to your Arduino board
+eagle/* - Hardware schematics and board files
 pebble/* - Source to the Pebble app
 tools/* - Miscellaneous scripts and .NET apps
