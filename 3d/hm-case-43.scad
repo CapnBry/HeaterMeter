@@ -240,8 +240,8 @@ difference() {
     translate([0,0,5]) {
       // ethernet
       if (Pi_Model == "3B/2B/1B+") {
-        translate([0,81.5,-1]) jhole(15,13);
-        translate([0,81.5,-2]) jhole(5,5);
+        translate([0,81.5,-0.5]) jhole(15,13);
+        translate([0,81.5,-1.5]) jhole(5,5);
       }
       // USB 0+1
       if (Pi_Model == "3B/2B/1B+") {
@@ -254,9 +254,9 @@ difference() {
     // HeaterMeter connectors
     translate([0,0,0]) {
       // Blower/Servo output
-      translate([0,25.25,0.2]) jhole(16.7,13);
+      translate([0,25.25,1.1]) jhole(16.7,13);
       // HM power jack
-      translate([0,5.25,2.5]) jhole(9.4,11);
+      translate([0,5.25,3.4]) jhole(9.4,11);
     }
   }
   
