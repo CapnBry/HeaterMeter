@@ -38,8 +38,8 @@
 <layer number="28" name="bValues" color="7" fill="1" visible="yes" active="yes"/>
 <layer number="29" name="tStop" color="7" fill="3" visible="yes" active="yes"/>
 <layer number="30" name="bStop" color="7" fill="6" visible="yes" active="yes"/>
-<layer number="31" name="tCream" color="7" fill="4" visible="no" active="yes"/>
-<layer number="32" name="bCream" color="7" fill="5" visible="no" active="yes"/>
+<layer number="31" name="tCream" color="7" fill="4" visible="yes" active="yes"/>
+<layer number="32" name="bCream" color="7" fill="5" visible="yes" active="yes"/>
 <layer number="33" name="tFinish" color="6" fill="3" visible="no" active="yes"/>
 <layer number="34" name="bFinish" color="6" fill="6" visible="no" active="yes"/>
 <layer number="35" name="tGlue" color="7" fill="4" visible="no" active="yes"/>
@@ -2111,10 +2111,10 @@ Please make sure your boards conform to these design rules.</description>
 <param name="psElongationOffset" value="100"/>
 <param name="mvStopFrame" value="1"/>
 <param name="mvCreamFrame" value="0"/>
-<param name="mlMinStopFrame" value="4mil"/>
-<param name="mlMaxStopFrame" value="4mil"/>
-<param name="mlMinCreamFrame" value="0mil"/>
-<param name="mlMaxCreamFrame" value="0mil"/>
+<param name="mlMinStopFrame" value="2mil"/>
+<param name="mlMaxStopFrame" value="2mil"/>
+<param name="mlMinCreamFrame" value="4mil"/>
+<param name="mlMaxCreamFrame" value="4mil"/>
 <param name="mlViaStopLimit" value="20mil"/>
 <param name="srRoundness" value="0"/>
 <param name="srMinRoundness" value="0mil"/>
