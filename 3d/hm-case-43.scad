@@ -44,8 +44,12 @@ module jhole(d, h) {
 }
 
 module phole() {
+  dia=4.5;
   // Hole for thermistor probe jack
-  rotate([0,90,0]) cylinder(2*wall, d=4.5, $fn=16);
+  rotate([0,90,0]) cylinder(2*wall, d=dia, $fn=16);
+  // because 3d print tends to curl up slightly between the probe holes,
+  // do not go right to the edge on the final layer (stop 0.25mm short on each side)
+  translate([0,-(dia+0.5)/2, -0.3]) cube([2*wall, dia+0.5, 0.6]);
 }
 
 module screwhole() {
@@ -147,7 +151,7 @@ module nuttrap() {
 
 module locklip_p(l, l_offset=1,
   lip_insert_depth=2.0, // how deep V to insert
-  lip_v_off=0.3, // extra height before starting insert
+  lip_v_off=0.2, // extra height before starting insert
   lip_h_off=0.4, // back connector away from mating area
   lip_w=1.5  // thickness of attachment beam
   ) {
@@ -295,11 +299,11 @@ difference() {
     translate([0,0,0]) screw_pimount();
   }
   // Pi right edge stop
-  translate([wall+w-10, wall+d-65, wall_t]) {
+  translate([wall+w-10, wall+d-60, wall_t]) {
     difference() {
-      cube_fillet([10,65,3], vertical=[0,0,10/2], $fn=24);
+      cube_fillet([10,60,4], vertical=[0,0,10/2], $fn=24);
       // Pi B+ microsd gap
-      translate([-e,27.5,e]) cube_fillet([3,14,3], vertical=[2,0,0,2], $fn=20);
+      translate([-e,22.5,-e]) cube_fillet([6,14,4+2*e], vertical=[2,0,0,2], $fn=20);
     }
   }
   
