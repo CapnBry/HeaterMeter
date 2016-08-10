@@ -1,0 +1,10 @@
+--- parted-3.1/libparted/fs/xfs/platform_defs.h.orig	2016-08-10 12:21:05.354795028 -0400
++++ parted-3.1/libparted/fs/xfs/platform_defs.h	2016-08-10 12:21:17.802849697 -0400
+@@ -51,7 +51,6 @@
+ # define constpp	char * const *
+ #endif
+ 
+-typedef loff_t		xfs_off_t;
+ typedef uint64_t	xfs_ino_t;
+ typedef uint32_t	xfs_dev_t;
+ typedef int64_t         xfs_daddr_t;
