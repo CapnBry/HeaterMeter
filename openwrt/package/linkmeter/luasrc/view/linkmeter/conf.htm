@@ -1,6 +1,6 @@
 <%+header%>
 <% require "lmclient" %>
-<script language="javascript" src="<%=resource%>/js/jquery-all.js" type="text/javascript"></script>
+<script src="<%=resource%>/js/jquery-all.js" type="text/javascript"></script>
 <script type="text/javascript">//<![CDATA[
 var configHash = <%= LmClient():query("$LMCF") or "{}" %>;
 var rfInterval;
@@ -567,7 +567,7 @@ You can store a configuration by bookmarking the "Full configuration" link.
 The look of the Home page can be modified using the
 <a href="<%=build_url("admin/lm/usercss")%>">user CSS</a> tool.</p>
 
-<form method="GET" action="">
+<form method="GET" action="#">
 <fieldset class="cbi-section" id="cbi-lm-probes">
 <legend>Probe Setup</legend>
 
@@ -733,11 +733,11 @@ Version <span id="ucid"></span><br/><span id="cerr"></span>
 </div>
 </form>
 
-<h3>Update URL<img src="<%=resource%>/cbi/reload.gif" onclick="updateUpdateUrl();"/></h3>
-<div id="updateurl" style="font-family: monospace"/>
+<h3>Update URL<img src="<%=resource%>/cbi/reload.gif" alt="refresh" onclick="updateUpdateUrl();"/></h3>
+<div id="updateurl" style="font-family: monospace"></div>
 
 <h3>Full configuration URL</h3>
-<div style="font-family: monospace"><a id="fullurl"/></div>
+<div style="font-family: monospace"><a id="fullurl"></a></div>
 
 <h3>Raw set command</h3>
 Pass a direct 'set' command to linkmeterd for sending to HeaterMeter (e.g.
@@ -755,19 +755,6 @@ set the LCD backlight to 50% by entering lb=50 here).
 </div>
 
 <div id="noconfig" style="display: none;">
-  <fieldset class="cbi-section">
-  <legend>No Communication</legend>
-  <div class="cbi-section-descr">
-    HeaterMeter serial communication can not be established. Configuration
-    requires bidirectional serial operation. Possible causes of failure:
-    <ul>
-      <li>No HeaterMeter board attached</li>
-      <li>No HeaterMeter (AVR) firmware installed. See
-        <a href="<%=build_url("admin/lm/fw")%>">AVR Firmware</a></li>
-      <li>Incorrect baud rate in /etc/config/lucid</li>
-      <li>Hardware malfunction</li>
-    </ul>
-  </div>
-  </fieldset>
+<%+linkmeter/noconfig%>
 </div>
 <%+footer%>
