@@ -32,7 +32,6 @@
 #include <uci.h>
 
 #include "fileio.h"
-#include "bcm2835.h"
 
 const char *progname = "hmdude";
 int verbose;
@@ -45,7 +44,6 @@ static char *port;
 static int port_fd;
 static unsigned char ihex[32 * 1024];
 static int ihex_len;
-static int spi_intialized;
 
 static bool do_chiperase;
 static bool do_disable_autoerase;
@@ -54,7 +52,7 @@ static bool do_verify = true;
 
 #define msleep(x) usleep(x * 1000)
 
-#define PAGE_SIZE 128
+#define AVR_PAGE_SIZE 128
 #define WADDR_PAGE(x) (x & 0xffffffc0)
 
 #define FUSE_LOW  0
@@ -179,11 +177,11 @@ static int upload_ihex(void)
   if (ihex_len == 0)
     return 0;
 
-  unsigned char buf[PAGE_SIZE + 8];
+  unsigned char buf[AVR_PAGE_SIZE + 8];
   unsigned int addr;
   int rc = 0;
 
-  for (addr = 0; addr < ihex_len; addr += PAGE_SIZE) 
+  for (addr = 0; addr < ihex_len; addr += AVR_PAGE_SIZE)
   {
     // address is in words
     if ((rc = stk500_loadaddr(port_fd, addr/2)) != 0)
@@ -191,13 +189,13 @@ static int upload_ihex(void)
     report_progress(addr, ihex_len);
    
     buf[0] = Cmnd_STK_PROG_PAGE;
-    buf[1] = (PAGE_SIZE >> 8) & 0xff;
-    buf[2] = PAGE_SIZE & 0xff;
+    buf[1] = (AVR_PAGE_SIZE >> 8) & 0xff;
+    buf[2] = AVR_PAGE_SIZE & 0xff;
     buf[3] = 'F'; // Flash
-    memcpy(&buf[4], &ihex[addr], PAGE_SIZE);
-    buf[4 + PAGE_SIZE] = Sync_CRC_EOP;
+    memcpy(&buf[4], &ihex[addr], AVR_PAGE_SIZE);
+    buf[4 + AVR_PAGE_SIZE] = Sync_CRC_EOP;
 
-    stk500_send(port_fd, buf, 5 + PAGE_SIZE);
+    stk500_send(port_fd, buf, 5 + AVR_PAGE_SIZE);
  
     if (stk500_recv(port_fd, buf, 2) < 0)
       exit(1);
@@ -424,60 +422,16 @@ static void spi_write_fuse(uint8_t fuse, uint8_t val)
    fprintf(stdout, "Writing %s fuse: 0x%02x\n", FUSE_NAME[fuse], val);
 }
 
-/* 
-   This is pretty hacky, it requires root permission and we're direcrtly
-   manipulating GPIO memory and loading modules
-*/
 static int spi_setup(bool val)
 {
-  if (val)
-  {
-    // init
-    spi_intialized = bcm2835_init();
-    if (spi_intialized == 0)
-      return -1;
-    // Set the SPI lines back the way the spi driver expects
-    bcm2835_gpio_fsel(9, BCM2835_GPIO_FSEL_ALT0); // MISO
-    bcm2835_gpio_fsel(10, BCM2835_GPIO_FSEL_ALT0); // MOSI
-    bcm2835_gpio_fsel(11, BCM2835_GPIO_FSEL_ALT0); // CLK
-
-    // Set the GPIO25 to output/low, which is tied to /RESET
-    bcm2835_gpio_fsel(25, BCM2835_GPIO_FSEL_OUTP);
-    bcm2835_gpio_clr(25);
-    // Delay a minimum of 20ms
-    msleep(20);
-  }
-  else if (spi_intialized != 0)
-  {
-    // Make sure the driver cleaned up its GPIOs
-    bcm2835_gpio_fsel(9, BCM2835_GPIO_FSEL_INPT); // MISO
-    bcm2835_gpio_fsel(10, BCM2835_GPIO_FSEL_INPT); // MOSI
-    bcm2835_gpio_fsel(11, BCM2835_GPIO_FSEL_INPT); // CLK
-    // Set GPIO25 back to high/input
-    bcm2835_gpio_set(25);
-    bcm2835_gpio_fsel(25, BCM2835_GPIO_FSEL_INPT);
-    // done
-    bcm2835_close();
-  }
-
-#if 0
   #define gpio_base "/sys/class/gpio/"
   FILE *f;
   if (val)
   {
-    if ((f = fopen(gpio_base "gpio25/value", "w")) == 0)
-      return -3;
-    fputs("1", f);
+    if ((f = fopen(gpio_base "export", "w")) == 0)
+      return -1;
+    fputs("25", f);
     fclose(f);
-  }
-  else
-  {
-    if ((f = fopen(gpio_base "export", "w")) != 0)
-    {
-      fputs("25", f);
-      fclose(f);
-    }
-
     if ((f = fopen(gpio_base "gpio25/direction", "w")) != 0)
     {
       fputs("out", f);
@@ -486,12 +440,27 @@ static int spi_setup(bool val)
 
     chmod(gpio_base "gpio25/value", 0666);
     
-    if ((f = fopen(gpio_base "gpio25/value", "w")) == 0)
-      return -1;
-    fputs("0", f);
-    fclose(f);
+    if ((f = fopen(gpio_base "gpio25/value", "w")) != 0)
+    {
+      fputs("0", f);
+      fclose(f);
+    }
+
+    // Delay a minimum of 20ms
+    msleep(20);
   }
-#endif
+  else
+  {
+    if ((f = fopen(gpio_base "gpio25/value", "w")) == 0)
+      return -3;
+    fputs("1", f);
+    fclose(f);
+    if ((f = fopen(gpio_base "gpio25/direction", "w")) != 0)
+    {
+      fputs("in", f);
+      fclose(f);
+    }
+  }
 
   return 0;
 }
@@ -665,6 +634,10 @@ static void set_file_ihex(char *val)
     file_ihex = NULL;
 }
 
+/*
+This function references old lucid config files, but it isn't used for
+SPI-based avr flashing, so it ok for us to hard-code the BCM47XX values
+*/
 static void load_lm_config(void)
 {
   char name[64];
@@ -678,7 +651,8 @@ static void load_lm_config(void)
     set_port(ptr.o->v.string);
     //fprintf(stdout, "LinkMeter device: %s\n", ptr.o->v.string);
   }
-  else printf("%x\n", ptr.flags);
+  else
+    set_port("/dev/ttyS1");
   strcpy(name, "lucid.linkmeter.serial_baud");
   if (uci_lookup_ptr(ctx, &ptr, name, false) == UCI_OK &&
     (ptr.flags & UCI_LOOKUP_COMPLETE))
@@ -686,6 +660,8 @@ static void load_lm_config(void)
     lm_baud = atol(ptr.o->v.string);
     //fprintf(stdout, "LinkMeter baud: %ld\n", lm_baud);
   }
+  else
+    lm_baud = 38400;
 
   uci_free_context(ctx);
 }

@@ -4,7 +4,7 @@ LIBS += -luci
 
 all: hmdude
 
-hmdude: hmdude.o fileio.o bcm2835.o
+hmdude: hmdude.o fileio.o
 	$(CC) $(LDFLAGS) $^ $(LIBS) -o $@
 
 clean:
