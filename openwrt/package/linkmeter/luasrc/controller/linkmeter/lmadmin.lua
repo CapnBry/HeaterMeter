@@ -73,8 +73,8 @@ function action_stashdb()
   local http = require "luci.http"
   local uci = luci.model.uci.cursor()
 
-  local RRD_FILE = uci:get("lucid", "linkmeter", "rrd_file")
-  local STASH_PATH = uci:get("lucid", "linkmeter", "stashpath") or "/root"
+  local RRD_FILE = uci:get("linkmeter", "daemon", "rrd_file")
+  local STASH_PATH = uci:get("linkmeter", "daemon", "stashpath") or "/root"
   local restoring = http.formvalue("restore")
   local backup = http.formvalue("backup")
   local resetting = http.formvalue("reset")

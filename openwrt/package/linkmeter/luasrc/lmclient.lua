@@ -83,7 +83,7 @@ function LmClient.stream(self, qry, fn)
 end
           
 -- Command line execution
-if arg then
+if arg and arg[0]:find("lmclient") then
   local qry = arg[1] or "$LMSU"
   local strm
   if qry:sub(1,1) == "@" then

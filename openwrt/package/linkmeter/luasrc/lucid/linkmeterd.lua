@@ -1,12 +1,11 @@
 local os = require "os"
-local rrd = require "rrd" 
+local rrd = require "rrd"
 local sys = require "luci.sys"
-local nixio = require "nixio" 
-      nixio.fs = require "nixio.fs" 
-      nixio.util = require "nixio.util" 
+local nixio = require "nixio"
+      nixio.fs = require "nixio.fs"
+      nixio.util = require "nixio.util"
 local uci = require "uci"
-local lucid = require "luci.lucid"
-local json = require "luci.json"
+local jsonc = require "luci.jsonc"
 -- Plugins
 local lmpeaks = require "luci.lucid.linkmeter.peaks"
 local lmunkprobe = require "luci.lucid.linkmeter.unkprobe"
@@ -42,12 +41,84 @@ local statusValChanged
 local JSON_TEMPLATE
 local broadcastStatus
 
-local RRD_FILE = uci.cursor():get("lucid", "linkmeter", "rrd_file")
+local RRD_FILE = uci.cursor():get("linkmeter", "daemon", "rrd_file")
 local RRD_AUTOBACK = "/root/autobackup.rrd"
 -- Must match recv size in lmclient if messages exceed this size
 local LMCLIENT_BUFSIZE = 8192
 
---- External API functions
+-- Server Module
+local Server = {
+  _pollt = {},
+  _tickt = {}
+}
+
+function Server.register_pollfd(polle)
+  Server._pollt[#Server._pollt+1] = polle
+end
+
+function Server.unregister_pollfd(polle)
+  for k, v in ipairs(Server._pollt) do
+    if v == polle then
+      table.remove(Server._pollt, k)
+      return true
+    end
+  end
+end
+
+function Server.register_tick(ticke)
+  Server._tickt[#Server._tickt+1] = ticke
+end
+
+function Server.unregister_tick(ticke)
+  for k, v in ipairs(Server._tickt) do
+    if v == ticke then
+      table.remove(Server._tickt, k)
+      return true
+    end
+  end
+end
+
+function Server.daemonize()
+  if nixio.getppid() == 1 then return end
+
+  local pid, code, msg = nixio.fork()
+  if not pid then
+    return nil, code, msg
+  elseif pid > 0 then
+    os.exit(0)
+  end
+
+  nixio.setsid()
+  nixio.chdir("/")
+
+  local devnull = nixio.open("/dev/null", nixio.open_flags("rdwr"))
+  nixio.dup(devnull, nixio.stdin)
+  nixio.dup(devnull, nixio.stdout)
+  nixio.dup(devnull, nixio.stderr)
+
+  return true
+end
+
+function Server.run()
+  while true do
+    -- Listen for fd events, but break every 10s
+    local stat, code = nixio.poll(Server._pollt, 10000)
+
+    if stat and stat > 0 then
+      for _, polle in ipairs(Server._pollt) do
+        if polle.revents ~= 0 and polle.handler then
+          polle.handler(polle)
+        end
+      end
+    end
+
+    for _, cb in ipairs(Server._tickt) do
+      cb()
+    end
+  end -- while true
+end
+
+-- External API functions
 function getConf(k, default)
   return hmConfig and hmConfig[k] or default
 end
@@ -80,7 +151,7 @@ end
 
 function publishBroadcastMessage(event, t)
   if type(t) == "table" then
-    broadcastStatus(function () return ('event: %s\ndata: %s\n\n'):format(event, json.encode(t)) end)
+    broadcastStatus(function () return ('event: %s\ndata: %s\n\n'):format(event, jsonc.stringify(t)) end)
   else
     broadcastStatus(function () return ('event: %s\ndata: %s\n\n'):format(event, t) end)
   end
@@ -147,7 +218,7 @@ function statusValChanged(t, k, v)
   -- JSON encode the new value
   local tkv = {}
   tkv[k] = v
-  local newVal = json.encode(tkv):sub(2, -2)
+  local newVal = jsonc.stringify(tkv):sub(2, -2)
   newVal = newVal ~= "" and newVal or nil
   -- See if the value has changed
   local oldVal = t[k]
@@ -226,10 +297,10 @@ function broadcastStatus(fn)
   local o
   local i = 1
   while i <= #statusListeners do
-    if not o then 
+    if not o then
       o = fn()
     end
-    
+
     if not statusListeners[i](o) then
       table.remove(statusListeners, i)
     else
@@ -251,7 +322,7 @@ local function buildConfigMap()
   for k,v in pairs(hmConfig) do
     r[k] = v
   end
-  
+
   if JSON_TEMPLATE[3] ~= 0 then
     -- Current temperatures
     for i = 0, 3 do
@@ -260,14 +331,14 @@ local function buildConfigMap()
     -- Setpoint
     r["sp"] = JSON_TEMPLATE[5]
   end
- 
+
   for i,v in ipairs(hmAlarms) do
     i = i - 1
     local idx = math.floor(i/2)
     local aType = (i % 2 == 0) and "l" or "h"
     r["pal"..aType..idx] = tonumber(v.t)
   end
-  
+
   r["ip"] = lastIp
 
   return r
@@ -295,7 +366,7 @@ local function segPidInternals(line)
   lastPidInternals = line
   broadcastStatus(stsPidInternals)
 end
-          
+
 local function segConfig(line, names, numeric)
   local vals = segSplit(line)
   for i, v in ipairs(names) do
@@ -314,7 +385,7 @@ end
 
 local function segProbeNames(line)
   local vals = segConfig(line, {"pn0", "pn1", "pn2", "pn3"})
- 
+
   for i,v in ipairs(vals) do
     JSON_TEMPLATE[6+i*11] = v
   end
@@ -379,12 +450,12 @@ local function segRfUpdate(line)
       native = band(flags, 0x04) == 0 and 0 or 1,
       rssi = tonumber(vals[idx+2])
     }
-    
+
     -- If this isn't the NONE source, save the stats as the ANY source
     if nodeId ~= "255" then
       rfStatus["127"] = rfStatus[nodeId]
     end
-    
+
     idx = idx + 3
   end
   rfStatusRefresh()
@@ -440,7 +511,7 @@ local function postDeviceData(dd)
   end
 
   local hardware, revision, serial
-  if cpuinfo['Hardware'] == 'BCM2708' then
+  if cpuinfo['Hardware'] == 'BCM2708' or cpuinfo['Hardware'] == 'BCM2709' then
     hardware = cpuinfo['Hardware']
     revision = cpuinfo['Revision']
     serial = cpuinfo['Serial']
@@ -578,7 +649,7 @@ local function segStateUpdate(line)
       -- the clock has probably just been set from 0 (at boot) to actual
       -- time. Recreate the rrd to prevent a 40 year long graph
       if time - lastHmUpdate > (24*60*60) then
-        nixio.syslog("notice", 
+        nixio.syslog("notice",
           "Time jumped forward by "..(time-lastHmUpdate)..", restarting database")
         rrdCreate()
       elseif time == lastHmUpdate then
@@ -608,7 +679,7 @@ local function segStateUpdate(line)
       -- ignore any error
       local status, err = pcall(rrd.update, RRD_FILE, table.concat(vals, ":"))
       if not status then nixio.syslog("err", "RRD error: " .. err) end
-      
+
       broadcastStatus(stsLmStateUpdate)
       checkAutobackup(lastHmUpdate, vals)
     end
@@ -618,7 +689,7 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
   local pname = JSON_TEMPLATE[17+(probeIdx*11)]
   local curTemp = JSON_TEMPLATE[19+(probeIdx*11)]
   local retVal
-  
+
   if alarmType then
     nixio.syslog("warning", "Alarm "..probeIdx..alarmType.." started ringing")
     retVal = nixio.fork()
@@ -651,14 +722,14 @@ end
 
 local function segAlarmLimits(line)
   local vals = segSplit(line)
-  
+
   for i,v in ipairs(vals) do
     -- make indexes 0-based
     local alarmId = i - 1
     local ringing = v:sub(-1)
     ringing = ringing == "H" or ringing == "L"
     if ringing then v = v:sub(1, -2) end
-  
+
     local curr = hmAlarms[i] or {}
     local probeIdx = math.floor(alarmId/2)
     local alarmType = alarmId % 2
@@ -672,7 +743,7 @@ local function segAlarmLimits(line)
       broadcastAlarm(probeIdx, nil, v)
     end
     curr.t = v
-    
+
     hmAlarms[i] = curr
   end
 end
@@ -688,7 +759,7 @@ end
 local function segmentValidate(line)
   -- First character always has to be $
   if line:sub(1, 1) ~= "$" then return false end
-  
+
   -- The line optionally ends with *XX hex checksum
   local _, _, csum = line:find("*(%x%x)$", -3)
   if csum then
@@ -696,15 +767,15 @@ local function segmentValidate(line)
     for i = 2, #line-3 do
       csum = bxor(csum, line:byte(i))
     end
-   
+
     csum = csum == 0
     if not csum then
       nixio.syslog("warning", "Checksum failed: "..line)
       if hmConfig then hmConfig.cerr = (hmConfig.cerr or 0) + 1 end
     end
   end
- 
-  -- Returns nil if no checksum or true/false if checksum checks 
+
+  -- Returns nil if no checksum or true/false if checksum checks
   return csum
 end
 
@@ -712,13 +783,13 @@ local function serialHandler(polle)
   for line in polle.lines do
     local csumOk = segmentValidate(line)
     if csumOk ~= false then
-      if hmConfig == nil then 
+      if hmConfig == nil then
         hmConfig = {}
         hmWrite("\n/config\n")
       end
- 
+
       -- Remove the checksum of it was there
-      if csumOk == true then line = line:sub(1, -4) end 
+      if csumOk == true then line = line:sub(1, -4) end
       segmentCall(line)
     end -- if validate
   end -- for line
@@ -765,12 +836,12 @@ end
 local function lmdStart()
   if serialPolle then return true end
   local cfg = uci.cursor()
-  local SERIAL_DEVICE = cfg:get("lucid", "linkmeter", "serial_device")
-  local SERIAL_BAUD = cfg:get("lucid", "linkmeter", "serial_baud")
-  autobackActivePeriod = tonumber(cfg:get("lucid", "linkmeter", "autoback_active")) or 0
-  autobackInactivePeriod = tonumber(cfg:get("lucid", "linkmeter", "autoback_inactive")) or 0
-  
-  initHmVars() 
+  local SERIAL_DEVICE = cfg:get("linkmeter", "daemon", "serial_device")
+  local SERIAL_BAUD = cfg:get("linkmeter", "daemon", "serial_baud")
+  autobackActivePeriod = tonumber(cfg:get("linkmeter", "daemon", "autoback_active") or 0)
+  autobackInactivePeriod = tonumber(cfg:get("linkmeter", "daemon", "autoback_inactive") or 0)
+
+  initHmVars()
   if os.execute("/bin/stty -F " .. SERIAL_DEVICE .. " raw -echo " .. SERIAL_BAUD) ~= 0 then
     return nil, -2, "Can't set serial baud"
   end
@@ -779,7 +850,7 @@ local function lmdStart()
   if not serialfd then
     return nil, -2, "Can't open serial device"
   end
-  serialfd:setblocking(false) 
+  serialfd:setblocking(false)
 
   lastHmUpdate = os.time()
   lastAutoBackup = lastHmUpdate
@@ -795,8 +866,8 @@ local function lmdStart()
     events = nixio.poll_flags("in"),
     handler = serialHandler
   }
-  
-  lucid.register_pollfd(serialPolle)
+
+  Server.register_pollfd(serialPolle)
   initPlugins();
 
   return true
@@ -804,12 +875,12 @@ end
 
 local function lmdStop()
   if not serialPolle then return true end
-  lucid.unregister_pollfd(serialPolle)
+  Server.unregister_pollfd(serialPolle)
   serialPolle.fd:setblocking(true)
   serialPolle.fd:close()
   serialPolle = nil
   initHmVars()
-  
+
   return true
 end
 
@@ -844,16 +915,16 @@ end
 local function segLmRfStatus(line)
   local retVal = ""
   for id, item in pairs(rfStatus) do
-    if retVal ~= "" then 
+    if retVal ~= "" then
       retVal = retVal .. ","
     end
-    
+
     retVal = retVal ..
       ('{"id":%s,"lobatt":%d,"rssi":%d,"reset":%d,"native":%d}'):format(
       id, item.lobatt, item.rssi, item.reset, item.native)
   end
   retVal = "[" .. retVal .. "]"
-  
+
   return retVal
 end
 
@@ -886,7 +957,7 @@ local function segLmConfig()
   for i = 0, 3 do
     if not cm["pcurr"..i] then r[#r+1] = ('"pcurr%d":null'):format(i) end
   end
-  
+
   for k,v in pairs(cm) do
     local s
     if type(v) == "number" then
@@ -896,7 +967,7 @@ local function segLmConfig()
     end
     r[#r+1] = s:format(k,v)
   end
-  
+
   return "{" .. table.concat(r, ',') .. "}"
 end
 
@@ -976,30 +1047,30 @@ local segmentMap = {
   -- "$LMUP" -- unkprobe plugin
   -- "$LMDS" -- stats plugin
 
-  -- $LMSS
+  -- $LMSS -- streaming status (lmclient request)
 }
 
 function segmentCall(line)
   local seg = line:sub(1,5)
   local segmentFunc = segmentMap[seg] or pluginSegmentListeners[seg]
-  if segmentFunc then 
+  if segmentFunc then
     return segmentFunc(line)
   else
     return "ERR"
   end
 end
 
-function prepare_daemon(config, server)
+local function prepare_daemon()
   local ipcfd = nixio.socket("unix", "dgram")
   if not ipcfd then
     return nil, -2, "Can't create IPC socket"
   end
- 
+
   nixio.fs.unlink("/var/run/linkmeter.sock")
   ipcfd:bind("/var/run/linkmeter.sock")
-  ipcfd:setblocking(false) 
- 
-  server.register_pollfd({
+  ipcfd:setblocking(false)
+
+  Server.register_pollfd({
     fd = ipcfd,
     events = nixio.poll_flags("in"),
     handler = function (polle)
@@ -1014,11 +1085,22 @@ function prepare_daemon(config, server)
         end
       end -- while true
     end -- handler
-  }) 
+  })
 
   lmdStartTime = os.time()
-  server.register_tick(lmdTick)
+  Server.register_tick(lmdTick)
 
   return lmdStart()
 end
 
+function start()
+  local state = uci.cursor(nil, "/var/state")
+  state:revert("linkmeter", "daemon")
+
+  prepare_daemon()
+  if uci.cursor():get("linkmeter", "daemon", "daemonize") == "1" then
+    Server.daemonize()
+  end
+
+  Server.run()
+end

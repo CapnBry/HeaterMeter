@@ -3,7 +3,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=linkmeter
-PKG_RELEASE:=13
+PKG_RELEASE:=14
 
 PKG_BUILD_PARALLEL:=1
 
@@ -12,7 +12,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/linkmeter
 	SECTION:=utils
 	CATEGORY:=Utilities
-	DEPENDS:=+rrdtool +luci-lib-lucid-http +libuci
+	DEPENDS:=+rrdtool +libuci
 	TITLE:=LinkMeter BBQ Controller
 	URL:=http://github.com/CapnBry/HeaterMeter
 	MAINTAINER:=Bryan Mayland <capnbry@gmail.com>

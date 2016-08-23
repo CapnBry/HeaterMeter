@@ -15,48 +15,32 @@ grep $1 /etc/sysupgrade.conf > /dev/null || \
   echo "$1${2:+*}" >> /etc/sysupgrade.conf
 }
 
-HARDWARE_MODEL=`echo "_, model = luci.sys.sysinfo(); print(model)" | lua -lluci.sys`
-if [ "$HARDWARE_MODEL" = "BCM2708" ] ; then
+HARDWARE_MODEL=`grep '^Hardware\t:' /proc/cpuinfo | cut -d' ' -f 2`
+if [ "$HARDWARE_MODEL" = "BCM2708" -o "$HARDWARE_MODEL" = "BCM2709" ] ; then
   SERIAL_DEVICE="/dev/ttyAMA0"
   STASHPATH="/mnt/mmcblk0p4/stash"
   AUTOBACK_ACTIVE=5
   AUTOBACK_INACTIVE=60
-  LUCID_THREADS=30
-  LUCID_HTTPS=1
-  LUCI_CCACHE=1
 else
   SERIAL_DEVICE="/dev/ttyS1"
   STASHPATH="/root"
   AUTOBACK_ACTIVE=0
   AUTOBACK_INACTIVE=0
-  LUCID_THREADS=2
-  LUCID_HTTPS=0
-  LUCI_CCACHE=0
+fi
+if [ "$HARDWARE_MODEL" = "BCM2709" ] ; then
+  SERIAL_DEVICE="/dev/ttyS0"
 fi
 
-# Forced configuration parameters
-uci batch << EOF
-set lucid.main.threadlimit=$LUCID_THREADS
-set lucid.https.enabled=$LUCID_HTTPS
-set lucid.lmserver=daemon
-set lucid.lmserver.enabled=1
-set lucid.lmserver.slave=linkmeter
-set lucid.linkmeter=linkmeterd
-set lucid.linkmeter.name='LinkMeter Service'
-set lucid.linkmeter.platform=$HARDWARE_MODEL
-EOF
-
-# Things we don't modify if they're there
-uci_set_nomodify lucid.linkmeter.serial_device $SERIAL_DEVICE
-uci_set_nomodify lucid.linkmeter.serial_baud 38400
-uci_set_nomodify lucid.linkmeter.rrd_file /tmp/hm.rrd
-uci_set_nomodify lucid.linkmeter.stashpath $STASHPATH
-uci_set_nomodify lucid.linkmeter.autoback_active $AUTOBACK_ACTIVE
-uci_set_nomodify lucid.linkmeter.autoback_inactive $AUTOBACK_INACTIVE
-
-uci commit lucid
-
 [ -f /etc/config/linkmeter ] || touch /etc/config/linkmeter
+uci -q set linkmeter.daemon='section'
+uci set linkmeter.daemon.platform=$HARDWARE_MODEL
+uci_set_nomodify linkmeter.daemon.daemonize 1
+uci_set_nomodify linkmeter.daemon.serial_device $SERIAL_DEVICE
+uci_set_nomodify linkmeter.daemon.serial_baud 38400
+uci_set_nomodify linkmeter.daemon.rrd_file /tmp/hm.rrd
+uci_set_nomodify linkmeter.daemon.stashpath $STASHPATH
+uci_set_nomodify linkmeter.daemon.autoback_active $AUTOBACK_ACTIVE
+uci_set_nomodify linkmeter.daemon.autoback_inactive $AUTOBACK_INACTIVE
 uci -q set linkmeter.alarms='section'
 uci_set_nomodify linkmeter.alarms.emailtoname 'Your Name'
 uci_set_nomodify linkmeter.alarms.emailtoaddress 'chunkylover53@aol.com'
@@ -71,6 +55,10 @@ uci_set_nomodify linkmeter.alarms.pushmsg '$pn $al_type alarm $al_prep $al_thres
 
 uci commit linkmeter
 
+uci del_list uhttpd.main.alias='/luci=/cgi-bin'
+uci add_list uhttpd.main.alias='/luci=/cgi-bin'
+uci commit uhttpd
+
 # Change the session timeout from 1hr to 24hrs
 SA=`uci -q get luci.sauth.sessiontime`
 if [ "$SA" -eq 3600 ] ; then
@@ -83,19 +71,14 @@ backup_inc /usr/share/linkmeter/email.txt
 backup_inc /usr/share/linkmeter/user.css
 
 if [ "$INSTALL_PARAM" = "restore" -o "$INSTALL_PARM" = "new" ] ; then
-  if [ "$HARDWARE_MODEL" = "BCM2708" ] ; then
+  if [ "$HARDWARE_MODEL" = "BCM2708" -o "$HARDWARE_MODEL" = "BCM2709" ] ; then
     # Enable the config backup/restore service
     /etc/init.d/config_restore enable
   fi
 fi
 
 if [ "$INSTALL_PARAM" = "new" ] ; then
-  uci set lucid.http.nokeepalive=0
-  uci set lucid.https.nokeepalive=0
-  uci set luci.ccache.enable=$LUCI_CCACHE
-  uci commit luci
-
-  if [ "$HARDWARE_MODEL" = "BCM2708" ] ; then
+  if [ "$HARDWARE_MODEL" = "BCM2708" -o "$HARDWARE_MODEL" = "BCM2709" ] ; then
     # Disable dhcp server on the lan interface
     uci set dhcp.lan.ignore=1
     uci commit dhcp

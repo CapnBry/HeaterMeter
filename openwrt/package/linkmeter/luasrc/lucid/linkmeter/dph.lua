@@ -13,7 +13,7 @@ local function updateState(now, _)
 
   local step = 10
   local soff = 3600
-  local RRD_FILE = uci.cursor():get("lucid", "linkmeter", "rrd_file")
+  local RRD_FILE = uci.cursor():get("linkmeter", "daemon", "rrd_file")
   local last = math.floor(rrd.last(RRD_FILE)/step) * step
   start, step, _, data = rrd.fetch(RRD_FILE, "AVERAGE",
     "--end", now, "--start", now - soff, "-r", step)

@@ -8,9 +8,10 @@ function index()
   entry({"lm", "conf"}, call("action_conf")).notemplate = true
 end
 
-function lmclient_json(query)
+function lmclient_json(query, default)
   require "lmclient"
   local result, err = LmClient():query(query) 
+  result = result or default
   if result then
     luci.http.prepare_content("application/json")
     luci.http.header("Access-Control-Allow-Origin", "*")
@@ -30,7 +31,7 @@ function action_rfstatus()
 end
 
 function action_conf()
-  return lmclient_json("$LMCF")
+  return lmclient_json("$LMCF", "{}")
 end
 
 function action_hist()
@@ -38,7 +39,7 @@ function action_hist()
   local rrd = require "rrd"
   local uci = luci.model.uci.cursor()
 
-  local RRD_FILE = http.formvalue("rrd") or uci:get("lucid", "linkmeter", "rrd_file") 
+  local RRD_FILE = http.formvalue("rrd") or uci:get("linkmeter", "daemon", "rrd_file")
   local nancnt = tonumber(http.formvalue("nancnt"))
   local start, step, data, soff
   

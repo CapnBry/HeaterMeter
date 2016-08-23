@@ -13,7 +13,7 @@ it is stashed.</p>
 </form>
 <% 
   local uci = luci.model.uci.cursor()
-  local STASH_PATH = uci:get("lucid", "linkmeter", "stashpath")
+  local STASH_PATH = uci:get("linkmeter", "daemon", "stashpath")
   local ps = luci.util.execi("df -h " .. STASH_PATH)
   local fsInfo = STASH_PATH
   if ps then

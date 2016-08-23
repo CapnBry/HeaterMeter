@@ -61,6 +61,8 @@ uci set dhcp.wwan.interface=wwan
 if [ "$MODE" = "sta" ] ; then
   uci set dhcp.wwan.ignore=1
   uci set network.wwan.proto=dhcp
+  uci delete network.wwan.ipaddr
+  uci delete network.wwan.netmask
 else
   uci set dhcp.wwan.ignore=0
   uci set network.wwan.proto=static
