@@ -1,4 +1,4 @@
-module("luci.lucid.linkmeter.peaks", package.seeall)
+module("linkmeter.peaks", package.seeall)
 
 local HMMODE_UNPLUG  = 1
 local HMMODE_STARTUP = 2
@@ -136,7 +136,7 @@ local function peakChange(newTrend)
   pitLog = { fullref.val }
 
   log(("New %d peak %s"):format(peaks.C.trend, peakStr(fullref)))
-  local Ku = tonumber(luci.lucid.linkmeterd.getConf('pidp') or 1)
+  local Ku = tonumber(linkmeterd.getConf('pidp') or 1)
   if period then
     local p = 0.6 * Ku
     local i, d = 2 * p / period, p * period / 8 / 30
@@ -192,7 +192,7 @@ function updatePitLog(t)
     if #pitLog > 180 then table.remove(pitLog, 1) end
     pitLogPeriodCnt = 10
 
-    luci.lucid.linkmeterd.publishBroadcastMessage("peaks", peaks)
+    linkmeterd.publishBroadcastMessage("peaks", peaks)
   else
     pitLogPeriodCnt = pitLogPeriodCnt - 1
   end
@@ -230,6 +230,6 @@ end
 function init()
   initState()
 
-  luci.lucid.linkmeterd.registerStatusListener(updateState)
-  luci.lucid.linkmeterd.registerSegmentListener("$LMDS", dumpState)
+  linkmeterd.registerStatusListener(updateState)
+  linkmeterd.registerSegmentListener("$LMDS", dumpState)
 end

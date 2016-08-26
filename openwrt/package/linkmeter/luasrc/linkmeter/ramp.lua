@@ -1,4 +1,4 @@
-module("luci.lucid.linkmeter.ramp", package.seeall)
+module("linkmeter.ramp", package.seeall)
 
 local RAMPSTATE_NONE    = 0
 local RAMPSTATE_RAMPING = 1
@@ -33,7 +33,7 @@ local function cancelRamp()
   ctx.state = RAMPSTATE_NONE
   ctx.params.watch = 0
 
-  luci.lucid.linkmeterd.publishStatusVal("ramp", nil)
+  linkmeterd.publishStatusVal("ramp", nil)
 end
 
 local function setpointChanged(setpoint)
@@ -106,7 +106,7 @@ local function updateState(now, vals)
         local rampProgress = (ctx.params.target - watchVal) / (ctx.params.target - ctx.params.trigger)
         newSp = math.ceil((ctx.startSetpoint - ctx.params.target) * rampProgress) + ctx.params.target
 
-        luci.lucid.linkmeterd.publishStatusVal("ramp", {
+        linkmeterd.publishStatusVal("ramp", {
           s = ctx.startSetpoint,
           ta = ctx.params.target,
           tr = ctx.params.trigger
@@ -116,7 +116,7 @@ local function updateState(now, vals)
 
     if newSp ~= ctx.lastSetpoint then
       ctx.requestedSetpoint = newSp
-      luci.lucid.linkmeterd.hmWrite("/set?sp=" .. newSp .. "\n")
+      linkmeterd.hmWrite("/set?sp=" .. newSp .. "\n")
       log(("New ramp setpoint %d vs %d at watchVal %.1f"):format(newSp, ctx.lastSetpoint, watchVal))
     end
   end  -- if RAMPING
@@ -131,6 +131,6 @@ end
 function init()
   resetContext()
   reloadRampParameters()
-  luci.lucid.linkmeterd.registerStatusListener(updateState)
-  luci.lucid.linkmeterd.registerSegmentListener("$LMRA", segLmRamp)
+  linkmeterd.registerStatusListener(updateState)
+  linkmeterd.registerSegmentListener("$LMRA", segLmRamp)
 end

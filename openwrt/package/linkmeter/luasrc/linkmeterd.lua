@@ -7,16 +7,16 @@ local nixio = require "nixio"
 local uci = require "uci"
 local jsonc = require "luci.jsonc"
 -- Plugins
-local lmpeaks = require "luci.lucid.linkmeter.peaks"
-local lmunkprobe = require "luci.lucid.linkmeter.unkprobe"
-local lmdph = require "luci.lucid.linkmeter.dph"
-local lmramp = require "luci.lucid.linkmeter.ramp"
+local lmpeaks = require "linkmeter.peaks"
+local lmunkprobe = require "linkmeter.unkprobe"
+local lmdph = require "linkmeter.dph"
+local lmramp = require "linkmeter.ramp"
 
 local pairs, ipairs, table, pcall, type = pairs, ipairs, table, pcall, type
 local tonumber, tostring, print, next, io = tonumber, tostring, print, next, io
 local collectgarbage, math, bxor = collectgarbage, math, nixio.bit.bxor
 
-module "luci.lucid.linkmeterd"
+module "linkmeterd"
 
 local serialPolle
 local statusListeners = {}

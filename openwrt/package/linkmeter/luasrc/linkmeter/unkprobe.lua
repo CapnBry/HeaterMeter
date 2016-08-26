@@ -1,4 +1,4 @@
-module("luci.lucid.linkmeter.unkprobe", package.seeall)
+module("linkmeter.unkprobe", package.seeall)
 
 local lmfit
 local unkProbe
@@ -48,12 +48,12 @@ local function unkProbeCsv()
 end
 
 local function segLmUnknownProbe(line)
-  local vals = luci.lucid.linkmeterd.segSplit(line) 
+  local vals = linkmeterd.segSplit(line)
   if vals[1] == "start" then
     unkProbe = {}
 	unkProbeDiscard = 1
-    luci.lucid.linkmeterd.registerStatusListener(updateState)
-    luci.lucid.linkmeterd.hmWrite("/set?sp=0R\n")
+    linkmeterd.registerStatusListener(updateState)
+    linkmeterd.hmWrite("/set?sp=0R\n")
     return "OK"
   elseif vals[1] == "fit" and unkProbe then
     return unkProbeCurveFit()
@@ -61,8 +61,8 @@ local function segLmUnknownProbe(line)
     return unkProbeCsv()
   elseif vals[1] == "stop" and unkProbe then
     unkProbe = nil
-    luci.lucid.linkmeterd.hmWrite("/reboot\n")
-	luci.lucid.linkmeterd.unregisterStatusListener(updateState)
+    linkmeterd.hmWrite("/reboot\n")
+    linkmeterd.unregisterStatusListener(updateState)
     return "OK"
   else
     return "ERR"
@@ -71,6 +71,6 @@ end
 
 function init()
   unkProbe = nil
-  luci.lucid.linkmeterd.unregisterStatusListener(updateState)
-  luci.lucid.linkmeterd.registerSegmentListener("$LMUP", segLmUnknownProbe)
+  linkmeterd.unregisterStatusListener(updateState)
+  linkmeterd.registerSegmentListener("$LMUP", segLmUnknownProbe)
 end

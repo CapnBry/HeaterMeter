@@ -2,7 +2,7 @@ local rrd = require "rrd"
 local lmfit = require "lmfit"
 local uci = require "uci"
 
-module("luci.lucid.linkmeter.dph", package.seeall)
+module("linkmeter.dph", package.seeall)
 
 local lastDphUpdate = 0
 local dphEstimates = { {0,0}, {0,0}, {0,0}, {0,0} }
@@ -40,10 +40,10 @@ local function updateState(now, _)
       end
     end -- if #x
 
-	luci.lucid.linkmeterd.publishStatusVal("dph", dph, probe)
+	linkmeterd.publishStatusVal("dph", dph, probe)
   end -- for probe
 end
 
 function init()
-  luci.lucid.linkmeterd.registerStatusListener(updateState)
+  linkmeterd.registerStatusListener(updateState)
 end
