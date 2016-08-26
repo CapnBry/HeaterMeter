@@ -1093,6 +1093,9 @@ local function prepare_daemon()
   return lmdStart()
 end
 
+--
+-- linkmeterd service control functions
+---
 function start()
   local state = uci.cursor(nil, "/var/state")
   state:revert("linkmeter", "daemon")
@@ -1102,5 +1105,21 @@ function start()
     Server.daemonize()
   end
 
+  state:set("linkmeter", "daemon", "pid", nixio.getpid())
+  state:save("linkmeter")
+
   Server.run()
+end
+
+function running()
+  local pid = tonumber(uci.cursor(nil, "/var/state"):get("linkmeter", "daemon", "pid"))
+  return pid and nixio.kill(pid, 0) and pid
+end
+
+function stop()
+  local pid = tonumber(uci.cursor(nil, "/var/state"):get("linkmeter", "daemon", "pid"))
+  if pid then
+    return nixio.kill(pid, nixio.const.SIGTERM)
+  end
+  return false
 end
