@@ -15,6 +15,25 @@ grep $1 /etc/sysupgrade.conf > /dev/null || \
   echo "$1${2:+*}" >> /etc/sysupgrade.conf
 }
 
+lucid_copy() {
+# copy from lucid to linkmeter if it exists in lucid
+  INKEY="lucid.linkmeter.$1"
+  OUTKEY="linkmeter.daemon.$1"
+  VAL=`uci -q get $INKEY`
+  [ "$?" -eq 0 ] && uci set $OUTKEY="$VAL"
+}
+
+lucid_settings_migrate() {
+  lucid_copy serial_device
+  lucid_copy serial_baud
+  lucid_copy rrd_file
+  lucid_copy stashpath
+  lucid_copy stashpath
+  lucid_copy autoback_active
+  lucid_copy autoback_inactive
+  rm /etc/config/lucid
+}
+
 HARDWARE_MODEL=`grep '^Hardware\t:' /proc/cpuinfo | cut -d' ' -f 2`
 if [ "$HARDWARE_MODEL" = "BCM2708" -o "$HARDWARE_MODEL" = "BCM2709" ] ; then
   SERIAL_DEVICE="/dev/ttyAMA0"
@@ -52,9 +71,11 @@ uci_set_nomodify linkmeter.ramp.watch '0'
 uci_set_nomodify linkmeter.alarms.pushprovider 'pushbullet'
 uci_set_nomodify linkmeter.alarms.pushbullettitle '$pn HM Alert'
 uci_set_nomodify linkmeter.alarms.pushmsg '$pn $al_type alarm $al_prep $al_thresh, currently $pcurr'
+lucid_settings_migrate
 
 uci commit linkmeter
 
+# Add an alias for luci without the cgi-bin prefix, as all old docs and apps point to this
 uci del_list uhttpd.main.alias='/luci=/cgi-bin'
 uci add_list uhttpd.main.alias='/luci=/cgi-bin'
 uci commit uhttpd
@@ -72,8 +93,9 @@ backup_inc /usr/share/linkmeter/user.css
 
 if [ "$INSTALL_PARAM" = "restore" -o "$INSTALL_PARM" = "new" ] ; then
   if [ "$HARDWARE_MODEL" = "BCM2708" -o "$HARDWARE_MODEL" = "BCM2709" ] ; then
-    # Enable the config backup/restore service
+    # Enable the services
     /etc/init.d/config_restore enable
+    /etc/init.d/linkmeterd enable
   fi
 fi
 
