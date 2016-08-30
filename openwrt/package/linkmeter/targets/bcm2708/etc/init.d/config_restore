@@ -78,10 +78,6 @@ fi
 [ -d "$MNT" ] || mkdir -p $MNT
 mount | grep ${DEV}p4 || mount -t ext4 -o rw,sync ${DEV}p4 $MNT
 
-# Mount the boot partition
-[ -d "/boot" ] || mkdir /boot
-mount -t vfat -o rw,sync ${DEV}p1 /boot
-
 # If this is a fresh system, store the default configuration
 if [ $IS_DEFAULT -eq 1 -a -d "$MNT/lost+found" ] ; then
   sysupgrade -b $MNT/default-config.tar.gz
