@@ -836,10 +836,18 @@ end
 local function lmdStart()
   if serialPolle then return true end
   local cfg = uci.cursor()
-  local SERIAL_DEVICE = cfg:get("linkmeter", "daemon", "serial_device")
-  local SERIAL_BAUD = cfg:get("linkmeter", "daemon", "serial_baud")
+  local SERIAL_DEVICE = cfg:get("linkmeter", "daemon", "serial_device") or "auto"
+  local SERIAL_BAUD = cfg:get("linkmeter", "daemon", "serial_baud") or "38400"
   autobackActivePeriod = tonumber(cfg:get("linkmeter", "daemon", "autoback_active") or 0)
   autobackInactivePeriod = tonumber(cfg:get("linkmeter", "daemon", "autoback_inactive") or 0)
+
+  if (SERIAL_DEVICE:lower() == "auto") then
+    if nixio.fs.access("/dev/ttyS0") then
+      SERIAL_DEVICE = "/dev/ttyS0"
+    else
+      SERIAL_DEVICE = "/dev/ttyAMA0"
+    end
+  end
 
   initHmVars()
   if os.execute("/bin/stty -F " .. SERIAL_DEVICE .. " raw -echo " .. SERIAL_BAUD) ~= 0 then
