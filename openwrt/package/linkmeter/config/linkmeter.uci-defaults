@@ -24,19 +24,21 @@ lucid_copy() {
 }
 
 lucid_settings_migrate() {
-  lucid_copy serial_device
-  lucid_copy serial_baud
-  lucid_copy rrd_file
-  lucid_copy stashpath
-  lucid_copy stashpath
-  lucid_copy autoback_active
-  lucid_copy autoback_inactive
-  rm /etc/config/lucid
+  if [ -f "/etc/config/lucid" ] ; then
+    lucid_copy serial_device
+    lucid_copy serial_baud
+    lucid_copy rrd_file
+    lucid_copy stashpath
+    lucid_copy stashpath
+    lucid_copy autoback_active
+    lucid_copy autoback_inactive
+    rm /etc/config/lucid
+  fi
 }
 
 HARDWARE_MODEL=`grep '^Hardware\t:' /proc/cpuinfo | cut -d' ' -f 2`
 if [ "$HARDWARE_MODEL" = "BCM2708" -o "$HARDWARE_MODEL" = "BCM2709" ] ; then
-  SERIAL_DEVICE="/dev/ttyAMA0"
+  SERIAL_DEVICE="auto"
   STASHPATH="/mnt/mmcblk0p4/stash"
   AUTOBACK_ACTIVE=5
   AUTOBACK_INACTIVE=60
@@ -46,16 +48,12 @@ else
   AUTOBACK_ACTIVE=0
   AUTOBACK_INACTIVE=0
 fi
-if [ "$HARDWARE_MODEL" = "BCM2709" ] ; then
-  SERIAL_DEVICE="/dev/ttyS0"
-fi
 
 [ -f /etc/config/linkmeter ] || touch /etc/config/linkmeter
 uci -q set linkmeter.daemon='section'
 uci set linkmeter.daemon.platform=$HARDWARE_MODEL
 uci_set_nomodify linkmeter.daemon.daemonize 1
 uci_set_nomodify linkmeter.daemon.serial_device $SERIAL_DEVICE
-uci_set_nomodify linkmeter.daemon.serial_baud 38400
 uci_set_nomodify linkmeter.daemon.rrd_file /tmp/hm.rrd
 uci_set_nomodify linkmeter.daemon.stashpath $STASHPATH
 uci_set_nomodify linkmeter.daemon.autoback_active $AUTOBACK_ACTIVE
@@ -115,4 +113,6 @@ fi
 # contains HeaterMeter unless the noupdate file exists
 [ ! -f "/lib/firmware/noupdate" ] && avrupdate /lib/firmware/hm.hex
 
-exit 0
+# Clear the exit status, scripts should continue processing even if the
+# avrupdate command fails
+true
