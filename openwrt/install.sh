@@ -35,7 +35,7 @@ for X in patches/2??-luci-* ; do
   patch -N -p1 -d $LUCIP < $X
 done
 
-LMPACKS="rrdtool kmod-broadcom-sdhc26 linkmeter kmod-8192cu kmod-spi-bcm2835 luci-app-msmtp parted liblmfit-lua"
+LMPACKS="rrdtool kmod-broadcom-sdhc26 linkmeter kmod-8192cu luci-app-msmtp parted liblmfit-lua"
 for PACK in $LMPACKS ; do
   $WRT_PATH/scripts/feeds install -p linkmeter $PACK
 done
