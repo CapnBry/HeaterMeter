@@ -1,32 +1,34 @@
---- luci-0.11.1/modules/admin-full/luasrc/controller/admin/system.lua.orig	2013-07-27 09:58:33.042494066 -0400
-+++ luci-0.11.1/modules/admin-full/luasrc/controller/admin/system.lua	2013-07-27 09:58:38.290494195 -0400
-@@ -263,12 +263,16 @@
- 			luci.template.render("admin_system/applyreboot")
- 			luci.sys.reboot()
- 		end
--	elseif luci.http.formvalue("image") or luci.http.formvalue("step") then
-+	elseif luci.http.formvalue("image") or luci.http.formvalue("step") or 
-+		luci.http.formvalue("imageurl") then
- 		--
- 		-- Initiate firmware flash
- 		--
- 		local step = tonumber(luci.http.formvalue("step") or 1)
- 		if step == 1 then
-+			if luci.http.formvalue("imageurl") then
-+				os.execute("wget -O %s %s" % {image_tmp, luci.http.formvalue("imageurl")})
-+			end
- 			if image_supported() then
- 				luci.template.render("admin_system/upgrade", {
- 					checksum = image_checksum(),
---- luci-0.11.1/modules/admin-full/luasrc/view/admin_system/flashops.htm.orig	2013-07-27 09:59:21.186495247 -0400
-+++ luci-0.11.1/modules/admin-full/luasrc/view/admin_system/flashops.htm	2013-07-27 09:59:24.646495332 -0400
-@@ -72,13 +72,20 @@
+diff --git a/modules/luci-mod-admin-full/luasrc/controller/admin/system.lua b/modules/luci-mod-admin-full/luasrc/controller/admin/system.lua
+index cf8cfb5..a108705 100644
+--- a/modules/luci-mod-admin-full/luasrc/controller/admin/system.lua
++++ b/modules/luci-mod-admin-full/luasrc/controller/admin/system.lua
+@@ -264,11 +264,15 @@ function action_sysupgrade()
+ 		return
+ 	end
+ 
++
+ 	--
+ 	-- Initiate firmware flash
+ 	--
+ 	local step = tonumber(http.formvalue("step") or 1)
+ 	if step == 1 then
++		if http.formvalue("imageurl") then
++			os.execute("wget -O %s %s" % {image_tmp, http.formvalue("imageurl")})
++		end
+ 		if image_supported(image_tmp) then
+ 			luci.template.render("admin_system/upgrade", {
+ 				checksum = image_checksum(image_tmp),
+diff --git a/modules/luci-mod-admin-full/luasrc/view/admin_system/flashops.htm b/modules/luci-mod-admin-full/luasrc/view/admin_system/flashops.htm
+index 82a1fdb..e5f5199 100644
+--- a/modules/luci-mod-admin-full/luasrc/view/admin_system/flashops.htm
++++ b/modules/luci-mod-admin-full/luasrc/view/admin_system/flashops.htm
+@@ -71,13 +71,20 @@
  							<input type="checkbox" name="keep" id="keep" checked="checked" />
  						</div>
  					</div>
 -					<div class="cbi-value cbi-value-last<% if image_invalid then %> cbi-value-error<% end %>">
 -						<label class="cbi-value-title" for="image"><%:Image%>:</label>
-+					<div class="cbi-value <% if image_invalid then %> cbi-value-error<% end %>">
++					<div class="cbi-value<% if image_invalid then %> cbi-value-error<% end %>">
 +						<label class="cbi-value-title" for="image"><%:Image file%>:</label>
  						<div class="cbi-value-field">
  							<input type="file" name="image" id="image" />
