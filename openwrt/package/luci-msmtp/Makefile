@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-msmtp
-PKG_VERSION:=1.4.27
-PKG_RELEASE:=3
+PKG_VERSION:=1.6.2
+PKG_RELEASE:=1
 
 include $(INCLUDE_DIR)/package.mk
 PKG_INSTALL:=1
@@ -13,7 +13,7 @@ define Package/luci-app-msmtp
   SUBMENU:=3. Applications
   MAINTAINER:=Bryan Mayland <capnbry@gmail.com>
   TITLE:=MSMTP email client configuration
-  DEPENDS:=luci-lib-web msmtp
+  DEPENDS:=luci-base msmtp
 endef
 
 define Package/luci-app-msmtp/description
