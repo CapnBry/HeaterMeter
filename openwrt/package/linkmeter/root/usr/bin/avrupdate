@@ -62,6 +62,20 @@ platform_setup() {
     platform_setup_DEFAULT
 }
 
+platform_cleanup_DEFAULT() {
+}
+platform_cleanup_BCM2708() {
+  rmmod spi-bcm2835
+}
+platform_cleanup_BCM2709() {
+  platform_cleanup_BCM2708
+}
+
+platform_cleanup() {
+  eval "platform_cleanup_$PLATFORM" 2> /dev/null || \
+    platform_cleanup_DEFAULT
+}
+
 DCONTROL=1
 HEX=""
 
@@ -119,6 +133,8 @@ if [ $EXITCODE -eq 0 ] ; then
     [ -n "$HEX" ] && echo No input file $HEX
   fi
 fi
+
+platform_cleanup
 
 [ $DCONTROL -ne 0 ] && {
   echo -n "Starting LinkMeter "
