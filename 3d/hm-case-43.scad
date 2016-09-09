@@ -175,8 +175,7 @@ module locklip_n(l, l_offset=1,
   translate([l-l_offset,0,0]) rotate([90,0,0]) rotate([0,-90,0]) 
     linear_extrude(height=l-2*l_offset) polygon(points=[
       [0.1, -3*lip_insert_depth],  // 0.1 to add depth to keep extrusion manifold
-      [0.1, 0],
-      [-lip_insert_depth+lip_tip_clip, 0],
+      [0.1, -lip_tip_clip],
       [-lip_insert_depth+lip_tip_clip, -lip_tip_clip],
       [-e, -lip_insert_depth],
       [-lip_insert_depth, -2*lip_insert_depth]
@@ -337,6 +336,40 @@ difference() {
   }
 }
 
+module lip_guide(l) {
+  guide_offset = 0.2; // how much to recess the edge guides
+  guide_h = 1.2; // how tall above the edge to extend
+  linear_extrude(height=l) polygon([
+    [0,0], [wall+guide_offset,0], [0, wall+guide_offset],
+    [-guide_h, wall+guide_offset], [-guide_h, guide_offset],
+    [0, guide_offset]
+  ]);
+}
+
+module hm43_bottom_lips() {
+  translate([wall, wall, probe_centerline+wall_t]) {
+    // bottom locklip (postive)
+    translate([0,d,0]) {
+      locklip_p(28);
+      translate([w-34,0,0]) locklip_p(34);
+    }
+
+    // front guide lip
+    translate([w/2-9, 0, 0])
+      rotate([0,90]) lip_guide(30);
+    // right guide lip
+    translate([w, d-45, 0])
+      rotate([-90]) rotate(90) lip_guide(40);
+    // left guide lip assortment
+    translate([0, 5.25+9.4/2, 0])
+      rotate([-90]) rotate(90) mirror([0,1,0]) lip_guide(25.25-5.25-9.4/2-16.7/2);
+    *translate([-pic_ex, 52, 0])
+      rotate([-90]) rotate(90) mirror([0,1,0]) lip_guide(3.5);
+    *translate([-pic_ex, 70, 0])
+      rotate([-90]) rotate(90) mirror([0,1,0]) lip_guide(3.5);
+  }
+}
+
 module hm43_split() {
   half=wall_t+probe_centerline;
 
@@ -346,11 +379,7 @@ module hm43_split() {
       hm43(); 
       translate([-w,-d,0]) cube([w*3, d*3, half]); 
     }
-    // bottom locklip (postive)
-    translate([wall, d+wall, probe_centerline+wall_t]) {
-      locklip_p(28);
-      translate([w-34,0,0]) locklip_p(34);
-    }
+    hm43_bottom_lips();
   } // if include bottom
   
   // top
