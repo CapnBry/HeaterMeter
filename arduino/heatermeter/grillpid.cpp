@@ -41,6 +41,9 @@ ISR(TIMER1_COMPB_vect, ISR_NAKED)
 }
 #endif
 
+// ADC pin to poll between every other ADC read, with low oversampling
+#define ADC_INTERLEAVE_HIGHFREQ 0
+
 static struct tagAdcState
 {
   unsigned char top;       // Number of samples to take per reading
@@ -50,6 +53,7 @@ static struct tagAdcState
   unsigned char thisHigh;  // High this period
   unsigned char thisLow;   // Low this period
   unsigned char pin;       // pin for which these readings were made
+  unsigned char pin_next;  // Nextnon-interleaved pin read
   unsigned long analogReads[NUM_ANALOG_INPUTS]; // Current values
   unsigned char analogRange[NUM_ANALOG_INPUTS]; // high-low on last period
 #if defined(GRILLPID_DYNAMIC_RANGE)
@@ -73,18 +77,31 @@ ISR(ADC_vect)
     // Actually do the calculations for the previous set of reads while in the
     // discard period of the next set of reads. Break the code up into chunks
     // of roughly the same number of clock cycles.
-    if (adcState.discard == 1)
+    if (adcState.discard == 2)
     {
       adcState.analogReads[adcState.pin] = adcState.accumulator;
       adcState.analogRange[adcState.pin] = adcState.thisHigh - adcState.thisLow;
     }
+    else if (adcState.discard == 1)
+    {
+      adcState.accumulator = 0;
+      adcState.thisHigh = 0;
+      adcState.thisLow = 0xff;
+      adcState.pin = ADMUX & 0x0f;
+    }
     else if (adcState.discard == 0)
     {
-      adcState.thisHigh = 0;
-      adcState.accumulator = 0;
-      adcState.thisLow = 0xff;
-      adcState.cnt = adcState.top;
-      adcState.pin = ADMUX & 0x0f;
+      if (adcState.pin == ADC_INTERLEAVE_HIGHFREQ)
+      {
+        adcState.cnt = 4;
+        adcState.pin_next = (adcState.pin_next + 1) % NUM_ANALOG_INPUTS;
+        // Notice this doesn't check if pin_next is ADC_INTERLEAVE_HIGHFREQ, which
+        // means ADC_INTERLEAVE_HIGHFREQ will be checked twice in a row each loop
+        // Not worth the extra code to make that not happen
+      }
+      else
+        adcState.cnt = adcState.top;
+
     }
     return;
   }
@@ -116,9 +133,12 @@ ISR(ADC_vect)
     }
 #endif // GRILLPID_DYNAMIC_RANGE
 
-    ++pin;
-    if (pin >= NUM_ANALOG_INPUTS)
-      pin = 0;
+    // If just read the interleaved pin, advance to the next pin
+    if (pin == ADC_INTERLEAVE_HIGHFREQ)
+      pin = adcState.pin_next;
+    else
+      pin = ADC_INTERLEAVE_HIGHFREQ;
+
 #if defined(GRILLPID_DYNAMIC_RANGE)
     unsigned char newref =
       adcState.useBandgapReference[pin] ? (INTERNAL << 6) : (DEFAULT << 6);
@@ -144,6 +164,11 @@ unsigned int analogReadOver(unsigned char pin, unsigned char bits)
   {
     a = adcState.analogReads[pin];
   }
+
+  // If requesting the interleave pin, scale down from reduced resolution
+  if (pin == ADC_INTERLEAVE_HIGHFREQ)
+    return a >> (12 - bits);
+
   // Scale up to 256 samples then divide by 2^4 for 14 bit oversample
   unsigned int retVal = a * 16 / adcState.top;
   return retVal >> (14 - bits);

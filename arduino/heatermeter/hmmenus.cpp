@@ -112,16 +112,11 @@ char editString[17];
 
 static button_t readButton(void)
 {
-  // Wait until reading stabilizes
-  if (analogReadRange(PIN_BUTTONS) > 4)
-    return BUTTON_NONE;
-
   unsigned char button = analogReadOver(PIN_BUTTONS, 8);
   if (button == 0)
     return BUTTON_NONE;
 
-  //Serial.print("BtnRaw ");
-  //Serial.println(button, DEC); 
+  //SerialX.print("HMLG,Btn="); SerialX.print(button, DEC); Serial_nl();
 
   if (button > 20 && button < 60)
     return BUTTON_LEFT;  

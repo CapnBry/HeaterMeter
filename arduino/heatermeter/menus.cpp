@@ -80,8 +80,12 @@ void MenuSystem::setState(state_t state)
 
 void MenuSystem::doWork(void)
 {
-  button_t button = m_readButton();
   unsigned long elapsed = getElapsedDuration();
+  // Operate button loop at 4Hz unless no button has been pressed in one cycle
+  if (elapsed < 250)
+    return;
+
+  button_t button = m_readButton();
   if (button == BUTTON_NONE)
   {
     unsigned long dur = getTimeoutDuration();
@@ -89,9 +93,6 @@ void MenuSystem::doWork(void)
       button = BUTTON_TIMEOUT;
   }
 
-  // Debounce: wait for last button to be released
-  if (elapsed < 250)
-    return;
   if (button != BUTTON_TIMEOUT)
   {
     if (button == m_lastButton)
@@ -105,6 +106,7 @@ void MenuSystem::doWork(void)
       m_buttonRepeatCnt = 0;
     }
   }
+
   if (button == BUTTON_NONE)
     return;
 
