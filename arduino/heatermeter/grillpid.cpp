@@ -28,16 +28,22 @@ ISR(TIMER1_CAPT_vect)
   if (nextStep != 0)
   {
     digitalWriteFast(PIN_SERVO, HIGH);
+    nextStep -= uSecToTicks(SERVO_BUSYWAIT);
     // Add the current timer1 count to offset the delay of calculating
     // the next move, and any interrupt latency due to the ADC code
     OCR1B = TCNT1 + nextStep;
   }
 }
 
-ISR(TIMER1_COMPB_vect, ISR_NAKED)
+ISR(TIMER1_COMPB_vect)
 {
+#if SERVO_BUSYWAIT > 0
+  // COMPB (OCR1B) is triggered SERVO_BUSYWAIT usec before the switch time
+  unsigned int target = OCR1B + uSecToTicks(SERVO_BUSYWAIT);
+  while (TCNT1 < target)
+    ;
+#endif
   digitalWriteFast(PIN_SERVO, LOW);
-  asm("reti\n");
 }
 #endif
 
