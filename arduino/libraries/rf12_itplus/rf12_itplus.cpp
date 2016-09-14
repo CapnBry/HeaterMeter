@@ -156,7 +156,7 @@ void rf12_spiInit () {
     // ATtiny
     USICR = bit(USIWM0);
 #endif    
-    pinMode(RFM_IRQ, INPUT_PULLUP);
+    pinMode(RFM_IRQ, INPUT);
 }
 
 static uint8_t rf12_byte (uint8_t out) {
