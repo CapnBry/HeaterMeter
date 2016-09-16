@@ -7,6 +7,8 @@ Control_Probe = "Thermocouple"; // [Thermocouple,Thermistor]
 Pi_Model = "3B/2B/1B+"; // [3B/2B/1B+,1A+,Zero]
 // Which case halves
 Pieces = "Both"; // [Both,Top,Bottom]
+// Corner ear height
+MouseEarHeight = 0.0;
 
 /* [Hidden] */
 function inch(x) = x*25.4;
@@ -207,6 +209,35 @@ module lcd_neg() {
     cube([16*2.54, 5, lcd_mount_t+wall_t-0.8]); // pins cutout
 }
 
+module mouseears() {
+  me_h = MouseEarHeight;
+  me_d = 15;
+  me_outset_bottom = (me_d/4) - wall/2;
+  me_outset_top = (me_d/4) - wall;
+  
+  // Bottom corners
+  translate([-me_outset_bottom, -me_outset_bottom, 0])
+    cylinder(me_h, d1=me_d, d2=me_d-2*me_h, $fn=24);
+  translate([w+2*wall+me_outset_bottom, -me_outset_bottom, 0])
+    cylinder(me_h, d1=me_d, d2=me_d-2*me_h, $fn=24);
+  translate([w+2*wall+me_outset_bottom, d+2*wall+me_outset_bottom, 0])
+    cylinder(me_h, d1=me_d, d2=me_d-2*me_h, $fn=24);
+  translate([-me_outset_bottom, d+2*wall+me_outset_bottom, 0])
+    cylinder(me_h, d1=me_d, d2=me_d-2*me_h, $fn=24);
+
+  // top corners
+  translate([0,0,h_b+2*wall_t-me_h]) {
+    translate([-me_outset_top, -me_outset_top, 0])
+      cylinder(me_h, d2=me_d, d1=me_d-2*me_h, $fn=24);
+    translate([w+2*wall+me_outset_top, -me_outset_top, 0])
+      cylinder(me_h, d2=me_d, d1=me_d-2*me_h, $fn=24);
+    translate([w+2*wall+me_outset_top, d+2*wall+me_outset_top, 0])
+      cylinder(me_h, d2=me_d, d1=me_d-2*me_h, $fn=24);
+    translate([-me_outset_top, d+2*wall+me_outset_top, 0])
+      cylinder(me_h, d2=me_d, d1=me_d-2*me_h, $fn=24);
+  }
+}
+
 module hm43() {
 difference() {
   union() {
@@ -221,6 +252,8 @@ difference() {
     // TC +/-
     if (Control_Probe == "Thermocouple")
       translate([w+wall*2-e,wall+10,wall_t+18]) tc_plusminus();
+    if (MouseEarHeight > 0.0)
+      mouseears();
   }
   translate([wall, wall, wall_t]) cube([w, d, h_b+e]);
   if (Pi_Model != "Zero")
