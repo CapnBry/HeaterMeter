@@ -428,16 +428,6 @@ module hm43_split() {
 /********************** END OF CASE / LIBRARY FOLLOWS **********************/
 /**********************                               **********************/
 
-module nut(d,h,horizontal=true){
-    cornerdiameter =  (d / 2) / cos (180 / 6);
-    cylinder(h = h, r = cornerdiameter, $fn = 6);
-    if(horizontal){
-        for(i = [1:6]){
-            rotate([0,0,60*i]) translate([-cornerdiameter-0.2,0,0]) rotate([0,0,-45]) cube([2,2,h]);
-        }
-    }
-}
-
 module fillet(radius, height=100, $fn=$fn) {
   if (radius > 0) {
     //this creates acutal fillet
