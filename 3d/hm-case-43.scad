@@ -26,6 +26,7 @@ wall = 2.1*1.41; // thickness of side walls
 wall_t = 2; // thickness of top and bottom walls
 e = 0.01;
 
+echo("WALL is ", wall);
 hm43_split();
 
 module cube_fillet_chamfer(size,f,c,$fn=32) {
@@ -115,7 +116,7 @@ module led_hole() {
 
 module nuttrap() {
   ww_w=3;
-  ww_d=2;
+  ww_d=2.7;
   nut_h=2.8;
   nut_ingress = 5.8; //nut_d * sin(60);
   nut_d = nut_ingress / sin(60);
@@ -123,8 +124,8 @@ module nuttrap() {
 
   // bottom half for M3 socket cap screw (flush)
   difference() {
-    translate([-5.5/2-ww_w,-3.4/2-ww_d,0])
-      cube_fillet([5.5+2*ww_w,3.4+2.5*ww_d,6], vertical=[3.4,3.4], $fn=20);
+    translate([-5.5/2-ww_w, -nut_ingress/2-e, 0])
+      cube_fillet([5.5+2*ww_w, nut_ingress+ww_d*0.8+e, 6], vertical=[3.4,3.4], $fn=20);
     // socket cap
     translate([0,0,-e]) cylinder(3.5, d=6, $fn=18);
     // screw shaft
@@ -134,8 +135,8 @@ module nuttrap() {
   // top half M3 nut trap
   translate([0,0,h_b+wall_t-oa_h])
   difference() {
-    translate([-(nut_d/2+ww_w), -(nut_d/2+ww_d), 0])
-      cube_fillet([nut_d+2*ww_w,nut_d+2*ww_d,oa_h],
+    translate([-(nut_d/2+ww_w), -nut_ingress/2-e, 0])
+      cube_fillet([nut_d+2*ww_w, nut_ingress+ww_d+e, oa_h],
         vertical=[3.4,3.4], $fn=20);
     // M3 screw
     translate([0,0,-e]) cylinder(wall_t, d1=4, d2=3.4, $fn=16);
@@ -241,10 +242,8 @@ module mouseears() {
 module hm43() {
 difference() {
   union() {
-    cube_fillet([w+2*wall, d+2*wall, h_b+2*wall_t],
-      vertical=[wall/2,wall/2,wall/2,wall/2], 
-      top=[wall,wall,wall_t,wall],
-      bottom=[wall/2,wall/2,wall/2,wall/2], $fn=4);
+    cube_bchamfer([w+2*wall, d+2*wall, h_b+2*wall_t], 
+      r=wall, top=wall/2, bottom=wall/2, $fn=36);
     // extra thick by Pi connectors
     if (Pi_Model != "Zero")
       translate([-pic_ex,wall,wall_t])
@@ -427,6 +426,30 @@ module hm43_split() {
 /**********************                               **********************/
 /********************** END OF CASE / LIBRARY FOLLOWS **********************/
 /**********************                               **********************/
+
+module cube_bchamfer(dim, r, top=0, bottom=0, $fn=$fn) {
+  // bottom beaded area
+  if (bottom != 0) hull(){
+    translate([r,r,0]) cylinder(bottom, r1=r-bottom, r2=r, $fn=$fn);
+    translate([dim[0]-r,r,0]) cylinder(bottom, r1=r-bottom, r2=r, $fn=$fn);
+    translate([r,dim[1]-r,0]) cylinder(bottom, r1=r-bottom, r2=r, $fn=$fn);
+    translate([dim[0]-r,dim[1]-r,0]) cylinder(bottom, r1=r-bottom, r2=r, $fn=$fn);
+  }
+  // center
+  translate([0,0,bottom]) hull(){
+    translate([r,r,0]) cylinder(dim[2]-top-bottom, r=r, $fn=$fn);
+    translate([dim[0]-r,r,0]) cylinder(dim[2]-top-bottom, r=r, $fn=$fn);
+    translate([r,dim[1]-r,0]) cylinder(dim[2]-top-bottom, r=r, $fn=$fn);
+    translate([dim[0]-r,dim[1]-r,0]) cylinder(dim[2]-top-bottom, r=r, $fn=$fn);
+  }
+  // top beaded area
+  if (top != 0) translate([0,0,dim[2]-top]) hull(){
+    translate([r,r,0]) cylinder(top, r2=r-top, r1=r, $fn=$fn);
+    translate([dim[0]-r,r,0]) cylinder(top, r2=r-top, r1=r, $fn=$fn);
+    translate([r,dim[1]-r,0]) cylinder(top, r2=r-top, r1=r, $fn=$fn);
+    translate([dim[0]-r,dim[1]-r,0]) cylinder(top, r2=r-top, r1=r, $fn=$fn);
+  }
+}
 
 module fillet(radius, height=100, $fn=$fn) {
   if (radius > 0) {
