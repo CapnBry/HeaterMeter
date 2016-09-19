@@ -366,14 +366,14 @@ difference() {
   }
   
   if (Pi_Model == "3B/2B/1B+")
-    translate([wall-pic_ex, wall, wall_t+2]) {
+    translate([wall-pic_ex, wall, wall_t]) {
       // USB pillar reinforcements
-      translate([0, (44.75+62.75)/2-1, 0]) cube([pic_ex, 2, 20.8]);
-      translate([0, 81.5-15/2-3, 0]) cube([pic_ex, 2.5, 20.8]);
+      translate([0, (44.75+62.75)/2-1, 0]) cube([pic_ex+1, 2, h_b]);
+      translate([0, 81.5-15/2-3, 0]) cube([pic_ex+1, 2.5, h_b]);
       // Near pic_ex fill
-      translate([0, 33.75, 0]) cube([pic_ex, 3, 20.8]);
+      translate([0, 33.75, 0]) cube([pic_ex+1, 3, h_b]);
       // Far pic_ex fill (near ethernet)
-      translate([0, (33.75+59.5)-3, 0]) cube([pic_ex, 3, 20.8]);
+      translate([0, (33.75+59.5)-3, 0]) cube([pic_ex+1, 3, h_b]);
     }
 }
 
