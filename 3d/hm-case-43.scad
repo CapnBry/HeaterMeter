@@ -372,7 +372,7 @@ module lip_guide(l) {
   guide_offset = 0.2; // how much to recess the edge guides
   guide_h = 1.2; // how tall above the edge to extend
   linear_extrude(height=l) polygon([
-    [0,0], [wall+guide_offset,0], [0, wall+guide_offset],
+    [0,-e], [wall+guide_offset,-e], [0, wall+guide_offset],
     [-guide_h, wall+guide_offset], [-guide_h, guide_offset],
     [0, guide_offset]
   ]);
