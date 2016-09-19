@@ -22,7 +22,7 @@ probe_centerline = 9.0; // case is split along probe centerline
 pic_ex = 2;
 lcd_mount_t = 7;
 
-wall = 2.1*1.41; // thickness of side walls
+wall = 2.1*1.41; // thickness of side walls (*1.41 so rounded corners are this width)
 wall_t = 2; // thickness of top and bottom walls
 e = 0.01;
 
@@ -276,13 +276,11 @@ difference() {
   translate([wall*-0.5,wall,wall_t]) {
     // Pi connectors
     translate([0,0,5]) {
-      // ethernet
       if (Pi_Model == "3B/2B/1B+") {
+        // ethernet
         translate([0,81.5,-0.5]) jhole(15,13);
         translate([0,81.5,-1.5]) jhole(5,5);
-      }
-      // USB 0+1
-      if (Pi_Model == "3B/2B/1B+") {
+        // USB 0+1
         translate([0,62.75,0]) jhole(13,14.8);
         translate([0,44.75,0]) jhole(13,14.8);
       }
@@ -366,6 +364,17 @@ difference() {
     translate([wall+10.7, wall+52, h_b+wall_t-lcd_mount_t-e]) lcd_neg();
     translate([wall+10.7, wall+52, h_b+wall_t-e]) lcd_mount();
   }
+  
+  if (Pi_Model == "3B/2B/1B+")
+    translate([wall-pic_ex, wall, wall_t+2]) {
+      // USB pillar reinforcements
+      translate([0, (44.75+62.75)/2-1, 0]) cube([pic_ex, 2, 20.8]);
+      translate([0, 81.5-15/2-3, 0]) cube([pic_ex, 2.5, 20.8]);
+      // Near pic_ex fill
+      translate([0, 33.75, 0]) cube([pic_ex, 3, 20.8]);
+      // Far pic_ex fill (near ethernet)
+      translate([0, (33.75+59.5)-3, 0]) cube([pic_ex, 3, 20.8]);
+    }
 }
 
 module lip_guide(l) {
