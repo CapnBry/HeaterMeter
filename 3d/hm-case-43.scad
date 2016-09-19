@@ -22,7 +22,7 @@ probe_centerline = 9.0; // case is split along probe centerline
 pic_ex = 2;
 lcd_mount_t = 7;
 
-wall = 2.1*1.41; // thickness of side walls (*1.41 so rounded corners are this width)
+wall = 2.0*1.41; // thickness of side walls (*1.41 so rounded corners are this width)
 wall_t = 2; // thickness of top and bottom walls
 e = 0.01;
 
