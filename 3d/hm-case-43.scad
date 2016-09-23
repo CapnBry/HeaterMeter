@@ -17,7 +17,8 @@ w = inch(3.75)+0.5; // overall interior case width
 d = inch(3.75)-0.5; // overall interior case depth
 h_b = 32; // overall interior case height
 
-probe_centerline = 9.0; // case is split along probe centerline
+probe_centerline = 9.0; // case is split along probe centerline on the probe side
+case_split = 12.4;  // and the case split on the other 3 sides
 
 pic_ex = 2;
 lcd_mount_t = 7;
@@ -347,7 +348,7 @@ difference() {
   }
   
   // Top locklip (negative)
-  translate([wall, d+wall, probe_centerline+wall_t+e])
+  translate([wall, d+wall, case_split+wall_t+e])
     rotate([180]) {
       locklip_n(28);
       translate([w-34,0,0]) locklip_n(34);
@@ -392,19 +393,16 @@ module lip_guide(l) {
 }
 
 module hm43_bottom_lips() {
-  translate([wall, wall, probe_centerline+wall_t]) {
+  translate([wall, wall, case_split+wall_t]) {
     // bottom locklip (postive)
     translate([0,d,0]) {
       locklip_p(28);
-      translate([w-34,0,0]) locklip_p(34);
+      translate([w-34,0,0]) locklip_p(34-wall+1);
     }
 
     // front guide lip
     translate([w/2-9, 0, 0])
       rotate([0,90]) lip_guide(30);
-    // right guide lip
-    translate([w, d-45, 0])
-      rotate([-90]) rotate(90) lip_guide(40);
     // left guide lip assortment
     translate([0, 5.25+9.4/2, 0])
       rotate([-90]) rotate(90) mirror([0,1,0]) lip_guide(25.25-5.25-9.4/2-16.7/2);
@@ -413,25 +411,36 @@ module hm43_bottom_lips() {
     *translate([-pic_ex, 70, 0])
       rotate([-90]) rotate(90) mirror([0,1,0]) lip_guide(3.5);
   }
+  // probe side guide lip
+  translate([wall, wall, probe_centerline+wall_t])
+    translate([w, d-45, 0])
+      rotate([-90]) rotate(90) lip_guide(40);
+}
+
+module split_volume() {
+  difference() {
+    translate([-pic_ex-e,-e,-e])
+      cube([w+pic_ex+2*wall+2*e, d+2*wall+2*e, wall_t+case_split+2*e]);
+    translate([w,0,wall_t+probe_centerline])
+      cube([3*wall, d+2*wall+2*e, wall_t+probe_centerline+2*e]);
+  }
 }
 
 module hm43_split() {
-  half=wall_t+probe_centerline;
-
   // bottom
   if (Pieces != "Top") {
     intersection() { 
       hm43(); 
-      translate([-w,-d,0]) cube([w*3, d*3, half]); 
+      split_volume();
     }
     hm43_bottom_lips();
   } // if include bottom
   
   // top
   if (Pieces != "Bottom") {
-    translate([0,-2,h_b+2*wall_t]) rotate([180]) intersection() {
+    translate([0,-2,h_b+2*wall_t]) rotate([180]) difference() {
       hm43();
-      translate([-w,-d,half]) cube([w*3, d*3, h_b]); 
+      split_volume();
     }
   }  // if include top
 }
