@@ -243,7 +243,7 @@ module hm43() {
 difference() {
   union() {
     cube_bchamfer([w+2*wall, d+2*wall, h_b+2*wall_t], 
-      r=wall, top=wall/2, bottom=wall/2, $fn=36);
+      r=4, top=1.5, bottom=1.5, $fn=36);
     // extra thick by Pi connectors
     if (Pi_Model != "Zero")
       translate([-pic_ex,wall,wall_t])
@@ -254,7 +254,11 @@ difference() {
     if (MouseEarHeight > 0.0)
       mouseears();
   }
-  translate([wall, wall, wall_t]) cube([w, d, h_b+e]);
+  
+  // Main cutout
+  translate([wall, wall, wall_t])
+    cube_fillet([w, d, h_b+e], bottom=[2,2,2,2],
+    top=[lcd_mount_t,lcd_mount_t,lcd_mount_t,lcd_mount_t]);
   if (Pi_Model != "Zero")
     translate([wall-pic_ex+e,wall,wall_t]) pic_ex_cube();
 
