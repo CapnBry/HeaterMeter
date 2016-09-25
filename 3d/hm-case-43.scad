@@ -4,7 +4,7 @@
 // Pit probe type
 Control_Probe = "Thermocouple"; // [Thermocouple,Thermistor]
 // Raspberry Pi Model
-Pi_Model = "3B/2B/1B+"; // [3B/2B/1B+,1A+,Zero]
+Pi_Model = "3B/2B/1B+"; // [3B/2B/1B+,Connectorless,1A+,Zero]
 // Which case halves
 Pieces = "Both"; // [Both,Top,Bottom]
 // Corner ear height
@@ -240,6 +240,14 @@ module mouseears() {
   }
 }
 
+module locklip_top_n(split) {
+  translate([wall, d+wall, split+wall_t+e])
+    rotate([180]) {
+      locklip_n(28);
+      translate([w-34,0,0]) locklip_n(34);
+    }
+}
+
 module hm43() {
 difference() {
   union() {
@@ -348,11 +356,10 @@ difference() {
   }
   
   // Top locklip (negative)
-  translate([wall, d+wall, case_split+wall_t+e])
-    rotate([180]) {
-      locklip_n(28);
-      translate([w-34,0,0]) locklip_n(34);
-    }
+  if (Pi_Model == "3B/2B/1B+")
+    locklip_top_n(case_split);
+  else
+    locklip_top_n(probe_centerline);
   
   // LCD mount
   difference() {
@@ -370,7 +377,7 @@ difference() {
     translate([wall+10.7, wall+52, h_b+wall_t-e]) lcd_mount();
   }
   
-  if (Pi_Model == "3B/2B/1B+")
+  if (Pi_Model == "3B/2B/1B+" || Pi_Model == "1A+")
     translate([wall-pic_ex, wall, wall_t]) {
       // USB pillar reinforcements
       translate([0, (44.75+62.75)/2-1, 0]) cube([pic_ex+1, 2, h_b]);
@@ -392,8 +399,8 @@ module lip_guide(l) {
   ]);
 }
 
-module hm43_bottom_lips() {
-  translate([wall, wall, case_split+wall_t]) {
+module hm43_bottom_lips(split) {
+  translate([wall, wall, split+wall_t]) {
     // bottom locklip (postive)
     translate([0,d,0]) {
       locklip_p(28);
@@ -418,12 +425,17 @@ module hm43_bottom_lips() {
 }
 
 module split_volume() {
-  difference() {
-    translate([-pic_ex-e,-e,-e])
-      cube([w+pic_ex+2*wall+2*e, d+2*wall+2*e, wall_t+case_split+2*e]);
-    translate([w,0,wall_t+probe_centerline])
-      cube([3*wall, d+2*wall+2*e, wall_t+probe_centerline+2*e]);
+  if (Pi_Model == "3B/2B/1B+") {
+    difference() {
+      translate([-pic_ex-e,-e,-e])
+        cube([w+pic_ex+2*wall+2*e, d+2*wall+2*e, wall_t+case_split+2*e]);
+      translate([w,0,wall_t+probe_centerline])
+        cube([3*wall, d+2*wall+2*e, wall_t+probe_centerline+2*e]);
+    }
   }
+  else
+    translate([-w,-d,-e])
+      cube([3*w, 3*d, wall_t+probe_centerline+2*e]);
 }
 
 module hm43_split() {
@@ -433,7 +445,10 @@ module hm43_split() {
       hm43(); 
       split_volume();
     }
-    hm43_bottom_lips();
+    if (Pi_Model == "3B/2B/1B+")
+      hm43_bottom_lips(case_split);
+    else
+      hm43_bottom_lips(probe_centerline);
   } // if include bottom
   
   // top
