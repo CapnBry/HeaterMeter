@@ -63,6 +63,7 @@ platform_setup() {
 }
 
 platform_cleanup_DEFAULT() {
+  true
 }
 platform_cleanup_BCM2708() {
   rmmod spi-bcm2835
