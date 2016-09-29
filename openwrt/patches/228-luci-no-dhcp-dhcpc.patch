@@ -1,6 +1,8 @@
---- luci-0.11.1/modules/admin-full/luasrc/model/cbi/admin_network/wifi_add.lua.orig	2014-06-30 10:48:53.630440606 -0400
-+++ luci-0.11.1/modules/admin-full/luasrc/model/cbi/admin_network/wifi_add.lua	2014-06-30 10:50:15.842438032 -0400
-@@ -168,6 +168,11 @@
+diff --git a/modules/luci-mod-admin-full/luasrc/model/cbi/admin_network/wifi_add.lua b/modules/luci-mod-admin-full/luasrc/model/cbi/admin_network/wifi_add.lua
+index 96b8b4d..64ce572 100644
+--- a/modules/luci-mod-admin-full/luasrc/model/cbi/admin_network/wifi_add.lua
++++ b/modules/luci-mod-admin-full/luasrc/model/cbi/admin_network/wifi_add.lua
+@@ -157,6 +157,11 @@ function newnet.parse(self, section)
  			uci:save("network")
  			uci:save("firewall")
  
