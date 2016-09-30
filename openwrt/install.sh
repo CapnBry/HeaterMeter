@@ -8,7 +8,9 @@ if [ -z "$WRT_PATH" ] ; then
   echo "Usage: ./install.sh <target> <wrt path>"
   echo "    Target: BCM47XX or BCM2708 (case sensitive)"
   echo "BCM47XX - svn://svn.openwrt.org/openwrt/trunk@29665"
-  echo "BCM2708 - svn://svn.openwrt.org/openwrt/tags/attitude_adjustment_12.09@36422"
+  echo "BCM2708 - git://github.com/openwrt/openwrt.git@2839ee70d38eeea18f3423806bfa2fad6c597c25"
+  echo ""
+  echo "Be sure both your WRT_PATH and WRT_PATH/feeds/luci are 'git reset --hard HEAD'"
   exit 1
 fi
 
@@ -22,8 +24,14 @@ fi
 
 if [ "$TARGET" = "BCM2708" ] ; then
   cat << EOFEEDS > $WRT_PATH/feeds.conf
-src-git packages git://git.openwrt.org/12.09/packages.git
-src-git luci http://github.com/openwrt/luci.git;0.11.1
+src-git packages https://github.com/openwrt/packages.git
+src-git luci https://github.com/openwrt/luci.git
+#src-git routing https://github.com/openwrt-routing/packages.git
+#src-git telephony https://github.com/openwrt/telephony.git
+#src-git management https://github.com/openwrt-management/packages.git
+#src-git targets https://github.com/openwrt/targets.git
+#src-git oldpackages http://git.openwrt.org/packages.git
+#src-link custom /usr/src/openwrt/custom-feed
 src-link linkmeter $REPO_PATH/package
 EOFEEDS
 fi
@@ -35,7 +43,7 @@ for X in patches/2??-luci-* ; do
   patch -N -p1 -d $LUCIP < $X
 done
 
-LMPACKS="luci luci-theme-material luci-theme-openwrt parted rrdtool linkmeter liblmfit-lua luci-app-msmtp"
+LMPACKS="luci-mod-admin-full luci-theme-material luci-theme-openwrt parted rrdtool linkmeter liblmfit-lua luci-app-msmtp"
 for PACK in $LMPACKS ; do
   $WRT_PATH/scripts/feeds install -p linkmeter $PACK
 done
