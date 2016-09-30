@@ -113,14 +113,16 @@ index 1d4b694..c293f0f 100644
 diff --git a/target/linux/brcm2708/image/Makefile b/target/linux/brcm2708/image/Makefile
 old mode 100644
 new mode 100755
-index e7089c6..a86fb88
+index e7089c6..889fa5c
 --- a/target/linux/brcm2708/image/Makefile
 +++ b/target/linux/brcm2708/image/Makefile
-@@ -30,6 +30,7 @@ define Build/boot-img
+@@ -29,7 +29,8 @@ define Build/boot-img
+ 	mcopy -i $@.boot $(KDIR)/fixup_cd.dat ::
  	mcopy -i $@.boot cmdline.txt ::
  	mcopy -i $@.boot config.txt ::
- 	mcopy -i $@.boot $(word 1,$^) ::kernel.img
-+	#mcopy -i $@.boot /home/bmayland/trunk-openwrt/build_dir/target-arm_cortex-a53+neon-vfpv4_musl-1.1.14_eabi/linux-brcm2708_bcm2710/kernel7-bry.img ::kernel7.img
+-	mcopy -i $@.boot $(word 1,$^) ::kernel.img
++	mcopy -i $@.boot $(word 1,$^) ::kernel7.img
++	#mcopy -i $@.boot $(KDIR)/../../XXX/linux-brcm2708_bcm2708/kernel.img ::kernel.img
  	$(foreach dts,$(shell echo $(DEVICE_DTS)),mcopy -i $@.boot $(DTS_DIR)/$(dts).dtb ::;)
  	mmd -i $@.boot ::/overlays
  	mcopy -i $@.boot $(DTS_DIR)/overlays/*.dtbo ::/overlays/
