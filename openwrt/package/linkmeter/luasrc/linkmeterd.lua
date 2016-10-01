@@ -868,15 +868,22 @@ local function lmdStart()
     rrdCreate()
   end
 
+  initPlugins()
+
+  -- Attempt to flush the serial buffer
+  -- otherwise when /config is sent it could overrun
+  local discard
+  repeat
+    discard = serialfd:read(1024)
+  until (not discard or #discard == 0)
+
   serialPolle = {
     fd = serialfd,
     lines = serialfd:linesource(),
     events = nixio.poll_flags("in"),
     handler = serialHandler
   }
-
   Server.register_pollfd(serialPolle)
-  initPlugins();
 
   return true
 end
