@@ -99,6 +99,10 @@ fi
 
 if [ "$INSTALL_PARAM" = "new" ] ; then
   if [ "$HARDWARE_MODEL" = "BCM2708" -o "$HARDWARE_MODEL" = "BCM2709" ] ; then
+    # Only manually load the spi modules
+    rm /etc/modules.d/89-spi-bcm2835
+    rm /etc/modules.d/spi-dev
+
     # Disable dhcp server on the lan interface
     uci set dhcp.lan.ignore=1
     uci commit dhcp
