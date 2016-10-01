@@ -1,0 +1,11 @@
+--- rrdtool-1.4.5/configure.ac.orig	2016-08-10 13:07:02.273353179 -0400
++++ rrdtool-1.4.5/configure.ac	2016-08-10 13:07:16.257430215 -0400
+@@ -217,7 +217,7 @@
+ 
+ 
+ dnl add pic flag in any case this makes sure all our code is relocatable
+-eval `./libtool --config | grep pic_flag`
++eval `./libtool --config | grep pic_flag=`
+ CFLAGS="$CFLAGS $pic_flag"
+ 
+ 
