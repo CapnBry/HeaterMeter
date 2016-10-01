@@ -1,35 +1,15 @@
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=luci-app-msmtp
 PKG_VERSION:=1.6.2
 PKG_RELEASE:=1
+PKG_MAINTAINER:=Bryan Mayland <capnbry@gmail.com>
 
-include $(INCLUDE_DIR)/package.mk
-PKG_INSTALL:=1
-
-define Package/luci-app-msmtp
-  SECTION:=luci
-  CATEGORY:=LuCI
-  SUBMENU:=3. Applications
-  MAINTAINER:=Bryan Mayland <capnbry@gmail.com>
-  TITLE:=MSMTP email client configuration
-  DEPENDS:=luci-base msmtp
-endef
-
-define Package/luci-app-msmtp/description
-  Simple editor for the msmtp SMTP client's configuration file
+LUCI_TITLE:=MSMTP email client configuration
+LUCI_DEPENDS:=+msmtp
+LUCI_PKGARCH:=all
+LUCI_DESCRIPTION:=Simple editor for the msmtp SMTP client's configuration file \
   /etc/msmtprc. Published to LuCI under Services -> SMTP
-endef
 
-define Build/Compile
-endef
+include $(TOPDIR)/feeds/luci/luci.mk
 
-define Build/Install
-endef
-
-define Package/luci-app-msmtp/install
-	$(INSTALL_DIR) $(1)/usr/lib/lua/luci
-	$(CP) ./luasrc/* $(1)/usr/lib/lua/luci
-endef
-
-$(eval $(call BuildPackage,luci-app-msmtp))
+# call BuildPackage - OpenWrt buildroot signature
