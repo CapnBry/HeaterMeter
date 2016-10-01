@@ -12,7 +12,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/linkmeter
 	SECTION:=utils
 	CATEGORY:=Utilities
-	DEPENDS:=+rrdtool +libuci +luci +luci-lib-nixio +luci-lib-jsonc
+	DEPENDS:=+rrdtool +libuci +luci-base +luci-lib-nixio +luci-lib-jsonc
 	TITLE:=LinkMeter BBQ Controller
 	URL:=http://github.com/CapnBry/HeaterMeter
 	MAINTAINER:=Bryan Mayland <capnbry@gmail.com>
