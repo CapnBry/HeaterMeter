@@ -43,7 +43,7 @@ for X in patches/2??-luci-* ; do
   patch -N -p1 -d $LUCIP < $X
 done
 
-LMPACKS="luci-mod-admin-full luci-theme-material luci-theme-openwrt parted rrdtool linkmeter liblmfit-lua luci-app-msmtp"
+LMPACKS="parted rrdtool linkmeter liblmfit-lua luci-theme-material luci-theme-openwrt luci-app-msmtp"
 for PACK in $LMPACKS ; do
   $WRT_PATH/scripts/feeds install -p linkmeter $PACK
 done
