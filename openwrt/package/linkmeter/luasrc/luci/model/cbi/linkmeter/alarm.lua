@@ -1,7 +1,7 @@
 require "lmclient"
-local json = require("luci.json")
+local json = require("luci.jsonc")
 
-local lmcf = json.decode(LmClient():query("$LMCF"))
+local lmcf = json.parse(LmClient():query("$LMCF"))
 
 local m, s, v
 m = Map("linkmeter", "Alarm Settings",

@@ -1,23 +1,22 @@
-require "luci.fs"
-require "luci.sys"
+require "nixio.fs"
 require "lmclient"
 
 local SCRIPT_PATH = "/usr/share/linkmeter/alarm-"
 local function isexec_cfgvalue(self)
-  return luci.fs.access(SCRIPT_PATH .. self.config, "x") and "1"
+  return nixio.fs.access(SCRIPT_PATH .. self.config, "x") and "1"
 end
 
 local function isexec_write(self, section, value)
   self.value = value
-  local curmode = luci.fs.stat(SCRIPT_PATH .. self.config)
+  local curmode = nixio.fs.stat(SCRIPT_PATH .. self.config)
   value = value == "1" and 755 or 644
   if curmode and curmode.modedec ~= value then
-    luci.fs.chmod(SCRIPT_PATH .. self.config, value)
+    nixio.fs.chmod(SCRIPT_PATH .. self.config, value)
   end
 end
 
 local function script_cfgvalue(self)
-  return luci.fs.readfile(SCRIPT_PATH .. self.config) or ""
+  return nixio.fs.readfile(SCRIPT_PATH .. self.config) or ""
 end
 
 local function script_write(self, section, value)
@@ -26,7 +25,7 @@ local function script_write(self, section, value)
   local old = self:cfgvalue()
   value = value:gsub("\r\n", "\n")
   if old ~= value then
-    luci.fs.writefile(SCRIPT_PATH .. self.config, value)
+    nixio.fs.writefile(SCRIPT_PATH .. self.config, value)
     -- If there was no file previously re-call the isexec handler
     -- as it executes before this handler and there was not a file then
     if old == "" then self.isexec:write(section, self.isexec.value) end
@@ -38,7 +37,7 @@ local function script_remove(self, section)
   -- Submit button for that section, and formvalue="" when they submitted
   -- an empty textarea. Only remove when blank
   if self:formvalue(section) == "" then
-    luci.fs.unlink(SCRIPT_PATH .. self.config)
+    nixio.fs.unlink(SCRIPT_PATH .. self.config)
   end
 end
 
