@@ -19,7 +19,7 @@ index 7642c06..372302f 100755
  esac
  
 diff --git a/target/linux/brcm2708/base-files/etc/diag.sh b/target/linux/brcm2708/base-files/etc/diag.sh
-index 2a866e4..db902ab 100644
+index 2a866e4..1caefa2 100644
 --- a/target/linux/brcm2708/base-files/etc/diag.sh
 +++ b/target/linux/brcm2708/base-files/etc/diag.sh
 @@ -8,12 +8,12 @@ set_state() {
@@ -38,14 +38,15 @@ index 2a866e4..db902ab 100644
  		status_led="led1"
  		;;
  	esac
-@@ -29,6 +29,7 @@ set_state() {
+@@ -29,7 +29,7 @@ set_state() {
  		status_led_blink_preinit_regular
  		;;
  	done)
-+		status_led_off
- 		status_led_on
+-		status_led_on
++		led_set_attr $status_led "trigger" "default-on"
  		;;
  	esac
+ }
 diff --git a/target/linux/brcm2708/base-files/lib/upgrade/platform.sh b/target/linux/brcm2708/base-files/lib/upgrade/platform.sh
 index 1d4b694..c293f0f 100644
 --- a/target/linux/brcm2708/base-files/lib/upgrade/platform.sh
