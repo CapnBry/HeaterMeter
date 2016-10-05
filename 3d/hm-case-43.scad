@@ -7,12 +7,17 @@ Control_Probe = "Thermocouple"; // [Thermocouple,Thermistor]
 Pi_Model = "3B/2B/1B+"; // [3B/2B/1B+,Connectorless,1A+,Zero]
 // Which case halves
 Pieces = "Both"; // [Both,Top,Bottom]
-// Corner ear height
-MouseEarHeight = 0.0;
+/* [Advanced] */
+// Thickness of side walls
+wall = 3;
+// Thickness of top and bottom faces
+wall_t = 2;
+// External corner radius on the body
+body_corner_radius = 4;
+// Height of the body edge bead chamfer
+body_chamfer_height = 1.5;
 
 /* [Hidden] */
-function inch(x) = x*25.4;
-
 w = inch(3.75)+0.5; // overall interior case width
 d = inch(3.75)-0.5; // overall interior case depth
 h_b = 32; // overall interior case height
@@ -23,12 +28,14 @@ case_split = 12.4;  // and the case split on the other 3 sides
 pic_ex = 2;
 lcd_mount_t = 7;
 
-wall = 2.0*1.41; // thickness of side walls (*1.41 so rounded corners are this width)
-wall_t = 2; // thickness of top and bottom walls
+body_chamfer_height_t = body_chamfer_height;
+body_chamfer_height_b = body_chamfer_height;
+
 e = 0.01;
 
-echo("WALL is ", wall);
 hm43_split();
+
+function inch(x) = x*25.4;
 
 module cube_fillet_chamfer(size,f,c,$fn=32) {
   hull() {
@@ -211,35 +218,6 @@ module lcd_neg() {
     cube([16*2.54, 5, lcd_mount_t+wall_t-0.8]); // pins cutout
 }
 
-module mouseears() {
-  me_h = MouseEarHeight;
-  me_d = 15;
-  me_outset_bottom = (me_d/4) - wall/2;
-  me_outset_top = (me_d/4) - wall;
-  
-  // Bottom corners
-  translate([-me_outset_bottom, -me_outset_bottom, 0])
-    cylinder(me_h, d1=me_d, d2=me_d-2*me_h, $fn=24);
-  translate([w+2*wall+me_outset_bottom, -me_outset_bottom, 0])
-    cylinder(me_h, d1=me_d, d2=me_d-2*me_h, $fn=24);
-  translate([w+2*wall+me_outset_bottom, d+2*wall+me_outset_bottom, 0])
-    cylinder(me_h, d1=me_d, d2=me_d-2*me_h, $fn=24);
-  translate([-me_outset_bottom, d+2*wall+me_outset_bottom, 0])
-    cylinder(me_h, d1=me_d, d2=me_d-2*me_h, $fn=24);
-
-  // top corners
-  translate([0,0,h_b+2*wall_t-me_h]) {
-    translate([-me_outset_top, -me_outset_top, 0])
-      cylinder(me_h, d2=me_d, d1=me_d-2*me_h, $fn=24);
-    translate([w+2*wall+me_outset_top, -me_outset_top, 0])
-      cylinder(me_h, d2=me_d, d1=me_d-2*me_h, $fn=24);
-    translate([w+2*wall+me_outset_top, d+2*wall+me_outset_top, 0])
-      cylinder(me_h, d2=me_d, d1=me_d-2*me_h, $fn=24);
-    translate([-me_outset_top, d+2*wall+me_outset_top, 0])
-      cylinder(me_h, d2=me_d, d1=me_d-2*me_h, $fn=24);
-  }
-}
-
 module locklip_top_n(split) {
   translate([wall, d+wall, split+wall_t+e])
     rotate([180]) {
@@ -252,7 +230,8 @@ module hm43() {
 difference() {
   union() {
     cube_bchamfer([w+2*wall, d+2*wall, h_b+2*wall_t], 
-      r=4, top=1.5, bottom=1.5, $fn=36);
+      r=body_corner_radius, top=body_chamfer_height_t, 
+      bottom=body_chamfer_height_b, $fn=36);
     // extra thick by Pi connectors
     if (Pi_Model != "Zero")
       translate([-pic_ex,wall,wall_t])
@@ -260,8 +239,6 @@ difference() {
     // TC +/-
     if (Control_Probe == "Thermocouple")
       translate([w+wall*2-e,wall+10,wall_t+18]) tc_plusminus();
-    if (MouseEarHeight > 0.0)
-      mouseears();
   }
   
   // Main cutout
