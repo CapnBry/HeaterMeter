@@ -19,7 +19,7 @@ body_chamfer_height = 1.5;
 
 /* [Hidden] */
 w = inch(3.75)+0.5; // overall interior case width
-d = inch(3.75)-0.5; // overall interior case depth
+d = inch(3.75)-0.0; // overall interior case depth
 h_b = 32; // overall interior case height
 
 probe_centerline = 9.0; // case is split along probe centerline on the probe side
@@ -164,9 +164,9 @@ module locklip_p(l, l_offset=1,
   lip_insert_depth=2.0, // how deep V to insert
   lip_v_off=0.2, // extra height before starting insert
   lip_h_off=0.4, // back connector away from mating area
-  lip_w=1.5  // thickness of attachment beam
+  lip_w=2.5  // thickness of attachment beam
   ) {
-  translate([l_offset,0,0]) rotate([90,0,0]) rotate([0,90,0]) 
+  translate([l_offset,0,0]) rotate([90,0,0]) rotate([0,90,0])
     linear_extrude(height=l-2*l_offset) polygon(points=[
       [0, -lip_w-lip_insert_depth-lip_h_off],
       [0, 0],
@@ -202,7 +202,7 @@ module lcd_screw() {
 
 module lcd_mount() {
   // Assuming starting at bottom left screw hole
-  lcd_screw(); 
+  //lcd_screw(); 
   //translate([75,0,0]) lcd_screw(); // bottom right hole obscured by PCB
   translate([0,31,0]) lcd_screw();
   translate([75,31,0]) lcd_screw();
@@ -244,7 +244,8 @@ difference() {
   // Main cutout
   translate([wall, wall, wall_t])
     cube_fillet([w, d, h_b+e], bottom=[2,2,2,2],
-    top=[lcd_mount_t,lcd_mount_t,lcd_mount_t,lcd_mount_t]);
+    top=[lcd_mount_t/2,lcd_mount_t/2,lcd_mount_t/2,lcd_mount_t/2],
+    vertical=[1,1]);
   if (Pi_Model != "Zero")
     translate([wall-pic_ex+e,wall,wall_t]) pic_ex_cube();
 
@@ -310,7 +311,7 @@ difference() {
 }  // END OF DIFFERENCE
 
   // Pi mounting screws
-  translate([wall+24,wall+d-7,wall_t]) {
+  translate([wall+24,wall+d-7.5,wall_t]) {
     //screw_pimount();
     translate([58,0,0]) screw_pimount();
     translate([58,-49,0]) screw_pimount();
@@ -342,7 +343,7 @@ difference() {
   difference() {
     union() {
       // Filled block above LCD hole
-      translate([wall, wall+d-16, h_b+wall_t-lcd_mount_t]) cube([w,16,lcd_mount_t+e]);
+      translate([wall, wall+d-17, h_b+wall_t-lcd_mount_t]) cube([w,17,lcd_mount_t+e]);
       // LCD grab notch
       translate([wall+10.7, wall+52, h_b+wall_t-lcd_mount_t])
         translate([(77.5-20)/2,33.5-wall_t,-(1.8+wall_t)])
@@ -357,12 +358,15 @@ difference() {
   if (Pi_Model == "3B/2B/1B+" || Pi_Model == "1A+")
     translate([wall-pic_ex, wall, wall_t]) {
       // USB pillar reinforcements
-      translate([0, (44.75+62.75)/2-1, 0]) cube([pic_ex+1, 2, h_b]);
-      translate([0, 81.5-15/2-3, 0]) cube([pic_ex+1, 2.5, h_b]);
+      translate([0, (44.75+62.75)/2-1, 3.5])
+        cube_fillet([pic_ex+1, 2, h_b-3.5], bottom=[0,0,0,2]);
+      translate([0, 81.5-15/2-3, 3.5])
+        cube_fillet([pic_ex+1, 2.5, h_b-3.5], bottom=[0,0,0,2]);
       // Near pic_ex fill
       translate([0, 33.75, 0]) cube([pic_ex, 3, h_b]);
       // Far pic_ex fill (near ethernet)
-      translate([0, (33.75+59.5)-3, 0]) cube([pic_ex+1, 3, h_b]);
+      translate([0, d-5, 3.5])
+       cube_fillet([pic_ex+1, 5+e, h_b-3.5], bottom=[0,0,0,2]);
     }
 }
 
@@ -378,7 +382,7 @@ module lip_guide(l) {
 
 module hm43_bottom_lips(split) {
   translate([wall, wall, split+wall_t]) {
-    // bottom locklip (postive)
+    // bottom locklip (positive)
     translate([0,d,0]) {
       locklip_p(28);
       translate([w-34,0,0]) locklip_p(34-wall+1);
@@ -386,7 +390,7 @@ module hm43_bottom_lips(split) {
 
     // front guide lip
     translate([w/2-9, 0, 0])
-      rotate([0,90]) lip_guide(30);
+      rotate([0,90]) lip_guide(25);
     // left guide lip assortment
     translate([0, 5.25+9.4/2, 0])
       rotate([-90]) rotate(90) mirror([0,1,0]) lip_guide(25.25-5.25-9.4/2-16.7/2);
