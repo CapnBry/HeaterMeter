@@ -765,7 +765,10 @@ local function segmentValidate(line)
   if csum then
     csum = tonumber(csum, 16)
     for i = 2, #line-3 do
-      csum = bxor(csum, line:byte(i))
+      local b = line:byte(i)
+      -- If there is a null, force checksum invalid
+      if b == 0 then b = 170 end
+      csum = bxor(csum, b)
     end
 
     csum = csum == 0
