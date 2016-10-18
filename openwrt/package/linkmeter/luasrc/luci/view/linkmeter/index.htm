@@ -869,7 +869,9 @@ function plotToPng(plot, background)
 
 function downloadPng()
 {
-    $("#download input[name=uri]").val(plotToPng(lastPlot, "#fff"));
+    $("#download input[name=uri]").val(
+      plotToPng(lastPlot, $("#content").css("background-color"))
+    );
     $("#download").submit();
 }
 
