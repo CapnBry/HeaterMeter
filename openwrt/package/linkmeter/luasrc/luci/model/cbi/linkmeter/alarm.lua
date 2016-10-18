@@ -1,7 +1,7 @@
 require "lmclient"
 local json = require("luci.jsonc")
 
-local lmcf = json.parse(LmClient():query("$LMCF"))
+local lmcf = json.parse(LmClient():query("$LMCF") or "{}")
 
 local m, s, v
 m = Map("linkmeter", "Alarm Settings",
@@ -110,7 +110,7 @@ end
 --- Ramp Mode
 ---
 
-s = m:section(NamedSection, "ramp", "ramp", "Ramp Mode",
+s = m:section(NamedSection, "ramp", nil, "Ramp Mode",
   [[Lowers the setpoint between a food probe's trigger and target temperatures
   until both the watched probe and the setpoint meet at the target tempeature.
   Manually changing the setpoint will disable ramp mode.
@@ -148,14 +148,14 @@ v.default = "200"
 -- Email Notifications
 --
 
-s = m:section(NamedSection, "alarms", "email", "Email Notifications",
+s = m:section(NamedSection, "alarms_email", nil, "Email Notifications",
   [[Email notifications only work if <a href="]] ..
   luci.dispatcher.build_url("admin/services/msmtp") ..
   [[">SMTP Client</a> is configured.]])
 
-v = s:option(Value, "emailtoname", "Recipient name (optional)")
-v = s:option(Value, "emailtoaddress", "To email address")
-v = s:option(Value, "emailsubject", "Subject")
+v = s:option(Value, "toname", "Recipient name (optional)")
+v = s:option(Value, "toaddress", "To email address")
+v = s:option(Value, "subject", "Subject")
 
 local msg = s:option(TextValue, "_msg", "Message")
 msg.wrap    = "off"
@@ -181,7 +181,7 @@ end
 -- SMS Notifications
 --
 
-s = m:section(NamedSection, "alarms", "sms", "SMS Notifications",
+s = m:section(NamedSection, "alarms_sms", nil, "SMS Notifications",
   [[SMS notifications only work if <a href="]] ..
   luci.dispatcher.build_url("admin/services/msmtp") ..
   [[">SMTP Client</a> is configured.]])
@@ -205,14 +205,14 @@ local PROVIDERS = {
 }
 
 local function split_smsto()
-  local smsto = m:get("alarms", "smstoaddress")
+  local smsto = m:get("alarms_sms", "toaddress")
   return smsto:match("^(%d+)@(.+)$")
 end
 
 local smsprovider_write = function(self, section, value)
   if value ~= "other" then
     local smsphone, _ = split_smsto()
-    m:set("alarms", "smstoaddress", smsphone .. "@" .. value)
+    m:set("alarms_sms", "toaddress", smsphone .. "@" .. value)
   end
 end
 
@@ -224,7 +224,7 @@ v.cfgvalue = function()
 end
 v.write =  function(self, section, value)
   local _, smsprovider = split_smsto()
-  m:set("alarms", "smstoaddress", value .. "@" .. smsprovider)
+  m:set("alarms_sms", "toaddress", value .. "@" .. smsprovider)
 end
 
 v = s:option(ListValue, "_provider", "Provider")
@@ -243,21 +243,21 @@ end
 v.write = smsprovider_write
 
 v = s:option(Value, "_provider_other", "Other Provider")
-v:depends("linkmeter.alarms._provider", "other")
+v:depends("linkmeter.alarms_sms._provider", "other")
 v.cfgvalue = function ()
   local _, smsprovider = split_smsto()
   return smsprovider
 end
 v.write = smsprovider_write
 
-v = s:option(Value, "smsmessage", "Message")
+v = s:option(Value, "message", "Message")
 v.description = ESCAPE_HELP
 
 --
 -- Push Notifications
 --
 
-s = m:section(NamedSection, "alarms", "push", "Push Notifications",
+s = m:section(NamedSection, "alarms_push", nil, "Push Notifications",
   [[<ul><li><a href="www.pushbullet.com">Pushbullet</a> is a unified notification system for mobile and desktop devices.
     Find your Access Token in your account settings.</li><li><a href="www.pushover.net">Pushover</a>
     makes it easy to get real-time notifications on your Android, iPhone, iPad, and Desktop (Pebble, Android Wear, and Apple watches, too!)</li></ul>
@@ -270,16 +270,16 @@ local PUSHPROVIDERS = {
 }
 
 -- Create dropdown list of providers
-v = s:option(ListValue, "pushprovider", "Push Provider")
+v = s:option(ListValue, "provider", "Push Provider")
 for _,p in ipairs(PUSHPROVIDERS) do
   v:value(p[2], p[1])
 end
 
 -- Pushbullet Settings
 v = s:option(Value, "pushbulletkey", "Access token")
-v:depends("linkmeter.alarms.pushprovider", "pushbullet")
+v:depends("linkmeter.alarms_push.provider", "pushbullet")
 v = s:option(Value, "pushbullettitle", "Message title")
-v:depends("linkmeter.alarms.pushprovider", "pushbullet")
+v:depends("linkmeter.alarms_push.provider", "pushbullet")
 
 -- Pushover Settings
 local PUSHOVERSOUNDS = {
@@ -308,17 +308,17 @@ local PUSHOVERSOUNDS = {
 }
 
 v = s:option(Value, "pushoveruser", "User key")
-v:depends("linkmeter.alarms.pushprovider", "pushover")
+v:depends("linkmeter.alarms_push.provider", "pushover")
 v = s:option(Value, "pushovertoken", "Application API token/key")
-v:depends("linkmeter.alarms.pushprovider", "pushover")
+v:depends("linkmeter.alarms_push.provider", "pushover")
 v = s:option(ListValue, "pushoversound", "Alert sound")
 for _,p in ipairs(PUSHOVERSOUNDS) do
   v:value(p[2], p[1])
 end
-v:depends("linkmeter.alarms.pushprovider", "pushover")
+v:depends("linkmeter.alarms_push.provider", "pushover")
 
 -- Push Message Body
-v = s:option(Value, "pushmsg", "Message body")
+v = s:option(Value, "message", "Message body")
 
 --
 -- Map Functions

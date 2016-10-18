@@ -47,11 +47,11 @@ fi
 
 # Send Email
 config_get_bool doit alarms email${al_type}${al_probe} 0
-config_get dest alarms emailtoaddress
+config_get dest alarms_email toaddress
 if [ "$doit" -gt 0 -a -n "$dest" ] ; then
-  config_get dname alarms emailtoname
-  config_get subject alarms emailsubject "HeaterMeter Alert"
-  config_get fname alarms emailfromname "HeaterMeter"
+  config_get dname alarms_email toname
+  config_get subject alarms_email subject "HeaterMeter Alert"
+  config_get fname alarms_email fromname "HeaterMeter"
   faddr=`grep -i "^from " /etc/msmtprc | cut -d" " -f2`
   [ -z "$faddr" ] && faddr="heatermeter@$ip"
 
@@ -81,9 +81,9 @@ fi
 
 # Send SMS
 config_get_bool doit alarms sms${al_type}${al_probe} 0
-config_get dest alarms smstoaddress ""
+config_get dest alarms_sms toaddress ""
 if [ "$doit" -gt 0 -a -n "$dest" ] ; then
-  config_get msg alarms smsmessage "HeaterMeter Alert"
+  config_get msg alarms_sms message "HeaterMeter Alert"
   msg=$(eval echo "$msg")
   echo "Sending SMS to $dest"
 
@@ -92,15 +92,15 @@ fi
 
 # Send Push Notification
 config_get_bool doit alarms push${al_type}${al_probe} 0
-config_get pushprovider alarms pushprovider ""
+config_get pushprovider alarms_push provider ""
 if [ "$doit" -gt 0 -a -n "$pushprovider" ] ; then
   case "$pushprovider" in
     "pushbullet")
-      config_get key alarms pushbulletkey ""
+      config_get key alarms_push pushbulletkey ""
       if [ -n "$key" ] ; then
         echo "Sending pushbullet notification"
         config_get title alarms pushbullettitle ""
-        config_get msg alarms pushmsg ""
+        config_get msg alarms_push message ""
         title=$(eval echo "$title")
         msg=$(eval echo "$msg")
 
@@ -118,12 +118,12 @@ if [ "$doit" -gt 0 -a -n "$pushprovider" ] ; then
       fi
     ;;
     "pushover")
-      config_get user alarms pushoveruser ""
-      config_get token alarms pushovertoken ""
-      config_get sound alarms pushoversound "pushover"
+      config_get user alarms_push pushoveruser ""
+      config_get token alarms_push pushovertoken ""
+      config_get sound alarms_push pushoversound "pushover"
       if [ -n "$user" -a -n "$token" ] ; then
         echo "Sending Pushover notification"
-        config_get msg alarms pushmsg ""
+        config_get msg alarms_push message ""
         msg=$(eval echo "$msg")
         res=$(curl -k -s -w " %{http_code}" --form-string "token=$token" --form-string "user=$user" --form-string "sound=$sound" --form-string "message=$msg" https://api.pushover.net/1/messages.json)
         rescode=$(echo $res | awk '{print $NF}')
