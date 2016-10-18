@@ -34,7 +34,7 @@ var graphData =  [
 
     var graphOpts = {
         legend: { show: false },
-        canvas: false,
+        canvas: true,
         series: {
             lines: { show: true, lineWidth: 2 },
             points: { show: false, symbol: "circle", radius: 1, fill: false },
@@ -84,9 +84,9 @@ $(document).ready(function()
         $("#pl" + srs).css("background", graphData[mapJson[srs]].color);
 
 <% if context.authuser == "root" then %>
-    $(".pname").editable(nameChanged, {maxlength: 13, select: true});
-    $("#pn0").editable(nameChanged, {maxlength: 13, width: "13em", select: true});
-    $("#set").editable(tempChanged, {style: "display: inline", select: true});
+    $(".pname").editable(nameChanged, {cssclass: "jedit", maxlength: 13, select: true});
+    $("#pn0").editable(nameChanged, {cssclass: "jedit", maxlength: 13, width: "13em", select: true});
+    $("#set").editable(tempChanged, {cssclass: "jedit", style: "display: inline", select: true});
     
     $("#lid").click(function () { 
         if (lastLidOpen == -1) return;
@@ -303,8 +303,6 @@ function noisebtnClicked()
 
 function refreshGraphData()
 {
-    var range = $("#rangeselect").val();
-
     $("#graphtt").fadeOut();
     $("#rangeselect").prop("disabled", true);
     $("#loadindic").show();
@@ -320,8 +318,10 @@ function refreshGraphData()
         if (!this.noclear) this.data = [];
     });
     
+    var range = $("#rangeselect").val();
     var params = {nancnt: range};
     <% if rrd then write("params.rrd = '"..rrd.."'; graphOpts.canvas = true;") end %>
+    $("#dlcsv").attr("href", "<%=build_url("lm/hist")%>?dl=1&" + $.param(params));
     $.ajax({
         type: "GET",
         url: "<%=build_url("lm/hist")%>",
@@ -358,7 +358,6 @@ function showFanChanged()
 function doPlot()
 {
     lastPlot = $.plot($("#graph"), graphData, graphOpts);
-    <% if rrd then write("saveAsPng(lastPlot);") end %>
 }
 
 function updateGraphRanges(from, to)
@@ -721,7 +720,7 @@ function updateLid(val)
 
 function connectionSuccess(o)
 {
-    var updateEditables = ($("form").length == 0);
+    var updateEditables = ($("form.jedit").length == 0);
     o.time *= 1000;
     lastUpdateUtc = o.time;
     if (updateEditables) $("#set").html(o.set);
@@ -868,25 +867,16 @@ function plotToPng(plot, background)
     return c.toDataURL("image/png");
 }
 
-function saveAsPng(p)
+function downloadPng()
 {
-    $("#dl").attr("src", plotToPng(p, "#fff"));
-}
-
-function togglePng()
-{
-    var a, b;
-    if ($("#dl").is(":visible"))
-    { a = "#png"; b = "#graph"; }
-    else
-    { a = "#graph"; b = "#png"; }
-    $(a).fadeOut('fast', function () { $(b).fadeIn('fast'); });
+    $("#download input[name=uri]").val(plotToPng(lastPlot, "#fff"));
+    $("#download").submit();
 }
 
 </script>
 
 <style type="text/css">
-body { font: normal 13px Arial, sans-serif; background: #f3f1e9; text-align: center; margin: 0; padding: 0; }
+body { font: normal 13px Arial, sans-serif; color: #999; background: #f3f1e9; text-align: center; margin: 0; padding: 0; }
 h2 { color: #bbb; }
 #content { background: #246; border: 1px solid #467; }
 #contentframe { background: #000; padding: 10px; }
@@ -968,6 +958,8 @@ td.probe { width: 33%; position: relative; }
 #fanl { position: absolute; left: 0; top: 1px; z-index: 2; color: #003; font-size: 10pt; }
 #fana { position: absolute; left: 0; top: 0; z-index: 3; width: 3px; height: 20px; background: #fe4; opacity: 0.5; }
 img.preload { display: none; }
+#share { position: fixed; bottom: 0px; padding: 2px 16px; background: rgba(20, 20, 20, 0.2);
+  border-radius: 4px 4px 0 0; }
 <%=nixio.fs.readfile("/usr/share/linkmeter/user.css") or ""%>
 </style>
 </head>
@@ -976,13 +968,18 @@ img.preload { display: none; }
 <img src="<%=resource%>/fire.png" class="preload">
 <div id="contentframe">
     <div id="content">
-<% if rrd then fname = rrd:sub(1, -5) .. ".png"; fshort = nixio.fs.basename(fname) %>
-      <h2 onclick="togglePng();">
-        <img src="<%=resource%>/picture_save.png" alt="save" title="Save graph image">
-        <%=fname%>
-        <img src="<%=resource%>/picture_save.png" alt="save" title="Save graph image">
-      </h2>
+      <form id="download" method="POST" action="<%=build_url("lm/dluri")%>" target="_blank"
+        enctype="multipart/form-data" style="display: none;">
+        <input name="uri" value="" />
+<% if rrd then fshort = nixio.fs.basename(rrd):sub(1, -5); pngname = fshort .. ".png" %>
+        <input name="filename" value="<%=pngname%>" />
+      </form>
+      <div onclick="downloadPng();">
+        <h2 style="margin-bottom: 0;">Archive <%=fshort%></h2>
+        <img src="<%=resource%>/picture_save.png" alt="save" title="Save graph image"> Save graph image
+      </div>
 <% else %>
+      </form>
       <div id="backimage"><div id="backoverlay">
         <div id="pn0">Pit</div>
         <div id="updatedtime">00:00:00 AM</div>
@@ -1048,7 +1045,6 @@ img.preload { display: none; }
       </div></div>
 <% end %>
       <div style="position: relative;">
-        <div id="png"><img id="dl" alt="<%=fshort%>"></div>
         <div id="noisegraph">
           <div id="noisegraph_g"></div>
 <% if context.authuser == "root" then %>
@@ -1104,6 +1100,10 @@ img.preload { display: none; }
 </div>
 <img src="<%=resource%>/noise.png" class="preload">
 <img src="<%=resource%>/rf.png" class="preload">
+<div id="share">Download
+  <img src="<%=resource%>/chart_curve.png" alt="save_graph" title="Save graph image" onclick="downloadPng();">
+  <a id="dlcsv" target="_blank" href=""><img src="<%=resource%>/table_go.png" alt="save_csv" title="Save CSV data"></a>
+</div>
 </body>
 
 </html>
