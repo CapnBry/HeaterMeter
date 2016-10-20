@@ -870,7 +870,7 @@ function plotToPng(plot, background)
 function downloadPng()
 {
     $("#download input[name=uri]").val(
-      plotToPng(lastPlot, $("#content").css("background-color"))
+      plotToPng(lastPlot, $("#download").css("background-color"))
     );
     $("#download").submit();
 }
@@ -880,7 +880,7 @@ function downloadPng()
 <style type="text/css">
 body { font: normal 13px Arial, sans-serif; color: #999; background: #f3f1e9; text-align: center; margin: 0; padding: 0; }
 h2 { color: #bbb; }
-#content { background: #246; border: 1px solid #467; }
+#content, #download { background: #246; border: 1px solid #467; }
 #contentframe { background: #000; padding: 10px; }
 #probelist { width: 100%; background: #8ab; background: rgba(99, 162, 230, 0.5); border: 1px solid #235; padding: 0; }
 td.probe { width: 33%; position: relative; }
