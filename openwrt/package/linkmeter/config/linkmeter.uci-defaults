@@ -9,16 +9,20 @@ uci_set_nomodify() {
   uci -q get $KEY > /dev/null || uci set $KEY="$@"
 }
 
+uci_add_section() {
+  uci -q get $1 > /dev/null || uci -q set $1='section'
+}
+
 backup_inc() {
-# First parameter is file, second paramter means "add wildcard" (*)
+# First parameter is file, second parameter means "add wildcard" (*)
 grep $1 /etc/sysupgrade.conf > /dev/null || \
   echo "$1${2:+*}" >> /etc/sysupgrade.conf
 }
 
 lucid_copy() {
-# copy from lucid to linkmeter if it exists in lucid
+  # copy from lucid to linkmeter if it exists in lucid
   INKEY="lucid.linkmeter.$1"
-  OUTKEY="linkmeter.daemon.$1"
+  OUTKEY="linkmeter.daemon.$2"
   VAL=`uci -q get $INKEY`
   [ "$?" -eq 0 ] && uci set $OUTKEY="$VAL"
 }
@@ -36,6 +40,37 @@ lucid_settings_migrate() {
   fi
 }
 
+linkmeter_move() {
+  # Move key in linkmeter if it exists (remove old)
+  INKEY="linkmeter.$1"
+  OUTKEY="linkmeter.$2"
+  VAL=`uci -q get $INKEY`
+  [ "$?" -eq 0 ] && uci set $OUTKEY="$VAL" && uci delete $INKEY
+}
+
+linkmeter_settings_migrate() {
+  linkmeter_move alarms.emailtoname alarms_email.toname
+  linkmeter_move alarms.emailtoaddress alarms_email.toaddress
+  linkmeter_move alarms.emailsubject alarms_email.subject
+
+  linkmeter_move alarms.smstoaddress alarms_sms.toaddress
+  linkmeter_move alarms.smsmessage alarms_sms.message
+
+  linkmeter_move alarms.pushprovider alarms_push.provider
+  linkmeter_move alarms.pushbulletkey alarms_push.pushbulletkey
+  linkmeter_move alarms.pushbullettitle alarms_push.pushbullettitle
+  linkmeter_move alarms.pushoveruser alarms_push.pushoveruser
+  linkmeter_move alarms.pushovertoken alarms_push.pushovertoken
+  linkmeter_move alarms.pushmsg alarms_push.message
+
+  uci -q delete linkmeter.alarms
+}
+
+migrate_settings() {
+  lucid_settings_migrate
+  linkmeter_settings_migrate
+}
+
 HARDWARE_MODEL=`grep '^Hardware\t:' /proc/cpuinfo | cut -d' ' -f 2`
 if [ "$HARDWARE_MODEL" = "BCM2708" -o "$HARDWARE_MODEL" = "BCM2709" ] ; then
   SERIAL_DEVICE="auto"
@@ -50,7 +85,7 @@ else
 fi
 
 [ -f /etc/config/linkmeter ] || touch /etc/config/linkmeter
-uci -q set linkmeter.daemon='section'
+uci_add_section linkmeter.daemon
 uci set linkmeter.daemon.platform=$HARDWARE_MODEL
 uci_set_nomodify linkmeter.daemon.daemonize 1
 uci_set_nomodify linkmeter.daemon.serial_device $SERIAL_DEVICE
@@ -58,19 +93,25 @@ uci_set_nomodify linkmeter.daemon.rrd_file /tmp/hm.rrd
 uci_set_nomodify linkmeter.daemon.stashpath $STASHPATH
 uci_set_nomodify linkmeter.daemon.autoback_active $AUTOBACK_ACTIVE
 uci_set_nomodify linkmeter.daemon.autoback_inactive $AUTOBACK_INACTIVE
-uci -q set linkmeter.alarms='section'
-uci_set_nomodify linkmeter.alarms.emailtoname 'Your Name'
-uci_set_nomodify linkmeter.alarms.emailtoaddress 'chunkylover53@aol.com'
-uci_set_nomodify linkmeter.alarms.emailsubject '$pn $al_prep $al_thresh'
-uci_set_nomodify linkmeter.alarms.smstoaddress '2125551212@txt.att.net'
-uci_set_nomodify linkmeter.alarms.smsmessage 'ALERT $pn is $al_prep $al_thresh \($pcurr\)'
-uci -q set linkmeter.ramp='section'
-uci_set_nomodify linkmeter.ramp.watch '0'
-uci_set_nomodify linkmeter.alarms.pushprovider 'pushbullet'
-uci_set_nomodify linkmeter.alarms.pushbullettitle '$pn HM Alert'
-uci_set_nomodify linkmeter.alarms.pushmsg '$pn $al_type alarm $al_prep $al_thresh, currently $pcurr'
-lucid_settings_migrate
 
+uci_add_section linkmeter.alarms_email
+uci_set_nomodify linkmeter.alarms_email.toname 'Your Name'
+uci_set_nomodify linkmeter.alarms_email.toaddress 'chunkylover53@aol.com'
+uci_set_nomodify linkmeter.alarms_email.subject '$pn $al_prep $al_thresh'
+
+uci_add_section linkmeter.alarms_sms
+uci_set_nomodify linkmeter.alarms_sms.toaddress '2125551212@txt.att.net'
+uci_set_nomodify linkmeter.alarms_sms.message 'ALERT $pn is $al_prep $al_thresh \($pcurr\)'
+
+uci_add_section linkmeter.alarms_push
+uci_set_nomodify linkmeter.alarms_push.provider 'pushbullet'
+uci_set_nomodify linkmeter.alarms_push.pushbullettitle '$pn HM Alert'
+uci_set_nomodify linkmeter.alarms_push.message '$pn $al_type alarm $al_prep $al_thresh, currently $pcurr'
+
+uci_add_section linkmeter.ramp
+uci_set_nomodify linkmeter.ramp.watch '0'
+
+migrate_settings
 uci commit linkmeter
 
 # Add an alias for luci without the cgi-bin prefix, as all old docs and apps point to this
