@@ -64,17 +64,17 @@ public:
 class TempProbe
 {
 private:
-  const unsigned char _pin; 
+  const unsigned char _pin;
   unsigned char _probeType;
   char _tempStatus;
   boolean _hasTempAvg;
-  
+
 public:
   TempProbe(const unsigned char pin);
 
   const unsigned char getPin(void) const { return _pin; }
 
-  /* Configuration */  
+  /* Configuration */
   // Probe Type
   unsigned char getProbeType(void) const { return _probeType; }
   void setProbeType(unsigned char probeType);
@@ -91,14 +91,14 @@ public:
   boolean hasTemperature(void) const { return _tempStatus == TSTATUS_OK; }
   char getTempStatus(void) const { return _tempStatus; }
   void setTemperatureC(float T);
-  // Temperature moving average 
+  // Temperature moving average
   float TemperatureAvg;
   boolean hasTemperatureAvg(void) const { return _hasTempAvg; }
   // Convert ADC to Temperature
   void calcTemp(unsigned int _accumulator);
   // Perform once-per-period processing
   void processPeriod(void);
-  
+
   ProbeAlarm Alarms;
 };
 
@@ -177,7 +177,7 @@ private:
   unsigned char _servoStepTicks;
   // count of periods a servo write has been delayed
   unsigned char _servoHoldoff;
-  
+
   void calcPidOutput(void);
   void commitFanOutput(void);
   void commitServoOutput(void);
@@ -192,12 +192,12 @@ public:
 
   /* Configuration */
   int getSetPoint(void) const { return _setPoint; }
-  void setSetPoint(int value); 
+  void setSetPoint(int value);
   char getUnits(void) const { return _units; }
   void setUnits(char units);
   // The number of degrees the temperature drops before automatic lidopen mode
   unsigned char LidOpenOffset;
-  // The ammount of time to turn off the blower when the lid is open 
+  // The ammount of time to turn off the blower when the lid is open
   unsigned int getLidOpenDuration(void) const { return _lidOpenDuration; }
   void setLidOpenDuration(unsigned int value);
   // Number of effective bits of the ADC
@@ -214,6 +214,9 @@ public:
   void setFanMaxSpeed(unsigned char value) { _fanMaxSpeed = constrain(value, 0, 100); }
   unsigned char getFanMaxStartupSpeed(void) const { return _fanMaxStartupSpeed; }
   void setFanMaxStartupSpeed(unsigned char value) { _fanMaxStartupSpeed = constrain(value, 0, 100); }
+  unsigned char getFanCurrentMaxSpeed(void) const { return
+    (_pitStartRecover == PIDSTARTRECOVER_STARTUP) ?  _fanMaxStartupSpeed : _fanMaxSpeed;
+  }
   // Active floor means "fan on above this PID output". Must be < 100!
   unsigned char getFanActiveFloor(void) const { return _fanActiveFloor; }
   void setFanActiveFloor(unsigned char value) { _fanActiveFloor = (value < 100) ? value : 0; }
@@ -239,7 +242,7 @@ public:
   // Collection of PIDFLAG_*
   void setOutputFlags(unsigned char value);
   unsigned char getOutputFlags(void) const { return _outputFlags; }
-  
+
   /* Runtime Data */
   // Current PID output in percent, setting this will turn on manual output mode
   unsigned char getPidOutput() const { return _pidOutput; }
@@ -247,6 +250,7 @@ public:
   // Current fan speed output in percent
   unsigned char getFanSpeed(void) const { return _fanSpeed; };
   unsigned long getLastWorkMillis(void) const { return _lastWorkMillis; }
+  unsigned char getPidIMax(void) const { return isPitTempReached() ? 100 : _fanMaxStartupSpeed; }
 
   boolean getManualOutputMode(void) const { return _manualOutputMode; }
   // PID output moving average
@@ -264,7 +268,7 @@ public:
   // true if temperature was >= setpoint since last set / lid event
   boolean isPitTempReached(void) const { return _pitStartRecover == PIDSTARTRECOVER_NORMAL; }
   unsigned char getPitStartRecover(void) const { return _pitStartRecover; }
-  
+
   // Call this in loop()
   boolean doWork(void);
   void resetLidOpenResumeCountdown(void);

@@ -517,7 +517,7 @@ inline void GrillPid::calcPidOutput(void)
 
   // IIIII = fan speed percent per degree of accumulated error
   // anti-windup: Make sure we only adjust the I term while inside the proportional control range
-  if ((error > 0 && lastOutput < 100) || (error < 0 && lastOutput > 0))
+  if ((error < 0 && lastOutput > 0) || (error > 0 && lastOutput < getPidIMax()))
   {
     _pidCurrent[PIDI] += Pid[PIDI] * error;
     // I term can never be negative, because if curr = set, then P and D are 0, so I must be output
@@ -580,14 +580,9 @@ inline void GrillPid::commitFanOutput(void)
     _fanSpeed = 0;
   else
   {
-    unsigned char max;
-    if (_pitStartRecover == PIDSTARTRECOVER_STARTUP)
-      max = _fanMaxStartupSpeed;
-    else
-      max = _fanMaxSpeed;
-
     // _fanActiveFloor should be constrained to 0-99 to prevent a divide by 0
     unsigned char range = 100 - _fanActiveFloor;
+    unsigned char max = getFanCurrentMaxSpeed();
     _fanSpeed = (unsigned int)(_pidOutput - _fanActiveFloor) * max / range;
   }
 
