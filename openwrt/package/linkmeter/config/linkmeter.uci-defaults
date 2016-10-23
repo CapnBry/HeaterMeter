@@ -62,8 +62,6 @@ linkmeter_settings_migrate() {
   linkmeter_move alarms.pushoveruser alarms_push.pushoveruser
   linkmeter_move alarms.pushovertoken alarms_push.pushovertoken
   linkmeter_move alarms.pushmsg alarms_push.message
-
-  uci -q delete linkmeter.alarms
 }
 
 migrate_settings() {
@@ -93,6 +91,8 @@ uci_set_nomodify linkmeter.daemon.rrd_file /tmp/hm.rrd
 uci_set_nomodify linkmeter.daemon.stashpath $STASHPATH
 uci_set_nomodify linkmeter.daemon.autoback_active $AUTOBACK_ACTIVE
 uci_set_nomodify linkmeter.daemon.autoback_inactive $AUTOBACK_INACTIVE
+
+uci_add_section linkmeter.alarms
 
 uci_add_section linkmeter.alarms_email
 uci_set_nomodify linkmeter.alarms_email.toname 'Your Name'
