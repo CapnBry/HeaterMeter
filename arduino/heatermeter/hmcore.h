@@ -44,7 +44,7 @@ void hmcoreSetup(void);
 void hmcoreLoop(void);
 
 void updateDisplay(void);
-void lcdprint_P(const char PROGMEM *p, const boolean doClear);
+void lcdprint_P(const char *p, const boolean doClear);
 
 void eepromLoadConfig(unsigned char forceDefault);
 void storeSetPoint(int sp);
