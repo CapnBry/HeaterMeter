@@ -9,7 +9,7 @@ Pi_Model = "3B/2B/1B+"; // [3B/2B/1B+,Connectorless,1A+,Zero]
 Pieces = "Both"; // [Both,Top,Bottom]
 /* [Advanced] */
 // Thickness of side walls
-wall = 3;
+wall = 3.0;
 // Thickness of top and bottom faces
 wall_t = 2;
 // External corner radius on the body
@@ -124,10 +124,11 @@ module led_hole() {
 
 module nuttrap() {
   ww_w=3;
-  ww_d=2.7;
-  nut_h=2.8;
-  nut_ingress = 5.8; //nut_d * sin(60);
+  ww_d=wall;
+  nut_h=3.0;
+  nut_ingress = 5.7; //nut_d * sin(60);
   nut_d = nut_ingress / sin(60);
+  nut_ingress_off = nut_ingress/sqrt(3)/2;
   oa_h=wall_t+0.4+nut_h+wall_t+6.7;
 
   // bottom half for M3 socket cap screw (flush)
@@ -143,43 +144,61 @@ module nuttrap() {
   // top half M3 nut trap
   translate([0,0,h_b+wall_t-oa_h])
   difference() {
-    translate([-(nut_d/2+ww_w), -nut_ingress/2-e, 0])
-      cube_fillet([nut_d+2*ww_w, nut_ingress+ww_d+e, oa_h],
+    translate([-(nut_d/2+ww_w), -nut_ingress/2, 0])
+      cube_fillet([nut_d+2*ww_w, nut_ingress+ww_d, oa_h],
         vertical=[3.4,3.4], $fn=20);
     // M3 screw
     translate([0,0,-e]) cylinder(wall_t, d1=4, d2=3.4, $fn=16);
     // nut hole / M3 extra
     translate([0,0,wall_t+0.3]) {
-      translate([-0.4,0,0]) // nut offset slightly deeper for easier alignment
-        cylinder(nut_h*1.5+e, d=nut_d, $fn=6);  // nut
+      // nut 3x for an elongated trap
+      translate([-0.2,0,0]) cylinder(nut_h*1.5+e, d=nut_d+e/sin(60), $fn=6);
+      translate([0,0,0]) cylinder(nut_h*1.5+e, d=nut_d+e/sin(60), $fn=6);
+      translate([+0.2,0,0]) cylinder(nut_h*1.5+e, d=nut_d+e/sin(60), $fn=6);
       cylinder(oa_h-wall_t-0.3, d=4, $fn=16);  // M3 with plenty of clearance
     }
-    // nut ingress
-    translate([0,-nut_ingress/2,wall_t+0.3])
-      cube([nut_d/2+ww_w+e,nut_ingress,nut_h+e]);
+    // nut ingress (sideways trapezoid with wider side at ingress)
+    translate([nut_ingress_off,-nut_ingress/2,wall_t+0.3])
+       linear_extrude(nut_h+e) polygon([[0,0],
+         [nut_d/2+ww_w-nut_ingress_off+0.4+e, -0.8],       
+         [nut_d/2+ww_w-nut_ingress_off+0.4+e, nut_ingress+0.8],
+         [0,nut_ingress]]);
   }
 }
 
-module locklip_p(l, l_offset=1,
+module locklip_p(l, l_offset=0,
   lip_insert_depth=2.0, // how deep V to insert
   lip_v_off=0.2, // extra height before starting insert
   lip_h_off=0.4, // back connector away from mating area
-  lip_w=2.5  // thickness of attachment beam
+  lip_w=2.5,  // thickness of attachment beam
+  insert_inset=[0,0] // inset the insert inside mating area
   ) {
   translate([l_offset,0,0]) rotate([90,0,0]) rotate([0,90,0])
-    linear_extrude(height=l-2*l_offset) polygon(points=[
-      [0, -lip_w-lip_insert_depth-lip_h_off],
-      [0, 0],
-      [-lip_insert_depth-lip_h_off, 0],
-      [-lip_insert_depth-lip_h_off, lip_v_off],
-      [-lip_h_off, lip_v_off+lip_insert_depth],
-      [-lip_insert_depth-lip_h_off, lip_v_off+2*lip_insert_depth,],
-      [-lip_w-lip_insert_depth-lip_h_off, lip_v_off+2*lip_insert_depth],
-      [-lip_w-lip_insert_depth-lip_h_off, 0]
-    ]);
+    difference() {
+      linear_extrude(height=l-2*l_offset) polygon(points=[
+        [0.1, -lip_w-lip_insert_depth-lip_h_off],  // 0.1 to add depth to keep extrusion manifold
+        [0.1, 0],
+        [-lip_insert_depth-lip_h_off, 0],
+        [-lip_insert_depth-lip_h_off, lip_v_off],
+        [-lip_h_off, lip_v_off+lip_insert_depth],
+        [-lip_insert_depth-lip_h_off, lip_v_off+2*lip_insert_depth,],
+        [-lip_w-lip_insert_depth-lip_h_off, lip_v_off+2*lip_insert_depth],
+        [-lip_w-lip_insert_depth-lip_h_off, 0]
+      ]);
+      translate([-lip_w-lip_insert_depth-lip_h_off-e, 0, 0]) {
+        if (insert_inset[0] > 0)
+          translate([0,0,-e])
+            cube([lip_w+lip_insert_depth+lip_h_off+2*e,
+              lip_v_off+2*lip_insert_depth+e, insert_inset[0]+e]);
+        if (insert_inset[1] > 0)
+          translate([0, 0, l-2*l_offset-insert_inset[1]])
+            cube([lip_w+lip_insert_depth+lip_h_off+2*e,
+              lip_v_off+2*lip_insert_depth+e, insert_inset[1]+e]);
+      }
+    }
 }
 
-module locklip_n(l, l_offset=1,
+module locklip_n(l, l_offset=0,
   lip_insert_depth=2.2, // how deep V to insert
   lip_tip_clip=0.3, // how much to shave off the top tip
   ) {
@@ -323,12 +342,12 @@ difference() {
     difference() {
       cube_fillet([10,60,4], vertical=[0,0,10/2], $fn=24);
       // Pi B+ microsd gap
-      translate([-e,22.5,-e]) cube_fillet([6,14,4+2*e], vertical=[2,0,0,2], $fn=20);
+      translate([-e,22,-e]) cube_fillet([6,14,4+2*e], vertical=[2,0,0,2], $fn=20);
     }
   }
   
   // close nut traps
-  translate([wall+inch(0.8)+1.3,wall+2.9,0]) {
+  translate([wall+inch(0.8)+1.3,wall+2.85,0]) {
     nuttrap();
     translate([inch(2.0),0,0]) nuttrap();
   }
@@ -343,7 +362,9 @@ difference() {
   difference() {
     union() {
       // Filled block above LCD hole
-      translate([wall, wall+d-17, h_b+wall_t-lcd_mount_t]) cube([w,17,lcd_mount_t+e]);
+      translate([wall, wall+d-17, h_b+wall_t-lcd_mount_t])
+        cube_fillet([w,17,lcd_mount_t+e], 
+          bottom=[lcd_mount_t/2,lcd_mount_t/2,0,lcd_mount_t/2]);
       // LCD grab notch
       translate([wall+10.7, wall+52, h_b+wall_t-lcd_mount_t])
         translate([(77.5-20)/2,33.5-wall_t,-(1.8+wall_t)])
@@ -384,8 +405,8 @@ module hm43_bottom_lips(split) {
   translate([wall, wall, split+wall_t]) {
     // bottom locklip (positive)
     translate([0,d,0]) {
-      locklip_p(28);
-      translate([w-34,0,0]) locklip_p(34-wall+1);
+      locklip_p(28, insert_inset=[2,0]);
+      translate([w-34,0,0]) locklip_p(34-wall, insert_inset=[0,1]);
     }
 
     // front guide lip
