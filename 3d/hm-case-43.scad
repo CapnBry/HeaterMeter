@@ -338,11 +338,11 @@ difference() {
     translate([0,0,0]) screw_pimount();
   }
   // Pi right edge stop
-  translate([wall+w-10, wall+d-60, wall_t]) {
+  translate([wall+w-9.5, wall+d-60, wall_t]) {
     difference() {
-      cube_fillet([10,60,4], vertical=[0,0,10/2], $fn=24);
+      cube_fillet([9.5,60,4], vertical=[0,0,10/2], $fn=24);
       // Pi B+ microsd gap
-      translate([-e,22,-e]) cube_fillet([6,14,4+2*e], vertical=[2,0,0,2], $fn=20);
+      translate([-e,22,-e]) cube_fillet([5.5,14,4+2*e], vertical=[2,0,0,2], $fn=20);
     }
   }
   
