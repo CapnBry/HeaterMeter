@@ -7,9 +7,9 @@ Control_Probe = "Thermocouple"; // [Thermocouple,Thermistor]
 Pi_Model = "3B/2B/1B+"; // [3B/2B/1B+,Connectorless,1A+,Zero]
 // Which case halves
 Pieces = "Both"; // [Both,Top,Bottom]
-/* [Advanced] */
-// Thickness of side walls
+// Thickness of side walls (mm) - Set to trace width multiple
 wall = 3.0;
+/* [Advanced] */
 // Thickness of top and bottom faces
 wall_t = 2;
 // External corner radius on the body
