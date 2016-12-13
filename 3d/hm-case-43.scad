@@ -145,7 +145,7 @@ module nuttrap() {
   translate([0,0,h_b+wall_t-oa_h])
   difference() {
     translate([-(nut_d/2+ww_w), -nut_ingress/2, 0])
-      cube_fillet([nut_d+2*ww_w, nut_ingress+ww_d, oa_h],
+      cube_fillet([nut_d+2*ww_w, nut_ingress+ww_d, oa_h+e],
         vertical=[3.4,3.4], $fn=20);
     // M3 screw
     translate([0,0,-e]) cylinder(wall_t, d1=4, d2=3.4, $fn=16);
