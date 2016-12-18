@@ -329,22 +329,23 @@ difference() {
   }
 }  // END OF DIFFERENCE
 
-  // Pi mounting screws
-  translate([wall+24,wall+d-7.5,wall_t]) {
-    //screw_pimount();
-    translate([58,0,0]) screw_pimount();
-    translate([58,-49,0]) screw_pimount();
-    translate([0,-49,0]) screw_pimount();
-    translate([0,0,0]) screw_pimount();
-  }
-  // Pi right edge stop
-  translate([wall+w-9.5, wall+d-60, wall_t]) {
-    difference() {
-      cube_fillet([9.5,60,4], vertical=[0,0,10/2], $fn=24);
-      // Pi B+ microsd gap
-      translate([-e,22,-e]) cube_fillet([5.5,14,4+2*e], vertical=[2,0,0,2], $fn=20);
+  if (Pi_Model != "Zero") {
+    // Pi mounting screws
+    translate([wall+24,wall+d-7.5,wall_t]) {
+      translate([58,0,0]) screw_pimount();
+      translate([58,-49,0]) screw_pimount();
+      translate([0,-49,0]) screw_pimount();
+      translate([0,0,0]) screw_pimount();
     }
-  }
+
+    // Pi right edge stop
+    translate([wall+w-9.5, wall+d-60, wall_t])
+      difference() {
+        cube_fillet([9.5,60,4], vertical=[0,0,10/2], $fn=24);
+        // Pi B+ microsd gap
+        translate([-e,22,-e]) cube_fillet([5.5,14,4+2*e], vertical=[2,0,0,2], $fn=20);
+      }
+  } // if !Zero
   
   // close nut traps
   translate([wall+inch(0.8)+1.3,wall+2.85,0]) {
