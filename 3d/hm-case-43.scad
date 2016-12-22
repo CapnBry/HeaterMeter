@@ -9,9 +9,6 @@ Pi_Model = "3B/2B/1B+"; // [3B/2B/1B+,Connectorless,1A+,Zero]
 Pieces = "Both"; // [Both,Top,Bottom]
 // Thickness of side walls (mm) - Set to trace width multiple
 wall = 3.0;
-// Include a bedheat retention ring around the model
-Heatshield = "No"; // [Yes,No]
-
 /* [Advanced] */
 // Thickness of top and bottom faces
 wall_t = 2;
@@ -444,57 +441,6 @@ module split_volume() {
       cube([3*w, 3*d, wall_t+probe_centerline+2*e]);
 }
 
-module heatshield() {
-  hdist=1; //wall/4;
-  hh=10;
-
-  if (Pieces == "Both") {
-    hw=w+2*hh+3*wall+2*hdist;
-    hd=2*d+2*hh+5*wall+2*hdist+1;
-
-    difference() {
-      translate([-hh-wall/2-hdist,-hh-wall/2-hdist-d-1-2*wall,0]) difference() {
-        union() {
-          cube_fillet([hw,hd,hh], top=[hh,hh,hh,hh]);
-          translate([hh,hh,0]) cube([hw-2*hh,hd-2*hh,h_b-case_split+wall_t/2]);
-        }
-        translate([wall/2,wall/2,-e]) {
-          cube_fillet([hw-wall,hd-wall,hh+2*e], top=[hh,hh,hh,hh]);
-          translate([hh,hh,0]) cube([hw-2*hh-wall,hd-2*hh-wall,h_b-case_split+wall_t+2*e]);
-        }
-      }
-      translate([-wall+e,wall,0]) pic_ex_cube();
-      translate([0,-1,h_b+2*wall_t]) rotate([180]) translate([-wall+e,wall,wall_t]) pic_ex_cube();
-    }
-  }
-  else if (Pieces == "Bottom") {
-    hw=w+2*hh+3*wall+2*hdist;
-    hd=d+2*hh+3*wall+2*hdist;
-
-    difference() {
-      translate([-hh-wall/2-hdist,-hh-wall/2-hdist,0]) difference() {
-        cube_fillet([hw,hd,hh], top=[hh,hh,hh,hh]);
-        translate([wall/2,wall/2,-e])
-          cube_fillet([hw-wall,hd-wall,hh+2*e], top=[hh,hh,hh,hh]);
-      }
-      translate([-wall+e,wall,0]) pic_ex_cube();
-    }
-  }
-  else if (Pieces == "Top") {
-    hw=w+2*hh+3*wall+2*hdist;
-    hd=d+2*hh+3*wall+2*hdist;
-
-    difference() {
-      translate([-hh-wall/2-hdist,-hh-wall/2-hdist-d-1-2*wall,0]) difference() {
-        cube_fillet([hw,hd,hh], top=[hh,hh,hh,hh]);
-        translate([wall/2,wall/2,-e])
-          cube_fillet([hw-wall,hd-wall,hh+2*e], top=[hh,hh,hh,hh]);
-      }
-      translate([0,-1,h_b+2*wall_t]) rotate([180]) translate([-wall+e,wall,wall_t]) pic_ex_cube();
-    }
-  }
-}
-
 module hm43_split() {
   // bottom
   if (Pieces != "Top") {
@@ -510,13 +456,11 @@ module hm43_split() {
   
   // top
   if (Pieces != "Bottom") {
-    translate([0,-1,h_b+2*wall_t]) rotate([180]) difference() {
+    translate([0,-2,h_b+2*wall_t]) rotate([180]) difference() {
       hm43();
       split_volume();
     }
   }  // if include top
-
-  if (Heatshield == "Yes") color("indigo") heatshield();
 }
 
 /**********************                               **********************/
