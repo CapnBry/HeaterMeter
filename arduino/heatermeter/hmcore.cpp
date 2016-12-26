@@ -626,8 +626,6 @@ static void storeProbeCoeff(unsigned char probeIndex, char *vals)
 
 static void reboot(void)
 {
-  // Once the pin goes low, the avr should reboot
-  digitalWriteFast(PIN_SOFTRESET, LOW);
   // Use the watchdog in case SOFTRESET isn't hooked up (e.g. HM4.0)
   // If hoping to program via Optiboot, this won't work if the WDT trigers the reboot
   cli();
@@ -1286,13 +1284,6 @@ void hmcoreSetup(void)
   DIDR0 = bit(ADC5D) | bit(ADC4D) | bit(ADC3D) | bit(ADC2D) | bit(ADC1D) | bit(ADC0D);
   // And other unused units
   power_twi_disable();
-
-  // Switch the pin mode first to INPUT with internal pullup
-  // to take it to 5V before setting the mode to OUTPUT. 
-  // If we reverse this, the pin will go OUTPUT,LOW and reboot.
-  // SoftReset and WiShield are mutually exlusive, but it is HIGH/OUTPUT too
-  digitalWriteFast(PIN_SOFTRESET, HIGH);
-  pinModeFast(PIN_SOFTRESET, OUTPUT);
 
   tone4khz_init();
 

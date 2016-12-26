@@ -32,7 +32,7 @@
 #define PIN_LCD_CLK      4  // 6
 #define PIN_LCD_BACKLGHT 5  // 11
 // #define PIN_ALARM        6  // 12 (tone_4khz.h)
-#define PIN_SOFTRESET    7  // 13 DataFlash SS on WiShield
+//#define PIN_SOFTRESET    7  // 13 DataFlash SS on WiShield, no longer used for reset
 //#define PIN_SERVO        8  // 14 LCD_DATA on < HM PCB v3.2 (grillpid_conf.h)
 #define PIN_WIRELESS_LED 9  // 15
 #if !defined(PIN_SPI_SS)
