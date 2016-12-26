@@ -10,7 +10,7 @@
 #endif /* HEATERMETER_RFM12 */
 
 /* Disable the watchdog timer immediately after zero_reg is set */
-__attribute__((naked)) __attribute__((section(".init3")))
+__attribute__((naked)) __attribute__((section(".init3"))) __attribute__((used))
   void clearWdt(void)
 {
   MCUSR = 0;
