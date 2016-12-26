@@ -97,7 +97,7 @@ const char NUMS[] PROGMEM = {
   C_UMB, C_UMB, C_RT,      C_LB, C_BMB, C_BMB, //2
   C_UMB, C_UMB, C_RT,      C_BMB, C_BMB, C_RB, //3
   C_LB, C_CB, C_RT,        C_BLK, C_BLK, C_RB, //4
-  255, C_UMB, C_UMB,       C_BMB, C_BMB, C_RB, //5
+  (char)255, C_UMB, C_UMB,       C_BMB, C_BMB, C_RB, //5
   C_LT, C_UMB, C_UMB,      C_LB, C_BMB, C_RB, //6
   C_CT, C_CT, C_RT,        C_BLK, C_LT, C_BLK, //7
   C_LT, C_UMB, C_RT,       C_LB, C_BMB, C_RB, //8

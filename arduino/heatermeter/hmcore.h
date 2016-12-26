@@ -35,10 +35,12 @@
 #define PIN_SOFTRESET    7  // 13 DataFlash SS on WiShield
 //#define PIN_SERVO        8  // 14 LCD_DATA on < HM PCB v3.2 (grillpid_conf.h)
 #define PIN_WIRELESS_LED 9  // 15
+#if !defined(PIN_SPI_SS)
 #define PIN_SPI_SS      10  // 16
 #define PIN_SPI_MOSI    11  // 17 Can not be changed
 #define PIN_SPI_MISO    12  // 18 Can not be changed
 #define PIN_SPI_SCK     13  // 19 Can not be changed
+#endif
 
 void hmcoreSetup(void);
 void hmcoreLoop(void);

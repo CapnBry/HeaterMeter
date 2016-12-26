@@ -136,6 +136,8 @@ ISR(ADC_vect)
     {
       // Store only the last ADC value, giving the bandgap ~25ms to stabilize
       adcState.bandgapAdc = ADC;
+      // adcState.pin will be set to (0x4e & 0x0f) due to startup's bandgap measure + .discard code
+      adcState.pin = 0;
     }
 #endif // GRILLPID_DYNAMIC_RANGE
 
@@ -842,7 +844,7 @@ void GrillPid::pidStatus(void) const
   TempProbe const* const pit = Probes[TEMP_CTRL];
   if (pit->hasTemperature())
   {
-    print_P(PSTR("HMPS"CSV_DELIMITER));
+    print_P(PSTR("HMPS" CSV_DELIMITER));
     for (unsigned char i=PIDB; i<=PIDD; ++i)
     {
       SerialX.print(_pidCurrent[i], 2);

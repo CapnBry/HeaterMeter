@@ -380,7 +380,7 @@ static void lcdPrintBigNum(float val)
   {
     if (uval != 0 || x >= 9)
     {
-      const char PROGMEM *numData = NUMS + ((uval % 10) * 6);
+      const char *numData = NUMS + ((uval % 10) * 6);
 
       x -= C_WIDTH;
       lcd.setCursor(x, 0);
@@ -461,7 +461,7 @@ void updateDisplay(void)
     if (!pid.getManualOutputMode() && !pid.Probes[TEMP_CTRL]->hasTemperature())
       memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
     else if (pid.LidOpenResumeCountdown > 0)
-      snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE"%c Lid%3u"),
+      snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d" DEGREE "%c Lid%3u"),
         pitTemp, pid.getUnits(), pid.LidOpenResumeCountdown);
     else
     {
@@ -476,7 +476,7 @@ void updateDisplay(void)
         c1 = '[';
         c2 = ']';
       }
-      snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d"DEGREE"%c %c%3u%%%c"),
+      snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d" DEGREE "%c %c%3u%%%c"),
         pitTemp, pid.getUnits(), c1, pid.getPidOutput(), c2);
     }
 
@@ -498,7 +498,7 @@ void updateDisplay(void)
     if (probeIndex < TEMP_COUNT && pid.Probes[probeIndex]->hasTemperature())
     {
       loadProbeName(probeIndex);
-      snprintf_P(buffer, sizeof(buffer), PSTR("%-12s%3d"DEGREE), editString,
+      snprintf_P(buffer, sizeof(buffer), PSTR("%-12s%3d" DEGREE), editString,
         (int)pid.Probes[probeIndex]->Temperature);
     }
     else
@@ -514,7 +514,7 @@ void updateDisplay(void)
   }
 }
 
-void lcdprint_P(const char PROGMEM *p, const boolean doClear)
+void lcdprint_P(const char *p, const boolean doClear)
 {
   if (doClear)
     lcd.clear();

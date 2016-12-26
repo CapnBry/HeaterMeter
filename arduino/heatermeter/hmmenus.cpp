@@ -130,7 +130,7 @@ static button_t readButton(void)
   return BUTTON_NONE;
 }
 
-static void menuBooleanEdit(button_t button, const char PROGMEM *preamble)
+static void menuBooleanEdit(button_t button, const char *preamble)
 {
   if (button == BUTTON_UP || button == BUTTON_DOWN)
     editInt = !editInt;
@@ -142,7 +142,7 @@ static void menuBooleanEdit(button_t button, const char PROGMEM *preamble)
 }
 
 static void menuNumberEdit(button_t button, unsigned char increment,
-  int minVal, int maxVal, const char PROGMEM *format)
+  int minVal, int maxVal, const char *format)
 {
   char buffer[17];
 
@@ -313,7 +313,7 @@ static state_t menuSetpoint(button_t button)
       storeSetPoint(editInt);
   }
 
-  menuNumberEdit(button, 5, 0, 1000, PSTR("%3d"DEGREE"%c"));
+  menuNumberEdit(button, 5, 0, 1000, PSTR("%3d" DEGREE "%c"));
   return ST_AUTO;
 }
 
@@ -349,7 +349,7 @@ static state_t menuProbeOffset(button_t button)
   else if (button == BUTTON_LEAVE)
     storeAndReportProbeOffset(probeIndex, editInt);
 
-  menuNumberEdit(button, 1, -100, 100, PSTR("Offset %4d"DEGREE"%c"));
+  menuNumberEdit(button, 1, -100, 100, PSTR("Offset %4d" DEGREE "%c"));
   return ST_AUTO;
 }
 
