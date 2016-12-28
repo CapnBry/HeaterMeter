@@ -18,11 +18,13 @@ __attribute__((naked)) __attribute__((section(".init3"))) __attribute__((used))
   WDTCSR = 0;
 }
 
-int main(void)
+void setup()
 {
-  init();
   hmcoreSetup();
-  for (;;)
-    hmcoreLoop();
-  return 0;
 }
+
+void loop()
+{
+  hmcoreLoop();
+}
+
