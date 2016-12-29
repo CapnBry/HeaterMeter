@@ -69,20 +69,14 @@ define Package/linkmeter/postinst
 	rm /etc/uci-defaults/linkmeter
 	rm -f /tmp/luci-indexcache
 	rm -f /tmp/luci-modulecache/*
-	/etc/init.d/lucid restart
 endef
 
 define Package/linkmeter/postrm
 #!/bin/sh
 	[ -n "$${IPKG_INSTROOT}" ] && exit
-
-	/etc/init.d/lucid stop
 	[ -f "/tmp/hm.rrd" ] && rm "/tmp/hm.rrd"
-	uci del lucid.lmserver
-	uci commit lucid
 	rm -f /tmp/luci-indexcache
 	rm -f /tmp/luci-modulecache/*
-	/etc/init.d/lucid start
 endef
 
 define Package/linkmeter/conffiles
