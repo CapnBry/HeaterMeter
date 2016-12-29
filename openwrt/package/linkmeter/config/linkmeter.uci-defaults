@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Install param will be update, restore, or blank (new)
+# Install param will be update (opkg install/update), restore, or blank (new)
 INSTALL_PARAM="$1"
 [ -z "$INSTALL_PARAM" ] && INSTALL_PARAM="new"
 
@@ -130,13 +130,9 @@ backup_inc /usr/share/linkmeter/alarm- 1
 backup_inc /usr/share/linkmeter/email.txt
 backup_inc /usr/share/linkmeter/user.css
 
-if [ "$INSTALL_PARAM" = "restore" -o "$INSTALL_PARM" = "new" ] ; then
-  if [ "$HARDWARE_MODEL" = "BCM2708" -o "$HARDWARE_MODEL" = "BCM2709" ] ; then
-    # Enable the services
-    /etc/init.d/config_restore enable
-    /etc/init.d/linkmeterd enable
-  fi
-fi
+# Enable the services
+/etc/init.d/linkmeterd enable
+[ -x "/etc/init.d/config_restore" ] && /etc/init.d/config_restore enable
 
 if [ "$INSTALL_PARAM" = "new" ] ; then
   if [ "$HARDWARE_MODEL" = "BCM2708" -o "$HARDWARE_MODEL" = "BCM2709" ] ; then
@@ -155,8 +151,8 @@ fi
 
 # On applicable platforms, avrupdate loads HeaterMeter onto the AVR
 # pasing the firmware file forces it to overwrite even if AVR already
-# contains HeaterMeter unless the noupdate file exists
-[ ! -f "/lib/firmware/noupdate" ] && avrupdate /lib/firmware/hm.hex
+# contains HeaterMeter
+[ "$INSTALL_PARAM" != "restore" ] && avrupdate /lib/firmware/hm.hex
 
 # Clear the exit status, scripts should continue processing even if the
 # avrupdate command fails
