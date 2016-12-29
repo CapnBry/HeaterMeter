@@ -2757,7 +2757,7 @@ CONFIG_PACKAGE_libuclient=y
 # CONFIG_PACKAGE_libusb-compat is not set
 # CONFIG_PACKAGE_libustream-cyassl is not set
 # CONFIG_PACKAGE_libustream-mbedtls is not set
-# CONFIG_PACKAGE_libustream-openssl is not set
+CONFIG_PACKAGE_libustream-openssl=y
 # CONFIG_PACKAGE_libustream-polarssl is not set
 CONFIG_PACKAGE_libuuid=y
 # CONFIG_PACKAGE_linux-atm is not set
@@ -2992,7 +2992,11 @@ CONFIG_PACKAGE_curl=y
 CONFIG_PACKAGE_uhttpd=y
 # CONFIG_PACKAGE_uhttpd_debug is not set
 # CONFIG_PACKAGE_uhttpd-mod-lua is not set
-# CONFIG_PACKAGE_uhttpd-mod-tls is not set
+CONFIG_PACKAGE_uhttpd-mod-tls=y
+# CONFIG_PACKAGE_uhttpd-mod-tls_mbedtls is not set
+# CONFIG_PACKAGE_uhttpd-mod-tls_polarssl is not set
+# CONFIG_PACKAGE_uhttpd-mod-tls_cyassl is not set
+CONFIG_PACKAGE_uhttpd-mod-tls_openssl=y
 CONFIG_PACKAGE_uhttpd-mod-ubus=y
 # CONFIG_PACKAGE_6in4 is not set
 # CONFIG_PACKAGE_6rd is not set
@@ -3145,7 +3149,7 @@ CONFIG_PACKAGE_linkmeter=y
 # CONFIG_PACKAGE_owipcalc is not set
 # CONFIG_PACKAGE_prlimit is not set
 # CONFIG_PACKAGE_px5g is not set
-# CONFIG_PACKAGE_px5g-standalone is not set
+CONFIG_PACKAGE_px5g-standalone=y
 # CONFIG_PACKAGE_rename is not set
 CONFIG_PACKAGE_rrdtool=y
 # CONFIG_PACKAGE_spidev-test is not set
