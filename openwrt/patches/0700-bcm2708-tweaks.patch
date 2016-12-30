@@ -114,20 +114,10 @@ index 1d4b694..c293f0f 100644
 diff --git a/target/linux/brcm2708/image/Makefile b/target/linux/brcm2708/image/Makefile
 old mode 100644
 new mode 100755
-index e7089c6..889fa5c
+index e7089c6..8bc2aa2
 --- a/target/linux/brcm2708/image/Makefile
 +++ b/target/linux/brcm2708/image/Makefile
-@@ -29,7 +29,8 @@ define Build/boot-img
- 	mcopy -i $@.boot $(KDIR)/fixup_cd.dat ::
- 	mcopy -i $@.boot cmdline.txt ::
- 	mcopy -i $@.boot config.txt ::
--	mcopy -i $@.boot $(word 1,$^) ::kernel.img
-+	mcopy -i $@.boot $(word 1,$^) ::kernel7.img
-+	#mcopy -i $@.boot $(KDIR)/../../XXX/linux-brcm2708_bcm2708/kernel.img ::kernel.img
- 	$(foreach dts,$(shell echo $(DEVICE_DTS)),mcopy -i $@.boot $(DTS_DIR)/$(dts).dtb ::;)
- 	mmd -i $@.boot ::/overlays
- 	mcopy -i $@.boot $(DTS_DIR)/overlays/*.dtbo ::/overlays/
-@@ -74,13 +75,13 @@ endif
+@@ -74,13 +74,13 @@ endif
  ### BCM2709/BCM2836 ###
  ifeq ($(SUBTARGET),bcm2709)
    # Raspberry Pi 2 Model B
@@ -151,7 +141,7 @@ index 24f4f0c..766bae3 100644
 -dwc_otg.lpm_enable=0 console=serial0,115200 kgdboc=serial0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
 +dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
 diff --git a/target/linux/brcm2708/image/config.txt b/target/linux/brcm2708/image/config.txt
-index e80d980..84e4092 100644
+index e80d980..14072e5 100644
 --- a/target/linux/brcm2708/image/config.txt
 +++ b/target/linux/brcm2708/image/config.txt
 @@ -949,3 +949,25 @@ dtparam=random=on,watchdog=on,audio=on,i2c0=on,i2c1=on,spi=on
@@ -162,6 +152,9 @@ index e80d980..84e4092 100644
 +# RPi3 defaults UART off because this requires core_freq=250 so baud clock works correctly
 +enable_uart=1
 +core_freq=250
++
++# Allow HDMI power save
++hdmi_blanking=1
 +
 +##
 +## wifi configuration
@@ -176,7 +169,4 @@ index e80d980..84e4092 100644
 +#wifi_mode=ap
 +# wifi channel, only used in AP mode
 +#wifi_channel=6
-+
-+hdmi_cvt=1024 600 60 5
-+hdmi_blanking=1
 +
