@@ -117,6 +117,10 @@ uci commit linkmeter
 # Add an alias for luci without the cgi-bin prefix, as all old docs and apps point to this
 uci del_list uhttpd.main.alias='/luci=/cgi-bin'
 uci add_list uhttpd.main.alias='/luci=/cgi-bin'
+# If an HTTPS redirect takes place from an AJAX call and the redirect does not allow CORS
+# then the browser will error out before redirecting. This effects hm.com/devices as well
+# as third party apps pulling HeaterMeter data
+uci set uhttpd.main.redirect_https='0'
 uci commit uhttpd
 
 # Change the session timeout from 1hr to 24hrs
