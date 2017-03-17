@@ -2,7 +2,7 @@
 
 /* [Options] */
 // Pit probe type
-Control_Probe = "Thermocouple"; // [Thermocouple,Thermistor]
+Control_Probe = "Thermocouple"; // [Thermocouple,Thermistor,None]
 // Raspberry Pi Model
 Pi_Model = "3B/2B/1B+"; // [3B/2B/1B+,Connectorless,1A+,Zero]
 // Which case halves
@@ -10,12 +10,14 @@ Pieces = "Both"; // [Both,Top,Bottom]
 // Thickness of side walls (mm) - Set to trace width multiple
 wall = 3.0;
 /* [Advanced] */
-// Thickness of top and bottom faces
+// Thickness of top and bottom faces (mm)
 wall_t = 2;
-// External corner radius on the body
+// External corner radius on the body (mm)
 body_corner_radius = 4;
-// Height of the body edge bead chamfer
+// Height of the body edge bead chamfer (mm)
 body_chamfer_height = 1.5;
+// Corner ear height (mm) - 0 to disable
+MouseEarHeight = 0;
 
 /* [Hidden] */
 w = inch(3.75)+0.5; // overall interior case width
@@ -275,11 +277,13 @@ difference() {
       if (Control_Probe == "Thermocouple")
         // TC jack
         translate([0,inch(-0.55)-16.5/2,-1.4]) cube([2*wall, 16.5, 6.5]);
-      else
+      else if (Control_Probe == "Thermistor")
         translate([0,-17.25,0]) phole();
-      translate([0,inch(0.37)*0,0]) phole();
-      translate([0,inch(0.37)*1,0]) phole();
-      translate([0,inch(0.37)*2,0]) phole();
+      if (Control_Probe != "None") {
+        translate([0,inch(0.37)*0,0]) phole();
+        translate([0,inch(0.37)*1,0]) phole();
+        translate([0,inch(0.37)*2,0]) phole();
+      }
     }
   }
   // Pi connector side  
@@ -427,6 +431,38 @@ module hm43_bottom_lips(split) {
       rotate([-90]) rotate(90) lip_guide(40);
 }
 
+module mouseears() {
+  me_h = MouseEarHeight;
+  me_d = 20;
+  me_overlap = wall;
+  me_outset_bottom = (me_d/2 - body_corner_radius/4 - body_chamfer_height_b - me_overlap) * 0.707;
+  me_outset_top = (me_d/2 - body_corner_radius/4 - body_chamfer_height_t - me_overlap) * 0.707;
+
+  // Bottom outside corners
+  if (Pieces != "Top") {
+    translate([-me_outset_bottom, d+2*wall+me_outset_bottom, 0])
+      cylinder(me_h, d=me_d, $fn=24);
+    translate([w+2*wall+me_outset_bottom, d+2*wall+me_outset_bottom, 0])
+      cylinder(me_h, d=me_d, $fn=24);
+  }
+
+  // top outside corners
+  if (Pieces != "Bottom") {
+    translate([0,-1,me_h]) rotate([180]) {
+      translate([w+2*wall+me_outset_top, d+2*wall+me_outset_top, 0])
+        cylinder(me_h, d=me_d, $fn=24);
+      translate([-me_outset_top, d+2*wall+me_outset_top, 0])
+        cylinder(me_h, d=me_d, $fn=24);
+    }
+  }
+
+  // common corner area
+  translate([-me_outset_bottom-me_overlap, 0, 0])
+    cylinder(me_h, d=me_d, $fn=24);
+  translate([w+2*wall+me_outset_bottom+me_overlap, 0, 0])
+    cylinder(me_h, d=me_d, $fn=24);
+}
+
 module split_volume() {
   if (Pi_Model == "3B/2B/1B+") {
     difference() {
@@ -443,7 +479,7 @@ module split_volume() {
 
 module hm43_split() {
   // bottom
-  if (Pieces != "Top") {
+  if (Pieces != "Top") translate([0,1,0]) {
     intersection() { 
       hm43(); 
       split_volume();
@@ -456,11 +492,13 @@ module hm43_split() {
   
   // top
   if (Pieces != "Bottom") {
-    translate([0,-2,h_b+2*wall_t]) rotate([180]) difference() {
+    translate([0,-1,h_b+2*wall_t]) rotate([180]) difference() {
       hm43();
       split_volume();
     }
   }  // if include top
+  if (MouseEarHeight > 0.0)
+    color("silver") mouseears();
 }
 
 /**********************                               **********************/
