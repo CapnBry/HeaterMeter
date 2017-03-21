@@ -1,5 +1,5 @@
 diff --git a/package/network/config/netifd/files/lib/netifd/proto/dhcp.sh b/package/network/config/netifd/files/lib/netifd/proto/dhcp.sh
-index abfdaaf..290dcc3 100755
+index abfdaaf..efebcdb 100755
 --- a/package/network/config/netifd/files/lib/netifd/proto/dhcp.sh
 +++ b/package/network/config/netifd/files/lib/netifd/proto/dhcp.sh
 @@ -42,6 +42,7 @@ proto_dhcp_setup() {
@@ -10,3 +10,12 @@ index abfdaaf..290dcc3 100755
  	[ -n "$iface6rd" ] && proto_export "IFACE6RD=$iface6rd"
  	[ "$iface6rd" != 0 -a -f /lib/netifd/proto/6rd.sh ] && append dhcpopts "-O 212"
  	[ -n "$zone6rd" ] && proto_export "ZONE6RD=$zone6rd"
+@@ -56,7 +57,7 @@ proto_dhcp_setup() {
+ 		-s /lib/netifd/dhcp.script \
+ 		-f -t 0 -i "$iface" \
+ 		${ipaddr:+-r $ipaddr} \
+-		${hostname:+-H "$hostname"} \
++		${hostname:+-x hostname:"$hostname"} \
+ 		${vendorid:+-V "$vendorid"} \
+ 		$clientid $broadcast $release $dhcpopts
+ }
