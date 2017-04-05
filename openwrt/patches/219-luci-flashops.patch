@@ -1,8 +1,8 @@
 diff --git a/modules/luci-mod-admin-full/luasrc/controller/admin/system.lua b/modules/luci-mod-admin-full/luasrc/controller/admin/system.lua
-index cf8cfb5..5c1ff95 100644
+index 5478afa..24574af 100644
 --- a/modules/luci-mod-admin-full/luasrc/controller/admin/system.lua
 +++ b/modules/luci-mod-admin-full/luasrc/controller/admin/system.lua
-@@ -194,7 +194,8 @@ local function supports_sysupgrade()
+@@ -195,7 +195,8 @@ local function supports_sysupgrade()
  end
  
  local function supports_reset()
@@ -12,13 +12,7 @@ index cf8cfb5..5c1ff95 100644
  end
  
  local function storage_size()
-@@ -264,11 +265,15 @@ function action_sysupgrade()
- 		return
- 	end
- 
-+
- 	--
- 	-- Initiate firmware flash
+@@ -270,6 +271,9 @@ function action_sysupgrade()
  	--
  	local step = tonumber(http.formvalue("step") or 1)
  	if step == 1 then
@@ -28,7 +22,7 @@ index cf8cfb5..5c1ff95 100644
  		if image_supported(image_tmp) then
  			luci.template.render("admin_system/upgrade", {
  				checksum = image_checksum(image_tmp),
-@@ -350,6 +355,14 @@ end
+@@ -351,6 +355,14 @@ end
  
  function action_reset()
  	if supports_reset() then
@@ -44,7 +38,7 @@ index cf8cfb5..5c1ff95 100644
  			title = luci.i18n.translate("Erasing..."),
  			msg   = luci.i18n.translate("The system is erasing the configuration partition now and will reboot itself when finished."),
 diff --git a/modules/luci-mod-admin-full/luasrc/view/admin_system/flashops.htm b/modules/luci-mod-admin-full/luasrc/view/admin_system/flashops.htm
-index 82a1fdb..e5f5199 100644
+index 3e3f65d..3ce08d9 100644
 --- a/modules/luci-mod-admin-full/luasrc/view/admin_system/flashops.htm
 +++ b/modules/luci-mod-admin-full/luasrc/view/admin_system/flashops.htm
 @@ -71,13 +71,20 @@

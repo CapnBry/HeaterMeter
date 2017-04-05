@@ -1,13 +1,15 @@
 diff --git a/modules/luci-mod-admin-full/luasrc/model/cbi/admin_network/wifi_add.lua b/modules/luci-mod-admin-full/luasrc/model/cbi/admin_network/wifi_add.lua
-index 96b8b4d..64ce572 100644
+index 8277deb..feee0d1 100644
 --- a/modules/luci-mod-admin-full/luasrc/model/cbi/admin_network/wifi_add.lua
 +++ b/modules/luci-mod-admin-full/luasrc/model/cbi/admin_network/wifi_add.lua
-@@ -157,6 +157,11 @@ function newnet.parse(self, section)
+@@ -157,6 +157,13 @@ function newnet.parse(self, section)
  			uci:save("network")
  			uci:save("firewall")
  
 +			if net:proto() == "dhcp" then
 +				uci:set("dhcp", net:name() .. ".ignore", "1")
++				uci:set("dhcp", net:name() .. ".dhcpv6", "disabled")
++				uci:set("dhcp", net:name() .. ".ra", "disabled")
 +				uci:save("dhcp")
 +			end
 +
