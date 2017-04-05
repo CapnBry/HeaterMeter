@@ -90,15 +90,21 @@ elif [ $RESTORE -ne 0 ] ; then
     echo Restoring system backup...
     sysupgrade -r $MNT/backup.tar.gz
     . /usr/bin/linkmeter.uci-defaults restore
+    # The dnsmasq user is added going from v13 to v14, there's no need to do this generically
+    # because this system restore is only used to move config from v13 to v14, after that the
+    # sysupgrade is done via ramdisk to /boot
+    . /lib/functions.sh
+    add_group_and_user dnsmasq
+    # Which is why there is no need for a backup any more
+    rm $MNT/backup.tar.gz
     sync
     reboot
   fi
-  exit 0
 fi
 
-if [ -d "$MNT/lost+found" ] ; then
-  sysupgrade -b $MNT/backup.tar.gz
-fi
+#if [ -d "$MNT/lost+found" ] ; then
+#  sysupgrade -b $MNT/backup.tar.gz
+#fi
 
 wifi_config
 

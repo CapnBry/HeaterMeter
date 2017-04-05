@@ -13,8 +13,8 @@ EOF
 
 ENC=psk2
 MODE=sta
-[ "$FUNC" = "wifi-client" ] && MODE="sta"
-[ "$FUNC" = "wifi-ap" ] && MODE="ap"
+[ "$FUNC" = "wifi-client" ] && MODE="sta" && TAG="wifi_client"
+[ "$FUNC" = "wifi-ap" ] && MODE="ap" && TAG="wifi_ap"
 
 while getopts "s:p:c:e:m:" arg ; do
   case $arg in
@@ -33,6 +33,11 @@ shift $((OPTIND-1))
 [ -n "$PASS" ] && PASS="	option key '$PASS'"
 [ -n "$CHANNEL" ] && CHANNEL="	option channel '$CHANNEL'"
 
+# On platforms with just one network connection (PiA, Zero, ZeroW) the plarform will assign the wifi to the
+# lan interface. In that case, do not create a new interface, just write to the lan interface definition
+IFACE="wwan"
+[ "$(uci -q get network.lan.ifname)" = "wlan0" ] && IFACE="lan"
+
 cat > /etc/config/wireless << EOF
 config wifi-device 'radio0'
 	option type 'mac80211'
@@ -46,30 +51,36 @@ config wifi-device 'radio0'
 	#option country '00'
 $CHANNEL	
 
-config wifi-iface
+config wifi-iface '$TAG'
 	option device 'radio0'
-	option network 'wwan'
+	option network '$IFACE'
 	option mode '$MODE'
 	option ssid '$SSID'
 	option encryption '$ENC'
 $PASS
 EOF
 
-uci set network.wwan=interface
-uci set dhcp.wwan=dhcp
-uci set dhcp.wwan.interface=wwan
+uci set network.$IFACE=interface
+uci set dhcp.$IFACE=dhcp
+uci set dhcp.$IFACE.interface=$IFACE
+# delete 'bridge' type, if the connection is already brought up as a bridge then this may require a reboot
+uci -q delete network.$IFACE.type
 if [ "$MODE" = "sta" ] ; then
-  uci set dhcp.wwan.ignore=1
-  uci set network.wwan.proto=dhcp
-  uci -q delete network.wwan.ipaddr
-  uci -q delete network.wwan.netmask
+  uci set dhcp.$IFACE.ignore=1
+  uci set dhcp.$IFACE.dhcpv6=disabled
+  uci set dhcp.$IFACE.ra=disabled
+  uci set network.$IFACE.proto=dhcp
+  uci -q delete network.$IFACE.ipaddr
+  uci -q delete network.$IFACE.netmask
 else
-  uci set dhcp.wwan.ignore=0
-  uci set network.wwan.proto=static
-  uci -q get network.wwan.ipaddr > /dev/null || {
-    uci set network.wwan.ipaddr=192.168.201.1
-    uci set network.wwan.netmask=255.255.255.0
-  }
+  uci set dhcp.$IFACE.ignore=0
+  uci set dhcp.$IFACE.dhcpv6=server
+  uci set dhcp.$IFACE.ra=server
+  uci set network.$IFACE.proto=static
+  #uci -q get network.$IFACE.ipaddr > /dev/null || {
+    uci set network.$IFACE.ipaddr=192.168.201.1
+    uci set network.$IFACE.netmask=255.255.255.0
+  #}
 fi
 uci commit
 sync

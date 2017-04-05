@@ -511,7 +511,8 @@ local function postDeviceData(dd)
   end
 
   local hardware, revision, serial
-  if cpuinfo['Hardware'] == 'BCM2708' or cpuinfo['Hardware'] == 'BCM2709' then
+  -- BCM2708 BCM2709 BCM2835
+  if (cpuinfo['Hardware'] or ''):find('BCM2%d%d%d$') ~= nil then
     hardware = cpuinfo['Hardware']
     revision = cpuinfo['Revision']
     serial = cpuinfo['Serial']

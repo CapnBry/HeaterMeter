@@ -70,17 +70,22 @@ migrate_settings() {
 }
 
 HARDWARE_MODEL=`grep '^Hardware\t:' /proc/cpuinfo | cut -d' ' -f 2`
-if [ "$HARDWARE_MODEL" = "BCM2708" -o "$HARDWARE_MODEL" = "BCM2709" ] ; then
-  SERIAL_DEVICE="auto"
-  STASHPATH="/mnt/mmcblk0p4/stash"
-  AUTOBACK_ACTIVE=5
-  AUTOBACK_INACTIVE=60
-else
-  SERIAL_DEVICE="/dev/ttyS1"
-  STASHPATH="/root"
-  AUTOBACK_ACTIVE=0
-  AUTOBACK_INACTIVE=0
-fi
+case "$HARDWARE_MODEL" in
+  BCM2708|BCM2709|BCM2835)
+    # The Pi Zero W we treat as a regular Pi
+    [ "$HARDWARE_MODEL" = "BCM2835" ] && HARDWARE_MODEL="BCM2708"
+    SERIAL_DEVICE="auto"
+    STASHPATH="/mnt/mmcblk0p4/stash"
+    AUTOBACK_ACTIVE=5
+    AUTOBACK_INACTIVE=60
+    ;;
+  *)
+    SERIAL_DEVICE="/dev/ttyS1"
+    STASHPATH="/root"
+    AUTOBACK_ACTIVE=0
+    AUTOBACK_INACTIVE=0
+    ;;
+esac
 
 [ -f /etc/config/linkmeter ] || touch /etc/config/linkmeter
 uci_add_section linkmeter.daemon
@@ -148,8 +153,9 @@ if [ "$INSTALL_PARAM" = "new" ] ; then
     uci set dhcp.lan.ignore=1
     uci commit dhcp
 
-    # Setup wifi to be an AP on channel 6 with no encryption
-    /usr/bin/wifi-ap -s heatermeter -c 6 -e none
+    # Setup wifi to be an AP on channel 6 with no encryption if no wifi configured
+    DEFWIFI=$(uci -q get wireless.default_radio0)
+    [ "$DEFWIFI" = "wifi-iface" ] && /usr/bin/wifi-ap -s heatermeter -c 6 -e none
   fi
 fi
 

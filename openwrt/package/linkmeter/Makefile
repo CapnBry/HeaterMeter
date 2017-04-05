@@ -12,7 +12,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/linkmeter
 	SECTION:=utils
 	CATEGORY:=Utilities
-	DEPENDS:=+rrdtool +libuci +luci-base +luci-lib-nixio +luci-lib-jsonc
+	DEPENDS:=+rrdtool +liblmfit-lua +libuci +luci-base +luci-lib-nixio +luci-lib-jsonc
 	TITLE:=LinkMeter BBQ Controller
 	URL:=http://github.com/CapnBry/HeaterMeter
 	MAINTAINER:=Bryan Mayland <capnbry@gmail.com>
@@ -59,7 +59,7 @@ define Package/linkmeter/install
 	$(LN) -sf ../../usr/lib/lua/lmclient.lua $(1)/usr/bin/lmclient
 	# uci-defaults is saved so it can be used again after config-restore
 	$(INSTALL_BIN) ./config/linkmeter.uci-defaults $(1)/usr/bin/
-	$(LN) -sf ../../usr/bin/linkmeter.uci-defaults $(1)/etc/uci-defaults/linkmeter
+	$(LN) -sf ../../usr/bin/linkmeter.uci-defaults $(1)/etc/uci-defaults/90_linkmeter
 endef
 
 define Package/linkmeter/postinst
