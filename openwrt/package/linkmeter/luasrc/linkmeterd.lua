@@ -110,6 +110,7 @@ function Server.run()
           polle.handler(polle)
         end
       end
+      nixio.nanosleep(0, 10000000)
     end
 
     for _, cb in ipairs(Server._tickt) do
