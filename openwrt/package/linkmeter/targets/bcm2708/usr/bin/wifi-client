@@ -30,6 +30,8 @@ shift $((OPTIND-1))
 [ $# -gt 0 ] && SSID=$1
 [ $# -gt 1 ] && PASS=$2
 
+SSID=`echo $SSID | sed "s/\'/\\\\\'/g"`
+PASS=`echo $PASS | sed "s/\'/\\\\\'/g"`
 [ -n "$PASS" ] && PASS="	option key '$PASS'"
 [ -n "$CHANNEL" ] && CHANNEL="	option channel '$CHANNEL'"
 
