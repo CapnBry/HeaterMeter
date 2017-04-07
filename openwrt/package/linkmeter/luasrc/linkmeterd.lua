@@ -111,7 +111,6 @@ function Server.run()
           polle.handler(polle)
         end
       end
-      nixio.nanosleep(0, 10000000)
     end
 
     for _, cb in ipairs(Server._tickt) do
@@ -199,7 +198,14 @@ function unregisterStatusListener(f)
 end
 
 function hmWrite(s)
-  if serialPolle then serialPolle.fd:write(s) end
+  if serialPolle then
+    -- Break the data into 8 byte chunks (the size of the FIFO on the Pi3/W minuart)
+    -- write always returns that it wrote the entire data, and poll('out') always times out
+    for i=1, #s, 8 do
+      serialPolle.fd:write(s:sub(i,i+7))
+      nixio.nanosleep(0, serialPolle.bytens * 8)
+    end
+  end
 end
 
 function segSplit(line)
@@ -813,7 +819,8 @@ local function lmdStart()
     fd = serialfd,
     lines = serialfd:linesource(),
     events = nixio.poll_flags("in"),
-    handler = serialHandler
+    handler = serialHandler,
+    bytens = math.floor(1000 * 1000 * 1000 / SERIAL_BAUD * 10) -- time to transmit 1 byte in nanoseconds
   }
   Server.register_pollfd(serialPolle)
 
