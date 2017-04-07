@@ -11,6 +11,7 @@ local lmpeaks = require "linkmeter.peaks"
 local lmunkprobe = require "linkmeter.unkprobe"
 local lmdph = require "linkmeter.dph"
 local lmramp = require "linkmeter.ramp"
+local lmipwatch = require "linkmeter.ipwatch"
 
 local pairs, ipairs, table, pcall, type = pairs, ipairs, table, pcall, type
 local tonumber, tostring, print, next, io = tonumber, tostring, print, next, io
@@ -33,13 +34,13 @@ local hmAlarms = {}
 local extendedStatusProbeVals = {} -- array[probeIdx] of tables of kv pairs, per probe
 local extendedStatusVals = {} -- standard kv pairs of items to include in status, global
 local hmConfig
-local lastIp
 
 -- forwards
 local segmentCall
 local statusValChanged
 local JSON_TEMPLATE
 local broadcastStatus
+local segLmToast
 
 local RRD_FILE = uci.cursor():get("linkmeter", "daemon", "rrd_file")
 local RRD_AUTOBACK = "/root/autobackup.rrd"
@@ -122,6 +123,14 @@ end
 -- External API functions
 function getConf(k, default)
   return hmConfig and hmConfig[k] or default
+end
+
+function setConf(k, v)
+  if hmConfig then hmConfig[k] = v end
+end
+
+function toast(line1, line2)
+  return segLmToast('$LMTT,' .. (line1 or '') .. ',' .. (line2 or ''))
 end
 
 function publishStatusVal(k, v, probeIdx)
@@ -340,8 +349,6 @@ local function buildConfigMap()
     r["pal"..aType..idx] = tonumber(v.t)
   end
 
-  r["ip"] = lastIp
-
   return r
 end
 
@@ -489,7 +496,7 @@ function stsLmStateUpdate()
   return table.concat(JSON_TEMPLATE)
 end
 
-local function segLmToast(line)
+function segLmToast(line)
   local vals = segSplit(line)
   if serialPolle and #vals > 0 then
     hmWrite(("/set?tt=%s,%s\n"):format(vals[1],vals[2] or ""))
@@ -497,85 +504,6 @@ local function segLmToast(line)
   end
 
   return "ERR"
-end
-
-local function postDeviceData(dd)
-  if uci.cursor():get("linkmeter", "live", "optout") == "1" then
-    return
-  end
-  cpuinfo = {}
-  for line in io.lines("/proc/cpuinfo") do
-    local iPos = line:find(":")
-    if iPos then
-      cpuinfo[line:sub(1, iPos-1):gsub("%s+$", "")] = line:sub(iPos+1):gsub("^%s+","")
-    end
-  end
-
-  local hardware, revision, serial
-  -- BCM2708 BCM2709 BCM2835
-  if (cpuinfo['Hardware'] or ''):find('BCM2%d%d%d$') ~= nil then
-    hardware = cpuinfo['Hardware']
-    revision = cpuinfo['Revision']
-    serial = cpuinfo['Serial']
-  elseif cpuinfo['system type'] == 'Ralink SoC' then
-    hardware = cpuinfo['system type']
-    revision = cpuinfo['cpu model']
-    serial = ""
-  end
-
-  local uptime = sys.uptime()
-  local hostname = sys.hostname()
-  dd = dd ..
-    ('],"serial":"%s","revision":"%s","model":"%s","uptime":%s,"hostname":"%s"}'):format(
-    serial, revision, hardware, uptime, hostname)
-
-  os.execute(("curl --silent -o /dev/null -d devicedata='%s' %s &"):format(
-   dd, 'http://heatermeter.com/devices/'));
-end
-
-local lastIpCheck
-local lastIfaceHash
-local lastIfaceHashTime
-local function checkIpUpdate()
-  local newIp
-  local ifaces = nixio.getifaddrs()
-  local packets = {}
-  -- First find out how many packets have been sent on each interface
-  -- from the packet family instance of each adapter
-  for _,v in ipairs(ifaces) do
-    if not v.flags.loopback and v.family == "packet" then
-      packets[v.name] = v.data.tx_packets
-    end
-  end
-
-  -- Static interfaces are always 'up' just not 'running' but nixio does not
-  -- have a flag for running so look for an interface that has sent packets
-  local ifaceJson = '{"ifaces":['
-  local ifaceHash = ""
-  for _,v in ipairs(ifaces) do
-    if not v.flags.loopback and v.flags.up and v.family == "inet" then
-      if ifaceHash ~= "" then ifaceJson = ifaceJson .. "," end
-      ifaceJson = ifaceJson ..('{"name":"%s","addr":"%s","cnt":%s}'):format(
-        v.name, v.addr, packets[v.name])
-      ifaceHash = ifaceHash .. v.name .. v.addr
-
-      if packets[v.name] > 0 then
-        newIp = v.addr
-      end
-    end
-  end
-
-  if newIp and newIp ~= lastIp and serialPolle then
-    segLmToast("$LMTT,Network Address," .. newIp)
-    lastIp = newIp
-  end
-
-  local time = os.time()
-  if ifaceHash ~= lastIfaceHash or time - lastIfaceHashTime > 3600 then
-    lastIfaceHashTime = time
-    lastIfaceHash = ifaceHash
-    postDeviceData(ifaceJson)
-  end
 end
 
 local function checkAutobackup(now, vals)
@@ -814,8 +742,6 @@ end
 
 local function initHmVars()
   hmConfig = nil
-  lastIp = nil
-  lastIpCheck = 0
   rfMap = {}
   rfStatus = {}
   hmAlarms = {}
@@ -836,6 +762,7 @@ local function initPlugins()
   lmpeaks.init()
   lmdph.init()
   lmramp.init()
+  lmipwatch.init()
 end
 
 local function lmdStart()
@@ -1018,14 +945,8 @@ end
 
 local lmdStartTime
 local function lmdTick()
-  local time = os.time()
-  if lastIp == nil or time - lastIpCheck > 60 then
-    checkIpUpdate()
-    lastIpCheck = time
-  end
-
-  if lmdStartTime and serialPolle and not hmConfig and time - lmdStartTime > 10 then
-    lmdStartTime = nil -- prevent from running more than once
+  if lmdStartTime and serialPolle and not hmConfig and os.time() - lmdStartTime > 10 then
+    Server.unregister_tick(lmdTick) -- prevent from running more than once
     nixio.syslog("warning", "No response from HeaterMeter, running avrupdate")
     lmdStop()
     if os.execute("/usr/bin/avrupdate -d") ~= 0 then
