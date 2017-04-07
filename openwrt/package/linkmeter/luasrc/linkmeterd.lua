@@ -952,16 +952,18 @@ end
 
 local lmdStartTime
 local function lmdTick()
-  if lmdStartTime and serialPolle and not hmConfig and os.time() - lmdStartTime > 10 then
-    Server.unregister_tick(lmdTick) -- prevent from running more than once
-    nixio.syslog("warning", "No response from HeaterMeter, running avrupdate")
-    lmdStop()
-    if os.execute("/usr/bin/avrupdate -d") ~= 0 then
-      nixio.syslog("err", "avrupdate failed")
-    else
-      nixio.syslog("info", "avrupdate OK")
+  if lmdStartTime and serialPolle and os.time() - lmdStartTime > 10 then
+    Server.unregister_tick(lmdTick) -- always stop checking after timeout
+    if not hmConfig then
+      nixio.syslog("warning", "No response from HeaterMeter, running avrupdate")
+      lmdStop()
+      if os.execute("/usr/bin/avrupdate -d") ~= 0 then
+        nixio.syslog("err", "avrupdate failed")
+      else
+        nixio.syslog("info", "avrupdate OK")
+      end
+      lmdStart()
     end
-    lmdStart()
   end
 end
 
