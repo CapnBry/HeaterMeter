@@ -101,6 +101,7 @@ function Server.daemonize()
 end
 
 function Server.run()
+  local lastTick
   while true do
     -- Listen for fd events, but break every 10s
     local stat, code = nixio.poll(Server._pollt, 10000)
@@ -113,9 +114,13 @@ function Server.run()
       end
     end
 
-    for _, cb in ipairs(Server._tickt) do
-      cb()
-    end
+    local now = os.time()
+    if now ~= lastTick then
+      lastTick = now
+      for _, cb in ipairs(Server._tickt) do
+        cb(now)
+      end
+    end -- if new tick
   end -- while true
 end
 
@@ -195,6 +200,14 @@ function unregisterStatusListener(f)
       return
     end
   end
+end
+
+function registerTickListener(cb)
+  Server.register_tick(cb)
+end
+
+function unregisterTickListener(cb)
+  Server.unregister_tick(cb)
 end
 
 function hmWrite(s)
@@ -951,9 +964,9 @@ local function registerStreamingStatus(fn)
 end
 
 local lmdStartTime
-local function lmdTick()
-  if lmdStartTime and serialPolle and os.time() - lmdStartTime > 10 then
-    Server.unregister_tick(lmdTick) -- always stop checking after timeout
+local function lmdTick(now)
+  if lmdStartTime and serialPolle and now - lmdStartTime > 10 then
+    unregisterTickListener(lmdTick) -- always stop checking after timeout
     if not hmConfig then
       nixio.syslog("warning", "No response from HeaterMeter, running avrupdate")
       lmdStop()
@@ -1038,7 +1051,7 @@ local function prepare_daemon()
   })
 
   lmdStartTime = os.time()
-  Server.register_tick(lmdTick)
+  registerTickListener(lmdTick)
 
   return lmdStart()
 end
