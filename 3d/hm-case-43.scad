@@ -127,7 +127,7 @@ module led_hole() {
 module nuttrap() {
   ww_w=3;
   ww_d=wall;
-  nut_h=3.0;
+  nut_h=3.2;
   nut_ingress = 5.7; //nut_d * sin(60);
   nut_d = nut_ingress / sin(60);
   nut_ingress_off = nut_ingress/sqrt(3)/2;
@@ -254,7 +254,7 @@ difference() {
       r=body_corner_radius, top=body_chamfer_height_t, 
       bottom=body_chamfer_height_b, $fn=36);
     // extra thick by Pi connectors
-    if (Pi_Model != "Zero")
+    if (Pi_Model != "Zero" && Pi_Model != "1A+")
       translate([-pic_ex,wall,wall_t])
         pic_ex_cube();
     // TC +/-
@@ -267,7 +267,7 @@ difference() {
     cube_fillet([w, d, h_b+e], bottom=[2,2,2,2],
     top=[lcd_mount_t/2,lcd_mount_t/2,lcd_mount_t/2,lcd_mount_t/2],
     vertical=[1,1]);
-  if (Pi_Model != "Zero")
+  if (Pi_Model != "Zero" && Pi_Model != "1A+")
     translate([wall-pic_ex+e,wall,wall_t]) pic_ex_cube();
 
   // Probe jack side
@@ -298,8 +298,6 @@ difference() {
         translate([0,62.75,0]) jhole(13,14.8);
         translate([0,44.75,0]) jhole(13,14.8);
       }
-      if (Pi_Model == "1A+")
-        translate([0,44.75,0]) jhole(13,7.4);
     }
     // HeaterMeter connectors
     translate([0,0,0]) {
@@ -381,7 +379,7 @@ difference() {
     translate([wall+10.7, wall+52, h_b+wall_t-e]) lcd_mount();
   }
   
-  if (Pi_Model == "3B/2B/1B+" || Pi_Model == "1A+")
+  if (Pi_Model == "3B/2B/1B+")
     translate([wall-pic_ex, wall, wall_t]) {
       // USB pillar reinforcements
       translate([0, (44.75+62.75)/2-1, 3.5])
@@ -457,9 +455,9 @@ module mouseears() {
   }
 
   // common corner area
-  translate([-me_outset_bottom-me_overlap, 0, 0])
+  translate([-me_outset_bottom/0.707, 0, 0])
     cylinder(me_h, d=me_d, $fn=24);
-  translate([w+2*wall+me_outset_bottom+me_overlap, 0, 0])
+  translate([w+2*wall+me_outset_bottom/0.707, 0, 0])
     cylinder(me_h, d=me_d, $fn=24);
 }
 
