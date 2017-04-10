@@ -8,7 +8,7 @@ Pi_Model = "3B/2B/1B+"; // [3B/2B/1B+,Connectorless,1A+,Zero]
 // Which case halves
 Pieces = "Both"; // [Both,Top,Bottom]
 // Thickness of side walls (mm) - Set to trace width multiple
-wall = 3.0;
+wall = 2.5;
 /* [Advanced] */
 // Thickness of top and bottom faces (mm)
 wall_t = 2;
