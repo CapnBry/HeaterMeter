@@ -232,8 +232,8 @@ module lcd_mount() {
 module lcd_neg() {
   // Assuming starting at bottom left screw hole
   translate([1.0, 2.1, 0])
-    cube([73.0, 26.3, lcd_mount_t+wall_t-0.8]); // black bezel inset
-  translate([5.5, 7.8, 0])
+    cube([73.0, 27.3, lcd_mount_t+wall_t-0.8]); // black bezel inset
+  translate([5.5, 8.0, 0])
     cube([64.0, 15.4, lcd_mount_t+wall_t+2*e]); // LCD active area
   translate([4.23, -2.5, 0])
     cube([16*2.54, 5, lcd_mount_t+wall_t-0.8]); // pins cutout
@@ -309,7 +309,7 @@ difference() {
   }
   
   // lcd hole
-  translate([wall+10.7, wall+52, h_b+wall_t-lcd_mount_t-e]) lcd_neg();
+  translate([wall+10.7, wall+51.5, h_b+wall_t-lcd_mount_t-e]) lcd_neg();
   
   // button holes
   translate([wall+48.7, wall+29.4, h_b+wall_t-e]) {
@@ -369,14 +369,14 @@ difference() {
         cube_fillet([w,17,lcd_mount_t+e], 
           bottom=[lcd_mount_t/2,lcd_mount_t/2,0,lcd_mount_t/2]);
       // LCD grab notch
-      translate([wall+10.7, wall+52, h_b+wall_t-lcd_mount_t])
-        translate([(77.5-20)/2,33.5-wall_t,-(1.8+wall_t)])
+      translate([wall+10.7, wall+51.5, h_b+wall_t-lcd_mount_t])
+        translate([(77.5-20)/2,34.0-wall_t,-(1.8+wall_t)])
           // 1.8=thickness of LCD pcb
           cube_fillet([20,1.8+wall_t+wall,1.8+wall_t+e], top=[0,0,1.8+wall_t+e],
             vertical=[wall/2,wall/2]);
     }
-    translate([wall+10.7, wall+52, h_b+wall_t-lcd_mount_t-e]) lcd_neg();
-    translate([wall+10.7, wall+52, h_b+wall_t-e]) lcd_mount();
+    translate([wall+10.7, wall+51.5, h_b+wall_t-lcd_mount_t-e]) lcd_neg();
+    //translate([wall+10.7, wall+52, h_b+wall_t-e]) lcd_mount();
   }
   
   if (Pi_Model == "3B/2B/1B+")
