@@ -331,15 +331,21 @@ difference() {
   }
 }  // END OF DIFFERENCE
 
-  if (Pi_Model != "Zero") {
-    // Pi mounting screws
-    translate([wall+24,wall+d-7.5,wall_t]) {
-      translate([58,0,0]) screw_pimount();
-      translate([58,-49,0]) screw_pimount();
-      translate([0,-49,0]) screw_pimount();
-      translate([0,0,0]) screw_pimount();
+  // Pi mounting screws
+  translate([wall+24,wall+d-56.5,wall_t]) {
+    translate([0,0,0]) screw_pimount();
+    translate([58,0,0]) screw_pimount();
+    if (Pi_Model == "Zero") {
+      translate([0,23,0]) screw_pimount();
+      translate([58,23,0]) screw_pimount();
     }
+    else {
+      translate([0,49,0]) screw_pimount();
+      translate([58,49,0]) screw_pimount();
+    }
+  }
 
+  if (Pi_Model != "Zero") {
     // Pi right edge stop
     translate([wall+w-9.5, wall+d-60, wall_t])
       difference() {
