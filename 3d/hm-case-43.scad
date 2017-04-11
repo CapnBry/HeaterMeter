@@ -22,7 +22,7 @@ MouseEarHeight = 0;
 /* [Hidden] */
 w = inch(3.75)+0.5; // overall interior case width
 d = inch(3.75)-0.0; // overall interior case depth
-h_b = 32; // overall interior case height
+h_b = 32; // overall interior case height (19.1+ headless Zero, 22.4 headless Pi3)
 
 probe_centerline = 9.3; // case is split along probe centerline on the probe side
 case_split = 12.4;  // and the case split on the other 3 sides
@@ -332,7 +332,7 @@ difference() {
 }  // END OF DIFFERENCE
 
   // Pi mounting screws
-  translate([wall+24,wall+d-56.5,wall_t]) {
+  translate([wall+24,wall+38.8,wall_t]) {
     translate([0,0,0]) screw_pimount();
     translate([58,0,0]) screw_pimount();
     if (Pi_Model == "Zero") {
