@@ -24,7 +24,7 @@ w = inch(3.75)+0.5; // overall interior case width
 d = inch(3.75)-0.0; // overall interior case depth
 h_b = 32; // overall interior case height
 
-probe_centerline = 9.0; // case is split along probe centerline on the probe side
+probe_centerline = 9.3; // case is split along probe centerline on the probe side
 case_split = 12.4;  // and the case split on the other 3 sides
 
 pic_ex = 2;
