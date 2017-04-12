@@ -48,7 +48,7 @@ function _M.index()
     -- and check the supplied API key
     local key = http.formvalue("apikey")
     local apikey = uci:get("linkmeter", "api", "key")
-    if apikey and apikey ~= "" and key == apikey then
+    if apikey and apikey ~= "" and key and key:lower() == apikey:lower() then
       -- Hokey workaround because luci doesn't set the authuser if it 
       -- isn't the code that creates the session
       luci.dispatcher.context.authuser = API_WRITE_ONLY
