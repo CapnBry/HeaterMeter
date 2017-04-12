@@ -152,11 +152,9 @@ function action_reboot()
   http.write(LmClient():query("$LMRB") or "FAILED")
 end
 
-function action_set()
+function api_set(vals)
   local dsp = require "luci.dispatcher"
   local http = require "luci.http"
-  
-  local vals = http.formvalue()
   
   -- If there's a rawset, explode the rawset into individual items
   local rawset = vals.rawset
@@ -172,6 +170,16 @@ function action_set()
       end
     end
   end
+
+  -- The API key is also set this way, but remove it from the table
+  local set_apikey = vals["set_apikey"]
+  if set_apikey ~= nil and set_apikey ~= "" then
+    local uci = require("uci"):cursor()
+    uci:set("linkmeter", "api", "key", set_apikey)
+    uci:commit("linkmeter")
+  end
+  vals["apikey"] = nil
+  vals["set_apikey"] = nil
 
   -- Make sure the user passed some values to set
   local cnt = 0
@@ -207,6 +215,10 @@ function action_set()
   end
   lm:close()
   http.write("Done!")
+end
+
+function action_set()
+  api_set(luci.http.formvalue())
 end
 
 function action_light_index()
