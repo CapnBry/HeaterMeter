@@ -116,6 +116,11 @@ uci_set_nomodify linkmeter.alarms_push.message '$pn $al_type alarm $al_prep $al_
 uci_add_section linkmeter.ramp
 uci_set_nomodify linkmeter.ramp.watch '0'
 
+uci_add_section linkmeter.api
+uci_set_nomodify linkmeter.api.disabled '0'
+uci_set_nomodify linkmeter.api.enablecors '1'
+uci_set_nomodify linkmeter.api.key `dd if=/dev/urandom bs=16 count=1 | hexdump -e '"%x"'`
+
 migrate_settings
 uci commit linkmeter
 

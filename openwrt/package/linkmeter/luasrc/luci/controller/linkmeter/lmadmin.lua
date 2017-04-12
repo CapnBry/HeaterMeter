@@ -171,28 +171,34 @@ function api_set(vals)
     end
   end
 
+  http.prepare_content("text/plain")
+
   -- The API key is also set this way, but remove it from the table
   local set_apikey = vals["set_apikey"]
   if set_apikey ~= nil and set_apikey ~= "" then
     local uci = require("uci"):cursor()
     uci:set("linkmeter", "api", "key", set_apikey)
     uci:commit("linkmeter")
+    http.write("API key updated")
   end
   vals["apikey"] = nil
   vals["set_apikey"] = nil
 
   -- Make sure the user passed some values to set
   local cnt = 0
-  -- Can't use #vals because the table is actually a metatable with an indexer
+  -- Can't use #vals because table actually could be a metatable with an indexer
   for _ in pairs(vals) do cnt = cnt + 1 end
   if cnt == 0 then
-    return dsp.error500("No values specified")
+    if set_apikey == nil then
+      http.status(400, "Bad Request")
+      http.write("No values specified")
+    end
+    return
   end
 
   require("lmclient")
   local lm = LmClient()
 
-  http.prepare_content("text/plain")
   http.write("User %s setting %d values...\n" % {dsp.context.authuser, cnt})
   local firstTime = true
   for k,v in pairs(vals) do

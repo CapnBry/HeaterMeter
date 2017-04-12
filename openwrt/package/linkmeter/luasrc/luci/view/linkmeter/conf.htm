@@ -3,6 +3,7 @@
 <script src="<%=resource%>/js/jquery-all.js" type="text/javascript"></script>
 <script type="text/javascript">//<![CDATA[
 var configHash = <%= LmClient():query("$LMCF") or "{}" %>;
+var apikey = "<%= uci.cursor():get("linkmeter", "api", "key") %>"
 var rfInterval;
 var ignoreConfigUrlUpdates;
 var coeffPresets = [
@@ -207,6 +208,7 @@ function isProbeId(hay, need)
 
 function configHashToForm()
 {
+  configHash["set_apikey"] = apikey; // not at all hacky
   for (var k in configHash)
   {
     var elem = $("#" + k);
@@ -444,7 +446,7 @@ function updateConfigUrl(divname, h)
 
   var aValues = new Array();
   var STATIC_MAP = [ "pn0", "pn1", "pn2", "pn3", 
-    "sp", "pidp", "pidi", "pidd" ];
+    "sp", "pidp", "pidi", "pidd", "set_apikey" ];
   for (var k in h)
   {
     if ($.inArray(k, STATIC_MAP) != -1)
@@ -505,6 +507,7 @@ function ifrmLoaded()
 {
   if (frameLoadFired) return;
   frameLoadFired = true;
+  apikey = $("#set_apikey").val();
   $.get("<%=build_url("lm/conf")%>",
     function (o) { configHash = o; configToForm(); windowLoaded(); })
     .fail(function () { window.location.reload(); })
@@ -516,6 +519,15 @@ function ifrmHide()
   $("#dialog-container").hide("fast", 
     function () { $("#dialog-overlay").hide(); });
   $("#overlay_ifrm").unbind().attr("src", "javascript:false;");
+}
+
+function newApiKey()
+{
+  var key = "";
+  while (key.length < 32)
+    key += Math.random().toString(16).slice(2)
+  $("#set_apikey").val(key.slice(-32))
+    .trigger("change");
 }
 
 //]]></script>
@@ -721,7 +733,11 @@ time they are restarted.</div>
 
 <fieldset class="cbi-section" id="cbi-lm-ucid">
 <legend>HeaterMeter Information</legend>
-Version <span id="ucid"></span><br/><span id="cerr"></span>
+<div class="cbi-value">API key
+  <input type="text" maxlength="32" id="set_apikey" style="font-family: monospace" />
+  <input type="button" class="cbi-button cbi-input-reload" onclick="newApiKey()"/>
+</div>
+<div class="cbi-value cbi-value-last">Version <span id="ucid"></span><br/><span id="cerr"></span></div>
 </fieldset>
 
 <div class="cbi-page-actions">
