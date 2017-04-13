@@ -1,10 +1,10 @@
 <?xml version="1.0" standalone='no'?>
 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
 <service-group>
-  <name replace-wildcards="yes">LinkMeter BBQ Controller on %h</name>
+  <name replace-wildcards="yes">HeaterMeter BBQ Controller on %h</name>
   <service>
     <type>_http._tcp</type>
     <port>80</port>
-    <txt-record>path=/luci/lm/</txt-record>
+    <txt-record>path=/cgi-bin/luci/lm/</txt-record>
   </service>
 </service-group>
