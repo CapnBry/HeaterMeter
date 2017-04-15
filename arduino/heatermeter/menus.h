@@ -11,6 +11,9 @@
 #define BUTTON_LEAVE (1<<6)
 // The timeout specified in the menu definition has expired
 #define BUTTON_TIMEOUT (1<<5)
+// Button is a long press (not supported)
+#define BUTTON_LONG (1<<4)
+
 
 #define ST_NONE     0
 #define ST_AUTO     1
@@ -59,7 +62,8 @@ private:
   state_t m_lastState;
   button_t m_lastButton;
   unsigned char m_buttonRepeatCnt;
-  unsigned long m_lastActivity;
+  unsigned long m_lastStateChange;
+  unsigned long m_lastButtonActivity;
 
   unsigned long getTimeoutDuration(void) const;
   unsigned long getElapsedDuration(void) const;

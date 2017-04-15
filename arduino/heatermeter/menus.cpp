@@ -20,11 +20,6 @@ inline handler_t MenuSystem::getHandler(void) const
   return (m_currMenu) ? (handler_t)pgm_read_word(&m_currMenu->handler) : 0;
 }
 
-inline unsigned long MenuSystem::getElapsedDuration(void) const
-{
-  return millis() - m_lastActivity;
-}
-
 inline state_t MenuSystem::findTransition(button_t button) const
 {
   const menu_transition_t *trans = m_transitions;
@@ -75,23 +70,25 @@ void MenuSystem::setState(state_t state)
     }
   }  // while state changing
 
-  m_lastActivity = millis();
+  m_lastStateChange = millis();
 }
 
 void MenuSystem::doWork(void)
 {
-  unsigned long elapsed = getElapsedDuration();
   // Operate button loop at 4Hz unless no button has been pressed in one cycle
-  if (elapsed < 250)
+  unsigned long now = millis();
+  if (now - m_lastButtonActivity < 250)
     return;
 
   button_t button = m_readButton();
   if (button == BUTTON_NONE)
   {
     unsigned long dur = getTimeoutDuration();
-    if (dur != 0 && dur < elapsed)
+    if (dur != 0 && now - m_lastStateChange > dur)
       button = BUTTON_TIMEOUT;
   }
+  else
+    m_lastButtonActivity = now;
 
   if (button != BUTTON_TIMEOUT)
   {
@@ -110,11 +107,8 @@ void MenuSystem::doWork(void)
   if (button == BUTTON_NONE)
     return;
 
-  //Serial.print("New button: ");
-  //Serial.println(button, DEC);
+  //Serial.print("$HMLG,New button: "); Serial.println(button, DEC);
 
-  m_lastActivity = millis();
-  
   state_t newState = ST_AUTO;
   handler_t handler = getHandler();
   if (handler != NULL)
