@@ -381,8 +381,11 @@ difference() {
           cube_fillet([20,1.8+wall_t+wall,1.8+wall_t+e], top=[0,0,1.8+wall_t+e],
             vertical=[wall/2,wall/2]);
     }
-    translate([wall+10.7, wall+51.5, h_b+wall_t-lcd_mount_t-e]) lcd_neg();
-    //translate([wall+10.7, wall+52, h_b+wall_t-e]) lcd_mount();
+    translate([wall+10.7, wall+51.5, h_b+wall_t-e]) {
+      translate([0, 0, -lcd_mount_t]) lcd_neg();
+      // vv Keep screw holes where they have been since the beginning
+      translate([0, 0.5, 0]) lcd_mount();
+    }
   }
   
   if (Pi_Model == "3B/2B/1B+")
