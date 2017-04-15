@@ -7,6 +7,8 @@ Control_Probe = "Thermocouple"; // [Thermocouple,Thermistor,None]
 Pi_Model = "3B/2B/1B+"; // [3B/2B/1B+,Connectorless,1A+,Zero]
 // Which case halves
 Pieces = "Both"; // [Both,Top,Bottom]
+// Include cutouts and mounts for LCD/Buttons
+LCD = 1; // [0:No,1:Yes]
 // Thickness of side walls (mm) - Set to trace width multiple
 wall = 2.5;
 /* [Advanced] */
@@ -22,7 +24,10 @@ MouseEarHeight = 0;
 /* [Hidden] */
 w = inch(3.75)+0.5; // overall interior case width
 d = inch(3.75)-0.0; // overall interior case depth
-h_b = 32; // overall interior case height (19.1+ headless Zero, 22.4 headless Pi3)
+// 19.1+ headless Zero
+// 22.4 headless Pi3 (limited by nuttrapps interfering with PCB to -6.7)
+// 32 standard
+h_b = [32-6.7, 32][LCD];  // overall interior case height
 
 probe_centerline = 9.3; // case is split along probe centerline on the probe side
 case_split = 12.4;  // and the case split on the other 3 sides
@@ -78,7 +83,9 @@ module screwhole() {
 
 module screwhole2() {
   translate([0,0,-e]) cylinder(3, d=6, $fn=18);
-  translate([0,0,3+0.4]) cylinder(h_b-3-0.4, d=3.4, $fn=18);
+  translate([0,0,3+0.4]) cylinder(h_b-3-0.4+wall_t, d=3.4, $fn=18);
+  translate([0.0,0,h_b+wall_t-lcd_mount_t/2-e])
+    cylinder(lcd_mount_t/2+e, d=(2.9*2)/sin(60), $fn=6);
 }
 
 module pic_ex_cube() {
@@ -128,10 +135,10 @@ module nuttrap() {
   ww_w=3;
   ww_d=wall;
   nut_h=3.2;
-  nut_ingress = 5.7; //nut_d * sin(60);
+  nut_ingress = 5.7;
   nut_d = nut_ingress / sin(60);
   nut_ingress_off = nut_ingress/sqrt(3)/2;
-  oa_h=wall_t+0.4+nut_h+wall_t+6.7;
+  oa_h=wall_t+0.4+nut_h+wall_t+[0,6.7][LCD];
 
   // bottom half for M3 socket cap screw (flush)
   difference() {
@@ -153,9 +160,8 @@ module nuttrap() {
     translate([0,0,-e]) cylinder(wall_t, d1=4, d2=3.4, $fn=16);
     // nut hole / M3 extra
     translate([0,0,wall_t+0.3]) {
-      // nut 3x for an elongated trap
+      // nut 2x for an elongated trap
       translate([-0.2,0,0]) cylinder(nut_h*1.5+e, d=nut_d+e/sin(60), $fn=6);
-      translate([0,0,0]) cylinder(nut_h*1.5+e, d=nut_d+e/sin(60), $fn=6);
       translate([+0.2,0,0]) cylinder(nut_h*1.5+e, d=nut_d+e/sin(60), $fn=6);
       cylinder(oa_h-wall_t-0.3, d=4, $fn=16);  // M3 with plenty of clearance
     }
@@ -265,7 +271,7 @@ difference() {
   // Main cutout
   translate([wall, wall, wall_t])
     cube_fillet([w, d, h_b+e], bottom=[2,2,2,2],
-    top=[lcd_mount_t/2,lcd_mount_t/2,lcd_mount_t/2,lcd_mount_t/2],
+    top=[lcd_mount_t/2,lcd_mount_t/2,[wall_t,lcd_mount_t/2][LCD],lcd_mount_t/2],
     vertical=[1,1]);
   if (Pi_Model != "Zero" && Pi_Model != "1A+")
     translate([wall-pic_ex+e,wall,wall_t]) pic_ex_cube();
@@ -309,10 +315,11 @@ difference() {
   }
   
   // lcd hole
-  translate([wall+10.7, wall+51.5, h_b+wall_t-lcd_mount_t-e]) lcd_neg();
+  if (LCD)
+    translate([wall+10.7, wall+51.5, h_b+wall_t-lcd_mount_t-e]) lcd_neg();
   
   // button holes
-  translate([wall+48.7, wall+29.4, h_b+wall_t-e]) {
+  if (LCD) translate([wall+48.7, wall+29.4, h_b+wall_t-e]) {
     translate([-inch(1.1)/2,0,0]) btn_rnd(7.2);  // left
     translate([inch(1.1)/2,0,0]) btn_rnd(7.2);   // right
     translate([0,inch(0.9)/2,0]) btn_rnd(7.2);   // up
@@ -368,7 +375,7 @@ difference() {
     locklip_top_n(probe_centerline);
   
   // LCD mount
-  difference() {
+  if (LCD) difference() {
     union() {
       // Filled block above LCD hole
       translate([wall, wall+d-17, h_b+wall_t-lcd_mount_t])
