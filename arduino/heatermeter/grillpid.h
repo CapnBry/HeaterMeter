@@ -140,6 +140,7 @@ unsigned char analogReadRange(unsigned char pin);
 // Is the pin using the 1.1V reference
 bool analogIsBandgapReference(unsigned char pin);
 void analogSetBandgapReference(unsigned char pin, bool enable);
+unsigned int analogGetBandgapScale(void);
 #endif /* GRILLPID_DYNAMIC_RANGE */
 
 class GrillPid

@@ -197,6 +197,12 @@ void analogSetBandgapReference(unsigned char pin, bool enable)
 {
   adcState.useBandgapReference[pin] = enable;
 }
+
+unsigned int analogGetBandgapScale(void)
+{
+  return adcState.bandgapAdc;
+}
+
 #endif /* GRILLPID_DYNAMIC_RANGE */
 
 static void adcDump(void)

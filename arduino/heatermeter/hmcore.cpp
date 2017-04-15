@@ -437,6 +437,25 @@ void updateDisplay(void)
 
     probeIdxLow = probeIdxHigh = ALARM_ID_TO_PROBE(g_AlarmId);
   }  /* if ST_HOME_ALARM */
+#if 0
+  else if (state == ST_PITCAL)
+  {
+    int pit = (int)(pid.Probes[TEMP_PIT]->Temperature * 10.0f);
+    snprintf_P(buffer, sizeof(buffer), PSTR("%4uADC   %4d" DEGREE "%c"),
+      analogReadOver(PIN_PIT, 10),
+      pit,
+      pid.getUnits());
+    lcd.print(buffer);
+
+    snprintf_P(buffer, sizeof(buffer), PSTR("Ref=%3u    Nz=%2u"),
+      analogGetBandgapScale(),
+      analogReadRange(PIN_PIT)
+      );
+    lcd.setCursor(0, 1);
+    lcd.print(buffer);
+    return;
+  } /* if ST_PITCAL */
+#endif
   else
   {
     toneEnable(false);
