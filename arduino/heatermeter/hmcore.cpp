@@ -1332,9 +1332,9 @@ void hmcoreLoop(void)
     ledmanager.publish(LEDSTIMULUS_RfReceive, LEDACTION_OneShot);
 #endif /* HEATERMETER_RFM12 */
 
-  Menus.doWork();
   if (pid.doWork())
     newTempsAvail();
+  Menus.doWork();
   tone_doWork();
   ledmanager.doWork();
 }

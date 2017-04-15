@@ -9,8 +9,7 @@
 #define BUTTON_RIGHT (1<<1)
 #define BUTTON_UP    (1<<2)
 #define BUTTON_DOWN  (1<<3)
-#define BUTTON_4     (1<<4)
-#define BUTTON_ANY   (0x1f)
+#define BUTTON_ANY   (0x0f)
 
 enum HmMenuStates {
   ST_HOME_FOOD1 = (ST_VMAX+1), // ST_HOME_X must stay sequential and in order
@@ -34,7 +33,6 @@ enum HmMenuStates {
   ST_RESETCONFIG,
   ST_LCDBACKLIGHT,
   ST_MAXFANSPEED,
-  ST_NETWORK_INFO,
   ST_TOAST,
 };
 

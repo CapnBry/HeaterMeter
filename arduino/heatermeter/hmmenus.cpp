@@ -21,7 +21,6 @@ static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_HOME_FOOD2, menuHome, 5 },
   { ST_HOME_AMB, menuHome, 5 },
   { ST_HOME_NOPROBES, menuHome, 1 },
-  { ST_HOME_ALARM, menuAlarmTriggered, 0 },
   { ST_SETPOINT, menuSetpoint, 10 },
   { ST_MANUALMODE, menuManualMode, 10 },
   { ST_PROBEOFF0, menuProbeOffset, 10 },
@@ -269,8 +268,6 @@ static state_t menuHome(button_t button)
       return ST_HOME_AMB;
     else if (Menus.getState() == ST_HOME_AMB && !pid.Probes[TEMP_AMB]->hasTemperature())
       return ST_HOME_FOOD1;
-
-    updateDisplay();
   }
   // In manual fan mode Up is +5% Down is -5% and Left is -1%
   else if (pid.getManualOutputMode())
