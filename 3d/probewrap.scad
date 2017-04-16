@@ -2,7 +2,7 @@
 count = 4; // [0,1,2,3,4]
 
 // Wall thickness, set to multiple of perimeter width
-wall = 2.45;
+wall = 2.5;
 // Flat thickness
 wall_t = 2;
 
@@ -21,6 +21,8 @@ probe_d = 4.75;
 probe_l = 25;
 // Distance of probe holder offset
 probe_off = 7;
+// Reduce thickness of probe holder (allow wire to pass more easily)
+probe_cut = 0.75;
 
 // Include holes around the perimeter of the flat?
 flat_has_holes = true;
@@ -98,19 +100,19 @@ module half(is_end) {
           }
           // Keep the height of the cylinder less than the height of the layer
           translate([probe_x-probe_d/2-wall, probe_y, 0])
-            cube([probe_d+2*wall, probe_l, height+wall_t]);
+            cube([probe_d+2*wall, probe_l, height+wall_t-probe_cut]);
         } // interection
       } // if !is_end
 
       if (!is_end)
         // connect to holster
         translate([center_w/2+wall, probe_y, 0])
-          cube([probe_x-center_w/2-wall, probe_l, wall_t]);
+          cube([probe_x-center_w/2+probe_d/2, probe_l, wall_t]);
       else if (end_has_stub)
         // connect to holster
         mirror([0,1,0]) 
           translate([center_w/2+wall, probe_y, 0])
-            cube([probe_x-center_w/2-wall, probe_l, wall_t]);
+            cube([probe_x-center_w/2+probe_d/2, probe_l, wall_t]);
 
       // lip round
       translate([0,-(center_d-center_w)/2,0]) rotate(180)
