@@ -734,8 +734,9 @@ time they are restarted.</div>
 <fieldset class="cbi-section" id="cbi-lm-ucid">
 <legend>HeaterMeter Information</legend>
 <div class="cbi-value">API key
-  <input type="text" maxlength="32" id="set_apikey" style="font-family: monospace" />
-  <input type="button" class="cbi-button cbi-input-reload" onclick="newApiKey()"/>
+  <input type="password" maxlength="32" id="set_apikey" style="font-family: monospace" />
+  <img src="<%=resource%>/cbi/reload.gif" style="vertical-align:middle" title="Reveal/hide password" onclick="var e = document.getElementById('set_apikey'); e.type = (e.type=='password') ? 'text' : 'password';" />
+  <input type="button" class="cbi-button cbi-button-apply" onclick="newApiKey()" value="New"/>
 </div>
 <div class="cbi-value cbi-value-last">Version <span id="ucid"></span><br/><span id="cerr"></span></div>
 </fieldset>
