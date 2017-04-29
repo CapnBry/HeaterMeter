@@ -45,8 +45,8 @@ static unsigned char g_HomeDisplayMode;
 static unsigned char g_LogPidInternals; // If non-zero then log PID interals
 unsigned char g_LcdBacklight; // 0-100
 
-#define config_store_byte(eeprom_field, src) { econfig_write_byte((uint8_t *)offsetof(__eeprom_data, eeprom_field), src); }
-#define config_store_word(eeprom_field, src) { econfig_write_word((uint16_t *)offsetof(__eeprom_data, eeprom_field), src); }
+#define config_store_byte(eeprom_field, src) { econfig_write_byte((void *)offsetof(__eeprom_data, eeprom_field), src); }
+#define config_store_word(eeprom_field, src) { econfig_write_word((void *)offsetof(__eeprom_data, eeprom_field), src); }
 
 #define EEPROM_MAGIC 0xf00e
 
@@ -154,14 +154,14 @@ static void storeProbeName(unsigned char probeIndex, const char *name)
 {
   unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, name));
   if (ofs != 0)
-    econfig_write_block(name, (void *)ofs, PROBE_NAME_SIZE);
+    econfig_write_block(name, (void *)(uintptr_t)ofs, PROBE_NAME_SIZE);
 }
 
 void loadProbeName(unsigned char probeIndex)
 {
   unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, name));
   if (ofs != 0)
-    econfig_read_block(editString, (void *)ofs, PROBE_NAME_SIZE);
+    econfig_read_block(editString, (void *)(uintptr_t)ofs, PROBE_NAME_SIZE);
 }
 
 void storeSetPoint(int sp)
@@ -198,7 +198,7 @@ static void storeProbeOffset(unsigned char probeIndex, int offset)
   if (ofs != 0)
   {
     pid.Probes[probeIndex]->Offset = offset;
-    econfig_write_byte((unsigned char *)ofs, offset);
+    econfig_write_byte((void *)(uintptr_t)ofs, offset);
   }  
 }
 
@@ -208,7 +208,7 @@ static void storeProbeType(unsigned char probeIndex, unsigned char probeType)
   if (ofs != 0)
   {
     pid.setProbeType(probeIndex, probeType);
-    econfig_write_byte((unsigned char *)ofs, probeType);
+    econfig_write_byte((void *)(uintptr_t)ofs, probeType);
   }
 }
 
@@ -632,7 +632,7 @@ static void storeProbeCoeff(unsigned char probeIndex, char *vals)
     {
       float *fDest = &pid.Probes[probeIndex]->Steinhart[idx];
       *fDest = atof(vals);
-      econfig_write_block(fDest, (void *)ofs, sizeof(float));
+      econfig_write_block(fDest, (void *)(uintptr_t)ofs, sizeof(float));
       while (*vals && *vals != ',')
         ++vals;
     }
@@ -878,7 +878,7 @@ static void storeAlarmLimits(unsigned char idx, int val)
   if (ofs != 0 && val != 0)
   {
     ofs += alarmIndex * sizeof(val);
-    econfig_write_block(&val, (void *)ofs, sizeof(val));
+    econfig_write_block(&val, (void *)(uintptr_t)ofs, sizeof(val));
   }
 }
 
@@ -1166,7 +1166,7 @@ static void eepromLoadProbeConfig(unsigned char forceDefault)
   if (config.base.magic != EEPROM_MAGIC)
   {
     forceDefault = 1;
-    econfig_write_word((uint16_t *)(EEPROM_PROBE_START-sizeof(config.base.magic)), EEPROM_MAGIC);
+    econfig_write_word((void *)(EEPROM_PROBE_START-sizeof(config.base.magic)), EEPROM_MAGIC);
   }
     
   struct  __eeprom_probe *p;
