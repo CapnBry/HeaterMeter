@@ -29,7 +29,7 @@
     lm.temps[i].c and ("%.1f&deg;"):format(lm.temps[i].c) or "Off"
   %></div><div class="n"><%=lm.temps[i].n%></div></li>
 <%- end %>
-<li><div class="t"><%=lm.fan.c%>%</div><div class="n">Fan</div></li>
+<li><div class="t"><%=lm.fan.c%>%</div><div class="n">Output</div></li>
 </ul>
 <%- if authuser == "root" then %>
 <form action="<%=build_url("admin/lm/set")%>" method="POST">

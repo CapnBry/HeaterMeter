@@ -229,10 +229,10 @@ end
 
 function action_light_index()
   require "lmclient"
-  local json = require("luci.json")
+  local json = require("luci.jsonc")
   local result, err = LmClient():query("$LMSU")
   if result then
-      local lm = json.decode(result)
+      local lm = json.parse(result)
       luci.template.render("linkmeter/light", {
         lm = lm,
         lmraw = result,
