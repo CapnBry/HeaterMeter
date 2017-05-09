@@ -137,11 +137,17 @@ local function buildAccountTabs()
     fld:depends(dep)
 
     fld = s:taboption(aname, Flag, aname .. ".tls_certcheck", "Verify server certificate",
-      "Only check if you've created a TLS trust file")
+      "Requires TLS trust file")
     fld.default = "off"
     fld.disabled = "off"
     fld.enabled = "on"
     fld.rmempty = false
+    fld:depends(dep)
+    dep = {}
+    dep[depbase .. fld.option] = "on"
+
+    fld = s:taboption(aname, Value, aname .. ".tls_trust_file", "TLS trust file bundle")
+    fld.default = "/etc/ssl/certs/ca-certificates.crt"
     fld:depends(dep)
   end -- for account
 end -- buildAccountTabs()
