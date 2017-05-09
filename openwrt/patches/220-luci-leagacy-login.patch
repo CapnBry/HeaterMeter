@@ -1,0 +1,15 @@
+diff --git a/modules/luci-base/luasrc/dispatcher.lua b/modules/luci-base/luasrc/dispatcher.lua
+index 0876ce6..48c0ba1 100644
+--- a/modules/luci-base/luasrc/dispatcher.lua
++++ b/modules/luci-base/luasrc/dispatcher.lua
+@@ -102,8 +102,8 @@ function error500(message)
+ end
+ 
+ function authenticator.htmlauth(validator, accs, default)
+-	local user = http.formvalue("luci_username")
+-	local pass = http.formvalue("luci_password")
++	local user = http.formvalue("luci_username") or http.formvalue("username")
++	local pass = http.formvalue("luci_password") or http.formvalue("password")
+ 
+ 	if user and validator(user, pass) then
+ 		return user
