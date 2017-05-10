@@ -8,7 +8,7 @@ Pi_Model = "3B/2B/1B+"; // [3B/2B/1B+,Connectorless,1A+,Zero]
 // Which case halves
 Pieces = "Both"; // [Both,Top,Bottom]
 // Include cutouts and mounts for LCD/Buttons
-LCD = 1; // [0:No,1:Yes]
+LCD = 1; // [0:None,1:2-line]
 // Thickness of side walls (mm) - Set to trace width multiple
 wall = 2.5;
 /* [Advanced] */
@@ -33,7 +33,7 @@ probe_centerline = 9.3; // case is split along probe centerline on the probe sid
 case_split = 12.4;  // and the case split on the other 3 sides
 
 pic_ex = 2;
-lcd_mount_t = 7;
+lcd_mount_t = 8.2 - (wall_t - 0.8);
 
 body_chamfer_height_t = body_chamfer_height;
 body_chamfer_height_b = body_chamfer_height;
@@ -253,20 +253,22 @@ module locklip_top_n(split) {
     }
 }
 
+module hm_base() {
+  cube_bchamfer([w+2*wall, d+2*wall, h_b+2*wall_t], 
+    r=body_corner_radius, top=body_chamfer_height_t, 
+    bottom=body_chamfer_height_b, $fn=36);
+  // extra thick by Pi connectors
+  if (Pi_Model != "Zero" && Pi_Model != "1A+")
+    translate([-pic_ex,wall,wall_t])
+      pic_ex_cube();
+  // TC +/-
+  if (Control_Probe == "Thermocouple")
+    translate([w+wall*2-e,wall+10,wall_t+18]) tc_plusminus();
+}
+
 module hm43() {
 difference() {
-  union() {
-    cube_bchamfer([w+2*wall, d+2*wall, h_b+2*wall_t], 
-      r=body_corner_radius, top=body_chamfer_height_t, 
-      bottom=body_chamfer_height_b, $fn=36);
-    // extra thick by Pi connectors
-    if (Pi_Model != "Zero" && Pi_Model != "1A+")
-      translate([-pic_ex,wall,wall_t])
-        pic_ex_cube();
-    // TC +/-
-    if (Control_Probe == "Thermocouple")
-      translate([w+wall*2-e,wall+10,wall_t+18]) tc_plusminus();
-  }
+  hm_base();
   
   // Main cutout
   translate([wall, wall, wall_t])
@@ -495,7 +497,7 @@ module hm43_split() {
   // bottom
   if (Pieces != "Top") translate([0,1,0]) {
     intersection() { 
-      hm43(); 
+      hm43();
       split_volume();
     }
     if (Pi_Model == "3B/2B/1B+")
