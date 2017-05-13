@@ -21,6 +21,7 @@ static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_HOME_FOOD2, menuHome, 5 },
   { ST_HOME_AMB, menuHome, 5 },
   { ST_HOME_NOPROBES, menuHome, 1 },
+  { ST_HOME_ALARM, menuAlarmTriggered, 0 },
   { ST_SETPOINT, menuSetpoint, 10 },
   { ST_MANUALMODE, menuManualMode, 10 },
   { ST_PROBEOFF0, menuProbeOffset, 10 },
