@@ -71,19 +71,8 @@ module phole() {
 }
 
 module screwhole() {
-  // Screw hole for bottom of case (including nut)
-  //translate([0,0,-e]) cylinder(h_b+wall_t, d=3.4, $fn=18);
-  translate([0,0,-e]) {
-    cylinder(0.4, d1=7.4, d2=6.6, $fn=6);
-    translate([0,0,0.4]) cylinder(3, d=6.6, $fn=6);
-  }
-  translate([0,0,3+0.2]) cylinder(h_b+2*wall_t, d=3.4, $fn=18);
-  translate([0,0,h_b+wall_t]) cylinder(3, d=5.5, $fn=18);
-}
-
-module screwhole2() {
-  translate([0,0,-e]) cylinder(3, d=6, $fn=18);
-  translate([0,0,3+0.4]) cylinder(h_b-3-0.4+wall_t, d=3.4, $fn=18);
+  translate([0,0,-e]) cylinder(3.5, d=6, $fn=18);
+  translate([0,0,3+0.4]) cylinder(h_b-3.5-0.4+wall_t, d=3.4, $fn=18);
   translate([0.0,0,h_b+wall_t-lcd_mount_t/2-e])
     cylinder(lcd_mount_t/2+e, d=(2.9*2)/sin(60), $fn=6);
 }
@@ -335,8 +324,8 @@ difference() {
   }
   // close screw holes
   translate([wall+inch(0.8)+1.3,wall+2.9,0]) {
-    screwhole2();
-    translate([inch(2.0),0,0]) screwhole2();
+    screwhole();
+    translate([inch(2.0),0,0]) screwhole();
   }
 }  // END OF DIFFERENCE
 
