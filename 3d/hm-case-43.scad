@@ -22,8 +22,9 @@ body_chamfer_height = 1.5;
 MouseEarHeight = 0;
 
 /* [Hidden] */
+d_off = wall/4; // offset the heatermeter origin from the front edge
 w = inch(3.75)+0.5; // overall interior case width
-d = inch(3.75)-0.0; // overall interior case depth
+d = inch(3.75)-0.0+d_off; // overall interior case depth
 // 19.1+ headless Zero
 // 22.4 headless Pi3 (limited by nuttrapps interfering with PCB to -6.7)
 // 32 standard
@@ -131,8 +132,8 @@ module nuttrap() {
 
   // bottom half for M3 socket cap screw (flush)
   difference() {
-    translate([-5.5/2-ww_w, -nut_ingress/2-e, 0])
-      cube_fillet([5.5+2*ww_w, nut_ingress+ww_d*0.8+e, 6], vertical=[3.4,3.4], $fn=20);
+    translate([-5.5/2-ww_w, -nut_ingress/2-d_off-e, 0])
+      cube_fillet([5.5+2*ww_w, nut_ingress+d_off+ww_d*0.8+e, 6], vertical=[3.4,3.4], $fn=20);
     // socket cap
     translate([0,0,-e]) cylinder(3.5, d=6, $fn=18);
     // screw shaft
@@ -142,8 +143,8 @@ module nuttrap() {
   // top half M3 nut trap
   translate([0,0,h_b+wall_t-oa_h])
   difference() {
-    translate([-(nut_d/2+ww_w), -nut_ingress/2, 0])
-      cube_fillet([nut_d+2*ww_w, nut_ingress+ww_d, oa_h+e],
+    translate([-(nut_d/2+ww_w), -nut_ingress/2-d_off, 0])
+      cube_fillet([nut_d+2*ww_w, nut_ingress+d_off+ww_d, oa_h+e],
         vertical=[3.4,3.4], $fn=20);
     // M3 screw
     translate([0,0,-e]) cylinder(wall_t, d1=4, d2=3.4, $fn=16);
@@ -153,6 +154,7 @@ module nuttrap() {
       translate([-0.2,0,0]) cylinder(nut_h*1.5+e, d=nut_d+e/sin(60), $fn=6);
       translate([+0.2,0,0]) cylinder(nut_h*1.5+e, d=nut_d+e/sin(60), $fn=6);
       cylinder(oa_h-wall_t-0.3, d=4, $fn=16);  // M3 with plenty of clearance
+      //translate([-50,-50,-100]) cube([100,100,100+e]); // cutaway top
     }
     // nut ingress (sideways trapezoid with wider side at ingress)
     translate([nut_ingress_off,-nut_ingress/2,wall_t+0.3])
@@ -248,11 +250,11 @@ module hm_base() {
     bottom=body_chamfer_height_b, $fn=36);
   // extra thick by Pi connectors
   if (Pi_Model != "Zero" && Pi_Model != "1A+")
-    translate([-pic_ex,wall,wall_t])
+    translate([-pic_ex,wall+d_off,wall_t])
       pic_ex_cube();
   // TC +/-
   if (Control_Probe == "Thermocouple")
-    translate([w+wall*2-e,wall+10,wall_t+18]) tc_plusminus();
+    translate([w+wall*2-e,wall+d_off+10,wall_t+18]) tc_plusminus();
 }
 
 module hm43() {
@@ -265,10 +267,10 @@ difference() {
     top=[lcd_mount_t/2,lcd_mount_t/2,[wall_t,lcd_mount_t/2][LCD],lcd_mount_t/2],
     vertical=[1,1]);
   if (Pi_Model != "Zero" && Pi_Model != "1A+")
-    translate([wall-pic_ex+e,wall,wall_t]) pic_ex_cube();
+    translate([wall-pic_ex+e,wall+d_off,wall_t]) pic_ex_cube();
 
   // Probe jack side
-  translate([w+wall*0.5,wall,wall_t]) {
+  translate([w+wall*0.5,wall+d_off,wall_t]) {
     // Probe jacks
     translate([0,24.25,probe_centerline]) {
       if (Control_Probe == "Thermocouple")
@@ -284,7 +286,7 @@ difference() {
     }
   }
   // Pi connector side  
-  translate([wall*-0.5,wall,wall_t]) {
+  translate([wall*-0.5,wall+d_off,wall_t]) {
     // Pi connectors
     translate([0,0,5]) {
       if (Pi_Model == "3B/2B/1B+") {
@@ -307,10 +309,10 @@ difference() {
   
   // lcd hole
   if (LCD)
-    translate([wall+10.7, wall+51.5, h_b+wall_t-lcd_mount_t-e]) lcd_neg();
+    translate([wall+10.7, wall+d_off+51.5, h_b+wall_t-lcd_mount_t-e]) lcd_neg();
   
   // button holes
-  if (LCD) translate([wall+48.7, wall+29.4, h_b+wall_t-e]) {
+  if (LCD) translate([wall+48.7, wall+d_off+29.4, h_b+wall_t-e]) {
     translate([-inch(1.1)/2,0,0]) btn_rnd(7.2);  // left
     translate([inch(1.1)/2,0,0]) btn_rnd(7.2);   // right
     translate([0,inch(0.9)/2,0]) btn_rnd(7.2);   // up
@@ -323,14 +325,14 @@ difference() {
     }  
   }
   // close screw holes
-  translate([wall+inch(0.8)+1.3,wall+2.9,0]) {
+  translate([wall+inch(0.8)+1.3,wall+d_off+2.9,0]) {
     screwhole();
     translate([inch(2.0),0,0]) screwhole();
   }
 }  // END OF DIFFERENCE
 
   // Pi mounting screws
-  translate([wall+24,wall+38.8,wall_t]) {
+  translate([wall+24,wall+d_off+38.8,wall_t]) {
     translate([0,0,0]) screw_pimount();
     translate([58,0,0]) screw_pimount();
     if (Pi_Model == "Zero") {
@@ -354,7 +356,7 @@ difference() {
   } // if !Zero
   
   // close nut traps
-  translate([wall+inch(0.8)+1.3,wall+2.85,0]) {
+  translate([wall+inch(0.8)+1.3,wall+d_off+2.85,0]) {
     nuttrap();
     translate([inch(2.0),0,0]) nuttrap();
   }
@@ -373,13 +375,13 @@ difference() {
         cube_fillet([w,17,lcd_mount_t+e], 
           bottom=[lcd_mount_t/2,lcd_mount_t/2,0,lcd_mount_t/2]);
       // LCD grab notch
-      translate([wall+10.7, wall+51.5, h_b+wall_t-lcd_mount_t])
+      translate([wall+10.7, wall+d_off+51.5, h_b+wall_t-lcd_mount_t])
         translate([(77.5-20)/2,34.0-wall_t,-(1.8+wall_t)])
           // 1.8=thickness of LCD pcb
           cube_fillet([20,1.8+wall_t+wall,1.8+wall_t+e], top=[0,0,1.8+wall_t+e],
             vertical=[wall/2,wall/2]);
     }
-    translate([wall+10.7, wall+51.5, h_b+wall_t-e]) {
+    translate([wall+10.7, wall+d_off+51.5, h_b+wall_t-e]) {
       translate([0, 0, -lcd_mount_t]) lcd_neg();
       // vv Keep screw holes where they have been since the beginning
       translate([0, 0.5, 0]) lcd_mount();
@@ -387,7 +389,7 @@ difference() {
   }
   
   if (Pi_Model == "3B/2B/1B+")
-    translate([wall-pic_ex, wall, wall_t]) {
+    translate([wall-pic_ex, wall+d_off, wall_t]) {
       // USB pillar reinforcements
       translate([0, (44.75+62.75)/2-1, 3.5])
         cube_fillet([pic_ex+1, 2, h_b-3.5], bottom=[0,0,0,2]);
@@ -396,7 +398,7 @@ difference() {
       // Near pic_ex fill
       translate([0, 33.75, 0]) cube([pic_ex, 3, h_b]);
       // Far pic_ex fill (near ethernet)
-      translate([0, d-5, 3.5])
+      translate([0, d-d_off-5, 3.5])
        cube_fillet([pic_ex+1, 5+e, h_b-3.5], bottom=[0,0,0,2]);
     }
 }
@@ -423,17 +425,16 @@ module hm43_bottom_lips(split) {
     translate([w/2-9, 0, 0])
       rotate([0,90]) lip_guide(25);
     // left guide lip assortment
-    translate([0, 5.25+9.4/2, 0])
+    translate([0, d_off+5.25+9.4/2, 0])
       rotate([-90]) rotate(90) mirror([0,1,0]) lip_guide(25.25-5.25-9.4/2-16.7/2);
-    *translate([-pic_ex, 52, 0])
+    *translate([-pic_ex, d_off+52, 0])
       rotate([-90]) rotate(90) mirror([0,1,0]) lip_guide(3.5);
-    *translate([-pic_ex, 70, 0])
+    *translate([-pic_ex, d_off+70, 0])
       rotate([-90]) rotate(90) mirror([0,1,0]) lip_guide(3.5);
   }
   // probe side guide lip
-  translate([wall, wall, probe_centerline+wall_t])
-    translate([w, d-45, 0])
-      rotate([-90]) rotate(90) lip_guide(40);
+  translate([wall+w, wall+d-45, probe_centerline+wall_t])
+    rotate([-90]) rotate(90) lip_guide(40);
 }
 
 module mouseears() {
