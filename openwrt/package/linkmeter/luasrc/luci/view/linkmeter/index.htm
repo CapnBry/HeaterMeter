@@ -538,7 +538,7 @@ function graphClicked(event, pos, item)
             if (peakRef.period)
               sPeakInfo += "Period: " + peakRef.period + "s ";
             if (peakRef.half)
-              sPeakInfo += "Half: " + peakRef.half + "s " + peakRef.amp + "&deg;<br />";
+              sPeakInfo += "Half: " + peakRef.half + "s " + peakRef.amp.toFixed(2) + "&deg;<br />";
           }
         }
         
