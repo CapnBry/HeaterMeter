@@ -186,7 +186,7 @@ function typeChanged()
   // Resist is used for analog thermocouple mV/C
   $("#pcr" + name).siblings("label").html(this.value == "3" ? "mV/C" : "Resist");
 
-  // If switching to 'Internal', default to 10k if was 5
+  // If switching to 'Thermistor', default to 10k if was 5
   if (this.value == "1" && $("#pcr" + name).val() == "5")
     $("#pcr" + name).val("10000");
   // If switching to 'RF' and no node number is filled in, default to 'any'
@@ -592,7 +592,7 @@ The look of the Home page can be modified using the
 <div class="cbi-value"><label>Name</label><input type="text" maxlength="12" class="pn" id="pn<%=i%>"/></div>
 <div class="cbi-value"><label>Type</label><select class="pt" id="pt<%=i%>">
   <option value="0">Disabled</option>
-  <option value="1">Internal</option>
+  <option value="1">Thermistor</option>
   <option value="2">RF12 Wireless</option>
   <option value="3">Thermocouple</option>
 </select></div>
