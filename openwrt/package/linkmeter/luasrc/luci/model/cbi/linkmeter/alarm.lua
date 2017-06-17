@@ -193,6 +193,7 @@ local PROVIDERS = {
   { "MTS", "text.mtsmobility.com" },
   { "Nextel", "messaging.nextel.com" },
   { "Plateau", "smsx.plateaugsm.com" },
+  { "Project Fi", "msg.fi.google.com" },
   { "Rogers", "sms.rogers.com" },
   { "Sprint", "messaging.sprintpcs.com" },
   { "T-Mobile", "tmomail.net" },
