@@ -66,6 +66,9 @@ function _M.index()
   node = entry({"lm", "api", "config"}, call("action_api_config"))
     node.sysauth = API_READ_WRITE
     node.leaf = true
+  node = entry({"lm", "api", "fw"}, call("action_api_fw"))
+    node.sysauth = API_READ_WRITE
+    node.leaf = true
 end
 
 local function is_write()
@@ -169,6 +172,18 @@ function _M.action_api_config()
       http.write(result)
     end
   end  -- isRead
+end
+
+function _M.action_api_fw()
+  if not luci.http.formvalue("hexfile") then
+    luci.http.status(400, "Bad Request")
+    luci.http.prepare_content("text/plain")
+    luci.http.write("Missing hexfile POST parameter")
+    return
+  end
+
+  local lmadmin = require("luci.controller.linkmeter.lmadmin")
+  return lmadmin.api_post_fw("/tmp/hm.hex")
 end
 
 return _M

@@ -28,14 +28,12 @@ function index()
   entry({"admin", "lm", "light"}, call("action_light_index"))
 end
 
-function action_fw()
-  local hex = "/tmp/hm.hex"
-  
+function api_post_fw(fname)
   local file
   luci.http.setfilehandler(
     function(meta, chunk, eof)
       if not file and chunk and #chunk > 0 then
-        file = io.open(hex, "w")
+        file = io.open(fname, "w")
       end
       if file and chunk then
         file:write(chunk)
@@ -45,6 +43,15 @@ function action_fw()
       end
     end
   )
+  luci.http.prepare_content("text/plain")
+  local pipe = require "luci.controller.admin.system".ltn12_popen(
+    "/usr/bin/avrupdate %q" % fname)
+  return luci.ltn12.pump.all(pipe, luci.http.write)
+end
+
+function action_fw()
+  local hex = "/tmp/hm.hex"
+
   local step = tonumber(luci.http.formvalue("step") or 1)
   local has_upload = luci.http.formvalue("hexfile")
   local hexpath = luci.http.formvalue("hexpath")
@@ -62,10 +69,7 @@ function action_fw()
     return luci.template.render("linkmeter/fw", {step=step, hex=hex})
   end
   if step == 3 then
-    luci.http.prepare_content("text/plain")
-    local pipe = require "luci.controller.admin.system".ltn12_popen(
-      "/usr/bin/avrupdate %q" % luci.http.formvalue("hex"))
-    return luci.ltn12.pump.all(pipe, luci.http.write)
+    return api_post_fw(luci.http.formvalue("hex"))
   end 
 end
 
