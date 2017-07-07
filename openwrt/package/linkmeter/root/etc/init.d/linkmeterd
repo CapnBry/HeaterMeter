@@ -1,30 +1,14 @@
 #!/bin/sh /etc/rc.common
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
 NAME=linkmeterd
 DESC="LinkMeter/HeaterMeter Service"
 START=99
 
-test -x $DAEMON || exit 0
-set -e
+USE_PROCD=1
 
-start() {
-	echo -n "Starting $DESC: $NAME"
-	lua -llinkmeterd -e 'linkmeterd.start()'
-	echo "."
-}
-
-stop() {
-	echo -n "Stopping $DESC: $NAME"
-	lua -llinkmeterd -e 'linkmeterd.stop()'
-	echo "."
-}
-
-restart() {
-	stop
-	sleep 1
-	start
-}
-
-reload() {
-	restart
+start_service() {
+  procd_open_instance
+  procd_set_param command lua -llinkmeterd -e 'linkmeterd.start()'
+  procd_add_mdns "http" "tcp" "80" "path=/cgi-bin/luci/lm/"
+  procd_close_instance
 }
