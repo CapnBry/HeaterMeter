@@ -106,13 +106,23 @@ fi
 #  sysupgrade -b $MNT/backup.tar.gz
 #fi
 
-wifi_config
+wifi_config /boot/config.txt 1
+
+if [ -b "/dev/sda1" ] ; then
+  echo Storage device attached, attempting to load wifi from /dev/sda
+  [ -d "/mnt/sda" ] || mkdir /mnt/sda
+  mount /dev/sda1 /mnt/storage
+  wifi_config /mnt/storage/config.txt 0
+  umount /dev/sda1
+fi
 
   return 0
 }
 
 wifi_config() {
   unset wifi_ssid wifi_password wifi_mode wifi_encryption wifi_channel
+  INFILE="$1"
+  COMMENTOUT="$2"
   # Read wifi parameters from /boot/config.txt and call wifi-client/ap
   while IFS="=" read -r KEY VAL || [[ -n "$KEY" ]] ; do
     case $KEY in
@@ -122,7 +132,7 @@ wifi_config() {
         #eval echo $KEY=\$$KEY
         ;;
     esac
-  done < /boot/config.txt
+  done < "$INFILE"
 
   [ -n "$wifi_encryption" ] && wifi_encryption="-e $wifi_encryption"
   [ -n "$wifi_password" ] && wifi_password="-p $wifi_password"
@@ -138,10 +148,12 @@ wifi_config() {
   fi
 
   if [ "$RESTART_NET" -eq 1 ] ; then
-    # Comment out all the wifi parameters from config.txt
-    sed -e "s/^wifi_/#wifi_/g" < /boot/config.txt > /tmp/config.txt
-    mv /tmp/config.txt /boot/config.txt
-    sync
+    if [ "$COMMENTOUT" -eq 1 ] ; then
+      # Comment out all the wifi parameters from config.txt
+      sed -e "s/^wifi_/#wifi_/g" < "$INFILE" > /tmp/config.txt
+      mv /tmp/config.txt "$INFILE"
+      sync
+    fi
     # Do the network restart
     /etc/init.d/network reload
     /etc/init.d/dnsmasq reload
