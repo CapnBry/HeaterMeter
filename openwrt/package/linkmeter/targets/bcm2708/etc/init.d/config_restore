@@ -110,7 +110,7 @@ wifi_config /boot/config.txt 1
 
 if [ -b "/dev/sda1" ] ; then
   echo Storage device attached, attempting to load wifi from /dev/sda
-  [ -d "/mnt/sda" ] || mkdir /mnt/sda
+  [ -d "/mnt/storage" ] || mkdir /mnt/storage
   mount /dev/sda1 /mnt/storage
   wifi_config /mnt/storage/config.txt 0
   umount /dev/sda1
