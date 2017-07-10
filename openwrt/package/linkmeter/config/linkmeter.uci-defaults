@@ -124,9 +124,10 @@ uci_set_nomodify linkmeter.api.key `dd if=/dev/urandom bs=16 count=1 | hexdump -
 migrate_settings
 uci commit linkmeter
 
-# Add an alias for luci without the cgi-bin prefix, as all old docs and apps point to this
+# Remove old alias for luci without the cgi-bin prefix
 uci del_list uhttpd.main.alias='/luci=/cgi-bin'
-uci add_list uhttpd.main.alias='/luci=/cgi-bin'
+uci set uhttpd.main.lua_prefix='/luci'
+uci set uhttpd.main.lua_handler='/usr/lib/lua/luci/sgi/uhttpd.lua'
 # If an HTTPS redirect takes place from an AJAX call and the redirect does not allow CORS
 # then the browser will error out before redirecting. This effects hm.com/devices as well
 # as third party apps pulling HeaterMeter data
