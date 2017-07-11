@@ -7,7 +7,8 @@ function index()
   entry({"admin", "lm", "archive"}, template("linkmeter/archive"), "Archive", 30)
   entry({"admin", "lm", "fw"}, call("action_fw"), "AVR Firmware", 40)
   entry({"admin", "lm", "conf"}, template("linkmeter/conf"), "Configuration", 50)
-  entry({"admin", "lm", "credits"}, template("linkmeter/credits"), "Credits", 60)
+  entry({"admin", "lm", "wifi"}, post_on({join = true}, "action_wifi"), "Wifi", 60)
+  entry({"admin", "lm", "credits"}, template("linkmeter/credits"), "Credits", 70)
 
   entry({"admin", "lm", "usercss"}, cbi("linkmeter/usercss"))
 
@@ -15,7 +16,8 @@ function index()
   entry({"admin", "lm", "reboot"}, call("action_reboot"))
   entry({"admin", "lm", "set"}, call("action_set"))
   entry({"admin", "lm", "altest"}, call("action_alarm_test"))
-  
+  entry({"admin", "lm", "wifi_scan"}, call("action_wifi_scan"))
+
   if node.inreq and nixio.fs.access("/usr/share/linkmeter/alarm") then
     entry({"admin", "lm", "alarm"}, cbi("linkmeter/alarm", {hidesavebtn=true}),
       "Alarms", 20)
@@ -56,7 +58,7 @@ function action_fw()
   local has_upload = luci.http.formvalue("hexfile")
   local hexpath = luci.http.formvalue("hexpath")
   local web_update = hexpath and hexpath:find("^http://")
-  
+
   if step == 1 then
     if has_upload and nixio.fs.access(hex) then
       step = 2
@@ -70,7 +72,7 @@ function action_fw()
   end
   if step == 3 then
     return api_post_fw(luci.http.formvalue("hex"))
-  end 
+  end
 end
 
 function action_stashdb()
@@ -98,7 +100,7 @@ function action_stashdb()
   if stashfile:sub(-4) ~= ".rrd" then stashfile = stashfile..".rrd" end
 
   stashfile = STASH_PATH..stashfile
-  
+
   if backup == "1" then
     local backup_cmd = "cd %q && tar cz *.rrd" % STASH_PATH
     local reader = require "luci.controller.admin.system".ltn12_popen(backup_cmd)
@@ -150,7 +152,7 @@ end
 function action_reboot()
   local http = require "luci.http"
   http.prepare_content("text/plain")
-  
+
   http.write("Rebooting AVR... ")
   require "lmclient"
   http.write(LmClient():query("$LMRB") or "FAILED")
@@ -159,7 +161,7 @@ end
 function api_set(vals)
   local dsp = require "luci.dispatcher"
   local http = require "luci.http"
-  
+
   -- If there's a rawset, explode the rawset into individual items
   local rawset = vals.rawset
   if rawset then
@@ -266,4 +268,42 @@ function action_alarm_test()
   else
     luci.dispatcher.error500("Missing pnum or type parameter")
   end
+end
+
+function action_wifi_scan()
+  local device = "wlan0"
+  local sys = require "luci.sys"
+  --local http = require "luci.http"
+  local json = require "luci.jsonc"
+
+  luci.http.prepare_content("application/json")
+
+  local iw = sys.wifi.getiwinfo(device)
+  local retVal
+  if iw then
+    retVal = iw.scanlist or {}
+  else
+    retVal = {error="NODEV", message="No info for device " .. device}
+  end
+
+  return luci.http.write(json.stringify(retVal))
+end
+
+function action_wifi()
+  local ssid = luci.http.formvalue("join")
+  local encrypt = luci.http.formvalue("encryption")
+  local key = luci.http.formvalue("key")
+  if ssid and encrypt and
+    (encrypt == "none" or key ~= "") then
+    local pass = key and '-p "' .. key .. '"' or ""
+
+    luci.http.prepare_content("text/plain")
+    luci.http.write("Joining network '" .. ssid .. "'\r\n")
+    luci.http.close()
+
+    luci.sys.call("/usr/bin/wifi-client -s %s -e %s %s" %
+      { ssid, encrypt, pass })
+    luci.sys.call("env -i /bin/ubus call network reload >/dev/null 2>/dev/null")
+  end
+  return luci.template.render("linkmeter/wifi", {})
 end
