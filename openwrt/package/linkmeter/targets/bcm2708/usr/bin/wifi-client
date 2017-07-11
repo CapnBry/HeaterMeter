@@ -33,6 +33,7 @@ shift $((OPTIND-1))
 SSID=`echo $SSID | sed "s/\'/\\\\\'/g"`
 PASS=`echo $PASS | sed "s/\'/\\\\\'/g"`
 [ -n "$PASS" ] && PASS="	option key '$PASS'"
+[ "$MODE" == "ap" -a -z "$CHANNEL" ] && CHANNEL="6"
 [ -n "$CHANNEL" ] && CHANNEL="	option channel '$CHANNEL'"
 
 # On platforms with just one network connection (PiA, Zero, ZeroW) the plarform will assign the wifi to the
