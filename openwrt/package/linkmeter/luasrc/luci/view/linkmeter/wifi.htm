@@ -19,6 +19,7 @@
 <script type="text/javascript">//<![CDATA[
 $(function () {
   $("#scanresults").delegate("tr", "click", setNet);
+  $("#mode").change(wifiModeChanged).trigger("change");
   doScanRequest();
 });
 
@@ -46,6 +47,22 @@ function scanError(xhr)
     .addClass('scanerror')
     .text('Error ' + xhr.status + ': ' + xhr.responseText)
     .show();
+}
+
+function wifiModeChanged()
+{
+  if ($(this).val() == "ap")
+  {
+    $("#mode-legend").text("Create Network");
+    $(".cbi-button-apply").val("Create Network");
+    $("#channel-container").toggle(true);
+  }
+  else
+  {
+    $("#mode-legend").text("Join Network");
+    $(".cbi-button-apply").val("Join Network");
+    $("#channel-container").toggle(false);
+  }
 }
 
 function signal_percent(info)
@@ -108,6 +125,7 @@ function setNet(e)
   if (typeof ssid === "undefined")
     return;
 
+  $("#mode").val('sta').trigger('change');
   $("#join").val(ssid);
   $("#encryption").val(encrypt);
   $("#key").toggle(encrypt != 'none');
@@ -174,7 +192,6 @@ function scanResult(o)
 
   <form action="<%=REQUEST_URI%>" method="POST">
     <input type="hidden" name="token" value="<%=token%>" />
-    <input type="hidden" id="encryption" name="encryption" />
 
     <fieldset class="cbi-section">
       <legend>Networks</legend>
@@ -197,8 +214,16 @@ function scanResult(o)
     </fieldset>
 
     <fieldset class="cbi-section">
-      <legend>Join Network</legend>
+      <legend id="mode-legend">Join Network</legend>
       <div class="cbi-section-node">
+        <div class="cbi-value">
+          <label class="cbi-value-title" for="mode">Wireless Mode</label>
+          <select id="mode" name="mode">
+            <option value="sta">Client (STA)</option>
+            <option value="ap">Access Point (AP)</option>
+          </select>
+        </div>
+
         <div class="cbi-value">
           <label class="cbi-value-title" for="join">Network Name (SSID)</label>
           <input type="text" class="cbi-input-text" id="join" name="join" />
@@ -207,6 +232,21 @@ function scanResult(o)
             <span class="cbi-value-helpicon"><img src="/luci-static/resources/cbi/help.gif" alt="help" /></span>
             Click the network above to copy the network name.
           </div>
+        </div>
+
+        <div class="cbi-value" id="channel-container">
+          <label class="cbi-value-title" for="channel">Channel</label>
+          <input type="number" class="cbi-input-text" id="channel" name="channel" value="6" />
+        </div>
+
+        <div class="cbi-value">
+          <label class="cbi-value-title" for="encryption">Security</label>
+          <select id="encryption" name="encryption">
+            <option value="psk2">WPA2</option>
+            <option value="psk">WPA</option>
+            <option value="wep">WEP</option>
+            <option value="none">Open</option>
+          </select>
         </div>
 
         <div class="cbi-value cbi-value-last">

@@ -293,17 +293,22 @@ function action_wifi()
   local ssid = luci.http.formvalue("join")
   local encrypt = luci.http.formvalue("encryption")
   local key = luci.http.formvalue("key")
+  local mode = luci.http.formvalue("mode") or "sta"
   if ssid and encrypt and
     (encrypt == "none" or key ~= "") then
-    local pass = key and '-p "' .. key .. '"' or ""
+    local cmd = '/usr/bin/wifi-client -s %q -e %q -m %q' % { ssid, encrypt, mode}
+    if key then cmd = cmd .. (' -p %q' % { key }) end
+    if mode == "ap" then
+      local channel = luci.http.formvalue("channel") or "6"
+      cmd = cmd .. (' -c %q' % { channel })
+    end
 
     luci.http.prepare_content("text/plain")
-    luci.http.write("Joining network '" .. ssid .. "'\r\n")
+    luci.http.write((mode == "sta" and "Joining" or "Creating") .. " network '" .. ssid .. "'\r\n")
     luci.http.close()
 
-    luci.sys.call("/usr/bin/wifi-client -s %s -e %s %s" %
-      { ssid, encrypt, pass })
-    luci.sys.call("env -i /bin/ubus call network reload >/dev/null 2>/dev/null")
+    luci.sys.call(cmd)
+    luci.util.ubus("network", "reload", {})
   end
   return luci.template.render("linkmeter/wifi", {})
 end
