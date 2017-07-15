@@ -77,11 +77,11 @@ module complete_4() {
   translate([oa_w + probe_off + probe_d + 1, oa_d + 1, 0]) rotate(180) half(false);
 }
 
-module rextrude_180(diameter, h, $fn) {
+module rextrude_180(diameter, h) {
   intersection() {
-    translate([-diameter/2-e, e, -e])
+    translate([-diameter/2-e, -e, -e])
       cube([diameter+2*e, diameter/2+e, h+2*e]);
-    rotate_extrude($fn=$fn)
+    rotate_extrude()
       children();
   }
 }
@@ -125,11 +125,11 @@ module half(is_end) {
 
       // lip round
       translate([0,-(center_d-center_w)/2,0]) rotate(180)
-        rextrude_180(oa_w, height*4, $fn=45)
+        rextrude_180(oa_w, height*4, $fn=46)
         translate([center_w/2,0,0]) lip_poly(is_end, height);
       
       translate([0,(center_d-center_w)/2,0]) 
-        rextrude_180(oa_w, height*4, $fn=45)
+        rextrude_180(oa_w, height*4, $fn=46)
         translate([center_w/2,0,0]) lip_poly(is_end, height);
       // lip flat
       translate([center_w/2,(center_d-center_w)/2,0]) rotate([90]) 
