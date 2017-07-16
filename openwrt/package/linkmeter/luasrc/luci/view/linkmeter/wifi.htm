@@ -20,6 +20,7 @@
 $(function () {
   $("#scanresults").delegate("tr", "click", setNet);
   $("#mode").change(wifiModeChanged).trigger("change");
+  $("#encryption").change(encryptionChanged);
   doScanRequest();
 });
 
@@ -62,6 +63,20 @@ function wifiModeChanged()
     $("#mode-legend").text("Join Network");
     $(".cbi-button-apply").val("Join Network");
     $("#channel-container").toggle(false);
+  }
+}
+
+function encryptionChanged()
+{
+  if ($(this).val() == 'none')
+  {
+    $("#key-container").toggle(false);
+    $("#encryption-container").addClass('cbi-value-last');
+  }
+  else
+  {
+    $("#key-container").toggle(true);
+    $("#encryption-container").removeClass('cbi-value-last');
   }
 }
 
@@ -128,7 +143,7 @@ function setNet(e)
   $("#mode").val('sta').trigger('change');
   $("#join").val(ssid);
   $("#encryption").val(encrypt);
-  $("#key").toggle(encrypt != 'none');
+  $("#key").trigger('change');
 
   if (encrypt != 'none')
     $('#key').focus();
@@ -239,7 +254,7 @@ function scanResult(o)
           <input type="number" class="cbi-input-text" id="channel" name="channel" value="6" />
         </div>
 
-        <div class="cbi-value">
+        <div class="cbi-value" id="encryption-container">
           <label class="cbi-value-title" for="encryption">Security</label>
           <select id="encryption" name="encryption">
             <option value="psk2">WPA2</option>
@@ -249,7 +264,7 @@ function scanResult(o)
           </select>
         </div>
 
-        <div class="cbi-value cbi-value-last">
+        <div class="cbi-value cbi-value-last" id="key-container">
           <label class="cbi-value-title" for="join">Passphrase</label>
           <input type="password" class="cbi-input-text" id="key" name="key" />
           <img src="<%=resource%>/cbi/reload.gif" style="vertical-align:middle" title="Reveal/hide password" onclick="var e = document.getElementById('key'); e.type = (e.type=='password') ? 'text' : 'password';" />
