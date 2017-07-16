@@ -9,7 +9,7 @@ USE_PROCD=1
 start_service() {
   procd_open_instance
   procd_set_param command lua -llinkmeterd -e 'linkmeterd.start()'
+  #procd_add_mdns "https" "tcp" "443" "path=/luci/lm/"
   procd_add_mdns "http" "tcp" "80" "path=/luci/lm/"
-  procd_add_mdns "https" "tcp" "443" "path=/luci/lm/"
   procd_close_instance
 }
