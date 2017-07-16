@@ -49,10 +49,6 @@ platform_setup_BCM2708() {
   echo
 }
             
-platform_setup_BCM2709() {
-  platform_setup_BCM2708
-}
-
 platform_setup() {
   config_load linkmeter
   config_get PLATFORM daemon platform "DEFAULT"
@@ -68,10 +64,6 @@ platform_cleanup_DEFAULT() {
 platform_cleanup_BCM2708() {
   rmmod spi-bcm2835
 }
-platform_cleanup_BCM2709() {
-  platform_cleanup_BCM2708
-}
-
 platform_cleanup() {
   eval "platform_cleanup_$PLATFORM" 2> /dev/null || \
     platform_cleanup_DEFAULT

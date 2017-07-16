@@ -71,9 +71,8 @@ migrate_settings() {
 
 HARDWARE_MODEL=`grep '^Hardware\t:' /proc/cpuinfo | cut -d' ' -f 2`
 case "$HARDWARE_MODEL" in
-  BCM2708|BCM2709|BCM2835)
-    # The Pi Zero W we treat as a regular Pi
-    [ "$HARDWARE_MODEL" = "BCM2835" ] && HARDWARE_MODEL="BCM2708"
+  BCM2708|BCM2709|BCM2835|BCM2836|BCM2837)
+    HARDWARE_MODEL="BCM2708"
     SERIAL_DEVICE="auto"
     STASHPATH="/mnt/mmcblk0p4/stash"
     AUTOBACK_ACTIVE=5
@@ -155,7 +154,7 @@ backup_inc /usr/share/linkmeter/user.css
 [ -x "/etc/init.d/config_restore" ] && /etc/init.d/config_restore enable
 
 if [ "$INSTALL_PARAM" = "new" ] ; then
-  if [ "$HARDWARE_MODEL" = "BCM2708" -o "$HARDWARE_MODEL" = "BCM2709" ] ; then
+  if [ "$HARDWARE_MODEL" = "BCM2708" ] ; then
     # Only manually load the spi modules
     rm /etc/modules.d/89-spi-bcm2835
     rm /etc/modules.d/spi-dev
