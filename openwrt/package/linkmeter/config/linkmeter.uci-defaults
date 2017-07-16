@@ -134,6 +134,11 @@ uci set uhttpd.main.lua_handler='/usr/lib/lua/luci/sgi/uhttpd.lua'
 uci set uhttpd.main.redirect_https='0'
 uci commit uhttpd
 
+# Make sure umdns listens on both lan and wwan if there is one
+uci del_list umdns.@umdns[0].network='wwan'
+uci add_list umdns.@umdns[0].network='wwan'
+uci commit umdns
+
 # Change the session timeout from 1hr to 24hrs
 SA=`uci -q get luci.sauth.sessiontime`
 if [ "$SA" -eq 3600 ] ; then
