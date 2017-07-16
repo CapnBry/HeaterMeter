@@ -9,14 +9,16 @@ A +-------------+     |
 V | HeaterMeter |-----/    (arduino/heatermeter)
 R +-------------+
 ========|===============   Serial UART
-  +-----------------+
-O |   +-----------+ |
-p | L | linkmeter | |      (openwrt/package/linkmeter)
-e | u +-----------+ |
-n | C      |        |      /var/run/linkmeter.sock
-W | I  +-------+    |
-r | d  | httpd |    |
-t |    +-------+    |
+  +------------------+
+  | +------------+ |
+O | | linkmeterd | |      (openwrt/package/linkmeter)
+p | +------------+ |
+e |       |        |      /var/run/linkmeter.sock
+n |    +------+    |
+W |    | luci |    |      LUA in-process
+r |   +--------+   |
+t |   | uhttpd |   |
+  |   +--------+   |
   +-----------------+
   
 Source Layout
