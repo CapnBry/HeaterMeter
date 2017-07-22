@@ -516,6 +516,10 @@ inline void GrillPid::calcPidOutput(void)
   if (isLidOpen())
     return;
 
+  // Let's hope this one is obvious
+  if (_disabled)
+    return;
+
   float currentTemp = Probes[TEMP_CTRL]->Temperature;
   float error;
   error = _setPoint - currentTemp;
@@ -731,15 +735,22 @@ void GrillPid::setSetPoint(int value)
   _setPoint = value;
   _pitStartRecover = PIDSTARTRECOVER_STARTUP;
   _manualOutputMode = false;
-  LidOpenResumeCountdown = 0;
+  setDisabled(false);
 }
 
 void GrillPid::setPidOutput(int value)
 {
+  _pidOutput = constrain(value, 0, 100);
   _pitStartRecover = PIDSTARTRECOVER_NORMAL;
   _manualOutputMode = true;
-  _pidOutput = constrain(value, 0, 100);
+  setDisabled(false);
+}
+
+void GrillPid::setDisabled(boolean disabled)
+{
+  _disabled = disabled;
   LidOpenResumeCountdown = 0;
+  // The next control loop will set _pidOutput to 0 if disabled
 }
 
 void GrillPid::setPidConstant(unsigned char idx, float value)
@@ -757,7 +768,10 @@ void GrillPid::setLidOpenDuration(unsigned int value)
 void GrillPid::status(void) const
 {
 #if defined(GRILLPID_SERIAL_ENABLED)
-  SerialX.print(getSetPoint(), DEC);
+  //if (getDisabled())
+  //  Serial_char('U');
+  //else
+    SerialX.print(getSetPoint(), DEC);
   Serial_csv();
 
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
@@ -873,6 +887,9 @@ void GrillPid::setUnits(char units)
     case 'F':
     case 'R':
       _units = units;
+      break;
+    case 'O': // Off
+      setDisabled(true);
       break;
   }
 }

@@ -17,10 +17,10 @@ static state_t menuLcdBacklight(button_t button);
 static state_t menuToast(button_t button);
 
 static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
-  { ST_HOME_FOOD1, menuHome, 5 },
-  { ST_HOME_FOOD2, menuHome, 5 },
-  { ST_HOME_AMB, menuHome, 5 },
-  { ST_HOME_NOPROBES, menuHome, 1 },
+  { ST_HOME_FOOD1, menuHome, 5, BUTTON_LEFT },
+  { ST_HOME_FOOD2, menuHome, 5, BUTTON_LEFT },
+  { ST_HOME_AMB, menuHome, 5, BUTTON_LEFT },
+  { ST_HOME_NOPROBES, menuHome, 1, BUTTON_LEFT }, // Both No Pit Probe AND Pit with no food probes
   { ST_HOME_ALARM, menuAlarmTriggered, 0 },
   { ST_SETPOINT, menuSetpoint, 10 },
   { ST_MANUALMODE, menuManualMode, 10 },
@@ -280,19 +280,26 @@ static state_t menuHome(button_t button)
       offset = -5;
     else if (button == BUTTON_LEFT)
       offset = -1;
+    else if (button == (BUTTON_LEFT | BUTTON_LONG))
+      offset = -pid.getPidOutput();
     else
       return ST_AUTO;
 
     pid.setPidOutput(pid.getPidOutput() + offset);
-    updateDisplay();
-    return ST_NONE;
   }
-  else if (button == BUTTON_LEFT)
+  else if (button == BUTTON_LEFT && !pid.getDisabled())
   {
     // Left from Home screen enables/disables the lid countdown
     storeLidParam(LIDPARAM_ACTIVE, pid.LidOpenResumeCountdown == 0);
-    updateDisplay();
   }
+  else if (button == (BUTTON_LEFT | BUTTON_LONG))
+  {
+    pid.toggleDisabled();
+  }
+  
+  if (button != BUTTON_LEAVE)
+    updateDisplay();
+
   return ST_AUTO;
 }
 

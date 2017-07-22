@@ -30,6 +30,7 @@ typedef struct tagMenuDefinition
   state_t state;
   handler_t handler;
   unsigned char timeout;
+  button_t longpress; // bitwise OR of buttons with longpresshandlers in the menu
 } menu_definition_t;
 
 typedef struct tagMenuTransition
@@ -54,6 +55,12 @@ public:
   button_t getButton(void) const { return m_lastButton; }
   unsigned char getButtonRepeatCnt(void) const { return m_buttonRepeatCnt; }
 private:
+  enum ButtonLongpressState {
+    mbsNone,
+    mbsLongCheck,
+    mbsWaitForKeyup
+  };
+
   const menu_definition_t *m_definitions;
   const menu_transition_t *m_transitions;
   const menu_definition_t *m_currMenu;
@@ -61,12 +68,14 @@ private:
   state_t m_state;
   state_t m_lastState;
   button_t m_lastButton;
+  ButtonLongpressState m_buttonState;
   unsigned char m_buttonRepeatCnt;
   unsigned long m_lastStateChange;
   unsigned long m_lastButtonActivity;
 
   unsigned long getTimeoutDuration(void) const;
   unsigned long getElapsedDuration(void) const;
+  boolean getHasLongpress(button_t button) const;
   handler_t getHandler(void) const;
   state_t findTransition(button_t button) const;
 };

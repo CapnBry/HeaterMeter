@@ -20,6 +20,12 @@ inline handler_t MenuSystem::getHandler(void) const
   return (m_currMenu) ? (handler_t)pgm_read_word(&m_currMenu->handler) : 0;
 }
 
+inline boolean MenuSystem::getHasLongpress(button_t button) const
+{
+  return (m_currMenu) ? pgm_read_byte(&m_currMenu->longpress) & button : false;
+}
+
+
 inline state_t MenuSystem::findTransition(button_t button) const
 {
   const menu_transition_t *trans = m_transitions;
@@ -39,8 +45,7 @@ inline state_t MenuSystem::findTransition(button_t button) const
 
 void MenuSystem::setState(state_t state)
 {
-  //Serial.print("$HMLG,Setting state: ");
-  //Serial.println(state, DEC);
+  //Serial.print("$HMLG,Setting state: "); Serial.println(state, DEC);
   m_lastState = m_state;
 
   while (state > ST_VMAX && state != m_state)
@@ -51,6 +56,7 @@ void MenuSystem::setState(state_t state)
 
     m_state = state;
     m_currMenu = m_definitions;
+    m_buttonRepeatCnt = 0;
 
     state_t lookup;
     while ((lookup = pgm_read_byte(&m_currMenu->state)))
@@ -96,18 +102,48 @@ void MenuSystem::doWork(void)
     {
       if (m_buttonRepeatCnt < 0xff)
         ++m_buttonRepeatCnt;
+      if (m_buttonState != mbsNone)
+        if (m_buttonState == mbsLongCheck && m_buttonRepeatCnt > 3)
+        {
+          button |= BUTTON_LONG;
+          m_buttonState = mbsWaitForKeyup;
+        }
+        else
+        {
+          m_lastStateChange = now;
+          return; // waiting for longpress/keyup
+        }
     }
     else
     {
-      m_lastButton = button;
       m_buttonRepeatCnt = 0;
+      if (button == BUTTON_NONE)
+      {
+        if (m_buttonState == mbsLongCheck)
+        {
+          //Serial.print("on keyup="); Serial.println(m_lastButton, HEX);
+          // If longpress never triggered, trigger the held button on release
+          button = m_lastButton;
+        }
+      }
+      else if (getHasLongpress(button))
+      {
+        //Serial.println("Starting new longpress");
+        // Starting a new longpress
+        m_lastButton = button;
+        m_buttonState = mbsLongCheck;
+        return; 
+      }
+
+      m_lastButton = button;
+      m_buttonState = mbsNone;
     }
   }
 
   if (button == BUTTON_NONE)
     return;
 
-  //Serial.print("$HMLG,New button: "); Serial.println(button, DEC);
+  //Serial.print("$HMLG,New button: "); Serial.println(button, HEX);
 
   state_t newState = ST_AUTO;
   handler_t handler = getHandler();
@@ -117,4 +153,8 @@ void MenuSystem::doWork(void)
     newState = findTransition(button);
 
   setState(newState);
+
+  // If the new state has a longpress handler, force waiting for keyup
+  if (getHasLongpress(button))
+    m_buttonState = mbsWaitForKeyup;
 }

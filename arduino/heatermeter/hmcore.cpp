@@ -480,6 +480,9 @@ void updateDisplay(void)
       pitTemp = 0;
     if (!pid.getManualOutputMode() && !pid.Probes[TEMP_CTRL]->hasTemperature())
       memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
+    else if (pid.getDisabled())
+      snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d" DEGREE "%c  [Off]"),
+        pitTemp, pid.getUnits());
     else if (pid.LidOpenResumeCountdown > 0)
       snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d" DEGREE "%c Lid%3u"),
         pitTemp, pid.getUnits(), pid.LidOpenResumeCountdown);
@@ -947,7 +950,9 @@ static void handleCommandUrl(char *URL)
   unsigned char urlLen = strlen(URL);
   if (strncmp_P(URL, PSTR("set?sp="), 7) == 0) 
   {
-    storeSetPoint(atoi(URL + 7));
+    // prevent sending "C" or "F" which would setpoint(0)
+    if (*(URL+7) <= '9')
+      storeSetPoint(atoi(URL + 7));
     storePidUnits(URL[urlLen-1]);
   }
   else if (strncmp_P(URL, PSTR("set?lb="), 7) == 0)

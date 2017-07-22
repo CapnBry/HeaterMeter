@@ -178,6 +178,8 @@ private:
   unsigned char _servoStepTicks;
   // count of periods a servo write has been delayed
   unsigned char _servoHoldoff;
+  // Is output disabled
+  bool _disabled;
 
   void calcPidOutput(void);
   void commitFanOutput(void);
@@ -248,6 +250,10 @@ public:
   // Current PID output in percent, setting this will turn on manual output mode
   unsigned char getPidOutput() const { return _pidOutput; }
   void setPidOutput(int value);
+  // Output completely enabled/disabled
+  boolean getDisabled(void) const { return _disabled; }
+  void setDisabled(boolean disabled);
+  void toggleDisabled(void) { setDisabled(!_disabled); }
   // Current fan speed output in percent
   unsigned char getFanSpeed(void) const { return _fanSpeed; };
   unsigned long getLastWorkMillis(void) const { return _lastWorkMillis; }
