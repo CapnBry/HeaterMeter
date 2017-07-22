@@ -215,10 +215,12 @@ function api_set(vals)
       nixio.nanosleep(0, 100000000)
     end
 
-    -- Convert XX% setpoint to -XX
+    -- Convert XX% setpoint to -XX, OFF -> O
     if (k == "sp") then
-      local dig, units = v:match("^(%d+).-([ACFR%%]?)$")
+      v = v:upper() -- HM expects units to be uppercase
+      local dig, units = v:match("^(%d*).-([ACFRO%%]*)$")
       if units == "%" then v = "-" .. dig end
+      if units == "OFF" then v = "O" end
     end
 
     local result, err = lm:query("$LMST,%s,%s" % {k,v}, true)
