@@ -183,6 +183,7 @@ function _M.action_api_fw()
   end
 
   local lmadmin = require("luci.controller.linkmeter.lmadmin")
+  lmadmin.api_file_handler("/tmp/hm.hex")
   return lmadmin.api_post_fw("/tmp/hm.hex")
 end
 

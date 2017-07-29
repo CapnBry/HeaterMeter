@@ -30,7 +30,7 @@ function index()
   entry({"admin", "lm", "light"}, call("action_light_index"))
 end
 
-function api_post_fw(fname)
+function api_file_handler(fname)
   local file
   luci.http.setfilehandler(
     function(meta, chunk, eof)
@@ -45,6 +45,9 @@ function api_post_fw(fname)
       end
     end
   )
+end
+
+function api_post_fw(fname)
   luci.http.prepare_content("text/plain")
   local pipe = require "luci.controller.admin.system".ltn12_popen(
     "/usr/bin/avrupdate %q" % fname)
@@ -57,9 +60,11 @@ function action_fw()
   local step = tonumber(luci.http.formvalue("step") or 1)
   local has_upload = luci.http.formvalue("hexfile")
   local hexpath = luci.http.formvalue("hexpath")
-  local web_update = hexpath and hexpath:find("^http://")
+  local web_update = hexpath and hexpath:find("^http[s]?://")
 
   if step == 1 then
+    api_file_handler(hex)
+
     if has_upload and nixio.fs.access(hex) then
       step = 2
     elseif hexpath and (web_update or nixio.fs.access(hexpath)) then

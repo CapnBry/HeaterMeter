@@ -92,7 +92,7 @@ done
 
 [ -z "$HEX" ] && HEX=$(eval echo \$$OPTIND)
 
-if [ "${HEX:0:7}" = "http://" ] ; then
+if [ "${HEX:0:4}" = "http" ] ; then
   wget -O/tmp/hm.hex $HEX 2>&1
   if [ $? -ne 0 ] ; then
     echo Download failed
