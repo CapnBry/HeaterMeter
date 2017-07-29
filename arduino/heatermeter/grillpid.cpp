@@ -768,9 +768,11 @@ void GrillPid::setLidOpenDuration(unsigned int value)
 void GrillPid::status(void) const
 {
 #if defined(GRILLPID_SERIAL_ENABLED)
-  //if (getDisabled())
-  //  Serial_char('U');
-  //else
+  if (getDisabled())
+    Serial_char('U');
+  else if (getManualOutputMode())
+    Serial_char('-');
+  else
     SerialX.print(getSetPoint(), DEC);
   Serial_csv();
 
