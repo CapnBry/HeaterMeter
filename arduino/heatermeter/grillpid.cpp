@@ -749,6 +749,8 @@ void GrillPid::setPidOutput(int value)
 void GrillPid::setDisabled(boolean disabled)
 {
   _disabled = disabled;
+  if (_disabled)
+    _manualOutputMode = false;
   LidOpenResumeCountdown = 0;
   // The next control loop will set _pidOutput to 0 if disabled
 }
