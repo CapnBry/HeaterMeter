@@ -373,10 +373,16 @@ void TempProbe::processPeriod(void)
     }
     else
       calcExpMovingAverage(TEMPPROBE_AVG_SMOOTH, &TemperatureAvg, Temperature);
-    Alarms.updateStatus(Temperature);
+
+    if (!pid.getDisabled())
+    {
+      Alarms.updateStatus(Temperature);
+      return;
+    }
   }
-  else
-    Alarms.silenceAll();
+
+  // !hasTemperature() || pid.getDisabled()
+  Alarms.silenceAll();
 }
 
 void TempProbe::setTemperatureC(float T)
@@ -514,10 +520,6 @@ inline void GrillPid::calcPidOutput(void)
 
   // If we're in lid open mode, fan should be off
   if (isLidOpen())
-    return;
-
-  // Let's hope this one is obvious
-  if (_disabled)
     return;
 
   float currentTemp = Probes[TEMP_CTRL]->Temperature;
@@ -750,9 +752,11 @@ void GrillPid::setDisabled(boolean disabled)
 {
   _disabled = disabled;
   if (_disabled)
+  {
     _manualOutputMode = false;
+    _pidOutput = 0;
+  }
   LidOpenResumeCountdown = 0;
-  // The next control loop will set _pidOutput to 0 if disabled
 }
 
 void GrillPid::setPidConstant(unsigned char idx, float value)
@@ -821,7 +825,7 @@ boolean GrillPid::doWork(void)
     Probes[i]->processPeriod();
   }
 
-  if (!_manualOutputMode)
+  if (!_manualOutputMode && !_disabled)
   {
     // Always calculate the output
     // calcPidOutput() will bail if it isn't supposed to be in control
