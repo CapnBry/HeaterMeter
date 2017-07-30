@@ -270,8 +270,14 @@ static state_t menuHome(button_t button)
     else if (Menus.getState() == ST_HOME_AMB && !pid.Probes[TEMP_AMB]->hasTemperature())
       return ST_HOME_FOOD1;
   }
+  else if (button == (BUTTON_LEFT | BUTTON_LONG))
+  {
+    // Long left press toggles between AUTO/MANUAL -> OFF and OFF -> AUTO
+    pid.setPidMode(pid.getPidMode() == PIDMODE_OFF ? PIDMODE_STARTUP : PIDMODE_OFF);
+    storePidMode();
+  }
   // In manual fan mode Up is +5% Down is -5% and Left is -1%
-  else if (pid.getManualOutputMode())
+  else if (pid.isManualOutputMode())
   {
     char offset;
     if (button == BUTTON_UP)
@@ -280,21 +286,15 @@ static state_t menuHome(button_t button)
       offset = -5;
     else if (button == BUTTON_LEFT)
       offset = -1;
-    else if (button == (BUTTON_LEFT | BUTTON_LONG))
-      offset = -pid.getPidOutput();
     else
       return ST_AUTO;
 
     pid.setPidOutput(pid.getPidOutput() + offset);
   }
-  else if (button == BUTTON_LEFT && !pid.getDisabled())
+  else if (button == BUTTON_LEFT && !pid.isDisabled())
   {
     // Left from Home screen enables/disables the lid countdown
     storeLidParam(LIDPARAM_ACTIVE, pid.LidOpenResumeCountdown == 0);
-  }
-  else if (button == (BUTTON_LEFT | BUTTON_LONG))
-  {
-    pid.toggleDisabled();
   }
   
   if (button != BUTTON_LEAVE)
@@ -395,14 +395,14 @@ static state_t menuManualMode(button_t button)
   if (button == BUTTON_ENTER)
   {
     lcdprint_P(PSTR("Manual fan mode"), true);
-    editInt = pid.getManualOutputMode();
+    editInt = pid.isManualOutputMode();
   }
   else if (button == BUTTON_LEAVE)
   {
     // Check to see if it is different because the setPoint 
     // field stores either the setPoint or manual mode
     boolean manual = (editInt != 0); 
-    if (manual != pid.getManualOutputMode())
+    if (manual != pid.isManualOutputMode())
       storeSetPoint(manual ? 0 : pid.getSetPoint());
   }
   menuBooleanEdit(button, NULL);

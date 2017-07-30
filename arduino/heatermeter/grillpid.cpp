@@ -374,7 +374,7 @@ void TempProbe::processPeriod(void)
     else
       calcExpMovingAverage(TEMPPROBE_AVG_SMOOTH, &TemperatureAvg, Temperature);
 
-    if (!pid.getDisabled())
+    if (!pid.isDisabled())
     {
       Alarms.updateStatus(Temperature);
       return;
@@ -728,35 +728,27 @@ boolean GrillPid::isAnyFoodProbeActive(void) const
   
 void GrillPid::resetLidOpenResumeCountdown(void)
 {
+  setPidMode(PIDMODE_RECOVERY);
   LidOpenResumeCountdown = _lidOpenDuration;
-  _pitStartRecover = PIDSTARTRECOVER_RECOVERY;
 }
 
 void GrillPid::setSetPoint(int value)
 {
+  setPidMode(PIDMODE_STARTUP);
   _setPoint = value;
-  _pitStartRecover = PIDSTARTRECOVER_STARTUP;
-  _manualOutputMode = false;
-  setDisabled(false);
 }
 
 void GrillPid::setPidOutput(int value)
 {
+  setPidMode(PIDMODE_MANUAL);
   _pidOutput = constrain(value, 0, 100);
-  _pitStartRecover = PIDSTARTRECOVER_NORMAL;
-  _manualOutputMode = true;
-  setDisabled(false);
 }
 
-void GrillPid::setDisabled(boolean disabled)
+void GrillPid::setPidMode(unsigned char mode)
 {
-  _disabled = disabled;
-  if (_disabled)
-  {
-    _manualOutputMode = false;
-    _pidOutput = 0;
-  }
+  _pidMode = mode;
   LidOpenResumeCountdown = 0;
+  _pidOutput = 0;
 }
 
 void GrillPid::setPidConstant(unsigned char idx, float value)
@@ -774,9 +766,9 @@ void GrillPid::setLidOpenDuration(unsigned int value)
 void GrillPid::status(void) const
 {
 #if defined(GRILLPID_SERIAL_ENABLED)
-  if (getDisabled())
+  if (isDisabled())
     Serial_char('U');
-  else if (getManualOutputMode())
+  else if (isManualOutputMode())
     Serial_char('-');
   else
     SerialX.print(getSetPoint(), DEC);
@@ -825,7 +817,7 @@ boolean GrillPid::doWork(void)
     Probes[i]->processPeriod();
   }
 
-  if (!_manualOutputMode && !_disabled)
+  if (_pidMode <= PIDMODE_AUTO_LAST)
   {
     // Always calculate the output
     // calcPidOutput() will bail if it isn't supposed to be in control
@@ -838,11 +830,11 @@ boolean GrillPid::doWork(void)
       // When we first achieve temperature, reduce any I sum we accumulated during startup
       // If we actually neded that sum to achieve temperature we'll rebuild it, and it
       // prevents bouncing around above the temperature when you first start up
-      if (_pitStartRecover == PIDSTARTRECOVER_STARTUP)
+      if (_pidMode == PIDMODE_STARTUP)
       {
         _pidCurrent[PIDI] *= 0.50f;
       }
-      _pitStartRecover = PIDSTARTRECOVER_NORMAL;
+      _pidMode = PIDMODE_NORMAL;
       LidOpenResumeCountdown = 0;
     }
     else if (LidOpenResumeCountdown != 0)
@@ -897,7 +889,7 @@ void GrillPid::setUnits(char units)
       _units = units;
       break;
     case 'O': // Off
-      setDisabled(true);
+      setPidMode(PIDMODE_OFF);
       break;
   }
 }

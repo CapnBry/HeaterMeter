@@ -123,14 +123,19 @@ public:
 #define PIDFLAG_LINECANCEL_50 5
 #define PIDFLAG_LINECANCEL_60 6
 
-// pitStartRecover constants
-// STARTUP - Attempting to reach temperature for the first time
-// after a setpoint change
-#define PIDSTARTRECOVER_STARTUP  0
+// pidMode constants
+// STARTUP - Attempting to reach temperature for the first time after a setpoint change
+#define PIDMODE_STARTUP   0
 // RECOVERY - Is attempting to return to temperature after a lid event
-#define PIDSTARTRECOVER_RECOVERY 1
+#define PIDMODE_RECOVERY  1
 // NORMAL - Setpoint has been attained, normal operation
-#define PIDSTARTRECOVER_NORMAL   2
+#define PIDMODE_NORMAL    2
+// Anything less than or equal to AUTO_LAST is an automatic mode state
+#define PIDMODE_AUTO_LAST PIDMODE_NORMAL
+// MANUAL - Manual operation mode
+#define PIDMODE_MANUAL    3
+// OFF - Output, alarms, and lid detect disabled
+#define PIDMODE_OFF       4
 
 // oversampled analogRead from current freerunning ADC
 unsigned int analogReadOver(unsigned char pin, unsigned char bits);
@@ -148,9 +153,8 @@ class GrillPid
 private:
   unsigned char _pidOutput;
   unsigned long _lastWorkMillis;
-  unsigned char _pitStartRecover;
+  unsigned char _pidMode;
   int _setPoint;
-  boolean _manualOutputMode;
   unsigned char _periodCounter;
   // Counter used for "long PWM" mode
   unsigned char _longPwmTmr;
@@ -178,8 +182,6 @@ private:
   unsigned char _servoStepTicks;
   // count of periods a servo write has been delayed
   unsigned char _servoHoldoff;
-  // Is output disabled
-  bool _disabled;
 
   void calcPidOutput(void);
   void commitFanOutput(void);
@@ -218,7 +220,7 @@ public:
   unsigned char getFanMaxStartupSpeed(void) const { return _fanMaxStartupSpeed; }
   void setFanMaxStartupSpeed(unsigned char value) { _fanMaxStartupSpeed = constrain(value, 0, 100); }
   unsigned char getFanCurrentMaxSpeed(void) const { return
-    (_pitStartRecover == PIDSTARTRECOVER_STARTUP) ?  _fanMaxStartupSpeed : _fanMaxSpeed;
+    (_pidMode == PIDMODE_STARTUP) ?  _fanMaxStartupSpeed : _fanMaxSpeed;
   }
   // Active floor means "fan on above this PID output". Must be < 100!
   unsigned char getFanActiveFloor(void) const { return _fanActiveFloor; }
@@ -250,16 +252,16 @@ public:
   // Current PID output in percent, setting this will turn on manual output mode
   unsigned char getPidOutput() const { return _pidOutput; }
   void setPidOutput(int value);
+  boolean isManualOutputMode(void) const { return _pidMode == PIDMODE_MANUAL; }
   // Output completely enabled/disabled
-  boolean getDisabled(void) const { return _disabled; }
-  void setDisabled(boolean disabled);
-  void toggleDisabled(void) { setDisabled(!_disabled); }
+  boolean isDisabled(void) const { return _pidMode == PIDMODE_OFF; }
+  void setPidMode(unsigned char mode);
+  unsigned char getPidMode(void) const { return _pidMode; }
   // Current fan speed output in percent
   unsigned char getFanSpeed(void) const { return _fanSpeed; };
   unsigned long getLastWorkMillis(void) const { return _lastWorkMillis; }
   unsigned char getPidIMax(void) const { return isPitTempReached() ? 100 : _fanMaxStartupSpeed; }
 
-  boolean getManualOutputMode(void) const { return _manualOutputMode; }
   // PID output moving average
   float PidOutputAvg;
   // Seconds remaining in the lid open countdown
@@ -273,8 +275,7 @@ public:
   // true if fan is running at maximum speed or servo wide open
   boolean isOutputMaxed(void) const { return _pidOutput >= 100; }
   // true if temperature was >= setpoint since last set / lid event
-  boolean isPitTempReached(void) const { return _pitStartRecover == PIDSTARTRECOVER_NORMAL; }
-  unsigned char getPitStartRecover(void) const { return _pitStartRecover; }
+  boolean isPitTempReached(void) const { return _pidMode == PIDMODE_NORMAL; }
 
   // Call this in loop()
   boolean doWork(void);

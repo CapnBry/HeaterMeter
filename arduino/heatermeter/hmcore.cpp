@@ -56,7 +56,7 @@ static const struct __eeprom_data {
   unsigned char lidOpenOffset;
   unsigned int lidOpenDuration;
   float pidConstants[4]; // constants are stored Kb, Kp, Ki, Kd
-  boolean manualMode;
+  unsigned char pidMode;
   unsigned char lcdBacklight; // in PWM (max 100)
 #ifdef HEATERMETER_RFM12
   unsigned char rfMap[TEMP_COUNT];
@@ -79,7 +79,7 @@ static const struct __eeprom_data {
   6,    // lid open offset %
   240,  // lid open duration
   { 0.0f, 4.0f, 0.02f, 5.0f },  // PID constants
-  false, // manual mode
+  PIDMODE_STARTUP,  // PID mode
   50,   // lcd backlight (%)
 #ifdef HEATERMETER_RFM12
   { RFSOURCEID_ANY, RFSOURCEID_ANY, RFSOURCEID_ANY, RFSOURCEID_ANY },  // rfMap
@@ -165,25 +165,29 @@ void loadProbeName(unsigned char probeIndex)
     econfig_read_block(editString, (void *)(uintptr_t)ofs, PROBE_NAME_SIZE);
 }
 
+void storePidMode()
+{
+  unsigned char mode = pid.getPidMode();
+  if (mode <= PIDMODE_AUTO_LAST)
+    mode = PIDMODE_STARTUP;
+  config_store_byte(pidMode, mode);
+}
+
 void storeSetPoint(int sp)
 {
   // If the setpoint is >0 that's an actual setpoint.  
   // 0 or less is a manual fan speed
-  boolean isManualMode;
   if (sp > 0)
   {
     config_store_word(setPoint, sp);
     pid.setSetPoint(sp);
-    
-    isManualMode = false;
   }
   else
   {
     pid.setPidOutput(-sp);
-    isManualMode = true;
   }
 
-  config_store_byte(manualMode, isManualMode);
+  storePidMode();
 }
 
 static void storePidUnits(char units)
@@ -478,9 +482,9 @@ void updateDisplay(void)
       pitTemp = pid.Probes[TEMP_CTRL]->Temperature;
     else
       pitTemp = 0;
-    if (!pid.getManualOutputMode() && !pid.Probes[TEMP_CTRL]->hasTemperature())
+    if (!pid.isManualOutputMode() && !pid.Probes[TEMP_CTRL]->hasTemperature())
       memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
-    else if (pid.getDisabled())
+    else if (pid.isDisabled())
       snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d" DEGREE "%c  [Off]"),
         pitTemp, pid.getUnits());
     else if (pid.LidOpenResumeCountdown > 0)
@@ -489,7 +493,7 @@ void updateDisplay(void)
     else
     {
       char c1,c2;
-      if (pid.getManualOutputMode())
+      if (pid.isManualOutputMode())
       {
         c1 = '^';  // LCD_ARROWUP
         c2 = '^';  // LCD_ARROWDN
@@ -950,10 +954,11 @@ static void handleCommandUrl(char *URL)
   unsigned char urlLen = strlen(URL);
   if (strncmp_P(URL, PSTR("set?sp="), 7) == 0) 
   {
+    // store the units first, in case of 'O' disabling the PID output
+    storePidUnits(URL[urlLen - 1]);
     // prevent sending "C" or "F" which would setpoint(0)
     if (*(URL+7) <= '9')
       storeSetPoint(atoi(URL + 7));
-    storePidUnits(URL[urlLen-1]);
   }
   else if (strncmp_P(URL, PSTR("set?lb="), 7) == 0)
   {
@@ -1136,8 +1141,7 @@ static void eepromLoadBaseConfig(unsigned char forceDefault)
   pid.LidOpenOffset = config.base.lidOpenOffset;
   pid.setLidOpenDuration(config.base.lidOpenDuration);
   memcpy(pid.Pid, config.base.pidConstants, sizeof(config.base.pidConstants));
-  if (config.base.manualMode)
-    pid.setPidOutput(0);
+  pid.setPidMode(config.base.pidMode);
   setLcdBacklight(config.base.lcdBacklight);
 #ifdef HEATERMETER_RFM12
   memcpy(rfMap, config.base.rfMap, sizeof(rfMap));
@@ -1265,8 +1269,8 @@ static void newTempsAvail(void)
   ledmanager.publish(LEDSTIMULUS_FanOn, pid.isOutputActive());
   ledmanager.publish(LEDSTIMULUS_FanMax, pid.isOutputMaxed());
   ledmanager.publish(LEDSTIMULUS_PitTempReached, pid.isPitTempReached());
-  ledmanager.publish(LEDSTIMULUS_Startup, pid.getPitStartRecover() == PIDSTARTRECOVER_STARTUP);
-  ledmanager.publish(LEDSTIMULUS_Recovery, pid.getPitStartRecover() == PIDSTARTRECOVER_RECOVERY);
+  ledmanager.publish(LEDSTIMULUS_Startup, pid.getPidMode() == PIDMODE_STARTUP);
+  ledmanager.publish(LEDSTIMULUS_Recovery, pid.getPidMode() == PIDMODE_RECOVERY);
 
 #ifdef HEATERMETER_RFM12
   rfmanager.sendUpdate(pid.getPidOutput());
