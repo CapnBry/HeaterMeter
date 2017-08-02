@@ -102,7 +102,7 @@ function action_stashdb()
   stashfile = STASH_PATH..stashfile
 
   if backup == "1" then
-    local backup_cmd = "cd %q && tar cz *.rrd" % STASH_PATH
+    local backup_cmd = "cd %q && tar cz *.rrd *.json" % STASH_PATH
     local reader = require "luci.controller.admin.system".ltn12_popen(backup_cmd)
     http.header("Content-Disposition",
       'attachment; filename="lmstash-%s-%s.tar.gz"' % {
@@ -116,7 +116,7 @@ function action_stashdb()
   if deleting == "1" then
     result = nixio.fs.unlink(stashfile)
     http.write("Deleting "..stashfile)
-    stashfile = stashfile:gsub("\.rrd$", ".txt")
+    stashfile = stashfile:gsub("\.rrd$", ".json")
     if nixio.fs.access(stashfile) then
       nixio.fs.unlink(stashfile)
       http.write("\nDeleting "..stashfile)
@@ -140,6 +140,14 @@ function action_stashdb()
     end
     result = nixio.fs.copy(RRD_FILE, stashfile)
     http.write("Stashing "..RRD_FILE.." to "..stashfile)
+    -- Also snapshot the HeaterMeter configuration for probe names, etc
+    require "lmclient"
+    local conf = LmClient():query("$LMCF")
+    if conf ~= "{}" then
+      stashfile = stashfile:gsub("\.rrd$", ".json")
+      nixio.fs.writefile(stashfile, conf)
+      http.write("\nStashing current config to "..stashfile)
+    end
   end
 
   if result then
