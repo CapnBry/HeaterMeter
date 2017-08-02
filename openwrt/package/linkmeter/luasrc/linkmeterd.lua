@@ -278,7 +278,7 @@ local function rrdCreate()
   return rrd.create(
     RRD_FILE,
     "--step", "2",
-    "DS:sp:GAUGE:30:0:1000",
+    "DS:sp:GAUGE:30:0.1:1000",
     "DS:t0:GAUGE:30:0:1000",
     "DS:t1:GAUGE:30:0:1000",
     "DS:t2:GAUGE:30:0:1000",
@@ -610,8 +610,10 @@ local function segStateUpdate(line)
       -- Add the time as the first item
       table.insert(vals, 1, time)
 
-      -- if rfStatus.B then vals[4] = rfStatus.B.batt / 10 end
-      -- vals[5] = collectgarbage("count") / 10
+      -- If setpoint is '-' that means manual mode
+      -- and output is the manual setpoint
+      if vals[2] == '-' then vals[2] = '-' .. vals[7] end
+
       jsonWrite(vals)
 
       local lid = tonumber(vals[9]) or 0
@@ -927,7 +929,7 @@ local function segLmConfig()
 
   for k,v in pairs(cm) do
     local s
-    if type(v) == "number" then
+    if type(v) == "number" or v == "null" then
       s = '%q:%s'
     else
       s = '%q:%q'

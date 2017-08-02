@@ -65,8 +65,8 @@ local function updateState(now, vals)
   local setpoint = tonumber(vals[1])
   if ctx.lastSetpoint ~= setpoint then setpointChanged(setpoint) end
 
-  -- watch probe 0 = Disabled
-  if (ctx.params.watch or 0) == 0 then
+  -- No setpoint (manual mode or off) or watch probe 0 = Disabled
+  if setpoint == nil or (ctx.params.watch or 0) == 0 then
     if ctx.state ~= RAMPSTATE_NONE then cancelRamp() end
     return
   end

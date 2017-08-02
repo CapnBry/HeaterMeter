@@ -61,10 +61,10 @@ function action_hist()
     start, step, _, data = rrd.fetch(RRD_FILE, "AVERAGE", "--end", now)
     nancnt = 0
     for _, dp in ipairs(data) do
-      -- SetPoint (dp[1]) should always be valid if the DB was capturing
+      -- Output (dp[6]) should always be valid if the DB was capturing
       -- If val ~= val then val is a NaN, LUA doesn't have isnan()
       -- and NaN ~= NaN by C definition (platform-specific)
-      if dp[1] == dp[1] then break end
+      if dp[6] == dp[6] then break end
       nancnt = nancnt + 1
     end
   end
@@ -106,7 +106,7 @@ function action_hist()
   for _, dp in ipairs(data) do
     -- Skip the first NaN rows until we actually have data and keep
     -- sending until we get to the 1 or 2 rows at the end that are NaN
-    if (dp[1] == dp[1]) or (seenData and (start < now)) then
+    if (dp[6] == dp[6]) or (seenData and (start < now)) then
       http.write(("%u,%s\n"):format(start, table.concat(dp, ",")))
       seenData = true
     end

@@ -723,12 +723,23 @@ function connectionSuccess(o)
     var updateEditables = ($("form.jedit").length == 0);
     o.time *= 1000;
     lastUpdateUtc = o.time;
-    if (updateEditables) $("#set").html(o.set);
+    if (updateEditables)
+    {
+      var setDisplay = o.set;
+      if (setDisplay === null)
+        setDisplay = "Off";
+      else if (setDisplay <= 0)
+        setDisplay = (-setDisplay) + "%";
+      else
+        setDisplay = setDisplay + "&deg;";
+      $("#set").html(setDisplay);
+    }
 
     if (graphLoaded)
     {
         addFanGraphPoint(o.time, o.lid > 0 ? -o.lid : o.fan.c);
-        addGraphPoint(graphData[2].data, o.time, o.set);
+        if (o.set !== null && o.set > 0)
+          addGraphPoint(graphData[2].data, o.time, o.set);
     }
 
     for(var i = 0; i < 4; i++)
@@ -989,7 +1000,7 @@ img.preload { display: none; }
         <div id="p0container" >
           <span id="temp0">---</span>
           <div id="ramp" class="ramp"></div>
-          <div id="setcontainer">Set <span id="set">---</span>&deg;
+          <div id="setcontainer">Set <span id="set">---</span>
           </div>
           <div id="pidint">
             <div class="pibarcont">

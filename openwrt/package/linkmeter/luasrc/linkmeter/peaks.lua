@@ -42,7 +42,7 @@ local function initState()
 end
 
 local function log(...)
-  nixio.syslog("warning", ...)
+  nixio.syslog("info", ...)
   --print(...)
 end
 
@@ -54,7 +54,8 @@ end
 local function updateHmMode(vals)
   local newMode = peaks.mode
   
-  if vals[2] == "U" then
+  -- If pidOutput(1) is off or Pit probe(2) unplugged
+  if vals[1] == "U" or vals[2] == "U" then
     newMode = HMMODE_UNPLUG
     
   -- new SetPoint? back to startup mode
@@ -65,8 +66,9 @@ local function updateHmMode(vals)
   elseif vals[8] ~= "0" then
     newMode = HMMODE_LID
 
-  -- if Probe0 is above setpoint that is normal operation
-  elseif vals[1] <= vals[2] then
+  -- If setpoint is manual mode ('-')
+  -- or if Probe0 is above setpoint that is normal operation
+  elseif vals[1] == "-" or vals[1] <= vals[2] then
     newMode = HMMODE_NORMAL
 
   -- if was lid mode and the timer expired, recover
@@ -225,7 +227,6 @@ local function dumpState(line)
   if peaks.L.time then f[#f+1] = ("peaks.L  %s"):format(peakStr(peaks.L)) end
   return table.concat(f, '\n')
 end
--- P=4,I=0.02,D=5 - Servo 1000-2000
 
 function init()
   initState()
