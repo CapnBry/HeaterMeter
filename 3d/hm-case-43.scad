@@ -22,9 +22,9 @@ body_chamfer_height = 1.5;
 MouseEarHeight = 0;
 
 /* [Hidden] */
-d_off = wall/4; // offset the heatermeter origin from the front edge
-w = inch(3.75)+0.5; // overall interior case width
-d = inch(3.75)-0.0+d_off; // overall interior case depth
+d_off = 0.8; // offset the heatermeter origin from the front edge
+w = inch(3.725)+1.2; // overall interior case width
+d = inch(3.75)+d_off; // overall interior case depth
 // 19.1+ headless Zero
 // 22.4 headless Pi3 (limited by nuttrapps interfering with PCB to -6.7)
 // 32 standard
@@ -87,11 +87,9 @@ module pic_ex_cube() {
 }
 
 module screw_pimount() {
-  // 2mm height is good for screw holes
-  difference() {
-    cylinder(h=2.25, d=6.4, $fn=18);
-    //cylinder(h=2+e, d=2.5, $fn=16);
-  }
+  cylinder(h=2.25, d=6.4, $fn=18);
+  // alignment nubbies
+  //cylinder(h=2.25+1.4, d=2.5, $fn=12);
 }
 
 module btn_rnd(dia=10) {
@@ -133,7 +131,7 @@ module nuttrap() {
   // bottom half for M3 socket cap screw (flush)
   difference() {
     translate([-5.5/2-ww_w, -nut_ingress/2-d_off-e, 0])
-      cube_fillet([5.5+2*ww_w, nut_ingress+d_off+ww_d*0.8+e, 6], vertical=[3.4,3.4], $fn=20);
+      cube_fillet([5.5+2*ww_w, nut_ingress+d_off+ww_d, 6], vertical=[3.4,3.4], $fn=20);
     // socket cap
     translate([0,0,-e]) cylinder(3.5, d=6, $fn=18);
     // screw shaft
@@ -265,14 +263,14 @@ difference() {
   translate([wall, wall, wall_t])
     cube_fillet([w, d, h_b+e], bottom=[2,2,2,2],
     top=[lcd_mount_t/2,lcd_mount_t/2,[wall_t,lcd_mount_t/2][LCD],lcd_mount_t/2],
-    vertical=[1,1]);
+    vertical=[1,1,1,1]);
   if (Pi_Model != "Zero" && Pi_Model != "1A+")
     translate([wall-pic_ex+e,wall+d_off,wall_t]) pic_ex_cube();
 
   // Probe jack side
   translate([w+wall*0.5,wall+d_off,wall_t]) {
     // Probe jacks
-    translate([0,24.25,probe_centerline]) {
+    translate([0,inch(0.95),probe_centerline]) {
       if (Control_Probe == "Thermocouple")
         // TC jack
         translate([0,inch(-0.55)-16.5/2,-1.4]) cube([2*wall, 16.5, 6.5]);
@@ -301,9 +299,9 @@ difference() {
     // HeaterMeter connectors
     translate([0,0,0]) {
       // Blower/Servo output
-      translate([0,25.25,1.1]) jhole(16.7,13);
+      translate([0,25,1.1]) jhole(16.7,13);
       // HM power jack
-      translate([0,5.25,3.4]) jhole(9.4,11);
+      translate([0,5.08,3.4]) jhole(9.4,11);
     }
   }
   
@@ -325,14 +323,14 @@ difference() {
     }  
   }
   // close screw holes
-  translate([wall+inch(0.8)+1.3,wall+d_off+2.9,0]) {
+  translate([wall+inch(0.825)+0.5,wall+d_off+inch(0.1),0]) {
     screwhole();
     translate([inch(2.0),0,0]) screwhole();
   }
 }  // END OF DIFFERENCE
 
   // Pi mounting screws
-  translate([wall+24,wall+d_off+38.8,wall_t]) {
+  translate([wall+24,wall+d_off+39,wall_t]) {
     translate([0,0,0]) screw_pimount();
     translate([58,0,0]) screw_pimount();
     if (Pi_Model == "Zero") {
@@ -347,16 +345,16 @@ difference() {
 
   if (Pi_Model != "Zero") {
     // Pi right edge stop
-    translate([wall+w-9.5, wall+d-60, wall_t])
+    translate([wall+w-9.5, wall+d_off+35, wall_t])
       difference() {
-        cube_fillet([9.5,60,4], vertical=[0,0,10/2], $fn=24);
+        cube_fillet([9.5,d-d_off-35,4], vertical=[0,0,10/2], $fn=24);
         // Pi B+ microsd gap
-        translate([-e,22,-e]) cube_fillet([5.5,14,4+2*e], vertical=[2,0,0,2], $fn=20);
+        translate([-e,22,-e]) cube_fillet([5.5,14.5,4+2*e], vertical=[2,0,0,2], $fn=20);
       }
   } // if !Zero
   
   // close nut traps
-  translate([wall+inch(0.8)+1.3,wall+d_off+2.85,0]) {
+  translate([wall+inch(0.825)+0.5,wall+d_off+inch(0.1),0]) {
     nuttrap();
     translate([inch(2.0),0,0]) nuttrap();
   }
@@ -371,8 +369,8 @@ difference() {
   if (LCD) difference() {
     union() {
       // Filled block above LCD hole
-      translate([wall, wall+d-17, h_b+wall_t-lcd_mount_t])
-        cube_fillet([w,17,lcd_mount_t+e], 
+      translate([wall, wall+d_off+78, h_b+wall_t-lcd_mount_t])
+        cube_fillet([w,d-d_off-78,lcd_mount_t+e], 
           bottom=[lcd_mount_t/2,lcd_mount_t/2,0,lcd_mount_t/2]);
       // LCD grab notch
       translate([wall+10.7, wall+d_off+51.5, h_b+wall_t-lcd_mount_t])
