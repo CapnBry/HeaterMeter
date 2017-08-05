@@ -387,17 +387,19 @@ difference() {
   }
   
   if (Pi_Model == "3B/2B/1B+")
-    translate([wall-pic_ex, wall+d_off, wall_t]) {
+    translate([-pic_ex, wall+d_off, wall_t+2]) {
       // USB pillar reinforcements
-      translate([0, (44.75+62.75)/2-1, 3.5])
-        cube_fillet([pic_ex+1, 2, h_b-3.5], bottom=[0,0,0,2]);
-      translate([0, 81.5-15/2-3, 3.5])
-        cube_fillet([pic_ex+1, 2.5, h_b-3.5], bottom=[0,0,0,2]);
+      translate([0, (44.75+62.75)/2-1, 1.5])
+        cube_fillet([pic_ex+wall, 2, 20.8-1.5], bottom=[0,pic_ex,0,2], top=[0,pic_ex]);
+      translate([0, 81.5-15/2-3, 1.5])
+        cube_fillet([pic_ex+wall, 2.5, 20.8-1.5], bottom=[0,pic_ex,0,2], top=[0,pic_ex]);
       // Near pic_ex fill
-      translate([0, 33.75, 0]) cube([pic_ex, 3, h_b]);
+      translate([0, 33.75, 0])
+        cube_fillet([pic_ex+wall, 3, 20.8], bottom=[0,pic_ex,0,0], top=[0,pic_ex],
+        vertical=[0,0,pic_ex]);
       // Far pic_ex fill (near ethernet)
-      translate([0, d-d_off-5, 3.5])
-       cube_fillet([pic_ex+1, 5+e, h_b-3.5], bottom=[0,0,0,2]);
+      translate([wall, 33.75+59.5-pic_ex, 1.5])
+       cube_fillet([pic_ex, pic_ex+e, 20.8-1.5], bottom=[0,0,0,2], vertical=[0,pic_ex]);
     }
 }
 
