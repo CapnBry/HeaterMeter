@@ -25,10 +25,10 @@ var graphData =  [
         { label: "", color: "#6cf", lines: { show: true, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // fanspeed
         { label: "", color: "#fd9", lines: { show: true, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // lidopen
         { label: "Set", color: "rgba(255,0,0,0.8)", lines: { show: true, lineWidth: 1 }, shadowSize: 0, data: [] },
-        { label: "Amb", color: "#789", lines: { show: true }, data: [] },
-        { label: "Food2", color: "#297", lines: { show: true }, data: [] },
-        { label: "Food1", color: "#6c3", lines: { show: true }, data: [] },
-        { label: "Pit", color: "#e73", lines: { show: true, lineWidth: 3 }, data: [] },
+        { label: "Food3", lines: { show: true }, data: [] },
+        { label: "Food2", lines: { show: true }, data: [] },
+        { label: "Food1", lines: { show: true }, data: [] },
+        { label: "Pit", lines: { show: true, lineWidth: 3 }, data: [] },
         { label: "Peaks", color: "#fff", lines: { show: false }, points: { show: true, radius: 3 }, data: [], noclear: true }
     ];
 
@@ -77,11 +77,13 @@ $(document).ready(function()
     $("div.noisebtn").click(noisebtnClicked);
     $(document).keydown(keyPressed);
 
-    // Set colors of probe readings to match the graph colors
+    // Set colors of the graph and temp shadows to match the CSS
     for (var srs=0; srs<4; ++srs)
-        $("#temp" + srs).css("text-shadow", "2px 2px 1px " + graphData[mapJson[srs]].color);
-    for (var srs=1; srs<4; ++srs)
-        $("#pl" + srs).css("background", graphData[mapJson[srs]].color);
+    {
+      var color = $(".pcolor" + srs).css("background-color");
+      $("#temp" + srs).css("text-shadow", "2px 2px 1px " + color);
+      graphData[mapJson[srs]].color = color;
+    }
 
 <% if context.authuser == "root" then %>
     $(".pname").editable(nameChanged, {cssclass: "jedit", maxlength: 13, select: true});
@@ -973,6 +975,10 @@ td.probe { width: 33%; position: relative; }
 img.preload { display: none; }
 #share { position: fixed; bottom: 0px; padding: 2px 16px; background: rgba(20, 20, 20, 0.2);
   border-radius: 4px 4px 0 0; }
+.pcolor0 { background: #e73; }
+.pcolor1 { background: #6c3; }
+.pcolor2 { background: #297; }
+.pcolor3 { background: #789; }
 <%=nixio.fs.readfile("/usr/share/linkmeter/user.css") or ""%>
 </style>
 </head>
@@ -994,7 +1000,7 @@ img.preload { display: none; }
 <% else %>
       </form>
       <div id="backimage"><div id="backoverlay">
-        <div id="pn0">Pit</div>
+        <div class="pcolor0" id="pl0"></div><div id="pn0">Pit</div>
         <div id="updatedtime">00:00:00 AM</div>
         <div id="lid" title="Click to toggle lid mode"></div>
         <div id="p0container" >
@@ -1034,7 +1040,7 @@ img.preload { display: none; }
                 <div class="dph" id="dph1"></div>
                 <div class="rfstatus" id="rfs1"></div>
                 <div class="noise" id="noise1"></div>
-                <div class="legbord"><div class="legfill" id="pl1"></div></div>
+                <div class="legbord"><div class="legfill pcolor1" id="pl1"></div></div>
                 <div class="pname" id="pn1">-</div>
                 <div class="ptemp" id="temp1">-</div>
             </td>
@@ -1042,7 +1048,7 @@ img.preload { display: none; }
                 <div class="dph" id="dph2"></div>
                 <div class="rfstatus" id="rfs2"></div>
                 <div class="noise" id="noise2"></div>
-                <div class="legbord"><div class="legfill" id="pl2"></div></div>
+                <div class="legbord"><div class="legfill pcolor2" id="pl2"></div></div>
                 <div class="pname" id="pn2">-</div>
                 <div class="ptemp" id="temp2">-</div>
             </td>
@@ -1050,7 +1056,7 @@ img.preload { display: none; }
                 <div class="dph" id="dph3"></div>
                 <div class="rfstatus" id="rfs3"></div>
                 <div class="noise" id="noise3"></div>
-                <div class="legbord"><div class="legfill" id="pl3"></div></div>
+                <div class="legbord"><div class="legfill pcolor3" id="pl3"></div></div>
                 <div class="pname" id="pn3">-</div>
                 <div class="ptemp" id="temp3">-</div>
             </td>
