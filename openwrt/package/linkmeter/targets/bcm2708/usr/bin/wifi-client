@@ -60,6 +60,7 @@ config wifi-iface '$TAG'
 	option mode '$MODE'
 	option ssid '$SSID'
 	option encryption '$ENC'
+	#option powersave '1'
 $PASS
 EOF
 
