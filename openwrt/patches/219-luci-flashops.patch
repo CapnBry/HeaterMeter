@@ -1,5 +1,5 @@
 diff --git a/modules/luci-mod-admin-full/luasrc/controller/admin/system.lua b/modules/luci-mod-admin-full/luasrc/controller/admin/system.lua
-index 5478afa..24574af 100644
+index 5478afa3e..8b48661ee 100644
 --- a/modules/luci-mod-admin-full/luasrc/controller/admin/system.lua
 +++ b/modules/luci-mod-admin-full/luasrc/controller/admin/system.lua
 @@ -195,7 +195,8 @@ local function supports_sysupgrade()
@@ -7,7 +7,7 @@ index 5478afa..24574af 100644
  
  local function supports_reset()
 -	return (os.execute([[grep -sqE '"rootfs_data"|"ubi"' /proc/mtd]]) == 0)
-+	return nixio.fs.access("/mnt/mmcblk0p4/default-config.tar.gz") or
++	return (os.execute([[grep -sq '^overlayfs:/overlay ' /proc/mounts]]) == 0) or
 +		(os.execute([[grep -sqE '"rootfs_data"|"ubi"' /proc/mtd]]) == 0)
  end
  
@@ -22,23 +22,8 @@ index 5478afa..24574af 100644
  		if image_supported(image_tmp) then
  			luci.template.render("admin_system/upgrade", {
  				checksum = image_checksum(image_tmp),
-@@ -351,6 +355,14 @@ end
- 
- function action_reset()
- 	if supports_reset() then
-+		if nixio.fs.access("/mnt/mmcblk0p4/default-config.tar.gz") then
-+			nixio.fs.copy("/mnt/mmcblk0p4/default-config.tar.gz", "/tmp/restore.tar.gz")
-+			-- Force there to be params and add the archive name
-+			luci.http.formvalue("archive")
-+			luci.http.context.request.message.params.archive = "restore.tar.gz"
-+			return action_restore()
-+		end
-+
- 		luci.template.render("admin_system/applyreboot", {
- 			title = luci.i18n.translate("Erasing..."),
- 			msg   = luci.i18n.translate("The system is erasing the configuration partition now and will reboot itself when finished."),
 diff --git a/modules/luci-mod-admin-full/luasrc/view/admin_system/flashops.htm b/modules/luci-mod-admin-full/luasrc/view/admin_system/flashops.htm
-index 3e3f65d..3ce08d9 100644
+index 3e3f65d91..3ce08d949 100644
 --- a/modules/luci-mod-admin-full/luasrc/view/admin_system/flashops.htm
 +++ b/modules/luci-mod-admin-full/luasrc/view/admin_system/flashops.htm
 @@ -71,13 +71,20 @@
