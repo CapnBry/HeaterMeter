@@ -1,3 +1,16 @@
+diff --git a/target/linux/brcm2708/Makefile b/target/linux/brcm2708/Makefile
+index 244513dfc6..33a56d4220 100644
+--- a/target/linux/brcm2708/Makefile
++++ b/target/linux/brcm2708/Makefile
+@@ -10,7 +10,7 @@ include $(TOPDIR)/rules.mk
+ ARCH:=arm
+ BOARD:=brcm2708
+ BOARDNAME:=Broadcom BCM27xx
+-FEATURES:=ext4 audio usb usbgadget display gpio fpu
++FEATURES:=squashfs ext4 audio usb usbgadget display gpio fpu
+ MAINTAINER:=Álvaro Fernández Rojas <noltari@gmail.com>
+ SUBTARGETS:=bcm2708 bcm2709 bcm2710
+ 
 diff --git a/target/linux/brcm2708/base-files/etc/board.d/02_network b/target/linux/brcm2708/base-files/etc/board.d/02_network
 index 9486a6ae68..acb57ac516 100755
 --- a/target/linux/brcm2708/base-files/etc/board.d/02_network
@@ -41,21 +54,94 @@ index 36c5cd71d0..74e41520ba 100644
  		;;
  	esac
  }
+diff --git a/target/linux/brcm2708/bcm2708/config-4.9 b/target/linux/brcm2708/bcm2708/config-4.9
+index 0ab238c91c..b30cb6f627 100644
+--- a/target/linux/brcm2708/bcm2708/config-4.9
++++ b/target/linux/brcm2708/bcm2708/config-4.9
+@@ -51,7 +51,6 @@ CONFIG_BCM2835_WDT=y
+ CONFIG_BCM_VCIO=y
+ CONFIG_BCM_VC_CMA=y
+ CONFIG_BCM_VC_SM=y
+-# CONFIG_BINFMT_FLAT is not set
+ # CONFIG_BLK_DEV_INITRD is not set
+ CONFIG_BLK_DEV_LOOP=y
+ CONFIG_BLK_DEV_RAM=y
+@@ -248,8 +247,6 @@ CONFIG_LOGO=y
+ CONFIG_LOGO_LINUX_CLUT224=y
+ # CONFIG_LOGO_LINUX_MONO is not set
+ # CONFIG_LOGO_LINUX_VGA16 is not set
+-CONFIG_LZO_COMPRESS=y
+-CONFIG_LZO_DECOMPRESS=y
+ CONFIG_MAC_PARTITION=y
+ CONFIG_MAGIC_SYSRQ=y
+ CONFIG_MAILBOX=y
+@@ -343,7 +340,6 @@ CONFIG_SERIAL_AMBA_PL011_CONSOLE=y
+ CONFIG_SERIAL_OF_PLATFORM=y
+ CONFIG_SG_POOL=y
+ CONFIG_SPARSE_IRQ=y
+-# CONFIG_SQUASHFS is not set
+ CONFIG_SRCU=y
+ # CONFIG_STRIP_ASM_SYMS is not set
+ CONFIG_SUSPEND=y
+diff --git a/target/linux/brcm2708/bcm2709/config-4.9 b/target/linux/brcm2708/bcm2709/config-4.9
+index 5c0ab7ea7d..2ea0a69345 100644
+--- a/target/linux/brcm2708/bcm2709/config-4.9
++++ b/target/linux/brcm2708/bcm2709/config-4.9
+@@ -58,7 +58,6 @@ CONFIG_BCM2835_WDT=y
+ CONFIG_BCM_VCIO=y
+ CONFIG_BCM_VC_CMA=y
+ CONFIG_BCM_VC_SM=y
+-# CONFIG_BINFMT_FLAT is not set
+ # CONFIG_BLK_DEV_INITRD is not set
+ CONFIG_BLK_DEV_LOOP=y
+ CONFIG_BLK_DEV_RAM=y
+@@ -268,8 +267,6 @@ CONFIG_LOGO=y
+ CONFIG_LOGO_LINUX_CLUT224=y
+ # CONFIG_LOGO_LINUX_MONO is not set
+ # CONFIG_LOGO_LINUX_VGA16 is not set
+-CONFIG_LZO_COMPRESS=y
+-CONFIG_LZO_DECOMPRESS=y
+ CONFIG_MAC_PARTITION=y
+ CONFIG_MAGIC_SYSRQ=y
+ CONFIG_MAILBOX=y
+@@ -373,7 +370,6 @@ CONFIG_SG_POOL=y
+ CONFIG_SMP=y
+ CONFIG_SMP_ON_UP=y
+ CONFIG_SPARSE_IRQ=y
+-# CONFIG_SQUASHFS is not set
+ CONFIG_SRCU=y
+ # CONFIG_STRIP_ASM_SYMS is not set
+ CONFIG_SUSPEND=y
+diff --git a/target/linux/brcm2708/image/Makefile b/target/linux/brcm2708/image/Makefile
+index 7909c6d814..46e90053b2 100644
+--- a/target/linux/brcm2708/image/Makefile
++++ b/target/linux/brcm2708/image/Makefile
+@@ -47,7 +47,6 @@ endef
+ 
+ ### Devices ###
+ define Device/Default
+-  FILESYSTEMS := ext4
+   KERNEL := kernel-bin | kernel-img
+   KERNEL_IMG := kernel.img
+   IMAGES := sdcard.img
 diff --git a/target/linux/brcm2708/image/cmdline.txt b/target/linux/brcm2708/image/cmdline.txt
-index 24f4f0c276..766bae3da3 100644
+index 24f4f0c276..6b3cc34576 100644
 --- a/target/linux/brcm2708/image/cmdline.txt
 +++ b/target/linux/brcm2708/image/cmdline.txt
 @@ -1 +1 @@
 -dwc_otg.lpm_enable=0 console=serial0,115200 kgdboc=serial0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
-+dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
++dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootwait
 diff --git a/target/linux/brcm2708/image/config.txt b/target/linux/brcm2708/image/config.txt
-index 329aaccc53..01594261b5 100644
+index 329aaccc53..95929898db 100644
 --- a/target/linux/brcm2708/image/config.txt
 +++ b/target/linux/brcm2708/image/config.txt
-@@ -959,3 +959,24 @@ dtparam=spi=on
+@@ -959,3 +959,27 @@ dtparam=spi=on
  #dtoverlay=rpi-dac
  #dtoverlay=rpi-proto
  #dtoverlay=rra-digidac1-wm8741-audio
++
++# Fixed 1024x600@60 HDMI resolution for debugging
++#hdmi_cvt=1024 600 60 5
 +
 +# RPi3 defaults UART off because this requires core_freq=250 so baud clock works correctly
 +core_freq=250
@@ -77,3 +163,21 @@ index 329aaccc53..01594261b5 100644
 +# wifi channel, only used in AP mode
 +#wifi_channel=6
 +
+diff --git a/target/linux/brcm2708/image/gen_rpi_sdcard_img.sh b/target/linux/brcm2708/image/gen_rpi_sdcard_img.sh
+index ffe01fa32c..d69d7adde0 100755
+--- a/target/linux/brcm2708/image/gen_rpi_sdcard_img.sh
++++ b/target/linux/brcm2708/image/gen_rpi_sdcard_img.sh
+@@ -23,7 +23,12 @@ ROOTFSOFFSET="$(($3 / 512))"
+ ROOTFSSIZE="$(($4 / 512))"
+ 
+ dd bs=512 if="$BOOTFS" of="$OUTPUT" seek="$BOOTOFFSET" conv=notrunc
+-dd bs=512 if="$ROOTFS" of="$OUTPUT" seek="$ROOTFSOFFSET" conv=notrunc
++(
++  cat "$ROOTFS"
++  # add padding to avoid reusing old overlay fs data on squashfs
++  # mount_root creates overlay ROOTDEV_OVERLAY_ALIGN/64kB after the rootfs
++  dd if=/dev/zero bs=128k count=1 2>/dev/null
++) | dd bs=512 of="$OUTPUT" seek="$ROOTFSOFFSET" conv=notrunc
+ 
+ 
+ 
