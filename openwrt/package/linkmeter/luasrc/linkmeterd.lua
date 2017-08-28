@@ -499,7 +499,8 @@ local function segRfMap(line)
 end
 
 local function segResetConfig(line)
-  os.execute("/etc/init.d/config_restore reload")
+  toast("Resetting", "configuration...")
+  os.execute("jffs2reset -y -r")
 end
 
 local function segUcIdentifier(line)
