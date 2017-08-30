@@ -1,0 +1,59 @@
+#!/bin/sh /etc/rc.common
+
+START=90
+
+start () {
+  wifi_config /boot/config.txt 1
+
+  if [ -b "/dev/sda1" ] ; then
+    echo Storage device attached, attempting to load wifi from /dev/sda
+    [ -d "/mnt/storage" ] || mkdir /mnt/storage
+    mount /dev/sda1 /mnt/storage
+    wifi_config /mnt/storage/config.txt 0
+    umount /dev/sda1
+  fi
+
+  return 0
+}
+
+wifi_config() {
+  unset wifi_ssid wifi_password wifi_mode wifi_encryption wifi_channel
+  INFILE="$1"
+  COMMENTOUT="$2"
+  # Read wifi parameters from /boot/config.txt and call wifi-client/ap
+  while IFS="=" read -r KEY VAL || [[ -n "$KEY" ]] ; do
+    case $KEY in
+      wifi_*)
+        # remove quotes and carriage return
+        eval $KEY=$(echo $VAL | tr -d '\r')
+        #eval echo $KEY=\$$KEY
+        ;;
+    esac
+  done < "$INFILE"
+
+  [ -n "$wifi_encryption" ] && wifi_encryption="-e $wifi_encryption"
+  [ -n "$wifi_password" ] && wifi_password="-p $wifi_password"
+
+  RESTART_NET=0
+  if [ "$wifi_mode" == "ap" -a -n "$wifi_ssid" ] ; then
+    [ -z "$wifi_channel" ] && wifi_channel=6
+    wifi-ap -s "$wifi_ssid" $wifi_encryption $wifi_password -c $wifi_channel
+    RESTART_NET=1
+  elif [ -n "$wifi_ssid" ] ; then
+    wifi-client -s "$wifi_ssid" $wifi_encryption $wifi_password
+    RESTART_NET=1
+  fi
+
+  if [ "$RESTART_NET" -eq 1 ] ; then
+    if [ "$COMMENTOUT" -eq 1 ] ; then
+      # Comment out all the wifi parameters from config.txt
+      sed -e "s/^wifi_/#wifi_/g" < "$INFILE" > /tmp/config.txt
+      mv /tmp/config.txt "$INFILE"
+      sync
+    fi
+    # Do the network restart
+    /etc/init.d/network reload
+    /etc/init.d/dnsmasq reload
+  fi
+}
+

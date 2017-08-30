@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Install param will be update (opkg install/update), restore, or blank (new)
+# Install param will be update (opkg install/update) or blank (new)
 INSTALL_PARAM="$1"
 [ -z "$INSTALL_PARAM" ] && INSTALL_PARAM="new"
 
@@ -151,7 +151,7 @@ backup_inc /usr/share/linkmeter/user.css
 
 # Enable the services
 /etc/init.d/linkmeterd enable
-[ -x "/etc/init.d/config_restore" ] && /etc/init.d/config_restore enable
+[ -x "/etc/init.d/config_wifi" ] && /etc/init.d/config_wifi enable
 
 if [ "$INSTALL_PARAM" = "new" ] ; then
   if [ "$HARDWARE_MODEL" = "BCM2708" ] ; then
@@ -172,7 +172,7 @@ fi
 # On applicable platforms, avrupdate loads HeaterMeter onto the AVR
 # pasing the firmware file forces it to overwrite even if AVR already
 # contains HeaterMeter
-[ "$INSTALL_PARAM" != "restore" ] && avrupdate /lib/firmware/hm.hex
+avrupdate /lib/firmware/hm.hex
 
 # Clear the exit status, scripts should continue processing even if the
 # avrupdate command fails

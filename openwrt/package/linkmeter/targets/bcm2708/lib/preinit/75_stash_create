@@ -1,0 +1,95 @@
+#!/bin/sh
+
+DEV="/dev/mmcblk0"
+MAJORNODE=179
+MNT="/mnt/${DEV##/dev/}p4"
+
+stash_partition_create() {
+  PARTED=`which parted`
+  if [ -z "$PARTED" ] ; then
+    echo parted utility not found
+    return 1
+  fi
+
+  RESTORE=0
+  PARTED="$PARTED -m -s $DEV unit s"
+  SECTORS=`$PARTED p | grep ^${DEV} | cut -d':' -f 2 | cut -d's' -f 1`
+
+  # Make sure we've got at least 64MB of storage
+  [ -z "$SECTORS" ] || [ "$SECTORS" -lt 131072 ] && return 1
+
+  # If there's not already a partition 4, create one
+  if ! $PARTED p 4 > /dev/null 2>&1 ; then
+    P3CREATED=0
+    echo No partition 4 found on $SECTORS sector device
+
+    # If any other partition extends to the end of the device, forget it
+    $PARTED p | grep -v ${DEV} | grep :$((SECTORS-1))s: && return 0
+
+    echo No partition reaches end of device
+    if ! $PARTED p 3 > /dev/null 2>&1 ; then
+      echo No partition 3 found
+
+      P2END=`$PARTED p | grep "^2:" | cut -d':' -f 3 | cut -d's' -f 1`
+      [ -z "$P2END" ] && return 1
+
+      echo Creating temporary partition 3: $((P2END+1))s $((SECTORS-131073))s
+      $PARTED mkpart primary ext2 $((P2END+1))s $((SECTORS-131073))s || return 1
+      P3CREATED=1
+    fi
+
+    # START 64MB from the end
+    echo Creating partition 4: $((SECTORS-131072))s $((SECTORS-1))s
+    $PARTED mkpart primary ext2 $((SECTORS-131072))s $((SECTORS-1))s
+    RC=$?
+
+    # Make sure the creation was successful
+    [ $RC -ne 0 ] && return $RC
+    RESTORE=1
+
+    # Remove the temporary partition if we made it
+    [ $P3CREATED -ne 0 ] && $PARTED rm 3
+
+    # When running pre-init, no /dev node appears, so force create it
+    mknod "${DEV}p4" b $MAJORNODE 4
+
+    # The device won't show up in /dev for a little while (when not force created)
+    CNT=0
+    while [ ! -e "${DEV}p4" ] ; do
+      sleep 1
+      CNT=$((CNT+1))
+      if [ $CNT -gt 10 ] ; then
+        echo Backup device not found, aborting
+        return 1
+      fi
+    done
+
+    if ! e2fsck -n ${DEV}p4 > /dev/null ; then
+      RESTORE=0
+      echo Formatting filesystem...
+      # fsck failed so go ahead and create a new filesystem
+      mkfs.ext4 -m 0 -O ^resize_inode,^has_journal,extent,uninit_bg ${DEV}p4
+      e2fsck ${DEV}p4
+    fi
+  fi # if no partition 4
+
+  # Mount the device
+  [ -d "$MNT" ] || mkdir -p $MNT
+  mount -t ext4 -o rw,sync ${DEV}p4 $MNT
+
+  if grep -i norestore /proc/cmdline > /dev/null ; then
+    echo "Skipping system backup restore (NORESTORE specified)"
+  elif [ $RESTORE -ne 0 ] ; then
+    # Remove the old default-config style system reset file
+    rm "$MNT/default-config.tar.gz"
+    if [ -f "$MNT/backup.tar.gz" ] ; then
+      echo Restoring system backup...
+      # move our backup to the root partition where it will be restored later
+      mv $MNT/backup.tar.gz /sysupgrade.tgz
+    fi
+  fi
+
+  return 0
+}
+
+boot_hook_add preinit_mount_root stash_partition_create
