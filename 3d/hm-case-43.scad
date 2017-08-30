@@ -22,7 +22,7 @@ body_chamfer_height = 1.5;
 MouseEarHeight = 0;
 
 /* [Hidden] */
-d_off = 0.8; // offset the heatermeter origin from the front edge
+d_off = 1.0; // offset the heatermeter origin from the front edge
 w = inch(3.725)+1.2; // overall interior case width
 d = inch(3.75)+d_off; // overall interior case depth
 // 19.1+ headless Zero
@@ -33,7 +33,7 @@ h_b = [32-6.7, 32][LCD];  // overall interior case height
 probe_centerline = 9.3; // case is split along probe centerline on the probe side
 case_split = 12.4;  // and the case split on the other 3 sides
 
-pic_ex = 2;
+pic_ex = 1.7;
 lcd_mount_t = 8.2 - (wall_t - 0.8);
 
 body_chamfer_height_t = body_chamfer_height;
@@ -267,20 +267,18 @@ difference() {
   if (Pi_Model != "Zero" && Pi_Model != "1A+")
     translate([wall-pic_ex+e,wall+d_off,wall_t]) pic_ex_cube();
 
-  // Probe jack side
-  translate([w+wall*0.5,wall+d_off,wall_t]) {
+  // Probe jack side (not sure why the + is needed)
+  translate([w+wall*0.5, wall+d_off+0.6, wall_t+probe_centerline]) {
     // Probe jacks
-    translate([0,inch(0.95),probe_centerline]) {
-      if (Control_Probe == "Thermocouple")
-        // TC jack
-        translate([0,inch(-0.55)-16.5/2,-1.4]) cube([2*wall, 16.5, 6.5]);
-      else if (Control_Probe == "Thermistor")
-        translate([0,-17.25,0]) phole();
-      if (Control_Probe != "None") {
-        translate([0,inch(0.37)*0,0]) phole();
-        translate([0,inch(0.37)*1,0]) phole();
-        translate([0,inch(0.37)*2,0]) phole();
-      }
+    if (Control_Probe == "Thermocouple")
+      // TC jack
+      translate([0,inch(0.4)-16.5/2,-1.4]) cube([2*wall, 16.5, 6.5]);
+    else if (Control_Probe == "Thermistor")
+      translate([0,inch(0.28),0]) phole();
+    if (Control_Probe != "None") {
+      translate([0,inch(0.95)+inch(0.37)*0,0]) phole();
+      translate([0,inch(0.95)+inch(0.37)*1,0]) phole();
+      translate([0,inch(0.95)+inch(0.37)*2,0]) phole();
     }
   }
   // Pi connector side  
@@ -301,7 +299,7 @@ difference() {
       // Blower/Servo output
       translate([0,25,1.1]) jhole(16.7,13);
       // HM power jack
-      translate([0,5.08,3.4]) jhole(9.4,11);
+      translate([0,inch(0.2),3.4]) jhole(9.4,11);
     }
   }
   
