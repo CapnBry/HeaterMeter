@@ -81,7 +81,7 @@ stash_partition_create() {
     echo "Skipping system backup restore (NORESTORE specified)"
   elif [ $RESTORE -ne 0 ] ; then
     # Remove the old default-config style system reset file
-    rm "$MNT/default-config.tar.gz"
+    rm "$MNT/default-config.tar.gz" 2>/dev/null
     if [ -f "$MNT/backup.tar.gz" ] ; then
       echo Restoring system backup...
       # move our backup to the root partition where it will be restored later
