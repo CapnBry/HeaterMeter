@@ -107,4 +107,3 @@ CONFIG_uhttpd_lua=y
 # CONFIG_OPENSSL_WITH_DEPRECATED is not set
 # CONFIG_OPENSSL_WITH_NPN is not set
 # CONFIG_OPENSSL_WITH_SRP is not set
-# CONFIG_TARGET_brcm2708_bcm2708_DEVICE_rpi is not set

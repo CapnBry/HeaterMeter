@@ -113,17 +113,34 @@ index 5c0ab7ea7d..2ea0a69345 100644
  # CONFIG_STRIP_ASM_SYMS is not set
  CONFIG_SUSPEND=y
 diff --git a/target/linux/brcm2708/image/Makefile b/target/linux/brcm2708/image/Makefile
-index 7909c6d814..46e90053b2 100644
+index 7909c6d814..6253358f6d 100644
 --- a/target/linux/brcm2708/image/Makefile
 +++ b/target/linux/brcm2708/image/Makefile
-@@ -47,7 +47,6 @@ endef
+@@ -45,13 +45,22 @@ define Build/sdcard-img
+ 		$(CONFIG_BRCM2708_SD_BOOT_PARTSIZE) $(CONFIG_TARGET_ROOTFS_PARTSIZE)
+ endef
  
++define Build/pad-squashfs
++	# Perform on ROOTFS:
++	#   pad-extra (word 1) | pad-offset (word 2) 0
++	dd if=/dev/zero of=$(IMAGE_ROOTFS) bs=$(word 1,$(1)) count=1 conv=notrunc oflag=append
++	dd if=$(IMAGE_ROOTFS) of=$(IMAGE_ROOTFS).new bs=$(word 2,$(1)) conv=sync
++	mv $(IMAGE_ROOTFS).new $(IMAGE_ROOTFS)
++endef
++
  ### Devices ###
  define Device/Default
 -  FILESYSTEMS := ext4
++  FILESYSTEMS := squashfs
    KERNEL := kernel-bin | kernel-img
    KERNEL_IMG := kernel.img
    IMAGES := sdcard.img
+-  IMAGE/sdcard.img := boot-img | sdcard-img
++  # Pad image to include at least 64KB of aligned blank space to wipe overlayfs data
++  IMAGE/sdcard.img/squashfs := boot-img | pad-squashfs 64k 64k | sdcard-img
+ endef
+ 
+ define Device/rpi
 diff --git a/target/linux/brcm2708/image/cmdline.txt b/target/linux/brcm2708/image/cmdline.txt
 index 24f4f0c276..6b3cc34576 100644
 --- a/target/linux/brcm2708/image/cmdline.txt
@@ -163,21 +180,3 @@ index 329aaccc53..95929898db 100644
 +# wifi channel, only used in AP mode
 +#wifi_channel=6
 +
-diff --git a/target/linux/brcm2708/image/gen_rpi_sdcard_img.sh b/target/linux/brcm2708/image/gen_rpi_sdcard_img.sh
-index ffe01fa32c..d69d7adde0 100755
---- a/target/linux/brcm2708/image/gen_rpi_sdcard_img.sh
-+++ b/target/linux/brcm2708/image/gen_rpi_sdcard_img.sh
-@@ -23,7 +23,12 @@ ROOTFSOFFSET="$(($3 / 512))"
- ROOTFSSIZE="$(($4 / 512))"
- 
- dd bs=512 if="$BOOTFS" of="$OUTPUT" seek="$BOOTOFFSET" conv=notrunc
--dd bs=512 if="$ROOTFS" of="$OUTPUT" seek="$ROOTFSOFFSET" conv=notrunc
-+(
-+  cat "$ROOTFS"
-+  # add padding to avoid reusing old overlay fs data on squashfs
-+  # mount_root creates overlay ROOTDEV_OVERLAY_ALIGN/64kB after the rootfs
-+  dd if=/dev/zero bs=128k count=1 2>/dev/null
-+) | dd bs=512 of="$OUTPUT" seek="$ROOTFSOFFSET" conv=notrunc
- 
- 
- 
