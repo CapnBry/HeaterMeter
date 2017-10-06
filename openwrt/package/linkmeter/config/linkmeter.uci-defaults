@@ -69,6 +69,31 @@ migrate_settings() {
   linkmeter_settings_migrate
 }
 
+smtp_config() {
+  # heatermeter.com SMTP host uses heatermeter as username and Pi serial as password
+  SMTP_HOST=`grep '^host ' /etc/msmtprc 2>/dev/null | cut -d' ' -f 2`
+  # only update if HOST is heatermeter.com or default and password doesn't match
+  if [ -z "$SMTP_HOST" -o "$SMTP_HOST" == "heatermeter.com" -o "$SMTP_HOST" == "mailhub.oursite.example" ] ; then
+    SMTP_PASS=`grep '^password ' /etc/msmtprc 2>/dev/null | cut -d' ' -f 2-`
+    NEW_PASS=`grep '^Serial\t\t:' /proc/cpuinfo | cut -d' ' -f 2`
+    if [ -n "$NEW_PASS" -a "$SMTP_PASS" != "$NEW_PASS" ] ; then
+      cat > /etc/msmtprc << EOF
+account default
+syslog LOG_MAIL
+user heatermeter
+auth on
+host heatermeter.com
+port 587
+password $NEW_PASS
+from alert@heatermeter.com
+tls_certcheck off
+tls_starttls on
+tls on
+EOF
+    fi
+  fi
+}
+
 HARDWARE_MODEL=`grep '^Hardware\t:' /proc/cpuinfo | cut -d' ' -f 2`
 case "$HARDWARE_MODEL" in
   BCM2708|BCM2709|BCM2835|BCM2836|BCM2837)
@@ -150,6 +175,7 @@ backup_inc /usr/share/linkmeter/email.txt
 backup_inc /usr/share/linkmeter/user.css
 
 # Enable the services
+smtp_config
 /etc/init.d/linkmeterd enable
 [ -x "/etc/init.d/config_wifi" ] && /etc/init.d/config_wifi enable
 
