@@ -60,5 +60,6 @@ if [ "$TARGET" = "BCM2708" ] ; then
   cp diffconfig.$TARGET $WRT_PATH/.config
   patch -N -p0 -d $WRT_PATH < patches/0700-bcm2708-tweaks.patch
   patch -N -p0 -d $WRT_PATH < patches/229-netifd-add-hostname.patch
+  patch -N -p0 -d $WRT_PATH < patches/900-dnsmasq-2-78.patch
 fi
 
