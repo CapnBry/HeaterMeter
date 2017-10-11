@@ -653,7 +653,9 @@ unsigned int GrillPid::getServoStepNext(unsigned int curr)
   const unsigned int SERVO_HOLD_SECS = 2U;
 
   // Hold the servo for SERVO_HOLD_SECS seconds then turn off on the next period
-  if (_servoStepTicks >= (SERVO_HOLD_SECS * 1000000UL / SERVO_REFRESH))
+  // when the output is off (allow the damper to close before turning off)
+  if (_servoStepTicks >= (SERVO_HOLD_SECS * 1000000UL / SERVO_REFRESH)
+    && _pidMode == PIDMODE_OFF)
     return 0;
 
   // If at or close to target, snap to target
