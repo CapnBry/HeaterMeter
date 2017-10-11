@@ -87,9 +87,34 @@ module pic_ex_cube() {
 }
 
 module screw_pimount() {
-  cylinder(h=2.25, d=6.4, $fn=18);
+  cylinder(wall_t+2.3, d=6.4, $fn=18);
   // alignment nubbies
-  //cylinder(h=2.25+1.4, d=2.5, $fn=12);
+  //cylinder(wall_t+2.3+1.4, d=2.5, $fn=12);
+}
+
+module screw_keyhole() {
+  d=6.2;
+  d2=3.5;
+  off=4.15; // ideally would be D but runs into edge of case
+  h=3;
+  
+  cylinder(wall_t+2*e, d=d, $fn=18);
+  translate([-d2/2,0,0]) cube([d2,off,wall_t+2*e]);
+  translate([0,off,0]) {
+    cylinder(wall_t+2*e, d=d2, $fn=18);
+    translate([0,0,wall_t+e]) cylinder(h+e, d=d, $fn=18);
+  }
+}
+
+module screw_keyhole_p() {
+  d=6.2+wall;
+  h=2.3;
+  
+  difference() {
+    cylinder(wall_t+h, d=d, $fn=18);
+    translate([0,0,-e]) cylinder(wall_t+h+2*e, d=d-wall, $fn=18);
+    translate([-d,0,-e]) cube([d*2, d/2, wall_t+h+2*e]);
+  }
 }
 
 module btn_rnd(dia=10) {
@@ -325,10 +350,15 @@ difference() {
     screwhole();
     translate([inch(2.0),0,0]) screwhole();
   }
+  // keyholes
+  //translate([wall+24,wall+d_off+39,-e]) {
+  //    translate([0,49,0]) screw_keyhole();
+  //    translate([58,49,0]) screw_keyhole();
+  //}
 }  // END OF DIFFERENCE
 
   // Pi mounting screws
-  translate([wall+24,wall+d_off+39,wall_t]) {
+  translate([wall+24,wall+d_off+39,0]) {
     translate([0,0,0]) screw_pimount();
     translate([58,0,0]) screw_pimount();
     if (Pi_Model == "Zero") {
@@ -338,6 +368,8 @@ difference() {
     else {
       translate([0,49,0]) screw_pimount();
       translate([58,49,0]) screw_pimount();
+      //translate([0,49,0]) screw_keyhole_p();
+      //translate([58,49,0]) screw_keyhole_p();
     }
   }
 
