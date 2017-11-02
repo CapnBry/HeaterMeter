@@ -1,0 +1,24 @@
+#!/bin/sh /etc/rc.common
+
+START=80
+
+USE_PROCD=1
+PROG=/usr/sbin/ssdp-notify
+
+get_uuid() {
+UUID=`uci -q get system.@system[0].uuid`
+if [ -z "$UUID" ] ; then
+  UUID=`uuidgen`
+  uci set system.@system[-1].uuid="$UUID"
+  uci commit system
+fi
+}
+
+start_service() {
+	get_uuid
+
+        procd_open_instance
+        procd_set_param command "$PROG" -u "$UUID"
+        procd_close_instance
+}
+
