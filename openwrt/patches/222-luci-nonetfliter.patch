@@ -1,0 +1,13 @@
+diff --git a/modules/luci-mod-admin-full/luasrc/view/admin_status/index.htm b/modules/luci-mod-admin-full/luasrc/view/admin_status/index.htm
+index d29a894..dfb06e4 100644
+--- a/modules/luci-mod-admin-full/luasrc/view/admin_status/index.htm
++++ b/modules/luci-mod-admin-full/luasrc/view/admin_status/index.htm
+@@ -38,7 +38,7 @@
+ 		local wan6 = ntm:get_wan6net()
+ 
+ 		local conn_count = tonumber(
+-			fs.readfile("/proc/sys/net/netfilter/nf_conntrack_count")) or 0
++			fs.readfile("/proc/sys/net/netfilter/nf_conntrack_count") or 0) or 0
+ 
+ 		local conn_max = tonumber((
+ 			luci.sys.exec("sysctl net.nf_conntrack_max") or
