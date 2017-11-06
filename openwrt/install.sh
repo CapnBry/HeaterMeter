@@ -8,7 +8,7 @@ if [ -z "$WRT_PATH" ] ; then
   echo "Usage: ./install.sh <target> <wrt path>"
   echo "    Target: BCM47XX or BCM2708 (case sensitive)"
   echo "BCM47XX - svn://svn.openwrt.org/openwrt/trunk@29665"
-  echo "BCM2708 - https://github.com/lede-project/source.git@fbde9ac718409720a937671f3354837223b5db76"
+  echo "BCM2708 - https://github.com/lede-project/source.git@94491a15712732c56dccbf4593000376ae275134"
   echo ""
   echo "Be sure both your WRT_PATH and WRT_PATH/feeds/luci are 'git reset --hard HEAD'"
   exit 1
