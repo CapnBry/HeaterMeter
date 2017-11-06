@@ -109,19 +109,15 @@ int main(int argc, char *argv[]) {
      */
     lssdp_network_interface_update(&lssdp);
 
-    long long last_time = get_current_time();
-    if (last_time < 0) {
-        printf("got invalid timestamp %lld\n", last_time);
-        return EXIT_SUCCESS;
-    }
-
+    long long last_time = 0;
     // Main Loop
     for (;;) {
         fd_set fs;
         FD_ZERO(&fs);
-        FD_SET(lssdp.sock, &fs);
+        if (lssdp.sock > 0)
+          FD_SET(lssdp.sock, &fs);
         struct timeval tv = {
-            .tv_usec = 500 * 1000   // 500 ms
+            .tv_sec = 1
         };
 
         int ret = select(lssdp.sock + 1, &fs, NULL, NULL, &tv);
@@ -131,6 +127,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (ret > 0) {
+            // Read and send direct NOTIFY if M-SEARCH seen
             lssdp_socket_read(&lssdp);
         }
 
@@ -142,14 +139,31 @@ int main(int argc, char *argv[]) {
         }
 
         // doing task per X seconds
-        if (current_time - last_time >= 30000) {
-            lssdp_network_interface_update(&lssdp); // 1. update network interface
-            lssdp_send_notify(&lssdp);              // 2. send NOTIFY
-            lssdp_neighbor_check_timeout(&lssdp);   // 3. check neighbor timeout
+        long long elapsed = (current_time - last_time) / 1000;
+        if (lssdp.sock > 0 && elapsed >= 30)
+        {
+            lssdp_network_interface_update(&lssdp);
+            lssdp_neighbor_check_timeout(&lssdp);
 
-            last_time = current_time;               // update last_time
-        }
-    }
+            // network_interface_update+callback can close the socket if list changes
+            // and the socket can not be recreated/configured on the new list
+            if (lssdp.sock > 0)
+              lssdp_send_notify(&lssdp);
+
+            last_time = current_time;
+        } /* if have socket */
+        else if (elapsed >= 10)
+        {
+          /* This works around a problem where the interface list changes but
+           * IP_ADD_MEMBERSHIP fails with "No such device"
+           */
+          if (lssdp_socket_create(&lssdp) != 0)
+          {
+            puts("SSDP create socket failed");
+            last_time = current_time;
+          }
+        } /* if no socket */
+    } /* for(;;) */
 
     return EXIT_SUCCESS;
 }

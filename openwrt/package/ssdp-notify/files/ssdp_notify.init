@@ -5,6 +5,7 @@ START=80
 USE_PROCD=1
 PROG=/usr/sbin/ssdp-notify
 
+UUID=""
 get_uuid() {
 UUID=`uci -q get system.@system[0].uuid`
 if [ -z "$UUID" ] ; then
@@ -15,10 +16,10 @@ fi
 }
 
 start_service() {
-	get_uuid
+        get_uuid
 
         procd_open_instance
-        procd_set_param command "$PROG" -u "$UUID"
+        procd_set_param command "$PROG" "$UUID"
         procd_close_instance
 }
 
