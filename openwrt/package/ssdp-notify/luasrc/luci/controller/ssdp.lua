@@ -11,8 +11,8 @@ function M.action_discover()
 
   luci.http.prepare_content("application/xml")
   return luci.template.render("discover", {
-    presentationUrl='http://' .. luci.http.getenv('HTTP_HOST') .. '/luci/',
-    friendlyName='HeaterMeter on "' .. luci.sys.hostname() .. '"',
+    presentationUrl='http://' .. luci.http.getenv('HTTP_HOST') .. '/luci/lm',
+    friendlyName=luci.sys.hostname() .. ' (HeaterMeter)',
     manufacturer='HeaterMeter',
     manufacturerUrl='https://heatermeter.com/',
     modelName='4.x',
