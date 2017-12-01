@@ -152,6 +152,9 @@ uci commit linkmeter
 uci del_list uhttpd.main.alias='/luci=/cgi-bin'
 uci set uhttpd.main.lua_prefix='/luci'
 uci set uhttpd.main.lua_handler='/usr/lib/lua/luci/sgi/uhttpd.lua'
+# Up the number of simultaneous connections from 3 (what!)
+N=`uci -q get uhttpd.main.max_requests || echo 0`
+[ "$N" -lt 20 ] && uci set uhttpd.main.max_requests='20'
 # If an HTTPS redirect takes place from an AJAX call and the redirect does not allow CORS
 # then the browser will error out before redirecting. This effects hm.com/devices as well
 # as third party apps pulling HeaterMeter data
