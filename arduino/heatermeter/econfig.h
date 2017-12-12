@@ -13,12 +13,15 @@
 extern "C" {
 #endif
 
-void econfig_read_block(void *_dst, const void *_src, uint8_t n);
-uint16_t econfig_read_word(const void *_src);
+#define eeprom_is_busy() bit_is_set(EECR, EEPE)
 
-void econfig_write_block(const void *_src, void *_dst, uint8_t  n);
-void econfig_write_word(void *_dst, uint16_t val);
+uint8_t econfig_read_byte(const void *_src);
+uint16_t econfig_read_word(const void *_src);
+void econfig_read_block(void *_dst, const void *_src, uint8_t n);
+
 void econfig_write_byte(void *_dst, uint8_t val);
+void econfig_write_word(void *_dst, uint16_t val);
+void econfig_write_block(const void *_src, void *_dst, uint8_t  n);
 
 #ifdef __cplusplus
 } // extern "C"
