@@ -125,6 +125,7 @@ volatile uint8_t rf12_crc;         // running crc value
 volatile uint8_t rf12_buf[RF_MAX];  // recv/xmit buf, including hdr & crc bytes
 volatile uint8_t rf12_len;
 static uint8_t rf12_status;
+static uint8_t rf12_pendingband;   // set if initialization for this band has not taken place yet
 static uint8_t drssi;
 
 itplus_initial_t itplus_initial_cb;
@@ -341,6 +342,9 @@ static void rf12_recvStart () {
 }
 
 uint8_t rf12_recvDone () {
+    if (rf12_pendingband != 0 && !rf12_initialize(rf12_pendingband, 0))
+      return 0;
+
     if (rxstate == TXRECV && rf12_len == rxfill) {
         rxstate = TXIDLE;
         return 1;
@@ -351,6 +355,9 @@ uint8_t rf12_recvDone () {
 }
 
 uint8_t rf12_canSend () {
+    if (rf12_pendingband != 0 && !rf12_initialize(rf12_pendingband, 0))
+      return 0;
+  
     // no need to test with interrupts disabled: state TXRECV is only reached
     // outside of ISR and we don't care if rxfill jumps from 0 to 1 here
     if (rxstate == TXRECV && rxfill == 0) {
@@ -398,8 +405,12 @@ void rf12_sendWait (uint8_t mode) {
 
 /*!
   Call this once with the node ID (0-31), frequency band (0-3)
+  Returns 0 if the init failed immediately and wait is false
+  Will wait indefinately if 'wait' is true.
+  rf12_canSend() and rf12_recvDone() will try to init if it has not been successful
 */
-void rf12_initialize (uint8_t band) {
+uint8_t rf12_initialize (uint8_t band, uint8_t wait) {
+    rf12_pendingband = band;
     rf12_spiInit();
 
     rf12_xfer(0x0000); // intitial SPI transfer added to avoid power-up problem
@@ -408,8 +419,10 @@ void rf12_initialize (uint8_t band) {
     
     // wait until RFM12B is out of power-up reset, this takes several *seconds*
     rf12_xfer(RF_TXREG_WRITE); // in case we're still in OOK mode
-    while (digitalRead(RFM_IRQ) == 0)
+    while (wait && digitalRead(RFM_IRQ) == 0)
         rf12_xfer(0x0000);
+    if (digitalRead(RFM_IRQ) == 0)
+        return 0;
         
     rf12_xfer(0x80C7 | (band << 4)); // EL (ena TX), EF (ena RX FIFO), 12.0pF
     switch (band)
@@ -460,6 +473,8 @@ void rf12_initialize (uint8_t band) {
 #else
     attachInterrupt(0, rf12_interrupt, LOW);
 #endif
+    rf12_pendingband = 0;
+    return 1;
 }
 
 void rf12_sleep (char n) {

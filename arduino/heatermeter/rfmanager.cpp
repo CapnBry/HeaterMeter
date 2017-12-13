@@ -49,7 +49,7 @@ void RFManager::init(unsigned char band)
 {
   if (!_initialized)
   {
-    rf12_initialize(band);
+    rf12_initialize(band, 0);
     _initialized = true;
   }
 }

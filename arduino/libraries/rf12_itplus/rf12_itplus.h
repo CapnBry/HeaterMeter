@@ -25,7 +25,7 @@ extern volatile uint16_t rf_bad_status;
 void rf12_spiInit(void);
 
 // call this once with the frequency band
-void rf12_initialize(uint8_t band);
+uint8_t rf12_initialize(uint8_t band, uint8_t wait);
 
 // initialize the RF12 module from settings stored in EEPROM by "RF12demo"
 // don't call rf12_initialize() if you init the hardware with rf12_config()
