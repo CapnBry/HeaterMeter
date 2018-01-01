@@ -259,8 +259,8 @@ v.description = ESCAPE_HELP
 --
 
 s = m:section(NamedSection, "alarms_push", nil, "Push Notifications",
-  [[<ul><li><a href="www.pushbullet.com">Pushbullet</a> is a unified notification system for mobile and desktop devices.
-    Find your Access Token in your account settings.</li><li><a href="www.pushover.net">Pushover</a>
+  [[<ul><li><a href="https://www.pushbullet.com">Pushbullet</a> is a unified notification system for mobile and desktop devices.
+    Find your Access Token in your account settings.</li><li><a href="https://www.pushover.net">Pushover</a>
     makes it easy to get real-time notifications on your Android, iPhone, iPad, and Desktop (Pebble, Android Wear, and Apple watches, too!)</li></ul>
   ]])
 
