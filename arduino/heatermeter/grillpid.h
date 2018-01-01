@@ -98,6 +98,8 @@ public:
   void calcTemp(unsigned int _accumulator);
   // Perform once-per-period processing
   void processPeriod(void);
+  // Output status to serial
+  void status(void) const; 
 
   ProbeAlarm Alarms;
 };

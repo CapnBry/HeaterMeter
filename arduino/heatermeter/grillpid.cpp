@@ -403,6 +403,15 @@ void TempProbe::setTemperatureC(float T)
   }
 }
 
+void TempProbe::status(void) const
+{
+  if (hasTemperature())
+    SerialX.print(Temperature, 1);
+  else
+    Serial_char('U');
+  Serial_csv();
+}
+
 void GrillPid::init(void)
 {
 #if defined(GRILLPID_SERVO_ENABLED)
@@ -776,14 +785,11 @@ void GrillPid::status(void) const
     SerialX.print(getSetPoint(), DEC);
   Serial_csv();
 
-  for (unsigned char i=0; i<TEMP_COUNT; ++i)
-  {
-    if (Probes[i]->hasTemperature())
-      SerialX.print(Probes[i]->Temperature, 1);
-    else
-      Serial_char('U');
-    Serial_csv();
-  }
+  // Always output the control probe in the first slot, usually TEMP_PIT
+  Probes[TEMP_CTRL]->status();
+  // The rest of the probes go in order, and one may be a duplicate of TEMP_CTRL
+  for (unsigned char i = TEMP_FOOD1; i<TEMP_COUNT; ++i)
+    Probes[i]->status();
 
   SerialX.print(getPidOutput(), DEC);
   Serial_csv();
