@@ -41,7 +41,7 @@ done
 
 # BRY: Want luci-ssl-openssl, but that adds luci -> luci-app-firewall -> iptables -> kmods-*
 # Think we can get away with linkmeter -> luci-mod-admin-full and then just enabling uhttpd / openssl-util
-LMPACKS="parted rrdtool linkmeter luci-mod-admin-full liblmfit-lua luci-theme-bootstrap luci-theme-material luci-theme-openwrt luci-app-msmtp ssdp-notify"
+LMPACKS="parted rrdtool linkmeter luci-mod-admin-full liblmfit-lua luci-theme-bootstrap luci-theme-material luci-theme-openwrt luci-app-msmtp ssdp-notify kmod-fs-exfat"
 for PACK in $LMPACKS ; do
   $WRT_PATH/scripts/feeds install -p linkmeter $PACK
 done
