@@ -744,6 +744,12 @@ function connectionSuccess(o)
           addGraphPoint(graphData[2].data, o.time, o.set);
     }
 
+    // If control probe has a value, set the window title to that value
+    var title = 'HeaterMeter BBQ Control';
+    if (o.temps[0].c !== null && o.set !== null)
+      title = '(' + o.temps[0].c.toFixed(1) + ' ' + o.temps[0].n + ') ' + title;
+    document.title = title;
+
     for(var i = 0; i < 4; i++)
     {
         if (updateEditables) $("#pn" + i).text(o.temps[i].n);
