@@ -292,8 +292,8 @@ difference() {
   if (Pi_Model != "Zero" && Pi_Model != "1A+")
     translate([wall-pic_ex+e,wall+d_off,wall_t]) pic_ex_cube();
 
-  // Probe jack side (not sure why the + is needed)
-  translate([w+wall*0.5, wall+d_off+0.6, wall_t+probe_centerline]) {
+  // Probe jack side
+  translate([w+wall*0.5, wall+d_off, wall_t+probe_centerline]) {
     // Probe jacks
     if (Control_Probe == "Thermocouple")
       // TC jack
@@ -307,7 +307,7 @@ difference() {
     }
   }
   // Pi connector side  
-  translate([wall*-0.5,wall+d_off,wall_t]) {
+  translate([0,wall+d_off,wall_t]) {
     // Pi connectors
     translate([0,0,5]) {
       if (Pi_Model == "3B/2B/1B+") {
