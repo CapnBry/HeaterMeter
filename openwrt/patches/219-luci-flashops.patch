@@ -16,7 +16,7 @@ index 5478afa3e..8b48661ee 100644
  	--
  	local step = tonumber(http.formvalue("step") or 1)
  	if step == 1 then
-+		if http.formvalue("imageurl") then
++		if (http.formvalue("imageurl") or "") ~= "" then
 +			os.execute("wget -O %s %s" % {image_tmp, http.formvalue("imageurl")})
 +		end
  		if image_supported(image_tmp) then
