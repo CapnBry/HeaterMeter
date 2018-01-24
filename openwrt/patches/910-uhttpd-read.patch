@@ -1,0 +1,10 @@
+--- uhttpd-2017-08-19-3fd58e9b/lua.c.orig	2018-01-24 10:24:34.288327793 -0500
++++ uhttpd-2017-08-19-3fd58e9b/lua.c	2018-01-24 10:28:31.817731660 -0500
+@@ -72,6 +72,7 @@
+ 
+ 		luaL_addsize(&B, r);
+ 		data_len += r;
++		len -= r;
+ 		if (r != LUAL_BUFFERSIZE)
+ 			break;
+ 	}

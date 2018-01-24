@@ -60,5 +60,8 @@ if [ "$TARGET" = "BCM2708" ] ; then
   cp diffconfig.$TARGET $WRT_PATH/.config
   patch -N -p1 -d $WRT_PATH < patches/0700-bcm2708-tweaks.patch
   patch -N -p1 -d $WRT_PATH < patches/229-netifd-add-hostname.patch
+  patch -N -p1 -d $WRT_PATH < patches/900-dnsmasq-2-78.patch
+  mkdir $WRT_PATH/package/network/services/uhttpd/patches && \
+    cp patches/910-uhttpd-read.patch $WRT_PATH/package/network/services/uhttpd/patches
 fi
 
