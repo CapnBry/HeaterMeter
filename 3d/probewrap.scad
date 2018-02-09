@@ -11,7 +11,7 @@ oa_w = 60;
 // Overall depth of flat
 oa_d = 95;
 // Interior height between flats
-height = 7;
+height = 7.5;
 // Center hole ratio
 center_ratio = 3;
 
@@ -22,7 +22,7 @@ probe_l = 25;
 // Distance of probe holder offset
 probe_off = 7;
 // Reduce thickness of probe holder (allow wire to pass more easily)
-probe_cut = 0.75;
+probe_cut = 1.25;
 
 // Include holes around the perimeter of the flat?
 flat_has_holes = true;
@@ -197,10 +197,10 @@ module lip_poly_stack(interior_h) {
   t_plug=t_sock;
   // Back the top snap portion away from the mating area by this amount
   // The lip is only 0.6mm so err needs to be less than this for any engagement to occur
-  err_h=0.15;
+  err_h=0.20;
   // Raise the snap lip this extra amount to account for a non-smooth surface
   // or layer rounding error, 1/2 a layer height is good
-  err_v=0.12;
+  err_v=0.15;
 
   polygon([
     // origin is bottom center, moving counterclockwise
@@ -208,7 +208,7 @@ module lip_poly_stack(interior_h) {
     [-err_h, h+1+err_v],  
       [0.6-err_h, h+1+0.6+err_v], [0.6-err_h, h+1+0.6+0.4+err_v],
     [-err_h, h+1+0.8+0.8+err_v],
-    [-t_plug-err_h, h+1+0.8+0.8], [-t_plug-err_h, h], [0, h-t_plug-err_h],
+    [-t_plug-err_h, h+1+0.8+0.8+err_v], [-t_plug-err_h, h], [0, h-t_plug-err_h],
     [0, 1+0.8+0.8], [0.8, 1+0.8], [0, 1], [0, 0.5]
   ]);
 }
