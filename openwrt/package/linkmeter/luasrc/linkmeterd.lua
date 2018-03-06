@@ -964,6 +964,7 @@ end
 
 local function registerStreamingStatus(fn)
   statusListeners[#statusListeners + 1] = fn
+  unthrottleUpdates() -- make sure the new client gets the next available update
 end
 
 local lmdStartTime
