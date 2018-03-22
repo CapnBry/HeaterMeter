@@ -175,7 +175,7 @@ function scanResult(o)
     var encrypt = encrypt_val(item);
 
     var s = '<tr class="cbi-section-table-row ' + RSTYLES[i%2] + '" data-ssid="' + ssid + '" data-encrypt="' + encrypt +
-      '" data-band="' + ((item.channel > 13) ? '5' : '2') + '">' +
+      '" data-band="' + ((item.channel > 14) ? '5' : '2') + '">' +
       '<td class="cbi-value-field" style="width:16px; padding:3px"><abr title="' + signal_str(item) + '"><img src="' +
         signal_icon(item) + '" /><br />' +
         Math.round(signal_percent(item)) + '%' +
