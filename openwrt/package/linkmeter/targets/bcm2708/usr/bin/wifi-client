@@ -4,9 +4,10 @@ FUNC=`basename $0`
 
 [ $# -eq 0 ] && {
 cat <<EOF
-Usage: $FUNC [-s SSID] [-p password] [-c channel] [-e encryption] [-m mode]
+Usage: $FUNC [-s SSID] [-p password] [-c channel] [-e encryption] [-m mode] [-b band]
        encryption = none wep psk psk2 (default)
        mode = ap sta
+       band = 2 5
 EOF
   exit 1
 }
@@ -16,13 +17,14 @@ MODE=sta
 [ "$FUNC" = "wifi-client" ] && MODE="sta" && TAG="wifi_client"
 [ "$FUNC" = "wifi-ap" ] && MODE="ap" && TAG="wifi_ap"
 
-while getopts "s:p:c:e:m:" arg ; do
+while getopts "s:p:c:e:m:b:" arg ; do
   case $arg in
     s) SSID=$OPTARG ;;
     p) PASS=$OPTARG ;;
     c) CHANNEL=$OPTARG ;;
     e) ENC=$OPTARG ;;
     m) MODE=$OPTARG ;;
+    b) BAND=${OPTARG:0:1} ;;
   esac
 done
 
@@ -33,10 +35,19 @@ shift $((OPTIND-1))
 SSID=`echo $SSID | sed "s/\'/\\\\\'/g"`
 PASS=`echo $PASS | sed "s/\'/\\\\\'/g"`
 [ -n "$PASS" ] && PASS="	option key '$PASS'"
-[ "$MODE" == "ap" -a -z "$CHANNEL" ] && CHANNEL="6"
-[ -n "$CHANNEL" ] && CHANNEL="	option channel '$CHANNEL'"
 
-# On platforms with just one network connection (PiA, Zero, ZeroW) the plarform will assign the wifi to the
+case $BAND in
+  2) BAND="11g" ;;
+  5) BAND="11a" ;;
+  *) BAND="11n" ;; # The Pi3B+ will find the proper band in STA mode if set to 11n
+esac
+
+# Default AP mode to channel 36 for 5GHz, channel 6 for 2.4GHz, channel auto for STA
+[ "$MODE" == "ap" -a "$BAND" == "11a" -a -z "$CHANNEL" ] && CHANNEL="36"
+[ "$MODE" == "ap" -a -z "$CHANNEL" ] && CHANNEL="6"
+[ -z "$CHANNEL" ] && CHANNEL="auto"
+
+# On platforms with just one network connection (PiA, Zero, ZeroW) the platform will assign the wifi to the
 # lan interface. In that case, do not create a new interface, just write to the lan interface definition
 IFACE="wwan"
 [ "$(uci -q get network.lan.ifname)" = "wlan0" ] && IFACE="lan"
@@ -45,14 +56,14 @@ cat > /etc/config/wireless << EOF
 config wifi-device 'radio0'
 	option type 'mac80211'
 	option phy 'phy0'
-	option hwmode '11ng'
+	option hwmode '$BAND'
+	option channel '$CHANNEL'
 	#option htmode 'HT20'
 	#list ht_capab 'SHORT-GI-20'
 	#list ht_capab 'SHORT-GI-40'
 	#list ht_capab 'DSSS_CCK-40'
 	#list ht_capab 'RX-STBC1'
 	#option country '00'
-$CHANNEL	
 
 config wifi-iface '$TAG'
 	option device 'radio0'

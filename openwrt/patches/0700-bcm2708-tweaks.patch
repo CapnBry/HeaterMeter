@@ -341,10 +341,10 @@ index 24f4f0c276..6b3cc34576 100644
 -dwc_otg.lpm_enable=0 console=serial0,115200 kgdboc=serial0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait
 +dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootwait
 diff --git a/target/linux/brcm2708/image/config.txt b/target/linux/brcm2708/image/config.txt
-index 329aaccc53..95929898db 100644
+index 329aaccc53..30502c2b3f 100644
 --- a/target/linux/brcm2708/image/config.txt
 +++ b/target/linux/brcm2708/image/config.txt
-@@ -959,3 +959,27 @@ dtparam=spi=on
+@@ -959,3 +959,29 @@ dtparam=spi=on
  #dtoverlay=rpi-dac
  #dtoverlay=rpi-proto
  #dtoverlay=rra-digidac1-wm8741-audio
@@ -361,9 +361,9 @@ index 329aaccc53..95929898db 100644
 +##
 +## wifi configuration
 +##
-+# SSID (network name)
++# SSID (network name) -- Case-sensitive!
 +#wifi_ssid=heatermeter
-+# Password for encryption
++# Password for encryption -- Case-sensitive!
 +#wifi_password=password
 +# Encryption mode psk2 (WPA2-PSK default), psk, wep, none
 +#wifi_encryption=psk2
@@ -371,6 +371,8 @@ index 329aaccc53..95929898db 100644
 +#wifi_mode=ap
 +# wifi channel, only used in AP mode
 +#wifi_channel=6
++# wifi band 5 GHz (5) or 2.4 GHz (2), only required in AP mode
++#wifi_band=2
 +
 diff --git a/target/linux/brcm2708/patches-4.9/950-2000-add-pi3-plus-dts.patch b/target/linux/brcm2708/patches-4.9/950-2000-add-pi3-plus-dts.patch
 new file mode 100644

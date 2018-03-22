@@ -17,7 +17,7 @@ start () {
 }
 
 wifi_config() {
-  unset wifi_ssid wifi_password wifi_mode wifi_encryption wifi_channel
+  unset wifi_ssid wifi_password wifi_mode wifi_encryption wifi_channel wifi_band
   INFILE="$1"
   COMMENTOUT="$2"
   # Read wifi parameters from /boot/config.txt and call wifi-client/ap
@@ -33,14 +33,15 @@ wifi_config() {
 
   [ -n "$wifi_encryption" ] && wifi_encryption="-e $wifi_encryption"
   [ -n "$wifi_password" ] && wifi_password="-p $wifi_password"
+  [ -n "$wifi_band" ] && wifi_band="-b $wifi_band"
 
   RESTART_NET=0
   if [ "$wifi_mode" == "ap" -a -n "$wifi_ssid" ] ; then
-    [ -z "$wifi_channel" ] && wifi_channel=6
-    wifi-ap -s "$wifi_ssid" $wifi_encryption $wifi_password -c $wifi_channel
+    [ -n "$wifi_channel" ] && wifi_channel="-c $wifi_channel"
+    wifi-ap -s "$wifi_ssid" $wifi_encryption $wifi_password $wifi_band $wifi_channel
     RESTART_NET=1
   elif [ -n "$wifi_ssid" ] ; then
-    wifi-client -s "$wifi_ssid" $wifi_encryption $wifi_password
+    wifi-client -s "$wifi_ssid" $wifi_encryption $wifi_password $wifi_band
     RESTART_NET=1
   fi
 

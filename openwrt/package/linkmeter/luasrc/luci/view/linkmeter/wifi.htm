@@ -137,11 +137,13 @@ function setNet(e)
 {
   var ssid = $(this).data('ssid');
   var encrypt = $(this).data('encrypt');
+  var band = $(this).data('band');
   if (typeof ssid === "undefined")
     return;
 
   $("#mode").val('sta').trigger('change');
   $("#join").val(ssid);
+  $("#band").val(band);
   $("#encryption").val(encrypt);
   $("#key").trigger('change');
 
@@ -172,7 +174,8 @@ function scanResult(o)
     var ssid = item.ssid;
     var encrypt = encrypt_val(item);
 
-    var s = '<tr class="cbi-section-table-row ' + RSTYLES[i%2] + '" data-ssid="' + ssid + '" data-encrypt="' + encrypt + '">' +
+    var s = '<tr class="cbi-section-table-row ' + RSTYLES[i%2] + '" data-ssid="' + ssid + '" data-encrypt="' + encrypt +
+      '" data-band="' + ((item.channel > 13) ? '5' : '2') + '">' +
       '<td class="cbi-value-field" style="width:16px; padding:3px"><abr title="' + signal_str(item) + '"><img src="' +
         signal_icon(item) + '" /><br />' +
         Math.round(signal_percent(item)) + '%' +
@@ -249,9 +252,17 @@ function scanResult(o)
           </div>
         </div>
 
+        <div class="cbi-value" id="band-container">
+          <label class="cbi-value-title" for="band">Band</label>
+          <select id="band" name="band">
+            <option value="2">2.4 GHz</option>
+            <option value="5">5 GHz</option>
+          </select>
+        </div>
+
         <div class="cbi-value" id="channel-container">
           <label class="cbi-value-title" for="channel">Channel</label>
-          <input type="number" class="cbi-input-text" id="channel" name="channel" value="6" />
+          <input type="number" class="cbi-input-text" id="channel" name="channel"/>
         </div>
 
         <div class="cbi-value" id="encryption-container">

@@ -309,13 +309,17 @@ function action_wifi()
   local encrypt = luci.http.formvalue("encryption")
   local key = luci.http.formvalue("key")
   local mode = luci.http.formvalue("mode") or "sta"
+  local band = luci.http.formvalue("band")
   if ssid and encrypt and
     (encrypt == "none" or key ~= "") then
     local cmd = '/usr/bin/wifi-client -s %q -e %q -m %q' % { ssid, encrypt, mode}
     if key then cmd = cmd .. (' -p %q' % { key }) end
-    if mode == "ap" then
-      local channel = luci.http.formvalue("channel") or "6"
-      cmd = cmd .. (' -c %q' % { channel })
+    if band then cmd = cmd .. ' -b ' .. band end
+    -- Only supply a channel if AP mode and the user set a channel
+    -- otherwise let the script default it
+    local channel = luci.http.formvalue("channel")
+    if mode == "ap" and channel then
+      cmd = cmd .. ' -c ' .. channel
     end
 
     luci.http.prepare_content("text/plain")
