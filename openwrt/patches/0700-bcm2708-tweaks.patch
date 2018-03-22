@@ -12,11 +12,14 @@ index 244513dfc6..33a56d4220 100644
  SUBTARGETS:=bcm2708 bcm2709 bcm2710
  
 diff --git a/target/linux/brcm2708/base-files/etc/board.d/02_network b/target/linux/brcm2708/base-files/etc/board.d/02_network
-index 29bcf33e33..a88c0be880 100755
+index 29bcf33e33..b328e1f3a0 100755
 --- a/target/linux/brcm2708/base-files/etc/board.d/02_network
 +++ b/target/linux/brcm2708/base-files/etc/board.d/02_network
-@@ -15,7 +15,14 @@ rpi-2-b |\
+@@ -13,9 +13,17 @@ board=$(board_name)
+ case "$board" in
+ rpi-2-b |\
  rpi-3-b |\
++rpi-3-b-plus |\
  rpi-b |\
  rpi-b-plus)
 -	ucidef_set_interface_lan "eth0"
@@ -32,20 +35,21 @@ index 29bcf33e33..a88c0be880 100755
  rpi-zero-w)
  	ucidef_set_interface_lan "wlan0"
 diff --git a/target/linux/brcm2708/base-files/etc/diag.sh b/target/linux/brcm2708/base-files/etc/diag.sh
-index 6f5810ed58..ba80fbbbae 100644
+index 6f5810ed58..7156fb5096 100644
 --- a/target/linux/brcm2708/base-files/etc/diag.sh
 +++ b/target/linux/brcm2708/base-files/etc/diag.sh
-@@ -14,7 +14,8 @@ set_state() {
+@@ -14,7 +14,9 @@ set_state() {
  	rpi-b |\
  	rpi-cm |\
  	rpi-zero |\
 -	rpi-zero-w)
 +	rpi-zero-w |\
-+	rpi-3-b)
++	rpi-3-b |\
++	rpi-3-b-plus)
  		status_led="led0"
  		;;
  	esac
-@@ -30,7 +31,7 @@ set_state() {
+@@ -30,7 +32,7 @@ set_state() {
  		status_led_blink_preinit_regular
  		;;
  	done)
@@ -54,6 +58,130 @@ index 6f5810ed58..ba80fbbbae 100644
  		;;
  	esac
  }
+diff --git a/target/linux/brcm2708/base-files/lib/brcm2708.sh b/target/linux/brcm2708/base-files/lib/brcm2708.sh
+index 76e678ff97..bd34184f33 100644
+--- a/target/linux/brcm2708/base-files/lib/brcm2708.sh
++++ b/target/linux/brcm2708/base-files/lib/brcm2708.sh
+@@ -15,6 +15,9 @@ brcm2708_detect() {
+ 	"Raspberry Pi 3 Model B Rev"*)
+ 		board_name="rpi-3-b"
+ 		;;
++	"Raspberry Pi 3 Model B Plus Rev"*)
++		board_name="rpi-3-b-plus"
++		;;
+ 	"Raspberry Pi Compute Module Rev"*)
+ 		board_name="rpi-cm"
+ 		;;
+diff --git a/target/linux/brcm2708/base-files/lib/firmware/brcm/brcmfmac43455-sdio.txt b/target/linux/brcm2708/base-files/lib/firmware/brcm/brcmfmac43455-sdio.txt
+new file mode 100644
+index 0000000000..260c9299ca
+--- /dev/null
++++ b/target/linux/brcm2708/base-files/lib/firmware/brcm/brcmfmac43455-sdio.txt
+@@ -0,0 +1,92 @@
++# Cloned from bcm94345wlpagb_p2xx.txt 
++NVRAMRev=$Rev: 498373 $
++sromrev=11
++vendid=0x14e4
++devid=0x43ab
++manfid=0x2d0
++prodid=0x06e4
++#macaddr=00:90:4c:c5:12:38
++macaddr=b8:27:eb:74:f2:6c
++nocrc=1
++boardtype=0x6e4
++boardrev=0x1304
++
++#XTAL 37.4MHz
++xtalfreq=37400
++
++btc_mode=1
++#------------------------------------------------------
++#boardflags: 5GHz eTR switch by default
++#            2.4GHz eTR switch by default
++#            bit1 for btcoex
++boardflags=0x00480201
++boardflags2=0x40800000
++boardflags3=0x48200100
++phycal_tempdelta=15
++rxchain=1
++txchain=1
++aa2g=1
++aa5g=1
++tssipos5g=1
++tssipos2g=1
++femctrl=0
++AvVmid_c0=1,165,2,100,2,100,2,100,2,100
++pa2ga0=-129,6525,-718
++pa2ga1=-149,4408,-601
++pa5ga0=-185,6836,-815,-186,6838,-815,-184,6859,-815,-184,6882,-818
++pa5ga1=-202,4285,-574,-201,4312,-578,-196,4391,-586,-201,4294,-575
++itrsw=1
++pdoffsetcckma0=2
++pdoffset2gperchan=0,-2,1,0,1,0,1,1,1,0,0,-1,-1,0
++pdoffset2g40ma0=16
++pdoffset40ma0=0x8888
++pdoffset80ma0=0x8888
++extpagain5g=2
++extpagain2g=2
++tworangetssi2g=1
++tworangetssi5g=1
++# LTECX flags
++# WCI2
++ltecxmux=0
++ltecxpadnum=0x0504
++ltecxfnsel=0x22
++ltecxgcigpio=0x32
++
++maxp2ga0=80
++ofdmlrbw202gpo=0x0022
++dot11agofdmhrbw202gpo=0x4442
++mcsbw202gpo=0x98444422
++mcsbw402gpo=0x98444422
++maxp5ga0=82,82,82,82
++mcsbw205glpo=0xb9555000
++mcsbw205gmpo=0xb9555000
++mcsbw205ghpo=0xb9555000
++mcsbw405glpo=0xb9555000
++mcsbw405gmpo=0xb9555000
++mcsbw405ghpo=0xb9555000
++mcsbw805glpo=0xb9555000
++mcsbw805gmpo=0xb9555000
++mcsbw805ghpo=0xb9555000
++
++swctrlmap_2g=0x00000000,0x00000000,0x00000000,0x010000,0x3ff
++swctrlmap_5g=0x00100010,0x00200020,0x00200020,0x010000,0x3fe
++swctrlmapext_5g=0x00000000,0x00000000,0x00000000,0x000000,0x3
++swctrlmapext_2g=0x00000000,0x00000000,0x00000000,0x000000,0x3
++
++vcodivmode=1
++deadman_to=481500000
++
++ed_thresh2g=-54
++ed_thresh5g=-54
++eu_edthresh2g=-54
++eu_edthresh5g=-54
++ldo1=4
++rawtempsense=0x1ff
++cckPwrIdxCorr=3
++cckTssiDelay=150
++ofdmTssiDelay=150
++txpwr2gAdcScale=1
++txpwr5gAdcScale=1
++dot11b_opts=0x3aa85
++cbfilttype=1
++fdsslevel_ch11=6
+diff --git a/target/linux/brcm2708/base-files/lib/preinit/05_set_preinit_iface_brcm2708 b/target/linux/brcm2708/base-files/lib/preinit/05_set_preinit_iface_brcm2708
+index 95497cc586..94516738b1 100644
+--- a/target/linux/brcm2708/base-files/lib/preinit/05_set_preinit_iface_brcm2708
++++ b/target/linux/brcm2708/base-files/lib/preinit/05_set_preinit_iface_brcm2708
+@@ -8,6 +8,7 @@ set_preinit_iface() {
+ 	case "$(board_name)" in
+ 	rpi-2-b |\
+ 	rpi-3-b |\
++	rpi-3-b-plus |\
+ 	rpi-b |\
+ 	rpi-b-plus)
+ 		ifname=eth0
 diff --git a/target/linux/brcm2708/bcm2708/config-4.9 b/target/linux/brcm2708/bcm2708/config-4.9
 index 0ab238c91c..b30cb6f627 100644
 --- a/target/linux/brcm2708/bcm2708/config-4.9
@@ -84,7 +212,7 @@ index 0ab238c91c..b30cb6f627 100644
  # CONFIG_STRIP_ASM_SYMS is not set
  CONFIG_SUSPEND=y
 diff --git a/target/linux/brcm2708/bcm2709/config-4.9 b/target/linux/brcm2708/bcm2709/config-4.9
-index 5c0ab7ea7d..2ea0a69345 100644
+index 5c0ab7ea7d..e364bb8e07 100644
 --- a/target/linux/brcm2708/bcm2709/config-4.9
 +++ b/target/linux/brcm2708/bcm2709/config-4.9
 @@ -58,7 +58,6 @@ CONFIG_BCM2835_WDT=y
@@ -95,7 +223,15 @@ index 5c0ab7ea7d..2ea0a69345 100644
  # CONFIG_BLK_DEV_INITRD is not set
  CONFIG_BLK_DEV_LOOP=y
  CONFIG_BLK_DEV_RAM=y
-@@ -268,8 +267,6 @@ CONFIG_LOGO=y
+@@ -164,6 +163,7 @@ CONFIG_FB_CMDLINE=y
+ # CONFIG_FB_RPISENSE is not set
+ CONFIG_FIQ=y
+ CONFIG_FIRMWARE_IN_KERNEL=y
++CONFIG_FIXED_PHY=y
+ CONFIG_FIX_EARLYCON_MEM=y
+ # CONFIG_FONTS is not set
+ CONFIG_FONT_8x16=y
+@@ -268,15 +268,15 @@ CONFIG_LOGO=y
  CONFIG_LOGO_LINUX_CLUT224=y
  # CONFIG_LOGO_LINUX_MONO is not set
  # CONFIG_LOGO_LINUX_VGA16 is not set
@@ -104,7 +240,40 @@ index 5c0ab7ea7d..2ea0a69345 100644
  CONFIG_MAC_PARTITION=y
  CONFIG_MAGIC_SYSRQ=y
  CONFIG_MAILBOX=y
-@@ -373,7 +370,6 @@ CONFIG_SG_POOL=y
+ # CONFIG_MAILBOX_TEST is not set
+ CONFIG_MAX_RAW_DEVS=256
++CONFIG_MDIO_BOARDINFO=y
+ CONFIG_MEMORY_ISOLATION=y
+ CONFIG_MFD_SYSCON=y
++CONFIG_MICROCHIP_PHY=y
+ CONFIG_MIGHT_HAVE_CACHE_L2X0=y
+ CONFIG_MIGHT_HAVE_PCI=y
+ CONFIG_MIGRATION=y
+@@ -313,6 +313,7 @@ CONFIG_OF_EARLY_FLATTREE=y
+ CONFIG_OF_FLATTREE=y
+ CONFIG_OF_GPIO=y
+ CONFIG_OF_IRQ=y
++CONFIG_OF_MDIO=y
+ CONFIG_OF_NET=y
+ CONFIG_OF_OVERLAY=y
+ CONFIG_OF_RESERVED_MEM=y
+@@ -325,6 +326,7 @@ CONFIG_PAGE_OFFSET=0x80000000
+ # CONFIG_PCI_SYSCALL is not set
+ CONFIG_PERF_USE_VMALLOC=y
+ CONFIG_PGTABLE_LEVELS=2
++CONFIG_PHYLIB=y
+ CONFIG_PINCTRL=y
+ CONFIG_PINCTRL_BCM2835=y
+ CONFIG_PM=y
+@@ -365,7 +367,6 @@ CONFIG_SERIAL_8250_FSL=y
+ CONFIG_SERIAL_8250_NR_UARTS=1
+ CONFIG_SERIAL_8250_RUNTIME_UARTS=0
+ CONFIG_SERIAL_8250_SHARE_IRQ=y
+-# CONFIG_SERIAL_AMBA_PL010 is not set
+ CONFIG_SERIAL_AMBA_PL011=y
+ CONFIG_SERIAL_AMBA_PL011_CONSOLE=y
+ CONFIG_SERIAL_OF_PLATFORM=y
+@@ -373,12 +374,12 @@ CONFIG_SG_POOL=y
  CONFIG_SMP=y
  CONFIG_SMP_ON_UP=y
  CONFIG_SPARSE_IRQ=y
@@ -112,8 +281,22 @@ index 5c0ab7ea7d..2ea0a69345 100644
  CONFIG_SRCU=y
  # CONFIG_STRIP_ASM_SYMS is not set
  CONFIG_SUSPEND=y
+ CONFIG_SUSPEND_FREEZER=y
+ CONFIG_SWIOTLB=y
++CONFIG_SWPHY=y
+ CONFIG_SWP_EMULATE=y
+ CONFIG_SYS_SUPPORTS_APM_EMULATION=y
+ # CONFIG_TEXTSEARCH is not set
+@@ -399,6 +400,7 @@ CONFIG_USB_ANNOUNCE_NEW_DEVICES=y
+ CONFIG_USB_COMMON=y
+ CONFIG_USB_DWCOTG=y
+ # CONFIG_USB_EHCI_HCD is not set
++CONFIG_USB_LAN78XX=y
+ CONFIG_USB_NET_DRIVERS=y
+ CONFIG_USB_NET_SMSC95XX=y
+ CONFIG_USB_STORAGE=y
 diff --git a/target/linux/brcm2708/image/Makefile b/target/linux/brcm2708/image/Makefile
-index 7909c6d814..6253358f6d 100644
+index 7909c6d814..806c8d7b48 100644
 --- a/target/linux/brcm2708/image/Makefile
 +++ b/target/linux/brcm2708/image/Makefile
 @@ -45,13 +45,22 @@ define Build/sdcard-img
@@ -141,6 +324,15 @@ index 7909c6d814..6253358f6d 100644
  endef
  
  define Device/rpi
+@@ -64,7 +73,7 @@ endif
+ 
+ define Device/rpi-2
+   DEVICE_TITLE := Raspberry Pi 2B/3B/3CM
+-  DEVICE_DTS := bcm2709-rpi-2-b bcm2710-rpi-3-b bcm2710-rpi-cm3
++  DEVICE_DTS := bcm2709-rpi-2-b bcm2710-rpi-3-b bcm2710-rpi-cm3 bcm2710-rpi-3-b-plus
+ endef
+ ifeq ($(SUBTARGET),bcm2709)
+   TARGET_DEVICES += rpi-2
 diff --git a/target/linux/brcm2708/image/cmdline.txt b/target/linux/brcm2708/image/cmdline.txt
 index 24f4f0c276..6b3cc34576 100644
 --- a/target/linux/brcm2708/image/cmdline.txt
@@ -180,3 +372,329 @@ index 329aaccc53..95929898db 100644
 +# wifi channel, only used in AP mode
 +#wifi_channel=6
 +
+diff --git a/target/linux/brcm2708/patches-4.9/950-2000-add-pi3-plus-dts.patch b/target/linux/brcm2708/patches-4.9/950-2000-add-pi3-plus-dts.patch
+new file mode 100644
+index 0000000000..ebda1ca318
+--- /dev/null
++++ b/target/linux/brcm2708/patches-4.9/950-2000-add-pi3-plus-dts.patch
+@@ -0,0 +1,320 @@
++From eb7b3df1fd5dfa4645da2986ffb6d9ca5ccdebda Mon Sep 17 00:00:00 2001
++From: Phil Elwell <phil@raspberrypi.org>
++Date: Fri, 21 Jul 2017 11:33:25 +0100
++Subject: [PATCH] BCM270X_DT: Add Pi 3+ dts files
++
++Signed-off-by: Phil Elwell <phil@raspberrypi.org>
++---
++ arch/arm/boot/dts/Makefile                 |   1 +
++ arch/arm/boot/dts/bcm2710-rpi-3-b-plus.dts | 219 +++++++++++++++++++++++++++++
++ arch/arm/boot/dts/bcm283x-rpi-lan7515.dtsi |  36 +++++
++ arch/arm/boot/dts/overlays/README          |   8 ++
++ 4 files changed, 264 insertions(+)
++ create mode 100644 arch/arm/boot/dts/bcm2710-rpi-3-b-plus.dts
++ create mode 100644 arch/arm/boot/dts/bcm283x-rpi-lan7515.dtsi
++
++diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
++index 46228af86dede..dbcbb1a03944f 100644
++--- a/arch/arm/boot/dts/Makefile
+++++ b/arch/arm/boot/dts/Makefile
++@@ -7,6 +7,7 @@ dtb-$(CONFIG_ARCH_BCM2835) += \
++ 	bcm2708-rpi-0-w.dtb \
++ 	bcm2709-rpi-2-b.dtb \
++ 	bcm2710-rpi-3-b.dtb \
+++	bcm2710-rpi-3-b-plus.dtb \
++ 	bcm2710-rpi-cm3.dtb
++ 
++ dtb-$(CONFIG_ARCH_ALPINE) += \
++diff --git a/arch/arm/boot/dts/bcm2710-rpi-3-b-plus.dts b/arch/arm/boot/dts/bcm2710-rpi-3-b-plus.dts
++new file mode 100644
++index 0000000000000..32bff8971b69f
++--- /dev/null
+++++ b/arch/arm/boot/dts/bcm2710-rpi-3-b-plus.dts
++@@ -0,0 +1,219 @@
+++/dts-v1/;
+++
+++#include "bcm2710.dtsi"
+++#include "bcm283x-rpi-lan7515.dtsi"
+++
+++/ {
+++	model = "Raspberry Pi 3 Model B+";
+++};
+++
+++&gpio {
+++	sdhost_pins: sdhost_pins {
+++		brcm,pins = <48 49 50 51 52 53>;
+++		brcm,function = <4>; /* alt0 */
+++	};
+++
+++	spi0_pins: spi0_pins {
+++		brcm,pins = <9 10 11>;
+++		brcm,function = <4>; /* alt0 */
+++	};
+++
+++	spi0_cs_pins: spi0_cs_pins {
+++		brcm,pins = <8 7>;
+++		brcm,function = <1>; /* output */
+++	};
+++
+++	i2c0_pins: i2c0 {
+++		brcm,pins = <0 1>;
+++		brcm,function = <4>;
+++	};
+++
+++	i2c1_pins: i2c1 {
+++		brcm,pins = <2 3>;
+++		brcm,function = <4>;
+++	};
+++
+++	i2s_pins: i2s {
+++		brcm,pins = <18 19 20 21>;
+++		brcm,function = <4>; /* alt0 */
+++	};
+++
+++	sdio_pins: sdio_pins {
+++		brcm,pins =     <34 35 36 37 38 39>;
+++		brcm,function = <7>; // alt3 = SD1
+++		brcm,pull =     <0 2 2 2 2 2>;
+++	};
+++
+++	bt_pins: bt_pins {
+++		brcm,pins = <43>;
+++		brcm,function = <4>; /* alt0:GPCLK2 */
+++		brcm,pull = <0>;
+++	};
+++
+++	uart0_pins: uart0_pins {
+++		brcm,pins = <32 33>;
+++		brcm,function = <7>; /* alt3=UART0 */
+++		brcm,pull = <0 2>;
+++	};
+++
+++	uart1_pins: uart1_pins {
+++		brcm,pins;
+++		brcm,function;
+++		brcm,pull;
+++	};
+++
+++	audio_pins: audio_pins {
+++		brcm,pins = <40 41>;
+++		brcm,function = <4>;
+++	};
+++};
+++
+++&sdhost {
+++	pinctrl-names = "default";
+++	pinctrl-0 = <&sdhost_pins>;
+++	bus-width = <4>;
+++	status = "okay";
+++};
+++
+++&mmc {
+++	pinctrl-names = "default";
+++	pinctrl-0 = <&sdio_pins>;
+++	non-removable;
+++	bus-width = <4>;
+++	status = "okay";
+++	brcm,overclock-50 = <0>;
+++};
+++
+++&soc {
+++	expgpio: expgpio {
+++		compatible = "brcm,bcm2835-expgpio";
+++		gpio-controller;
+++		#gpio-cells = <2>;
+++		firmware = <&firmware>;
+++		status = "okay";
+++	};
+++};
+++
+++&fb {
+++	status = "okay";
+++};
+++
+++&uart0 {
+++	pinctrl-names = "default";
+++	pinctrl-0 = <&uart0_pins &bt_pins>;
+++	status = "okay";
+++};
+++
+++&uart1 {
+++	pinctrl-names = "default";
+++	pinctrl-0 = <&uart1_pins>;
+++	status = "okay";
+++};
+++
+++&spi0 {
+++	pinctrl-names = "default";
+++	pinctrl-0 = <&spi0_pins &spi0_cs_pins>;
+++	cs-gpios = <&gpio 8 1>, <&gpio 7 1>;
+++
+++	spidev0: spidev@0{
+++		compatible = "spidev";
+++		reg = <0>;	/* CE0 */
+++		#address-cells = <1>;
+++		#size-cells = <0>;
+++		spi-max-frequency = <125000000>;
+++	};
+++
+++	spidev1: spidev@1{
+++		compatible = "spidev";
+++		reg = <1>;	/* CE1 */
+++		#address-cells = <1>;
+++		#size-cells = <0>;
+++		spi-max-frequency = <125000000>;
+++	};
+++};
+++
+++&i2c0 {
+++	pinctrl-names = "default";
+++	pinctrl-0 = <&i2c0_pins>;
+++	clock-frequency = <100000>;
+++};
+++
+++&i2c1 {
+++	pinctrl-names = "default";
+++	pinctrl-0 = <&i2c1_pins>;
+++	clock-frequency = <100000>;
+++};
+++
+++&i2c2 {
+++	clock-frequency = <100000>;
+++};
+++
+++&i2s {
+++	pinctrl-names = "default";
+++	pinctrl-0 = <&i2s_pins>;
+++};
+++
+++&leds {
+++	act_led: act {
+++		label = "led0";
+++		linux,default-trigger = "mmc0";
+++		gpios = <&gpio 29 0>;
+++	};
+++
+++	pwr_led: pwr {
+++		label = "led1";
+++		linux,default-trigger = "default-on";
+++		gpios = <&expgpio 2 GPIO_ACTIVE_LOW>;
+++	};
+++};
+++
+++&hdmi {
+++	hpd-gpios = <&expgpio 4 GPIO_ACTIVE_LOW>;
+++};
+++
+++&audio {
+++	pinctrl-names = "default";
+++	pinctrl-0 = <&audio_pins>;
+++};
+++
+++/ {
+++	chosen {
+++		bootargs = "8250.nr_uarts=1";
+++	};
+++};
+++
+++/ {
+++	__overrides__ {
+++		uart0 = <&uart0>,"status";
+++		uart1 = <&uart1>,"status";
+++		i2s = <&i2s>,"status";
+++		spi = <&spi0>,"status";
+++		i2c0 = <&i2c0>,"status";
+++		i2c1 = <&i2c1>,"status";
+++		i2c2_iknowwhatimdoing = <&i2c2>,"status";
+++		i2c0_baudrate = <&i2c0>,"clock-frequency:0";
+++		i2c1_baudrate = <&i2c1>,"clock-frequency:0";
+++		i2c2_baudrate = <&i2c2>,"clock-frequency:0";
+++
+++		act_led_gpio = <&act_led>,"gpios:4";
+++		act_led_activelow = <&act_led>,"gpios:8";
+++		act_led_trigger = <&act_led>,"linux,default-trigger";
+++
+++		pwr_led_gpio = <&pwr_led>,"gpios:4";
+++		pwr_led_activelow = <&pwr_led>,"gpios:8";
+++		pwr_led_trigger = <&pwr_led>,"linux,default-trigger";
+++
+++		audio = <&audio>,"status";
+++		watchdog = <&watchdog>,"status";
+++		random = <&random>,"status";
+++		sd_overclock = <&sdhost>,"brcm,overclock-50:0";
+++		sd_force_pio = <&sdhost>,"brcm,force-pio?";
+++		sd_pio_limit = <&sdhost>,"brcm,pio-limit:0";
+++		sd_debug     = <&sdhost>,"brcm,debug";
+++	};
+++};
+++
+++&i2c_dsi {
+++	gpios = <&gpio 44 0
+++		 &gpio 45 0>;
+++};
++diff --git a/arch/arm/boot/dts/bcm283x-rpi-lan7515.dtsi b/arch/arm/boot/dts/bcm283x-rpi-lan7515.dtsi
++new file mode 100644
++index 0000000000000..85f73348c0b7d
++--- /dev/null
+++++ b/arch/arm/boot/dts/bcm283x-rpi-lan7515.dtsi
++@@ -0,0 +1,36 @@
+++/ {
+++	aliases {
+++		ethernet = &ethernet;
+++	};
+++};
+++
+++&usb {
+++	usb1@1 {
+++		compatible = "usb424,2514";
+++		reg = <1>;
+++		#address-cells = <1>;
+++		#size-cells = <0>;
+++
+++		usb1_1@1 {
+++			compatible = "usb424,2514";
+++			reg = <1>;
+++			#address-cells = <1>;
+++			#size-cells = <0>;
+++
+++			ethernet: usbether@1 {
+++				compatible = "usb424,7800";
+++				reg = <1>;
+++				microchip,eee-enabled;
+++				microchip,tx-lpi-timer = <600>; /* non-aggressive*/
+++			};
+++		};
+++	};
+++};
+++
+++
+++/ {
+++	__overrides__ {
+++		eee = <&ethernet>,"microchip,eee-enabled?";
+++		tx_lpi_timer = <&ethernet>,"microchip,tx-lpi-timer:0";
+++	};
+++};
++diff --git a/arch/arm/boot/dts/overlays/README b/arch/arm/boot/dts/overlays/README
++index a996e71a158ce..50b45b2161025 100644
++--- a/arch/arm/boot/dts/overlays/README
+++++ b/arch/arm/boot/dts/overlays/README
++@@ -89,6 +89,10 @@ Params:
++         audio                   Set to "on" to enable the onboard ALSA audio
++                                 interface (default "off")
++ 
+++        eee                     Enable Energy Efficient Ethernet support for
+++                                compatible devices (default "on"). See also
+++                                "tx_lpi_timer".
+++
++         i2c_arm                 Set to "on" to enable the ARM's i2c interface
++                                 (default "off")
++ 
++@@ -125,6 +129,10 @@ Params:
++ 
++         sd_debug                Enable debug output from SD driver (default off)
++ 
+++        tx_lpi_timer            Set the delay in microseconds between going idle
+++                                and entering the low power state (default 600).
+++                                Requires EEE to be enabled - see "eee".
+++
++         uart0                   Set to "off" to disable uart0 (default "on")
++ 
++         uart1                   Set to "on" or "off" to enable or disable uart1

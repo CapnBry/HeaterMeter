@@ -1,0 +1,60 @@
+diff --git a/package/kernel/brcm2708-gpu-fw/Makefile b/package/kernel/brcm2708-gpu-fw/Makefile
+index 9f3d7d3092..69c6aa89ea 100644
+--- a/package/kernel/brcm2708-gpu-fw/Makefile
++++ b/package/kernel/brcm2708-gpu-fw/Makefile
+@@ -9,8 +9,8 @@ include $(TOPDIR)/rules.mk
+ include $(INCLUDE_DIR)/kernel.mk
+ 
+ PKG_NAME:=brcm2708-gpu-fw
+-PKG_VERSION:=2017-08-08
+-PKG_RELEASE:=e7ba7ab135f5a68b2c00a919ea9ac8d5528a5d5b
++PKG_VERSION:=2018-03-16
++PKG_RELEASE:=25cf637ccc90d7d2fa37277c807ab33b655bd0f4
+ 
+ PKG_BUILD_DIR:=$(KERNEL_BUILD_DIR)/$(PKG_NAME)/rpi-firmware-$(PKG_RELEASE)
+ 
+@@ -33,7 +33,7 @@ define Download/bootcode_bin
+   FILE:=$(RPI_FIRMWARE_FILE)-bootcode.bin
+   URL:=$(RPI_FIRMWARE_URL)
+   URL_FILE:=bootcode.bin
+-  HASH:=b5928ef5253774362014f9e7de856397a932514fe1bc5d7f7817a73c0e10e863
++  HASH:=63f47f4d7d0c0ed80a85ab01caac501ea73ab784c0158b3cae2baab5fb4132d7
+ endef
+ $(eval $(call Download,bootcode_bin))
+ 
+@@ -41,7 +41,7 @@ define Download/fixup_dat
+   FILE:=$(RPI_FIRMWARE_FILE)-fixup.dat
+   URL:=$(RPI_FIRMWARE_URL)
+   URL_FILE:=fixup.dat
+-  HASH:=d95fcac57de7ab71e863a115fd60444f6099cb2ea100f4a68b2c606f79e775ed
++  HASH:=5041c41e1bd9bfc8ddc5c85340fb26c35e17b17e1d38e3df29fc5a683eb5b74b
+ endef
+ $(eval $(call Download,fixup_dat))
+ 
+@@ -49,7 +49,7 @@ define Download/fixup_cd_dat
+   FILE:=$(RPI_FIRMWARE_FILE)-fixup_cd.dat
+   URL:=$(RPI_FIRMWARE_URL)
+   URL_FILE:=fixup_cd.dat
+-  HASH:=28f3ec8388df4e0c47489f8370a29ca81dbc536fe7db9978342865b5d093ec36
++  HASH:=9842a9936fb86c05c51a32fddb0895c28c096080f4bcff57a04e168190103863
+ endef
+ $(eval $(call Download,fixup_cd_dat))
+ 
+@@ -57,7 +57,7 @@ define Download/start_elf
+   FILE:=$(RPI_FIRMWARE_FILE)-start.elf
+   URL:=$(RPI_FIRMWARE_URL)
+   URL_FILE:=start.elf
+-  HASH:=8712fb4e241a22f7a33de0f1d420e0fdfff237952aa685c907b91e59c8d487fa
++  HASH:=b0dfbc583fa886da6f89a1ea49a787a65236b699b10b49cbca222386907d13d1
+ endef
+ $(eval $(call Download,start_elf))
+ 
+@@ -65,7 +65,7 @@ define Download/start_cd_elf
+   FILE:=$(RPI_FIRMWARE_FILE)-start_cd.elf
+   URL:=$(RPI_FIRMWARE_URL)
+   URL_FILE:=start_cd.elf
+-  HASH:=c600ab34bea389da10aac541bf2f9c62e5f774093b7e1f2f72c4637f9cf3a83c
++  HASH:=dec7b30fe95eaf9f722155a504b69c8bf054ed8e76c28ed3ce9254348169182b
+ endef
+ $(eval $(call Download,start_cd_elf))
+ 
