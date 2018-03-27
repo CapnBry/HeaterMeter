@@ -14,9 +14,8 @@ endef
 
 define Package/firmware-brcmfmac43430/install
 	$(INSTALL_DIR) $(1)/lib/firmware/brcm
-	$(INSTALL_DATA) \
-		./root/brcm/brcmfmac43430-sdio.bin \
-		$(1)/lib/firmware/brcm/brcmfmac43430-sdio.bin
+	$(INSTALL_DATA) ./root/brcm/brcmfmac43430-sdio.bin $(1)/lib/firmware/brcm/
+	$(INSTALL_DATA) ./root/brcm/brcmfmac43430-sdio.txt $(1)/lib/firmware/brcm/
 endef
 
 define Build/Compile
