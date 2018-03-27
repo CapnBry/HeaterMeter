@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) {
 
             last_time = current_time;
         } /* if have socket */
-        else if (elapsed >= 10)
+        else if (lssdp.sock < 0 && elapsed >= 10)
         {
           /* This works around a problem where the interface list changes but
            * IP_ADD_MEMBERSHIP fails with "No such device"
