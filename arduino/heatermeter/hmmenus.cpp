@@ -295,6 +295,8 @@ static state_t menuHome(button_t button)
   {
     // Left from Home screen enables/disables the lid countdown
     storeLidParam(LIDPARAM_ACTIVE, pid.LidOpenResumeCountdown == 0);
+    // Immediately show the Lid open/closed LED indicator and other changed statuses
+    publishLeds();
   }
   
   if (button != BUTTON_LEAVE)

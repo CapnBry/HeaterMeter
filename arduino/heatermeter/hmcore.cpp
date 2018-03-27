@@ -1243,6 +1243,17 @@ void Debug_begin(void)
     print_P(PSTR("HMLG" CSV_DELIMITER));
 }
 
+void publishLeds(void)
+{
+  ledmanager.publish(LEDSTIMULUS_Off, LEDACTION_Off);
+  ledmanager.publish(LEDSTIMULUS_LidOpen, pid.isLidOpen());
+  ledmanager.publish(LEDSTIMULUS_FanOn, pid.isOutputActive());
+  ledmanager.publish(LEDSTIMULUS_FanMax, pid.isOutputMaxed());
+  ledmanager.publish(LEDSTIMULUS_PitTempReached, pid.isPitTempReached());
+  ledmanager.publish(LEDSTIMULUS_Startup, pid.getPidMode() == PIDMODE_STARTUP);
+  ledmanager.publish(LEDSTIMULUS_Recovery, pid.getPidMode() == PIDMODE_RECOVERY);
+}
+
 static void newTempsAvail(void)
 {
   static unsigned char pidCycleCount;
@@ -1264,13 +1275,7 @@ static void newTempsAvail(void)
   if ((pidCycleCount % 0x04) == 1)
     outputAdcStatus();
 
-  ledmanager.publish(LEDSTIMULUS_Off, LEDACTION_Off);
-  ledmanager.publish(LEDSTIMULUS_LidOpen, pid.isLidOpen());
-  ledmanager.publish(LEDSTIMULUS_FanOn, pid.isOutputActive());
-  ledmanager.publish(LEDSTIMULUS_FanMax, pid.isOutputMaxed());
-  ledmanager.publish(LEDSTIMULUS_PitTempReached, pid.isPitTempReached());
-  ledmanager.publish(LEDSTIMULUS_Startup, pid.getPidMode() == PIDMODE_STARTUP);
-  ledmanager.publish(LEDSTIMULUS_Recovery, pid.getPidMode() == PIDMODE_RECOVERY);
+  publishLeds();
 
 #ifdef HEATERMETER_RFM12
   rfmanager.sendUpdate(pid.getPidOutput());

@@ -61,6 +61,7 @@ void setLcdBacklight(unsigned char lcdBacklight);
 void storeLcdBacklight(unsigned char lcdBacklight);
 void reportLcdParameters(void);
 void Debug_begin(void);
+void publishLeds(void);
 #define Debug_end Serial_nl
 void silenceRingingAlarm(void);
 
