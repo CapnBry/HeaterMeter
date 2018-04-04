@@ -40,10 +40,28 @@ body_chamfer_height_t = body_chamfer_height;
 body_chamfer_height_b = body_chamfer_height;
 
 e = 0.01;
-
-hm43_split();
+is_jig = 0; // generate a jig for soldering LEDs
 
 function inch(x) = x*25.4;
+
+main();
+
+module main()
+{
+  if (is_jig) {
+    intersection() {
+      hm43_split();
+      translate([wall+6,-d-wall+3,-e]) cube([w-12,d-8,15]);
+    }
+
+    difference() {
+      cube([w-12,d-8,8 - wall_t]);
+      translate([wall,wall,-e]) cube([w-12-2*wall, d-8-2*wall, 8 - wall_t +2*e]);
+    }
+  } /* is_jig */
+  else
+    hm43_split();
+}
 
 module cube_fillet_chamfer(size,f,c,$fn=32) {
   hull() {
@@ -117,13 +135,10 @@ module screw_keyhole_p() {
   }
 }
 
-module btn_rnd(dia=10) {
+module btn_rnd() {
+  dia = is_jig ? 6.0 : 7.2;
   cylinder(wall_t+2*e, d1=dia, d2=dia+1.5*wall_t, $fn=24);
   translate([-6.5,-6.5,0]) cube([13,13,0.75+e]);
-}
-
-module btn_square(sq=13) {
-  translate([-sq/2,-sq/2,0]) cube([sq,sq,wall_t+2*e]);
 }
 
 module tc_plusminus() {
@@ -141,7 +156,8 @@ module tc_plusminus() {
 }
 
 module led_hole() {
-  cylinder(wall_t+2*e, d=3.4, $fn=16);
+  dia = is_jig ? 3.2 : 3.4;
+  cylinder(wall_t+2*e, d1=dia, d2=dia, $fn=16);
 }
 
 module nuttrap() {
@@ -335,10 +351,10 @@ difference() {
   
   // button holes
   if (LCD) translate([wall+48.7, wall+d_off+inch(1.15), h_b+wall_t-e]) {
-    translate([-inch(1.1)/2,0,0]) btn_rnd(7.2);  // left
-    translate([inch(1.1)/2,0,0]) btn_rnd(7.2);   // right
-    translate([0,inch(0.9)/2,0]) btn_rnd(7.2);   // up
-    translate([0,-inch(0.9)/2,0]) btn_rnd(7.2);  // down
+    translate([-inch(1.1)/2,0,0]) btn_rnd();  // left
+    translate([inch(1.1)/2,0,0]) btn_rnd();   // right
+    translate([0,inch(0.9)/2,0]) btn_rnd();   // up
+    translate([0,-inch(0.9)/2,0]) btn_rnd();  // down
     // LED holes
     translate([inch(1.3), inch(-0.05), 0]) {
       led_hole();  //red
@@ -385,10 +401,10 @@ difference() {
   } // if !Zero
   
   // close nut traps
-  translate([wall+inch(0.825)+0.5,wall+d_off+inch(0.1),0]) {
-    nuttrap();
-    translate([inch(2.0),0,0]) nuttrap();
-  }
+  if (!is_jig) translate([wall+inch(0.825)+0.5,wall+d_off+inch(0.1),0]) {
+      nuttrap();
+      translate([inch(2.0),0,0]) nuttrap();
+    }
   
   // Top locklip (negative)
   if (Pi_Model == "3B/2B/1B+")
