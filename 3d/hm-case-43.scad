@@ -251,9 +251,10 @@ module lcd_mount() {
 
 module lcd_neg() {
   // Assuming starting at bottom left screw hole
-  translate([1.0, 2.1, 0])
+  // (Note LCD is not centered vertically on PCB, top is 5.15, bottom is 4.55mm)
+  translate([1.0, 1.55, 0])
     cube([73.0, 27.3, lcd_mount_t+wall_t-0.8]); // black bezel inset
-  translate([5.5, 8.0, 0])
+  translate([5.5, 7.5, 0])
     cube([64.0, 15.4, lcd_mount_t+wall_t+2*e]); // LCD active area
   translate([4.23, -2.5, 0])
     cube([16*2.54, 5, lcd_mount_t+wall_t-0.8]); // pins cutout
@@ -330,10 +331,10 @@ difference() {
   
   // lcd hole
   if (LCD)
-    translate([wall+10.7, wall+d_off+51.5, h_b+wall_t-lcd_mount_t-e]) lcd_neg();
+    translate([wall+10.7, wall+d_off+inch(2), h_b+wall_t-lcd_mount_t-e]) lcd_neg();
   
   // button holes
-  if (LCD) translate([wall+48.7, wall+d_off+29.4, h_b+wall_t-e]) {
+  if (LCD) translate([wall+48.7, wall+d_off+inch(1.15), h_b+wall_t-e]) {
     translate([-inch(1.1)/2,0,0]) btn_rnd(7.2);  // left
     translate([inch(1.1)/2,0,0]) btn_rnd(7.2);   // right
     translate([0,inch(0.9)/2,0]) btn_rnd(7.2);   // up
@@ -400,16 +401,16 @@ difference() {
     union() {
       // Filled block above LCD hole
       translate([wall, wall+d_off+78, h_b+wall_t-lcd_mount_t])
-        cube_fillet([w,d-d_off-78,lcd_mount_t+e], 
+        cube([w,d-d_off-78,lcd_mount_t+e], 
           bottom=[lcd_mount_t/2,lcd_mount_t/2,0,lcd_mount_t/2]);
       // LCD grab notch
-      translate([wall+10.7, wall+d_off+51.5, h_b+wall_t-lcd_mount_t])
+      translate([wall+10.7, wall+d_off+inch(2), h_b+wall_t-lcd_mount_t])
         translate([(77.5-20)/2,34.0-wall_t,-(1.8+wall_t)])
           // 1.8=thickness of LCD pcb
           cube_fillet([20,1.8+wall_t+wall,1.8+wall_t+e], top=[0,0,1.8+wall_t+e],
             vertical=[wall/2,wall/2]);
     }
-    translate([wall+10.7, wall+d_off+51.5, h_b+wall_t-e]) {
+    translate([wall+10.7, wall+d_off+inch(2), h_b+wall_t-e]) {
       translate([0, 0, -lcd_mount_t]) lcd_neg();
       // vv Keep screw holes where they have been since the beginning
       translate([0, 0.5, 0]) lcd_mount();
