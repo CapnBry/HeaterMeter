@@ -301,6 +301,8 @@ void TempProbe::setProbeType(unsigned char probeType)
 
 void TempProbe::calcTemp(unsigned int adcval)
 {
+  const float ADCmax = 1023 * pow(2, TEMP_OVERSAMPLE_BITS);
+
   // Units 'A' = ADC value
   if (pid.getUnits() == 'A')
   {
@@ -309,56 +311,54 @@ void TempProbe::calcTemp(unsigned int adcval)
     return;
   }
 
-  // Ignore probes within 1 LSB of max
-  if (adcval > 1022 * pow(2, TEMP_OVERSAMPLE_BITS) || adcval == 0)
-    _tempStatus = TSTATUS_NONE;
-  else
+  if (_probeType == PROBETYPE_TC_ANALOG)
   {
-    const float ADCmax = 1023 * pow(2, TEMP_OVERSAMPLE_BITS);
-
-    if (_probeType == PROBETYPE_TC_ANALOG)
-    {
-      float mvScale = Steinhart[3];
-      // Commented out because there's no "divide by zero" exception so
-      // just allow undefined results to save prog space
-      //if (mvScale == 0.0f)
-      //  mvScale = 1.0f;
-      // If scale is <100 it is assumed to be mV/C with a 3.3V reference
-      if (mvScale < 100.0f)
-        mvScale = 3300.0f / mvScale;
+    float mvScale = Steinhart[3];
+    // Commented out because there's no "divide by zero" exception so
+    // just allow undefined results to save prog space
+    //if (mvScale == 0.0f)
+    //  mvScale = 1.0f;
+    // If scale is <100 it is assumed to be mV/C with a 3.3V reference
+    if (mvScale < 100.0f)
+      mvScale = 3300.0f / mvScale;
 #if defined(GRILLPID_DYNAMIC_RANGE)
-      if (analogIsBandgapReference(_pin))
-      {
-        analogSetBandgapReference(_pin, adcval < (1000U * (unsigned char)pow(2, TEMP_OVERSAMPLE_BITS)));
-        mvScale /= 1023.0f / adcState.bandgapAdc;
-      }
-      else
-        analogSetBandgapReference(_pin, adcval < (300U * (unsigned char)pow(2, TEMP_OVERSAMPLE_BITS)));
-#endif
-      setTemperatureC(adcval / ADCmax * mvScale);
+    if (analogIsBandgapReference(_pin))
+    {
+      analogSetBandgapReference(_pin, adcval < (1000U * (unsigned char)pow(2, TEMP_OVERSAMPLE_BITS)));
+      mvScale /= 1023.0f / adcState.bandgapAdc;
     }
-    else {
-      float R, T;
-      // If you put the fixed resistor on the Vcc side of the thermistor, use the following
-      R = Steinhart[3] / ((ADCmax / (float)adcval) - 1.0f);
-      // If you put the thermistor on the Vcc side of the fixed resistor use the following
-      //R = Steinhart[3] * ADCmax / (float)Vout - Steinhart[3];
+    else
+      analogSetBandgapReference(_pin, adcval < (300U * (unsigned char)pow(2, TEMP_OVERSAMPLE_BITS)));
+#endif
+    setTemperatureC(adcval / ADCmax * mvScale);
+    return;
+  }
 
-      // Units 'R' = resistance, unless this is the pit probe (which should spit out Celsius)
-      if (pid.getUnits() == 'R' && this != pid.Probes[TEMP_CTRL])
-      {
-        Temperature = R;
-        _tempStatus = TSTATUS_OK;
-        return;
-      };
+  // Ignore probes within 1 LSB of max. TC don't need this as their min/max
+  // values are rejected as outside limits in setTemperatureC()
+  if (adcval > 1022 * pow(2, TEMP_OVERSAMPLE_BITS) || adcval == 0)
+  {
+    _tempStatus = TSTATUS_NONE;
+    return;
+  }
 
-      // Compute degrees K
-      R = log(R);
-      T = 1.0f / ((Steinhart[2] * R * R + Steinhart[1]) * R + Steinhart[0]);
+  /* if PROBETYPE_INTERNAL */
+  float R, T;
+  R = Steinhart[3] / ((ADCmax / (float)adcval) - 1.0f);
 
-      setTemperatureC(T - 273.15f);
-    } /* if PROBETYPE_INTERNAL */
-  } /* if ADCval */
+  // Units 'R' = resistance, unless this is the pit probe (which should spit out Celsius)
+  if (pid.getUnits() == 'R' && this != pid.Probes[TEMP_CTRL])
+  {
+    Temperature = R;
+    _tempStatus = TSTATUS_OK;
+    return;
+  };
+
+  // Compute degrees K
+  R = log(R);
+  T = 1.0f / ((Steinhart[2] * R * R + Steinhart[1]) * R + Steinhart[0]);
+
+  setTemperatureC(T - 273.15f);
 }
 
 void TempProbe::processPeriod(void)
