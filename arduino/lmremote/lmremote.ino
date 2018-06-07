@@ -2,14 +2,14 @@
 #include <avr/sleep.h>
 #include <rf12_itplus.h>
 #include <digitalWriteFast.h>
-#include "grillpid.h"
+//#include "grillpid.h"
 
 // Power down CPU as much as possible, and attempt to sync receiver at exact
 // transmit time. Can't be used with LMREMOTE_SERIAL
 // Or if an output is defined (fan/servo)
 #define MINIMAL_POWER_MODE
 // Enabling LMREMOTE_SERIAL also disables MINIMAL_POWER_MODE
-#define LMREMOTE_SERIAL 38400
+//#define LMREMOTE_SERIAL 38400
 
 // Base Idenfier for the RFM12B (0-63)
 // The transmitted ID is this ID plus the pin number
@@ -96,21 +96,30 @@ static unsigned long _recvLast;
 static unsigned char _recvLost;
 static unsigned char _recvState;
 
-extern "C" GrillPid pid(_pinOutputFan, _pinOutputServo);
+// #define LMREMOTE_OUTPUT
+#define TEMP_OVERSAMPLE_BITS 2
+
+#if defined(LMREMOTE_OUTPUT)
+GrillPid pid;
+#endif //LMREMOTE_OUTPUT
 
 static void setupPidOutput(void)
 {
-  pid.setMinFanSpeed(10);
-  pid.setMaxFanSpeed(100);
-  pid.setMinServoPos(1200);
-  pid.setMaxServoPos(1600);
+#if defined(LMREMOTE_OUTPUT)
+  pid.setFanMinSpeed(10);
+  pid.setFanMaxSpeed(100);
+  pid.setServoMinPos(120);
+  pid.setServoMaxPos(160);
   pid.setOutputFlags(PIDFLAG_INVERT_SERVO);
+#endif //LMREMOTE_OUTPUT
 }
 
 static void setOutputPercent(unsigned char val)
 {
+#if defined(LMREMOTE_OUTPUT)
   if (_pinOutputFan != 0xff || _pinOutputServo != 0xff)
     pid.setPidOutput(val);
+#endif
 }
 
 static bool packetReceived(unsigned char nodeId, unsigned int val)
@@ -217,6 +226,9 @@ static void sleepPwrDown(unsigned int msec)
     timer0_millis += msec - msleft;
 #endif
 }
+#else
+static void sleepPeriod(uint8_t wdt_period) {}
+static void sleepPwrDown(unsigned int msec) {}
 #endif
 
 static void sleepIdle(unsigned int msec)
@@ -375,7 +387,7 @@ static void transmitTemp(unsigned char pin)
   unsigned char outbuf[4];
   unsigned char nodeId = _rfNodeBaseId + pin;
   unsigned int val = _previousReads[pin];
-  val <<= (12 - (10 + TEMP_OVERSAMPLE_BITS));
+  //val <<= (12 - (10 + TEMP_OVERSAMPLE_BITS));
   outbuf[0] = 0x90 | ((nodeId & 0x3f) >> 2);
   outbuf[1] = ((nodeId & 0x3f) << 6) | _isRecent | (val >> 8);
   outbuf[2] = (val & 0xff);
@@ -527,12 +539,19 @@ static unsigned char scheduleSleep(void)
   else
     interval[WAKETASK_RFRECEIVE] = (_recvLost + 1) * _recvCycleAct - _recvWindow;
 
+#if defined(LMREMOTE_OUTPUT)
   dur[WAKETASK_PIDOUTPUT] = pid.getLastWorkMillis();
   interval[WAKETASK_PIDOUTPUT] = TEMP_MEASURE_PERIOD;
+#else
+  dur[WAKETASK_PIDOUTPUT] = 0;
+  interval[WAKETASK_PIDOUTPUT] = 0;
+#endif // !LMREMOTE_OUTPUT
 
   /* check to see if any task is past due */
   for (unsigned char task=0; task<WAKETASK_COUNT; ++task)
   {
+    if (interval[task] == 0)
+      continue;
     dur[task] = m - dur[task];
     if (dur[task] > interval[task])
       return task;
@@ -542,6 +561,8 @@ static unsigned char scheduleSleep(void)
   unsigned char retVal = WAKETASK_TEMPERATURE;
   for (unsigned char task=0; task<WAKETASK_COUNT; ++task)
   {
+    if (interval[task] == 0)
+      continue;
     dur[task] = interval[task] - dur[task];
     if (dur[task] < dur[retVal])
       retVal = task;
@@ -564,7 +585,7 @@ void setup(void)
   Serial.begin(LMREMOTE_SERIAL); Serial.println("$UCID,lmremote," __DATE__ " " __TIME__); Serial.flush();
 #endif
 
-  rf12_initialize(_rfBand);
+  rf12_initialize(_rfBand, 1);
   if (_pinLedRx != 0xff) pinMode(_pinLedRx, OUTPUT);
   if (_pinLedTx != 0xff) pinMode(_pinLedTx, OUTPUT);
   if (_pinLedRxSearch != 0xff) pinMode(_pinLedRxSearch, OUTPUT);
@@ -595,7 +616,9 @@ void loop(void)
       checkTemps();
       break;
     case WAKETASK_PIDOUTPUT:
+#if defined(LMREMOTE_OUTPUT)
       pid.doWork();
+#endif
       break;
   }
 }

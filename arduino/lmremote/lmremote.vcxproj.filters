@@ -24,16 +24,11 @@
     <ClInclude Include="strings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="grillpid_conf.h">
+    <ClInclude Include="__vm\.lmremote.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="grillpid.h">
+    <ClInclude Include="..\heatermeter\ad8495_lin.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="grillpid.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
 </Project>
