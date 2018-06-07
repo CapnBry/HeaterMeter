@@ -10,6 +10,7 @@
 
 #include "strings.h"
 #include "grillpid.h"
+#include "ad8495_lin.h"
 
 extern GrillPid pid;
 
@@ -330,7 +331,9 @@ void TempProbe::calcTemp(unsigned int adcval)
     else
       analogSetBandgapReference(_pin, adcval < (300U * (unsigned char)pow(2, TEMP_OVERSAMPLE_BITS)));
 #endif
-    setTemperatureC(adcval / ADCmax * mvScale);
+    setTemperatureC(
+      tcNonlinearCompensate(adcval / ADCmax * mvScale)
+    );
     return;
   }
 
