@@ -1,8 +1,8 @@
 // Total number of probes supported (0 for just an endpiece)
-count = 4; // [0,1,2,3,4]
+count = 4; // [0,1,2,3,4,5]
 
 // Wall thickness, set to multiple of perimeter width
-wall = 2.5;
+wall = 2.0;
 // Flat thickness
 wall_t = 2;
 
@@ -52,6 +52,8 @@ module do_render() {
     complete_3();
   else if (count == 4)
     complete_4();
+  else if (count == 5)
+    complete_5();
 }
 
 module single() {
@@ -75,6 +77,11 @@ module complete_4() {
   translate([oa_w + probe_off + probe_d + 1, 0, 0]) rotate(180) half(false);
   translate([0, oa_d + 1, 0]) half(false);
   translate([oa_w + probe_off + probe_d + 1, oa_d + 1, 0]) rotate(180) half(false);
+}
+
+module complete_5() {
+  complete_4();
+  translate([-oa_w - 1, oa_d + 1, 0]) rotate(180) half(false);
 }
 
 module rextrude_180(diameter, h) {
