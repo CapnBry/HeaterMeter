@@ -352,7 +352,9 @@ static void toneEnable(boolean enable)
     if (tone_idx != 0xff)
       return;
     tone_last = 0;
-    tone_idx = tone_cnt - 1;
+    // Start the tone with the last element (the delay)
+    // rather than the first beep (cnt-2 vs cnt-1)
+    tone_idx = tone_cnt - 2;
   }
   else
   {
