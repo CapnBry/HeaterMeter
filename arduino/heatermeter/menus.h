@@ -11,7 +11,7 @@
 #define BUTTON_LEAVE (1<<6)
 // The timeout specified in the menu definition has expired
 #define BUTTON_TIMEOUT (1<<5)
-// Button is a long press (not supported)
+// Button is a long press
 #define BUTTON_LONG (1<<4)
 
 

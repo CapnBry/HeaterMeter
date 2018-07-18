@@ -2,6 +2,7 @@
 #include "hmcore.h"
 #include "grillpid.h"
 #include "strings.h"
+#include "floatprint.h"
 
 static state_t menuHome(button_t button);
 static state_t menuSetpoint(button_t button);
@@ -15,6 +16,7 @@ static state_t menuMaxFanSpeed(button_t button);
 static state_t menuAlarmTriggered(button_t button);
 static state_t menuLcdBacklight(button_t button);
 static state_t menuToast(button_t button);
+static state_t menuProbeDiag(button_t button);
 
 static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_HOME_FOOD1, menuHome, 5, BUTTON_LEFT },
@@ -23,7 +25,7 @@ static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_HOME_NOPROBES, menuHome, 1, BUTTON_LEFT }, // Both No Pit Probe AND Pit with no food probes
   { ST_HOME_ALARM, menuAlarmTriggered, 0 },
   { ST_SETPOINT, menuSetpoint, 10 },
-  { ST_MANUALMODE, menuManualMode, 10 },
+  { ST_MANUALMODE, menuManualMode, 10, BUTTON_LEFT },
   { ST_PROBEOFF0, menuProbeOffset, 10 },
   { ST_PROBEOFF1, menuProbeOffset, 10 },
   { ST_PROBEOFF2, menuProbeOffset, 10 },
@@ -34,6 +36,7 @@ static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_MAXFANSPEED, menuMaxFanSpeed, 10 },
   { ST_LCDBACKLIGHT, menuLcdBacklight, 10},
   { ST_TOAST, menuToast, 20 },
+  { ST_ENG_PROBEDIAG, menuProbeDiag, 0 },
   { 0, 0 },
 };
 
@@ -58,6 +61,7 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   { ST_SETPOINT, BUTTON_RIGHT, ST_MANUALMODE },
 
   { ST_MANUALMODE, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_MANUALMODE, BUTTON_LEFT | BUTTON_LONG, ST_ENG_PROBEDIAG },
   { ST_MANUALMODE, BUTTON_RIGHT, ST_LCDBACKLIGHT },
   
   { ST_LCDBACKLIGHT, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
@@ -103,12 +107,16 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   { ST_RESETCONFIG, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_RESETCONFIG, BUTTON_RIGHT, ST_SETPOINT },
 
+  { ST_ENG_PROBEDIAG, BUTTON_LEFT, ST_HOME_FOOD1 },
+
   { 0, 0, 0 },
 };
 
 // scratch space for edits
 int editInt;
 char editString[17];
+// Generic buffer for formatting floats
+static FloatPrint<8> fp;
 
 static button_t readButton(void)
 {
@@ -518,6 +526,59 @@ static state_t menuToast(button_t button)
   }
   // Timeout or button press returns you to the previous menu
   return Menus.getLastState();
+}
+
+static state_t menuProbeDiag(button_t button)
+{
+  if (button == BUTTON_ENTER)
+  {
+    // On first entry, set to first probe
+    if (Menus.getLastState() != ST_ENG_PROBEDIAG)
+      Menus.ProbeNum = TEMP_PIT;
+  }
+  else if (button == BUTTON_DOWN)
+  {
+    // Next Probe
+    Menus.ProbeNum = (Menus.ProbeNum + 1) % TEMP_COUNT;
+  }
+  else if (button == BUTTON_UP)
+  {
+    // Previous Probe
+    if (Menus.ProbeNum == 0)
+      Menus.ProbeNum = TEMP_COUNT - 1;
+    else
+      --Menus.ProbeNum;
+  }
+
+  if (button != BUTTON_LEAVE)
+  {
+    lcd.home();
+
+    // P1 ADC65535 99Nz - ProbeNum RawADCReading Noise
+    const TempProbe *probe = pid.Probes[Menus.ProbeNum];
+    snprintf_P(editString, sizeof(editString), PSTR("P%1u ADC%05u %02uNz"),
+      Menus.ProbeNum,
+      analogReadOver(probe->getPin(), 10 + TEMP_OVERSAMPLE_BITS),
+      analogReadRange(probe->getPin())
+    );
+    lcd.write(editString);
+
+    // Thermis 999.99oC - ProbeType Temp Units
+    lcd.setCursor(0, 1);
+    const char *ptype = (char *)pgm_read_word(&LCD_PROBETYPES[probe->getProbeType()]);
+    lcdprint_P(ptype, false);
+    lcd.write(' ');
+    if (probe->hasTemperature())
+    {
+      fp.print(lcd, probe->Temperature, 6, 2);
+      lcd.write(DEGREE);
+    }
+    else
+      lcdprint_P(PSTR("       "), false);
+    lcd.write(pid.getUnits());
+  }
+
+  return ST_AUTO;
 }
 
 void HmMenuSystem::displayToast(char *msg)

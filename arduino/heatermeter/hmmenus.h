@@ -34,6 +34,7 @@ enum HmMenuStates {
   ST_LCDBACKLIGHT,
   ST_MAXFANSPEED,
   ST_TOAST,
+  ST_ENG_PROBEDIAG,
 };
 
 class HmMenuSystem : public MenuSystem
@@ -46,6 +47,7 @@ public:
   void displayToast(char *msg);
   unsigned char *getToastLine0(void) { return &_toastMsg[0]; }
   unsigned char *getToastLine1(void) { return &_toastMsg[sizeof(_toastMsg)/2]; }
+  unsigned char ProbeNum;
 private:
   unsigned char _toastMsg[33];
 };

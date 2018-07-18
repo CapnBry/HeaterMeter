@@ -15,9 +15,17 @@
 #endif
 
 #define DEGREE "\xdf" // \xdf is the degree symbol on the Hitachi HD44780
-#define HM_VERSION "20180101"
+#define HM_VERSION "20180706"
 
 const char LCD_LINE1_UNPLUGGED[] PROGMEM = "- No Pit Probe -";
+
+const char LCD_PROBETYPE_DISABLED[] PROGMEM = "Disable";
+const char LCD_PROBETYPE_THERMISTOR[] PROGMEM = "Thermis";
+const char LCD_PROBETYPE_RFM12[] PROGMEM = "RFWirel";
+const char LCD_PROBETYPE_THERMOCOUPLE[] PROGMEM = "Kcouple";
+const char * const LCD_PROBETYPES[] PROGMEM = {
+  LCD_PROBETYPE_DISABLED, LCD_PROBETYPE_THERMISTOR, LCD_PROBETYPE_RFM12, LCD_PROBETYPE_THERMOCOUPLE
+};
 
 inline void Serial_char(char c) { SerialX.write(c); }
 inline void Serial_nl(void) { SerialX.nl(); }
