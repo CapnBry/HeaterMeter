@@ -535,15 +535,28 @@ inline void GrillPid::calcPidOutput(void)
     return;
 
   float currentTemp = Probes[TEMP_CTRL]->Temperature;
-  float error;
-  error = _setPoint - currentTemp;
+  float error = _setPoint - currentTemp;
+  float slope = Probes[TEMP_CTRL]->TemperatureAvg - currentTemp;
+  bool isInControl = (error < 0 && lastOutput > 0) || (error > 0 && lastOutput < getPidIMax());
 
-  // PPPPP = fan speed percent per degree of error
-  _pidCurrent[PIDP] = Pid[PIDP] * error;
+#if defined(GRILLPID_P_ON_M)
+  if (Pid[PIDP] < 0)
+  {
+    if (isInControl)
+    {
+      // PPPPP = Proportional On Measurement -- P is accumulated
+      _pidCurrent[PIDP] -= Pid[PIDP] * slope; // note -=, not =
+      _pidCurrent[PIDP] = constrain(_pidCurrent[PIDP], -getPidIMax(), getPidIMax());
+    }
+  }
+  else
+#endif 
+    // PPPPP = fan speed percent per degree of error
+    _pidCurrent[PIDP] = Pid[PIDP] * error;
 
   // IIIII = fan speed percent per degree of accumulated error
   // anti-windup: Make sure we only adjust the I term while inside the proportional control range
-  if ((error < 0 && lastOutput > 0) || (error > 0 && lastOutput < getPidIMax()))
+  if (isInControl)
   {
     _pidCurrent[PIDI] += Pid[PIDI] * error;
     // I term can never be negative, because if curr = set, then P and D are 0, so I must be output
@@ -551,7 +564,7 @@ inline void GrillPid::calcPidOutput(void)
   }
 
   // DDDDD = fan speed percent per degree of change over TEMPPROBE_AVG_SMOOTH period
-  _pidCurrent[PIDD] = Pid[PIDD] * (Probes[TEMP_CTRL]->TemperatureAvg - currentTemp);
+  _pidCurrent[PIDD] = Pid[PIDD] * slope;
   // BBBBB = fan speed percent (always 0)
   //_pidCurrent[PIDB] = Pid[PIDB];
 
