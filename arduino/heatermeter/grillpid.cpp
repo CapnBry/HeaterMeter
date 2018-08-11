@@ -537,31 +537,30 @@ inline void GrillPid::calcPidOutput(void)
   float currentTemp = Probes[TEMP_CTRL]->Temperature;
   float error = _setPoint - currentTemp;
 
-#if defined(GRILLPID_P_ON_M)
-  if (Pid[PIDP] < 0)
-    _pidCurrent[PIDP] = 0;
+  if (Pid[PIDP] < 0.0f)
+    // PPPPP = fan speed percent per degree of temperature minus current
+    // lambda * P * error - (1-lambda) * P * curr => P * (lambda * set - curr)
+    // (Linear combination of Proportional on Measurement and Error)
+    _pidCurrent[PIDP] = Pid[PIDP] * ((-GRILLPID_PONMEER_LAMBDA * _setPoint) + currentTemp);
   else
-#endif /* P_ON_M */
-    // PPPPP = fan speed percent per degree of error
+    // PPPPP = fan speed percent per degree of error (Proportional on Error)
     _pidCurrent[PIDP] = Pid[PIDP] * error;
 
   // IIIII = fan speed percent per degree of accumulated error
   // anti-windup: Make sure we only adjust the I term while inside the proportional control range
-  float slope = Probes[TEMP_CTRL]->TemperatureAvg - currentTemp;  // note slope is inverted
-  if ((error < 0 && lastOutput > 0) || (error > 0 && lastOutput < getPidIMax()))
+  unsigned char high = getPidIMax();
+  if ((error < 0 && lastOutput > 0) || (error > 0 && lastOutput < high))
   {
-#if defined(GRILLPID_P_ON_M)
-    // PPPPP = Proportional On Measurement -- P is accumulated
-    if (Pid[PIDP] < 0)
-      _pidCurrent[PIDI] -= Pid[PIDP] * slope; // note PIDI and -=, not PIDP and =
-#endif /* P_ON_M */
     _pidCurrent[PIDI] += Pid[PIDI] * error;
-    // I term can never be negative, because if curr = set, then P and D are 0, so I must be output
-    _pidCurrent[PIDI] = constrain(_pidCurrent[PIDI], 0, getPidIMax());
+    // If using PoMeEr, the max windup has to be extended to allow 100% output at curr == set
+    float exHigh = high;
+    if (Pid[PIDP] < 0.0f)
+      exHigh += (-1.0f+GRILLPID_PONMEER_LAMBDA) * Pid[PIDP] * _setPoint;
+    _pidCurrent[PIDI] = constrain(_pidCurrent[PIDI], 0, exHigh);
   }
 
-  // DDDDD = fan speed percent per degree of change over TEMPPROBE_AVG_SMOOTH period
-  _pidCurrent[PIDD] = Pid[PIDD] * slope;
+  // DDDDD = fan speed percent per degree of change over TEMPPROBE_AVG_SMOOTH period (Derivative on Measurement)
+  _pidCurrent[PIDD] = Pid[PIDD] * (Probes[TEMP_CTRL]->TemperatureAvg - currentTemp);
   // BBBBB = fan speed percent (always 0)
   //_pidCurrent[PIDB] = Pid[PIDB];
 
