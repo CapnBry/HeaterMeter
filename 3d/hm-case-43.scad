@@ -4,7 +4,7 @@
 // Pit probe type
 Control_Probe = "Thermocouple"; // [Thermocouple,Thermistor,None]
 // Raspberry Pi Model
-Pi_Model = "3B/2B/1B+"; // [3B/2B/1B+,Connectorless,1A+,Zero]
+Pi_Model = "3B/2B/1B+"; // [3B/2B/1B+,Connectorless,1A+,Zero,3A+]
 // Which case halves
 Pieces = "Both"; // [Both,Top,Bottom]
 // Include cutouts and mounts for LCD/Buttons
@@ -289,7 +289,7 @@ module hm_base() {
     r=body_corner_radius, top=body_chamfer_height_t, 
     bottom=body_chamfer_height_b, $fn=36);
   // extra thick by Pi connectors
-  if (Pi_Model != "Zero" && Pi_Model != "1A+")
+  if (Pi_Model != "Zero" && Pi_Model != "1A+" && Pi_Model != "3A+")
     translate([-pic_ex,wall+d_off,wall_t])
       pic_ex_cube();
   // TC +/-
@@ -306,7 +306,7 @@ difference() {
     cube_fillet([w, d, h_b+e], bottom=[2,2,2,2],
     top=[lcd_mount_t/2,lcd_mount_t/2,[wall_t,lcd_mount_t/2][LCD],lcd_mount_t/2],
     vertical=[1,1,1,1]);
-  if (Pi_Model != "Zero" && Pi_Model != "1A+")
+  if (Pi_Model != "Zero" && Pi_Model != "1A+" && Pi_Model != "3A+")
     translate([wall-pic_ex+e,wall+d_off,wall_t]) pic_ex_cube();
 
   // Probe jack side
