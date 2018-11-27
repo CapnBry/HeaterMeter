@@ -1,0 +1,8 @@
+# heatermeter build property overrides
+#
+tools.wwwdude.cmd.path=C:\Users\bmayland\AppData\Roaming\Microsoft\Windows\SendTo\WWW avrdude.bat
+tools.wwwdude.program.pattern="{cmd.path}" {build.path}\{build.project_name}.hex
+tools.wwwdude.program.params.quiet=
+tools.wwwdude.program.params.verbose=
+wwwdude.name=WWW avrdude
+wwwdude.program.tool=wwwdude

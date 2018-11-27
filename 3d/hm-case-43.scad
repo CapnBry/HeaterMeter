@@ -14,14 +14,14 @@ wall = 2.5;
 /* [Advanced] */
 // Thickness of top and bottom faces (mm)
 wall_t = 2;
-// External corner radius on the body (mm)
-body_corner_radius = 4;
 // Height of the body edge bead chamfer (mm)
 body_chamfer_height = 1.5;
 // Corner ear height (mm) - 0 to disable
 MouseEarHeight = 0;
 
 /* [Hidden] */
+// External corner radius on the body (mm)
+body_corner_radius = wall*2-1/2;
 d_off = 1.0; // offset the heatermeter origin from the front edge
 w = inch(3.725)+1.2; // overall interior case width
 d = inch(3.75)+d_off; // overall interior case depth

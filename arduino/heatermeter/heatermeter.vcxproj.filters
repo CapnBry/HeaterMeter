@@ -67,6 +67,12 @@
     <ClInclude Include="__vm\.heatermeter.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ad8495_lin.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="floatprint.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="hmcore.cpp">
