@@ -1,0 +1,15 @@
+diff --git a/tools/e2fsprogs/Makefile b/tools/e2fsprogs/Makefile
+index 0c054b13ca..d709e8fa88 100644
+--- a/tools/e2fsprogs/Makefile
++++ b/tools/e2fsprogs/Makefile
+@@ -8,8 +8,8 @@
+ include $(TOPDIR)/rules.mk
+ 
+ PKG_NAME:=e2fsprogs
+-PKG_VERSION:=1.43.6
+-PKG_HASH:=c9b226234ee878a8d89951f3b155cec7416dd0ec09c932c855f1b1df8ad93402
++PKG_VERSION:=1.44.0
++PKG_HASH:=a3567042f03fcee0e01db8f923b24cec92e2ba5b11f8e39e245672ad5392723d
+ PKG_RELEASE:=1
+ 
+ PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.xz
