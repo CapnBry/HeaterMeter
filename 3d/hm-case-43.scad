@@ -272,8 +272,8 @@ module lcd_neg() {
     cube([73.0, 27.3, lcd_mount_t+wall_t-0.8]); // black bezel inset
   translate([5.5, 7.5, 0])
     cube([64.0, 15.4, lcd_mount_t+wall_t+2*e]); // LCD active area
-  translate([4.23, -2.5, 0])
-    cube([16*2.54, 5, lcd_mount_t+wall_t-0.8]); // pins cutout
+  //translate([4.23, -2.5, 0])
+  //  cube([16*2.54, 5, lcd_mount_t+wall_t-0.8]); // pins cutout
 }
 
 module locklip_top_n(split) {
