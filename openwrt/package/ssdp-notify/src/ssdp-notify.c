@@ -152,14 +152,14 @@ int main(int argc, char *argv[]) {
 
             last_time = current_time;
         } /* if have socket */
-        else if (lssdp.sock < 0 && elapsed >= 10)
+        else if (lssdp.sock <= 0 && elapsed >= 10)
         {
           /* This works around a problem where the interface list changes but
            * IP_ADD_MEMBERSHIP fails with "No such device"
            */
           if (lssdp_socket_create(&lssdp) != 0)
           {
-            puts("SSDP create socket failed");
+            printf("SSDP create socket failed\n");
             last_time = current_time;
           }
         } /* if no socket */
