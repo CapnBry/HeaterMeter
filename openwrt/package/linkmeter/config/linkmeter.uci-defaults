@@ -142,7 +142,7 @@ uci_set_nomodify linkmeter.ramp.watch '0'
 
 uci_add_section linkmeter.api
 uci_set_nomodify linkmeter.api.disabled '0'
-uci_set_nomodify linkmeter.api.enablecors '1'
+uci_set_nomodify linkmeter.api.allowcors '1'
 uci_set_nomodify linkmeter.api.key `dd if=/dev/urandom bs=16 count=1 | hexdump -e '"%x"'`
 
 migrate_settings
