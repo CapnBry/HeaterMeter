@@ -2,77 +2,56 @@ local _M = {}
 local API_VERSION = 1
 
 function _M.index()
-  local API_READ_ONLY = "api_read"
-  local API_WRITE_ONLY = "api_write"
-  local API_READ_WRITE = { "api_read", "api_write" }
-  
-  local node
-  node = entry({"lm", "api"}, alias({"lm", "api", "version"}))
-  node.sysauth = API_READ_ONLY
-  -- Set the authenticator for all pages below /lm/api
-  -- This needs to be done inline so it is included in the luci-indexcache
-  node.sysauth_authenticator = function(checkpasswd, accs, def)
-    local http = require("luci.http")
-    local uci = require("uci"):cursor()
-    -- If API is disabled, both read and write is disabled
-    if uci:get("linkmeter", "api", "disabled") == "1" then
-      http.status(403, "Forbidden")
-      http.prepare_content("text/plain")
-      http.write("API disabled")
-      return nil
-    end
-
-    if uci:get("linkmeter", "api", "allowcors") == "1" then
-      http.header("Access-Control-Allow-Origin", "*")
-    end
-
-    -- Case 1: sysauth = api_read
-    if def == API_READ_ONLY then
-      -- Return read only user and a blank session so one isn't created
-      return API_READ_ONLY, {}
-    end
-
-    -- Case 2: sysauth = { api_read, api_write } and this is *not* a POST (write)
-    if http.getenv("REQUEST_METHOD") ~= "POST" and def == false then
-      -- Return read only user and a blank session so one isn't created
-      return API_READ_ONLY, {}
-    end
-
-    -- Case 3: sysauth = api_write or { api_read, api_write } require a POST
-    if http.getenv("REQUEST_METHOD") ~= "POST" then
-      http.status(405, "Method Not Allowed")
-      http.header("Allow", "POST")
-      return nil
-    end
-
-    -- and check the supplied API key
-    local key = http.formvalue("apikey")
-    local apikey = uci:get("linkmeter", "api", "key")
-    if apikey and apikey ~= "" and key and key:lower() == apikey:lower() then
-      -- Hokey workaround because luci doesn't set the authuser if it 
-      -- isn't the code that creates the session
-      luci.dispatcher.context.authuser = API_WRITE_ONLY
-      -- Return write user and a blank session so one isn't created
-      return API_WRITE_ONLY, {}
-    else
-      http.status(403, "Forbidden")
-      http.prepare_content("text/plain")
-      http.write("Invalid or missing apikey")
-    end
-  end  -- end sysauth
-  
+  entry({"lm", "api"}, alias({"lm", "api", "version"}))
   entry({"lm", "api", "version"}, call("action_api_version"))
   entry({"lm", "api", "status"}, call("action_api_status")).leaf = true
-  node = entry({"lm", "api", "config"}, call("action_api_config"))
-    node.sysauth = API_READ_WRITE
-    node.leaf = true
-  node = entry({"lm", "api", "fw"}, call("action_api_fw"))
-    node.sysauth = API_READ_WRITE
-    node.leaf = true
+  entry({"lm", "api", "config"}, call("action_api_config")).leaf = true
+  entry({"lm", "api", "fw"}, call("action_api_fw")).leaf = true
 end
 
 local function is_write()
   return luci.http.getenv("REQUEST_METHOD") == "POST"
+end
+
+local function auth(write_access)
+  local http = require("luci.http")
+  local uci = require("uci"):cursor()
+  -- If API is disabled, both read and write is disabled
+  if uci:get("linkmeter", "api", "disabled") == "1" then
+    http.status(403, "Forbidden")
+    http.prepare_content("text/plain")
+    http.write("API disabled")
+    return nil
+  end
+
+  if uci:get("linkmeter", "api", "allowcors") == "1" then
+    http.header("Access-Control-Allow-Origin", "*")
+  end
+
+  -- Case 1: sysauth = api_read
+  if not write_access then
+    return true
+  end
+
+  -- Case 2: sysauth = api_write or { api_read, api_write } require a POST
+  if write_access and http.getenv("REQUEST_METHOD") ~= "POST" then
+    http.status(405, "Method Not Allowed")
+    http.header("Allow", "POST")
+    return nil
+  end
+
+  -- and check the supplied API key
+  local key = http.formvalue("apikey")
+  local apikey = uci:get("linkmeter", "api", "key")
+  if apikey and apikey ~= "" and key and key:lower() == apikey:lower() then
+    luci.dispatcher.context.authuser = "api_write"
+    return true
+  else
+    http.status(403, "Forbidden")
+    http.prepare_content("text/plain")
+    http.write("Invalid or missing apikey")
+    return nil
+  end
 end
 
 local function quick_json(t)
@@ -110,11 +89,13 @@ local function api_lmquery(query, tablefmt)
 end
 
 function _M.action_api_version()
+  if not auth() then return end
   local conf = api_lmquery("$LMCF", true)
   quick_json({api = API_VERSION, ucid = conf.ucid or "null"})
 end
 
 function _M.action_api_status()
+  if not auth() then return end
   local ctx = luci.dispatcher.context
   local param = ctx.requestargs and #ctx.requestargs > 0
 
@@ -142,6 +123,7 @@ function _M.action_api_status()
 end
 
 function _M.action_api_config()
+  if not auth(is_write()) then return end
   -- See if just one parameter is specified, or this is a parent call  
   local param, value
   local ctx = luci.dispatcher.context
@@ -175,6 +157,7 @@ function _M.action_api_config()
 end
 
 function _M.action_api_fw()
+  if not auth(true) then return end
   if not luci.http.formvalue("hexfile") then
     luci.http.status(400, "Bad Request")
     luci.http.prepare_content("text/plain")
