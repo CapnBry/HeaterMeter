@@ -101,6 +101,8 @@ function Server.daemonize()
 end
 
 function Server.run()
+  nixio.openlog('linkmeterd')
+
   local lastTick
   while true do
     -- Listen for fd events, but break every 10s
