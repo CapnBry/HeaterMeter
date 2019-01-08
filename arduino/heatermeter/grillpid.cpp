@@ -845,7 +845,7 @@ boolean GrillPid::doWork(void)
     
     int tempDiff = _setPoint - (int)Probes[TEMP_CTRL]->Temperature;
     if ((tempDiff <= 0) &&
-      (_lidOpenDuration - LidOpenResumeCountdown > LIDOPEN_MIN_AUTORESUME))
+      (_lidOpenDuration - LidOpenResumeCountdown >= LIDOPEN_MIN_AUTORESUME))
     {
       // When we first achieve temperature, reduce any I sum we accumulated during startup
       // If we actually neded that sum to achieve temperature we'll rebuild it, and it
