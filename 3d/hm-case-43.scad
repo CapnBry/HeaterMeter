@@ -24,17 +24,18 @@ MouseEarHeight = 0;
 body_corner_radius = wall*2-1/2;
 d_off = 1.0; // offset the heatermeter origin from the front edge
 w = inch(3.725)+1.2; // overall interior case width
-d = inch(3.75)+d_off; // overall interior case depth
+d = inch(3.75)+1.0+d_off; // overall interior case depth
 // 19.1+ headless Zero
 // 22.4 headless Pi3 (limited by nuttrapps interfering with PCB to -6.7)
 // 32 standard
-h_b = [32-6.7, 32][LCD];  // overall interior case height
+h_b = [32.5-6.7, 32.5][LCD];  // overall interior case height
 
 probe_centerline = 9.3; // case is split along probe centerline on the probe side
 case_split = 12.4;  // and the case split on the other 3 sides
 
 pic_ex = 1.7;
 lcd_mount_t = 8.2 - (wall_t - 0.8);
+pi_screw_t = 2.3;
 
 body_chamfer_height_t = body_chamfer_height;
 body_chamfer_height_b = body_chamfer_height;
@@ -105,9 +106,9 @@ module pic_ex_cube() {
 }
 
 module screw_pimount() {
-  cylinder(wall_t+2.3, d=6.4, $fn=18);
+  cylinder(wall_t+pi_screw_t, d=6.4, $fn=18);
   // alignment nubbies
-  //cylinder(wall_t+2.3+1.4, d=2.5, $fn=12);
+  cylinder(wall_t+pi_screw_t+1.4, d=2.4, $fn=12);
 }
 
 module screw_keyhole() {
@@ -138,7 +139,7 @@ module screw_keyhole_p() {
 module btn_rnd() {
   dia = is_jig ? 6.0 : 7.2;
   cylinder(wall_t+2*e, d1=dia, d2=dia+1.5*wall_t, $fn=24);
-  translate([-6.5,-6.5,0]) cube([13,13,0.75+e]);
+  translate([-6.5,-6.5,0]) cube([13,13,0.5+e]);
 }
 
 module tc_plusminus() {
@@ -190,8 +191,8 @@ module nuttrap() {
     // nut hole / M3 extra
     translate([0,0,wall_t+0.3]) {
       // nut 2x for an elongated trap
-      translate([-0.2,0,0]) cylinder(nut_h*1.5+e, d=nut_d+e/sin(60), $fn=6);
-      translate([+0.2,0,0]) cylinder(nut_h*1.5+e, d=nut_d+e/sin(60), $fn=6);
+      translate([-0.2,0,0]) cylinder(nut_h*1.5+e, d=nut_d, $fn=6);
+      translate([+0.2,0,0]) cylinder(nut_h*1.5+e, d=nut_d, $fn=6);
       cylinder(oa_h-wall_t-0.3, d=4, $fn=16);  // M3 with plenty of clearance
       //translate([-50,-50,-100]) cube([100,100,100+e]); // cutaway top
     }
@@ -294,7 +295,7 @@ module hm_base() {
       pic_ex_cube();
   // TC +/-
   if (Control_Probe == "Thermocouple")
-    translate([w+wall*2-e,wall+d_off+10,wall_t+18]) tc_plusminus();
+    translate([w+wall*2-e,wall+d_off+10,wall_t+19]) tc_plusminus();
 }
 
 module hm43() {
@@ -303,9 +304,10 @@ difference() {
   
   // Main cutout
   translate([wall, wall, wall_t])
-    cube_fillet([w, d, h_b+e], bottom=[2,2,2,2],
-    top=[lcd_mount_t/2,lcd_mount_t/2,[wall_t,lcd_mount_t/2][LCD],lcd_mount_t/2],
-    vertical=[1,1,1,1]);
+    cube_fillet([w, d, h_b],
+      bottom=[pi_screw_t,pi_screw_t,pi_screw_t,pi_screw_t],
+      top=[pi_screw_t,pi_screw_t,pi_screw_t,pi_screw_t],
+      vertical=[1,1,1,1]);
   if (Pi_Model != "Zero" && Pi_Model != "1A+" && Pi_Model != "3A+")
     translate([wall-pic_ex+e,wall+d_off,wall_t]) pic_ex_cube();
 
@@ -314,7 +316,7 @@ difference() {
     // Probe jacks
     if (Control_Probe == "Thermocouple")
       // TC jack
-      translate([0,inch(0.4)-16.5/2,-1.4]) cube([2*wall, 16.5, 6.5]);
+      translate([0,inch(0.4)-16.5/2,-1.1]) cube([2*wall, 16.5, 6.5]);
     else if (Control_Probe == "Thermistor")
       translate([0,inch(0.28),0]) phole();
     if (Control_Probe != "None") {
@@ -329,8 +331,8 @@ difference() {
     translate([0,0,5]) {
       if (Pi_Model == "3B/2B/1B+") {
         // ethernet
-        translate([0,81.5,-0.5]) jhole(15,13);
-        translate([0,81.5,-1.5]) jhole(5,5);
+        translate([0,81.5,-0.8]) jhole(15,13);
+        translate([0,81.5,-1.8]) jhole(5,5);
         // USB 0+1
         translate([0,62.75,0]) jhole(13,14.8);
         translate([0,44.75,0]) jhole(13,14.8);
@@ -339,9 +341,9 @@ difference() {
     // HeaterMeter connectors
     translate([0,0,0]) {
       // Blower/Servo output
-      translate([0,25,1.1]) jhole(16.7,13);
+      translate([0,25,1.7]) jhole(16.4,13);
       // HM power jack
-      translate([0,inch(0.2),3.4]) jhole(9.4,11);
+      translate([0,inch(0.2),4.2]) jhole(9.4,11);
     }
   }
   
@@ -547,6 +549,8 @@ module hm43_split() {
   if (Pieces != "Bottom") {
     translate([0,-1,h_b+2*wall_t]) rotate([180]) difference() {
       hm43();
+      //translate([11,5,h_b+2*wall_t-0.24]) linear_extrude(0.5)
+      //  text("HeaterMeter", font = "Liberation Sans:style=Bold Italic");
       split_volume();
     }
   }  // if include top
