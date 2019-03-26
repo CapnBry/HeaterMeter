@@ -323,7 +323,7 @@ function refreshGraphData()
     var range = $("#rangeselect").val();
     var params = {nancnt: range};
     <% if rrd then write("params.rrd = '"..rrd.."'; graphOpts.canvas = true;") end %>
-    $("#dlcsv").attr("href", "<%=build_url("lm/hist")%>?dl=1&" + $.param(params));
+    $("#dlcsv").attr("href", "<%=build_url("lm/hist")%>?dl=1&hdr=1&" + $.param(params));
     $.ajax({
         type: "GET",
         url: "<%=build_url("lm/hist")%>",

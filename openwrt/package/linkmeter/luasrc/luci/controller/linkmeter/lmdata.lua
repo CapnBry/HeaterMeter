@@ -101,6 +101,10 @@ function action_hist()
   end
   http.header("Cache-Control", "max-age="..step)
 
+  if http.formvalue("hdr") == "1" then
+    http.write("time,setpoint,probe0,probe1,probe2,probe3,output\n")
+  end
+
   local seenData
   now = now - step
   for _, dp in ipairs(data) do

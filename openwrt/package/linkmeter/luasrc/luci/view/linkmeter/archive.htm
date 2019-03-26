@@ -58,7 +58,7 @@ table.sort(files, function(a,b) return a.stat.mtime < b.stat.mtime end )
 
 for _,f in ipairs(files) do
     local urlView = build_url("admin/lm/home").."?rrd="..f.path
-    local urlCsv = build_url("lm/hist").."?rrd="..f.path
+    local urlCsv = build_url("lm/hist").."?hdr=1&amp;rrd="..f.path
     local urlDelete = build_url("admin/lm/stashdb").."?delete=1&amp;rrd="..f.name
     local urlActivate = build_url("admin/lm/stashdb").."?restore=1&amp;rrd="..f.name
     if f.conf then f.conf = jsonc.parse(f.conf) end
