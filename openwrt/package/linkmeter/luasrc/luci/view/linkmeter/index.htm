@@ -75,6 +75,7 @@ $(document).ready(function()
     $("#graphcontainer").bind("mouseleave", function () { $("#graphtt").fadeOut(); });
     $("div.legfill").click(legendClicked);
     $("div.noisebtn").click(noisebtnClicked);
+    $("#fancontainer").click(togglePidInt);
     $(document).keydown(keyPressed);
 
     // Set colors of the graph and temp shadows to match the CSS
