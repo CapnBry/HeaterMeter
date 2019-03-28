@@ -1,4 +1,4 @@
-// HeaterMeter Copyright 2016 Bryan Mayland <bmayland@capnbry.net>
+// HeaterMeter Copyright 2019 Bryan Mayland <bmayland@capnbry.net>
 #ifndef __WISHIELDCONF_H__
 #define __WISHIELDCONF_H__
 

@@ -1,4 +1,4 @@
-// HeaterMeter Copyright 2016 Bryan Mayland <bmayland@capnbry.net>
+// HeaterMeter Copyright 2019 Bryan Mayland <bmayland@capnbry.net>
 // GrillPid uses TIMER1 COMPB vector, as well as modifies the waveform
 // generation mode of TIMER1. Blower output pin needs to be a hardware PWM pin.
 // Fan output is 489Hz phase-correct PWM

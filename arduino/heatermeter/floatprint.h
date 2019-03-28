@@ -1,4 +1,4 @@
-// HeaterMeter Copyright 2018 Bryan Mayland <bmayland@capnbry.net>
+// HeaterMeter Copyright 2019 Bryan Mayland <bmayland@capnbry.net>
 // Simple class to print a float right-justified in a given space
 #ifndef __FLOATPRINT_H__
 #define __FLOATPRINT_H__

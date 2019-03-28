@@ -1,4 +1,4 @@
-// HeaterMeter Copyright 2016 Bryan Mayland <bmayland@capnbry.net>
+// HeaterMeter Copyright 2019 Bryan Mayland <bmayland@capnbry.net>
 #include "Arduino.h"
 #include <avr/pgmspace.h>
 #include "menus.h"

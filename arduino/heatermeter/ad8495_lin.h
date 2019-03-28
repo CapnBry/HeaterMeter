@@ -1,4 +1,4 @@
-// HeaterMeter Copyright 2018 Bryan Mayland <bmayland@capnbry.net>
+// HeaterMeter Copyright 2019 Bryan Mayland <bmayland@capnbry.net>
 /*
  * Compensate for non-linearity of thermocouple seebeck voltage.
  * Data cones from the "Actual AD849x Results" table [1] and not the NIST 
