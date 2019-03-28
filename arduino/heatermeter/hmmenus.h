@@ -14,7 +14,7 @@
 enum HmMenuStates {
   ST_HOME_FOOD1 = (ST_VMAX+1), // ST_HOME_X must stay sequential and in order
   ST_HOME_FOOD2,
-  ST_HOME_AMB,
+  ST_HOME_FOOD3,
   ST_HOME_NOPROBES,
   ST_HOME_ALARM,
   ST_ALARM_ACTION,
@@ -44,12 +44,17 @@ public:
     const buttonread_t reader) : MenuSystem(defs, trans, reader)
     {};
 
+  void init(void);
   void displayToast(char *msg);
   unsigned char *getToastLine0(void) { return &_toastMsg[0]; }
   unsigned char *getToastLine1(void) { return &_toastMsg[sizeof(_toastMsg)/2]; }
   unsigned char ProbeNum;
+
+  unsigned char getHomeDisplayMode(void) const { return _homeDisplayMode; }
+  void setHomeDisplayMode(unsigned char v);
 private:
   unsigned char _toastMsg[33];
+  unsigned char _homeDisplayMode;
 };
 
 extern HmMenuSystem Menus;

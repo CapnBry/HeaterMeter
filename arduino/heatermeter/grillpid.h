@@ -32,6 +32,7 @@ struct __eeprom_probe
 #define ALARM_ID_TO_PROBE(id) (id / 2)
 #define ALARM_ID_TO_IDX(id) (id % 2)
 #define MAKE_ALARM_ID(probe, idx) (probe * 2 + idx)
+#define ALARM_ID_NONE 0xff
 
 class ProbeAlarm
 {
@@ -184,6 +185,10 @@ private:
   unsigned char _servoStepTicks;
   // count of periods a servo write has been delayed
   unsigned char _servoHoldoff;
+  // ID of ringing alarm
+  unsigned char _alarmId;
+  // If true reportInternals() dump on reportStatus()
+  bool _autoreportInternals;
 
   void calcPidOutput(void);
   void commitFanOutput(void);
@@ -245,6 +250,7 @@ public:
   // Active ceil means "servo open the maximum amount at this PID output"
   unsigned char getServoActiveCeil(void) const { return _servoActiveCeil; }
   void setServoActiveCeil(unsigned char value) { _servoActiveCeil = constrain(value, 0, 100); }
+  void setAutoreportInternals(bool v) { _autoreportInternals = v; }
 
   // Collection of PIDFLAG_*
   void setOutputFlags(unsigned char value);
@@ -263,6 +269,7 @@ public:
   unsigned char getFanSpeed(void) const { return _fanSpeed; };
   unsigned long getLastWorkMillis(void) const { return _lastWorkMillis; }
   unsigned char getPidIMax(void) const { return isPitTempReached() ? 100 : _fanMaxStartupSpeed; }
+  unsigned char getAlarmId(void) const { return _alarmId; }
 
   // PID output moving average
   float PidOutputAvg;
@@ -282,8 +289,8 @@ public:
   // Call this in loop()
   boolean doWork(void);
   void resetLidOpenResumeCountdown(void);
-  void status(void) const;
-  void pidStatus(void) const;
+  void reportStatus(void) const;
+  void reportInternals(void) const;
 };
 
 #endif /* __GRILLPID_H__ */

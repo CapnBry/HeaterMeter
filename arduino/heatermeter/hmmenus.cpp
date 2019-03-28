@@ -3,6 +3,7 @@
 #include "grillpid.h"
 #include "strings.h"
 #include "floatprint.h"
+#include "bigchars.h"
 
 static state_t menuHome(button_t button);
 static state_t menuSetpoint(button_t button);
@@ -21,7 +22,7 @@ static state_t menuProbeDiag(button_t button);
 static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_HOME_FOOD1, menuHome, 5, BUTTON_LEFT },
   { ST_HOME_FOOD2, menuHome, 5, BUTTON_LEFT },
-  { ST_HOME_AMB, menuHome, 5, BUTTON_LEFT },
+  { ST_HOME_FOOD3, menuHome, 5, BUTTON_LEFT },
   { ST_HOME_NOPROBES, menuHome, 1, BUTTON_LEFT }, // Both No Pit Probe AND Pit with no food probes
   { ST_HOME_ALARM, menuAlarmTriggered, 0 },
   { ST_SETPOINT, menuSetpoint, 10 },
@@ -36,26 +37,26 @@ static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_MAXFANSPEED, menuMaxFanSpeed, 10 },
   { ST_LCDBACKLIGHT, menuLcdBacklight, 10},
   { ST_TOAST, menuToast, 20 },
-  { ST_ENG_PROBEDIAG, menuProbeDiag, 0 },
+  { ST_ENG_PROBEDIAG, menuProbeDiag, 0, BUTTON_LEFT },
   { 0, 0 },
 };
 
 const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   { ST_HOME_FOOD1, BUTTON_DOWN | BUTTON_TIMEOUT, ST_HOME_FOOD2 },
   { ST_HOME_FOOD1, BUTTON_RIGHT,   ST_SETPOINT },
-  { ST_HOME_FOOD1, BUTTON_UP,      ST_HOME_AMB },
+  { ST_HOME_FOOD1, BUTTON_UP,      ST_HOME_FOOD3 },
 
-  { ST_HOME_FOOD2, BUTTON_DOWN | BUTTON_TIMEOUT, ST_HOME_AMB },
+  { ST_HOME_FOOD2, BUTTON_DOWN | BUTTON_TIMEOUT, ST_HOME_FOOD3 },
   { ST_HOME_FOOD2, BUTTON_RIGHT,   ST_SETPOINT },
   { ST_HOME_FOOD2, BUTTON_UP,      ST_HOME_FOOD1 },
 
-  { ST_HOME_AMB, BUTTON_DOWN | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  { ST_HOME_AMB, BUTTON_RIGHT,     ST_SETPOINT },
-  { ST_HOME_AMB, BUTTON_UP,        ST_HOME_FOOD2 },
+  { ST_HOME_FOOD3, BUTTON_DOWN | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_HOME_FOOD3, BUTTON_RIGHT,     ST_SETPOINT },
+  { ST_HOME_FOOD3, BUTTON_UP,        ST_HOME_FOOD2 },
 
   { ST_HOME_NOPROBES, BUTTON_DOWN | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_HOME_NOPROBES, BUTTON_RIGHT,ST_SETPOINT },
-  { ST_HOME_NOPROBES, BUTTON_UP,   ST_HOME_AMB },
+  { ST_HOME_NOPROBES, BUTTON_UP,   ST_HOME_FOOD3 },
 
   { ST_SETPOINT, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_SETPOINT, BUTTON_RIGHT, ST_MANUALMODE },
@@ -107,7 +108,7 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   { ST_RESETCONFIG, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_RESETCONFIG, BUTTON_RIGHT, ST_SETPOINT },
 
-  { ST_ENG_PROBEDIAG, BUTTON_LEFT, ST_HOME_FOOD1 },
+  { ST_ENG_PROBEDIAG, BUTTON_LEFT | BUTTON_LONG, ST_HOME_FOOD1 },
 
   { 0, 0, 0 },
 };
@@ -136,6 +137,169 @@ static button_t readButton(void)
     return BUTTON_RIGHT;  
     
   return BUTTON_NONE;
+}
+
+static void lcdPrintBigNum(float val)
+{
+  // good up to 3276.8
+  int16_t ival = val * 10;
+  uint16_t uval;
+  boolean isNeg;
+  if (ival < 0)
+  {
+    isNeg = true;
+    uval = -ival;
+  }
+  else
+  {
+    isNeg = false;
+    uval = ival;
+  }
+
+  int8_t x = 16;
+  do
+  {
+    if (uval != 0 || x >= 9)
+    {
+      const char *numData = NUMS + ((uval % 10) * 6);
+
+      x -= C_WIDTH;
+      lcd.setCursor(x, 0);
+      lcd.write_P(numData, C_WIDTH);
+      numData += C_WIDTH;
+
+      lcd.setCursor(x, 1);
+      lcd.write_P(numData, C_WIDTH);
+
+      uval /= 10;
+    }  /* if val */
+    --x;
+    lcd.setCursor(x, 0);
+    lcd.write(C_BLK);
+    lcd.setCursor(x, 1);
+    if (x == 12)
+      lcd.write('.');
+    else if (uval == 0 && x < 9 && isNeg)
+    {
+      lcd.write(C_CT);
+      isNeg = false;
+    }
+    else
+      lcd.write(C_BLK);
+  } while (x != 0);
+}
+
+static void lcdDefineChars(void)
+{
+  for (unsigned char i = 0; i<8; ++i)
+    lcd.createChar_P(i, BIG_CHAR_PARTS + (i * 8));
+}
+
+void lcdprint_P(const char *p, const boolean doClear)
+{
+  if (doClear)
+    lcd.clear();
+  while (unsigned char c = pgm_read_byte(p++)) lcd.write(c);
+}
+
+static void updateHome(void)
+{
+  // Updates to the temperature can come at any time, only update
+  // if we're in a state that displays them
+  state_t state = Menus.getState();
+
+  char buffer[17];
+  unsigned char probeIdxLow, probeIdxHigh;
+
+  // Fixed pit area
+  lcd.setCursor(0, 0);
+  if (state == ST_HOME_ALARM)
+  {
+    uint8_t id = pid.getAlarmId();
+    if (ALARM_ID_TO_IDX(id) == ALARM_IDX_LOW)
+      lcdprint_P(PSTR("** ALARM LOW  **"), false);
+    else
+      lcdprint_P(PSTR("** ALARM HIGH **"), false);
+
+    probeIdxLow = probeIdxHigh = ALARM_ID_TO_PROBE(id);
+  }  /* if ST_HOME_ALARM */
+  else
+  {
+    /* Big Number probes overwrite the whole display if it has a temperature */
+    uint8_t mode = Menus.getHomeDisplayMode();
+    if (mode >= TEMP_PIT && mode <= TEMP_FOOD3)
+    {
+      TempProbe *probe = pid.Probes[mode];
+      if (probe->hasTemperature())
+      {
+        lcdPrintBigNum(probe->Temperature);
+        return;
+      }
+    }
+
+    /* Default Pit / Fan Speed first line */
+    int pitTemp;
+    if (pid.Probes[TEMP_CTRL]->hasTemperature())
+      pitTemp = pid.Probes[TEMP_CTRL]->Temperature;
+    else
+      pitTemp = 0;
+    if (!pid.isManualOutputMode() && !pid.Probes[TEMP_CTRL]->hasTemperature())
+      memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
+    else if (pid.isDisabled())
+      snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d" DEGREE "%c  [Off]"),
+        pitTemp, pid.getUnits());
+    else if (pid.LidOpenResumeCountdown > 0)
+      snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d" DEGREE "%c Lid%3u"),
+        pitTemp, pid.getUnits(), pid.LidOpenResumeCountdown);
+    else
+    {
+      char c1, c2;
+      if (pid.isManualOutputMode())
+      {
+        c1 = '^';  // LCD_ARROWUP
+        c2 = '^';  // LCD_ARROWDN
+      }
+      else
+      {
+        c1 = '[';
+        c2 = ']';
+      }
+      snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d" DEGREE "%c %c%3u%%%c"),
+        pitTemp, pid.getUnits(), c1, pid.getPidOutput(), c2);
+    }
+
+    lcd.print(buffer);
+    // Display mode 0xff is 2-line, which only has space for 1 non-pit value
+    if (Menus.getHomeDisplayMode() == 0xff)
+      probeIdxLow = probeIdxHigh = state - ST_HOME_FOOD1 + TEMP_FOOD1;
+    else
+    {
+      // Display mode 0xfe is 4 line home, display 3 other temps there
+      probeIdxLow = TEMP_FOOD1;
+      probeIdxHigh = TEMP_FOOD3;
+    }
+  } /* if !ST_HOME_ALARM */
+
+    // Rotating probe display
+  for (unsigned char probeIndex = probeIdxLow; probeIndex <= probeIdxHigh; ++probeIndex)
+  {
+    if (probeIndex < TEMP_COUNT && pid.Probes[probeIndex]->hasTemperature())
+    {
+      loadProbeName(probeIndex);
+      snprintf_P(buffer, sizeof(buffer), PSTR("%-12s%3d" DEGREE), editString,
+        (int)pid.Probes[probeIndex]->Temperature);
+    }
+    else
+    {
+      // If probeIndex is outside the range (in the case of ST_HOME_NOPROBES)
+      // just fill the bottom line with spaces
+      memset(buffer, ' ', sizeof(buffer));
+      buffer[sizeof(buffer) - 1] = '\0';
+    }
+
+    lcd.setCursor(0, probeIndex - probeIdxLow + 1);
+    lcd.print(buffer);
+  }
 }
 
 static void menuBooleanEdit(button_t button, const char *preamble)
@@ -269,13 +433,14 @@ static state_t menuHome(button_t button)
 {
   if (button == BUTTON_ENTER)
   {
+    Menus.setUpdateDisplay(&updateHome);
     if (Menus.getState() != ST_HOME_NOPROBES && !pid.isAnyFoodProbeActive())
       return ST_HOME_NOPROBES;
     else if (Menus.getState() == ST_HOME_FOOD1 && !pid.Probes[TEMP_FOOD1]->hasTemperature())
       return ST_HOME_FOOD2;
     else if (Menus.getState() == ST_HOME_FOOD2 && !pid.Probes[TEMP_FOOD2]->hasTemperature())
-      return ST_HOME_AMB;
-    else if (Menus.getState() == ST_HOME_AMB && !pid.Probes[TEMP_AMB]->hasTemperature())
+      return ST_HOME_FOOD3;
+    else if (Menus.getState() == ST_HOME_FOOD3 && !pid.Probes[TEMP_FOOD3]->hasTemperature())
       return ST_HOME_FOOD1;
   }
   else if (button == (BUTTON_LEFT | BUTTON_LONG))
@@ -307,9 +472,6 @@ static state_t menuHome(button_t button)
     publishLeds();
   }
   
-  if (button != BUTTON_LEAVE)
-    updateDisplay();
-
   return ST_AUTO;
 }
 
@@ -458,37 +620,12 @@ static state_t menuMaxFanSpeed(button_t button)
 static state_t menuAlarmTriggered(button_t button)
 {
   if (button == BUTTON_ENTER)
-    updateDisplay();
-  // If any physical button is pressed, silence and return home
+    Menus.setUpdateDisplay(&updateHome);
   else if (button & BUTTON_ANY)
   {
     silenceRingingAlarm();
-    return ST_HOME_FOOD1;
+    return ST_LAST;
   }
-
-  return ST_AUTO;
-}
-
-static state_t menuAlarmAction(button_t button)
-{
-  if (button == BUTTON_ENTER)
-  {
-    lcdprint_P(PSTR("Alarm"), true);
-    editInt = 0;
-  }
-  else if (button == BUTTON_TIMEOUT)
-    return ST_HOME_ALARM;
-  else if (button == BUTTON_LEFT || button == BUTTON_RIGHT)
-  {
-    /* False is 'silence', true is 'disable' */
-    silenceRingingAlarm(); //editInt);
-    return ST_HOME_FOOD1;
-  }
-  else if (button == BUTTON_UP || button == BUTTON_DOWN)
-    editInt = !editInt;
-
-  lcd.setCursor(0, 1);
-  lcdprint_P((editInt != 0) ? PSTR("^ Disable v") : PSTR("^ Silence v"), false);
 
   return ST_AUTO;
 }
@@ -498,11 +635,11 @@ static state_t menuLcdBacklight(button_t button)
   if (button == BUTTON_ENTER)
   {
     lcdprint_P(PSTR("LCD brightness"), true);
-    editInt = g_LcdBacklight;
+    editInt = lcd.getBacklight();
   }
   else if (button == BUTTON_LEAVE)
   {
-    if (editInt != g_LcdBacklight)
+    if (editInt != lcd.getBacklight())
     {
       storeLcdBacklight(editInt);
       reportLcdParameters();
@@ -510,7 +647,7 @@ static state_t menuLcdBacklight(button_t button)
   }
   
   menuNumberEdit(button, 10, 0, 100, PSTR("%3d%%"));
-  setLcdBacklight(0x80 | editInt);
+  lcd.setBacklight(editInt, false);
   return ST_AUTO;
 }
 
@@ -525,7 +662,35 @@ static state_t menuToast(button_t button)
     return ST_AUTO;
   }
   // Timeout or button press returns you to the previous menu
-  return Menus.getLastState();
+  return ST_LAST;
+}
+
+static void updateProbeDiag(void)
+{
+  lcd.home();
+
+  // P1 ADC65535 99Nz - ProbeNum RawADCReading Noise
+  const TempProbe *probe = pid.Probes[Menus.ProbeNum];
+  snprintf_P(editString, sizeof(editString), PSTR("P%1u ADC%05u %02uNz"),
+    Menus.ProbeNum,
+    analogReadOver(probe->getPin(), 10 + TEMP_OVERSAMPLE_BITS),
+    analogReadRange(probe->getPin())
+  );
+  lcd.write(editString);
+
+  // Thermis 999.99oC - ProbeType Temp Units
+  lcd.setCursor(0, 1);
+  const char *ptype = (char *)pgm_read_word(&LCD_PROBETYPES[probe->getProbeType()]);
+  lcdprint_P(ptype, false);
+  lcd.write(' ');
+  if (probe->hasTemperature())
+  {
+    fp.print(lcd, probe->Temperature, 6, 2);
+    lcd.write(DEGREE);
+  }
+  else
+    lcdprint_P(PSTR("       "), false);
+  lcd.write(pid.getUnits());
 }
 
 static state_t menuProbeDiag(button_t button)
@@ -535,47 +700,20 @@ static state_t menuProbeDiag(button_t button)
     // On first entry, set to first probe
     if (Menus.getLastState() != ST_ENG_PROBEDIAG)
       Menus.ProbeNum = TEMP_PIT;
+    Menus.setUpdateDisplay(&updateProbeDiag);
   }
-  else if (button == BUTTON_DOWN)
+  else if (button == BUTTON_RIGHT)
   {
     // Next Probe
     Menus.ProbeNum = (Menus.ProbeNum + 1) % TEMP_COUNT;
   }
-  else if (button == BUTTON_UP)
+  else if (button == BUTTON_LEFT)
   {
     // Previous Probe
     if (Menus.ProbeNum == 0)
       Menus.ProbeNum = TEMP_COUNT - 1;
     else
       --Menus.ProbeNum;
-  }
-
-  if (button != BUTTON_LEAVE)
-  {
-    lcd.home();
-
-    // P1 ADC65535 99Nz - ProbeNum RawADCReading Noise
-    const TempProbe *probe = pid.Probes[Menus.ProbeNum];
-    snprintf_P(editString, sizeof(editString), PSTR("P%1u ADC%05u %02uNz"),
-      Menus.ProbeNum,
-      analogReadOver(probe->getPin(), 10 + TEMP_OVERSAMPLE_BITS),
-      analogReadRange(probe->getPin())
-    );
-    lcd.write(editString);
-
-    // Thermis 999.99oC - ProbeType Temp Units
-    lcd.setCursor(0, 1);
-    const char *ptype = (char *)pgm_read_word(&LCD_PROBETYPES[probe->getProbeType()]);
-    lcdprint_P(ptype, false);
-    lcd.write(' ');
-    if (probe->hasTemperature())
-    {
-      fp.print(lcd, probe->Temperature, 6, 2);
-      lcd.write(DEGREE);
-    }
-    else
-      lcdprint_P(PSTR("       "), false);
-    lcd.write(pid.getUnits());
   }
 
   return ST_AUTO;
@@ -603,6 +741,24 @@ void HmMenuSystem::displayToast(char *msg)
     setState(ST_TOAST);
   else
     menuToast(BUTTON_ENTER); // If already in a toast force a refresh
+}
+
+void HmMenuSystem::setHomeDisplayMode(unsigned char v)
+{
+  _homeDisplayMode = v;
+
+  state_t state = getState();
+  // If we're in home, clear in case we're switching from 4 to 2
+  if (state >= ST_HOME_FOOD1 && state <= ST_HOME_FOOD3)
+  {
+    lcd.clear();
+    updateDisplay();
+  }
+}
+
+void HmMenuSystem::init(void)
+{
+  lcdDefineChars();
 }
 
 HmMenuSystem Menus(MENU_DEFINITIONS, MENU_TRANSITIONS, &readButton);

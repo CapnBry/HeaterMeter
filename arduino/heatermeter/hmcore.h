@@ -31,7 +31,7 @@
 //#define PIN_BLOWER       3  // 5 (grillpid_conf.h)
 #define PIN_LCD_CLK      4  // 6
 #define PIN_LCD_BACKLGHT 5  // 11
-// #define PIN_ALARM        6  // 12 (tone_4khz.h)
+//#define PIN_ALARM        6  // 12 (tone_4khz.h)
 //#define PIN_SOFTRESET    7  // 13 DataFlash SS on WiShield, no longer used for reset
 //#define PIN_SERVO        8  // 14 LCD_DATA on < HM PCB v3.2 (grillpid_conf.h)
 #define PIN_WIRELESS_LED 9  // 15
@@ -45,19 +45,13 @@
 void hmcoreSetup(void);
 void hmcoreLoop(void);
 
-void updateDisplay(void);
-void lcdprint_P(const char *p, const boolean doClear);
-
 void eepromLoadConfig(unsigned char forceDefault);
 void storePidMode();
 void storeSetPoint(int sp);
 void loadProbeName(unsigned char probeIndex);
 void storeAndReportProbeName(unsigned char probeIndex, const char *name);
 void storeAndReportProbeOffset(unsigned char probeIndex, int offset);
-void storeProbeAlarmOn(unsigned char probeIndex, boolean isHigh, boolean value);
-void storeProbeAlarmVal(unsigned char probeIndex, boolean isHigh, int value);
 void storeAndReportMaxFanSpeed(unsigned char maxFanSpeed);
-void setLcdBacklight(unsigned char lcdBacklight);
 void storeLcdBacklight(unsigned char lcdBacklight);
 void reportLcdParameters(void);
 void Debug_begin(void);
@@ -72,6 +66,5 @@ void storeLidParam(unsigned char idx, int val);
 
 extern GrillPid pid;
 extern ShiftRegLCD lcd;
-extern unsigned char g_LcdBacklight;
 
 #endif /* __HMCORE_H__ */

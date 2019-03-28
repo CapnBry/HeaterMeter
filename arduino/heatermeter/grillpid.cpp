@@ -520,7 +520,7 @@ unsigned int GrillPid::countOfType(unsigned char probeType) const
   return retVal;  
 }
 
-/* Calucluate the desired output percentage using the proportional–integral-derivative (PID) controller algorithm */
+/* Calucluate the desired output percentage using the proportional-integral-derivative (PID) controller algorithm */
 inline void GrillPid::calcPidOutput(void)
 {
   unsigned char lastOutput = _pidOutput;
@@ -786,9 +786,10 @@ void GrillPid::setLidOpenDuration(unsigned int value)
   _lidOpenDuration = (value > LIDOPEN_MIN_AUTORESUME) ? value : LIDOPEN_MIN_AUTORESUME;
 }
 
-void GrillPid::status(void) const
+void GrillPid::reportStatus(void) const
 {
 #if defined(GRILLPID_SERIAL_ENABLED)
+  print_P(PSTR("HMSU" CSV_DELIMITER));
   if (isDisabled())
     Serial_char('U');
   else if (isManualOutputMode())
@@ -810,6 +811,10 @@ void GrillPid::status(void) const
   SerialX.print(LidOpenResumeCountdown, DEC);
   Serial_csv();
   SerialX.print(getFanSpeed(), DEC);
+  Serial_nl();
+
+  if (_autoreportInternals)
+    reportInternals();
 #endif
 }
 
@@ -829,12 +834,19 @@ boolean GrillPid::doWork(void)
   _periodCounter = 0;
 
 #if defined(GRILLPID_CALC_TEMP) 
+  _alarmId = ALARM_ID_NONE;
   for (unsigned char i=0; i<TEMP_COUNT; i++)
   {
     if (Probes[i]->getProbeType() == PROBETYPE_INTERNAL ||
         Probes[i]->getProbeType() == PROBETYPE_TC_ANALOG)
       Probes[i]->calcTemp(analogReadOver(Probes[i]->getPin(), 10+TEMP_OVERSAMPLE_BITS));
+
     Probes[i]->processPeriod();
+
+    if (Probes[i]->Alarms.Ringing[ALARM_IDX_LOW])
+      _alarmId = MAKE_ALARM_ID(i, ALARM_IDX_LOW);
+    else if(Probes[i]->Alarms.Ringing[ALARM_IDX_HIGH])
+      _alarmId = MAKE_ALARM_ID(i, ALARM_IDX_HIGH);
   }
 
   if (_pidMode <= PIDMODE_AUTO_LAST)
@@ -879,7 +891,7 @@ boolean GrillPid::doWork(void)
   return true;
 }
 
-void GrillPid::pidStatus(void) const
+void GrillPid::reportInternals(void) const
 {
 #if defined(GRILLPID_SERIAL_ENABLED)
   TempProbe const* const pit = Probes[TEMP_CTRL];

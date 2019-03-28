@@ -25,7 +25,6 @@ inline boolean MenuSystem::getHasLongpress(button_t button) const
   return (m_currMenu) ? pgm_read_byte(&m_currMenu->longpress) & button : false;
 }
 
-
 inline state_t MenuSystem::findTransition(button_t button) const
 {
   const menu_transition_t *trans = m_transitions;
@@ -35,7 +34,9 @@ inline state_t MenuSystem::findTransition(button_t button) const
     if (lookup == m_state)
     {
       button_t transButton = pgm_read_byte(&trans->button);
-      if ((button & transButton) == button)
+      // If transButton contains button
+      // OR transButton contains LONG and button contains LONG
+      if (((button | BUTTON_LONG) & transButton) == button)
         return pgm_read_byte(&trans->newstate);
     }
     ++trans;
@@ -46,7 +47,10 @@ inline state_t MenuSystem::findTransition(button_t button) const
 void MenuSystem::setState(state_t state)
 {
   //Serial.print("$HMLG,Setting state: "); Serial.println(state, DEC);
-  m_lastState = m_state;
+  if (state == ST_LAST)
+    state = m_lastState;
+  if (state != m_state)
+    m_lastState = m_state;
 
   while (state > ST_VMAX && state != m_state)
   {
@@ -57,6 +61,7 @@ void MenuSystem::setState(state_t state)
     m_state = state;
     m_currMenu = m_definitions;
     m_buttonRepeatCnt = 0;
+    m_updateDisplay = NULL;
 
     state_t lookup;
     while ((lookup = pgm_read_byte(&m_currMenu->state)))
@@ -103,6 +108,7 @@ void MenuSystem::doWork(void)
       if (m_buttonRepeatCnt < 0xff)
         ++m_buttonRepeatCnt;
       if (m_buttonState != mbsNone)
+      {
         if (m_buttonState == mbsLongCheck && m_buttonRepeatCnt > 3)
         {
           button |= BUTTON_LONG;
@@ -113,6 +119,7 @@ void MenuSystem::doWork(void)
           m_lastStateChange = now;
           return; // waiting for longpress/keyup
         }
+      }
     }
     else
     {
@@ -153,6 +160,7 @@ void MenuSystem::doWork(void)
     newState = findTransition(button);
 
   setState(newState);
+  updateDisplay();
 
   // If the new state has a longpress handler, force waiting for keyup
   if (getHasLongpress(button))

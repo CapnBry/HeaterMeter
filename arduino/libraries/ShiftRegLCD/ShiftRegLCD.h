@@ -77,12 +77,14 @@ public:
   
   // Two pins not used for the LCD but are sent to the shiftreg
   void digitalWrite(uint8_t pin, uint8_t val);
+  uint8_t getBacklight() const { return _backlight; }
+  void setBacklight(uint8_t v, bool store);
 protected:
   void init(uint8_t lines, uint8_t font);
   virtual void send(uint8_t, uint8_t) const = 0;
   virtual void send4bits(uint8_t) const = 0;
   virtual void updateAuxPins(void) const = 0;
-  ShiftRegLCDBase(void) {};
+  ShiftRegLCDBase(uint8_t backlight) : _backlight_pin(backlight) {};
 
   uint8_t _auxPins;
 private:
@@ -90,19 +92,21 @@ private:
   uint8_t _displaycontrol;
   uint8_t _displaymode;
   uint8_t _numlines;
+  uint8_t _backlight_pin;
+  uint8_t _backlight;
 };
 
 class ShiftRegLCDNative : public ShiftRegLCDBase
 {
 public:
   // Assuming 1 line 8 pixel high font
-  ShiftRegLCDNative(uint8_t srdata, uint8_t srclockd, uint8_t enable)
+  ShiftRegLCDNative(uint8_t backlight, uint8_t srdata, uint8_t srclockd, uint8_t enable) : ShiftRegLCDBase(backlight)
     { ctor(srdata, srclockd, enable, 1, 0); };
   // Set nr. of lines, assume 8 pixel high font
-  ShiftRegLCDNative(uint8_t srdata, uint8_t srclockd, uint8_t enable, uint8_t lines)
+  ShiftRegLCDNative(uint8_t backlight, uint8_t srdata, uint8_t srclockd, uint8_t enable, uint8_t lines) : ShiftRegLCDBase(backlight)
     { ctor(srdata, srclockd, enable, lines, 0); };
   // Set nr. of lines and font
-  ShiftRegLCDNative(uint8_t srdata, uint8_t srclockd, uint8_t enable, uint8_t lines, uint8_t font)
+  ShiftRegLCDNative(uint8_t backlight, uint8_t srdata, uint8_t srclockd, uint8_t enable, uint8_t lines, uint8_t font) : ShiftRegLCDBase(backlight)
     { ctor(srdata, srclockd, enable, lines, font); };
 protected:
   virtual void send(uint8_t, uint8_t) const;
@@ -132,7 +136,7 @@ private:
 class ShiftRegLCDSPI : public ShiftRegLCDBase
 {
 public:
-  ShiftRegLCDSPI(uint8_t srlatch, uint8_t lines);
+  ShiftRegLCDSPI(uint8_t backlight, uint8_t srlatch, uint8_t lines);
 protected:
   virtual void send(uint8_t, uint8_t) const;
   virtual void send4bits(uint8_t) const;

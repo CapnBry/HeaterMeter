@@ -45,7 +45,6 @@
 #include "ShiftRegLCD.h"
 #include <stdio.h>
 #include <string.h>
-#include <inttypes.h>
 #include "Arduino.h"
 
 void ShiftRegLCDBase::init(uint8_t lines, uint8_t font)
@@ -63,6 +62,9 @@ void ShiftRegLCDBase::init(uint8_t lines, uint8_t font)
     _displayfunction |= LCD_5x10DOTS;
   else
     _displayfunction |= LCD_5x8DOTS;
+
+  if (_backlight_pin != 0)
+    pinMode(_backlight_pin, OUTPUT);
 
   // At this time this is for 4-bit mode only, as described above.
   // Page 47-ish of this (HD44780 LCD) datasheet:
@@ -214,7 +216,16 @@ void ShiftRegLCDBase::write_P(const char *p, uint8_t len)
     write(pgm_read_byte(p++));
 }
 
-// ********************
+void ShiftRegLCDBase::setBacklight(uint8_t v, bool store)
+{
+  if (_backlight_pin != 0)
+  {
+    v = constrain(v, 0, 100);
+    if (store)
+      _backlight = v;
+    analogWrite(_backlight_pin, (uint16_t)v * 255 / 100);
+  }
+}
 
 void ShiftRegLCDBase::command(uint8_t value) {
   send(value, LOW);
@@ -281,7 +292,7 @@ void ShiftRegLCDNative::updateAuxPins(void) const
   shiftOut( _srdata_pin, _srclock_pin, MSBFIRST, _auxPins);
 }
 
-ShiftRegLCDSPI::ShiftRegLCDSPI(uint8_t srlatch, uint8_t lines)
+ShiftRegLCDSPI::ShiftRegLCDSPI(uint8_t backlight, uint8_t srlatch, uint8_t lines) : ShiftRegLCDBase(backlight)
 {
   pinMode(MOSI, OUTPUT); // Shift Register (Serial Input) Data
   pinMode(SCK, OUTPUT);  // Shift Register Clock

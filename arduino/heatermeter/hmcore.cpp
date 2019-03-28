@@ -11,7 +11,6 @@
 #include "rfmanager.h"
 #endif
 
-#include "bigchars.h"
 #include "ledmanager.h"
 #include "tone_4khz.h"
 
@@ -22,9 +21,9 @@ static TempProbe probe3(PIN_AMB);
 GrillPid pid;
 
 #ifdef SHIFTREGLCD_NATIVE
-ShiftRegLCD lcd(PIN_SERVO, PIN_LCD_CLK, TWO_WIRE, 2);
+ShiftRegLCD lcd(PIN_LCD_BACKLGHT, PIN_SERVO, PIN_LCD_CLK, TWO_WIRE, 2);
 #else
-ShiftRegLCD lcd(PIN_LCD_CLK, 2);
+ShiftRegLCD lcd(PIN_LCD_BACKLGHT, PIN_LCD_CLK, 2);
 #endif /* SHIFTREGLCD_NATIVE */
 
 #ifdef HEATERMETER_SERIAL
@@ -39,11 +38,6 @@ static unsigned char rfMap[TEMP_COUNT];
 
 static void ledExecutor(unsigned char led, unsigned char on); // prototype
 static LedManager ledmanager(&ledExecutor);
-
-static unsigned char g_AlarmId; // ID of alarm going off
-static unsigned char g_HomeDisplayMode;
-static unsigned char g_LogPidInternals; // If non-zero then log PID interals
-unsigned char g_LcdBacklight; // 0-100
 
 #define config_store_byte(eeprom_field, src) { econfig_write_byte((void *)offsetof(__eeprom_data, eeprom_field), src); }
 #define config_store_word(eeprom_field, src) { econfig_write_word((void *)offsetof(__eeprom_data, eeprom_field), src); }
@@ -128,15 +122,6 @@ static const unsigned char tone_durs[] PROGMEM = { 10, 5, 10, 5, 10, 50 };  // i
 static unsigned char tone_idx;
 static unsigned long tone_last;
 #endif /* PIZEO_HZ */
-
-void setLcdBacklight(unsigned char lcdBacklight)
-{
-  /* If the high bit is set, that means just set the output, do not store */
-  if ((0x80 & lcdBacklight) == 0)
-    g_LcdBacklight = lcdBacklight;
-  lcdBacklight &= 0x7f;
-  analogWrite(PIN_LCD_BACKLGHT, (unsigned int)(lcdBacklight) * 255 / 100);
-}
 
 // Note the storage loaders and savers expect the entire config storage is less than 256 bytes
 static unsigned char getProbeConfigOffset(unsigned char probeIndex, unsigned char off)
@@ -330,8 +315,7 @@ static void storePidOutputFlags(unsigned char pidOutputFlags)
 
 void storeLcdBacklight(unsigned char lcdBacklight)
 {
-  lcdBacklight = constrain(lcdBacklight, 0, 100);
-  setLcdBacklight(lcdBacklight);
+  lcd.setBacklight(lcdBacklight, true);
   config_store_byte(lcdBacklight, lcdBacklight);
 }
 
@@ -360,175 +344,9 @@ static void toneEnable(boolean enable)
   {
     tone_idx = 0xff;
     tone4khz_end();
-    setLcdBacklight(g_LcdBacklight);
+    lcd.setBacklight(lcd.getBacklight(), false);
   }
 #endif /* PIEZO_HZ */
-}
-
-static void lcdPrintBigNum(float val)
-{
-  // good up to 3276.8
-  int16_t ival = val * 10;
-  uint16_t uval;
-  boolean isNeg;
-  if (ival < 0)
-  {
-    isNeg = true;
-    uval = -ival;
-  }
-  else
-  {
-    isNeg = false;
-    uval = ival;
-  }
-
-  int8_t x = 16;
-  do
-  {
-    if (uval != 0 || x >= 9)
-    {
-      const char *numData = NUMS + ((uval % 10) * 6);
-
-      x -= C_WIDTH;
-      lcd.setCursor(x, 0);
-      lcd.write_P(numData, C_WIDTH);
-      numData += C_WIDTH;
-
-      lcd.setCursor(x, 1);
-      lcd.write_P(numData, C_WIDTH);
-
-      uval /= 10;
-    }  /* if val */
-    --x;
-    lcd.setCursor(x, 0);
-    lcd.write(C_BLK);
-    lcd.setCursor(x, 1);
-    if (x == 12)
-      lcd.write('.');
-    else if (uval == 0 && x < 9 && isNeg)
-    {
-      lcd.write(C_CT);
-      isNeg = false;
-    }
-    else
-      lcd.write(C_BLK);
-  } while (x != 0);
-}
-
-static boolean isMenuHomeState(void)
-{
-  state_t state = Menus.getState();
-  return (state >= ST_HOME_FOOD1 && state <= ST_HOME_ALARM);
-}
-
-void updateDisplay(void)
-{
-  // Updates to the temperature can come at any time, only update 
-  // if we're in a state that displays them
-  state_t state = Menus.getState();
-  if (!isMenuHomeState())
-    return;
-
-  char buffer[17];
-  unsigned char probeIdxLow, probeIdxHigh;
-
-  // Fixed pit area
-  lcd.setCursor(0, 0);
-  if (state == ST_HOME_ALARM)
-  {
-    toneEnable(true);
-    if (ALARM_ID_TO_IDX(g_AlarmId) == ALARM_IDX_LOW)
-      lcdprint_P(PSTR("** ALARM LOW  **"), false);
-    else
-      lcdprint_P(PSTR("** ALARM HIGH **"), false);
-
-    probeIdxLow = probeIdxHigh = ALARM_ID_TO_PROBE(g_AlarmId);
-  }  /* if ST_HOME_ALARM */
-  else
-  {
-    toneEnable(false);
-
-    /* Big Number probes overwrite the whole display if it has a temperature */
-    if (g_HomeDisplayMode >= TEMP_PIT && g_HomeDisplayMode <= TEMP_AMB)
-    {
-      TempProbe *probe = pid.Probes[g_HomeDisplayMode];
-      if (probe->hasTemperature())
-      {
-        lcdPrintBigNum(probe->Temperature);
-        return;
-      }
-    }
-
-    /* Default Pit / Fan Speed first line */
-    int pitTemp;
-    if (pid.Probes[TEMP_CTRL]->hasTemperature())
-      pitTemp = pid.Probes[TEMP_CTRL]->Temperature;
-    else
-      pitTemp = 0;
-    if (!pid.isManualOutputMode() && !pid.Probes[TEMP_CTRL]->hasTemperature())
-      memcpy_P(buffer, LCD_LINE1_UNPLUGGED, sizeof(LCD_LINE1_UNPLUGGED));
-    else if (pid.isDisabled())
-      snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d" DEGREE "%c  [Off]"),
-        pitTemp, pid.getUnits());
-    else if (pid.LidOpenResumeCountdown > 0)
-      snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d" DEGREE "%c Lid%3u"),
-        pitTemp, pid.getUnits(), pid.LidOpenResumeCountdown);
-    else
-    {
-      char c1,c2;
-      if (pid.isManualOutputMode())
-      {
-        c1 = '^';  // LCD_ARROWUP
-        c2 = '^';  // LCD_ARROWDN
-      }
-      else
-      {
-        c1 = '[';
-        c2 = ']';
-      }
-      snprintf_P(buffer, sizeof(buffer), PSTR("Pit:%3d" DEGREE "%c %c%3u%%%c"),
-        pitTemp, pid.getUnits(), c1, pid.getPidOutput(), c2);
-    }
-
-    lcd.print(buffer);
-    // Display mode 0xff is 2-line, which only has space for 1 non-pit value
-    if (g_HomeDisplayMode == 0xff)
-      probeIdxLow = probeIdxHigh = state - ST_HOME_FOOD1 + TEMP_FOOD1;
-    else
-    {
-      // Display mode 0xfe is 4 line home, display 3 other temps there
-      probeIdxLow = TEMP_FOOD1;
-      probeIdxHigh = TEMP_AMB;
-    }
-  } /* if !ST_HOME_ALARM */
-
-  // Rotating probe display
-  for (unsigned char probeIndex=probeIdxLow; probeIndex<=probeIdxHigh; ++probeIndex)
-  {
-    if (probeIndex < TEMP_COUNT && pid.Probes[probeIndex]->hasTemperature())
-    {
-      loadProbeName(probeIndex);
-      snprintf_P(buffer, sizeof(buffer), PSTR("%-12s%3d" DEGREE), editString,
-        (int)pid.Probes[probeIndex]->Temperature);
-    }
-    else
-    {
-      // If probeIndex is outside the range (in the case of ST_HOME_NOPROBES)
-      // just fill the bottom line with spaces
-      memset(buffer, ' ', sizeof(buffer));
-      buffer[sizeof(buffer) - 1] = '\0';
-    }
-
-    lcd.setCursor(0, probeIndex - probeIdxLow + 1);
-    lcd.print(buffer);
-  }
-}
-
-void lcdprint_P(const char *p, const boolean doClear)
-{
-  if (doClear)
-    lcd.clear();
-  while (unsigned char c = pgm_read_byte(p++)) lcd.write(c);
 }
 
 static void storePidParam(char which, float value)
@@ -547,15 +365,6 @@ static void storePidParam(char which, float value)
 
   unsigned char ofs = offsetof(__eeprom_data, pidConstants[0]);
   econfig_write_block(&pid.Pid[k], (void *)(ofs + k * sizeof(float)), sizeof(value));
-}
-
-static void outputCsv(void)
-{
-#ifdef HEATERMETER_SERIAL
-  print_P(PSTR("HMSU" CSV_DELIMITER));
-  pid.status();
-  Serial_nl();
-#endif /* HEATERMETER_SERIAL */
 }
 
 #if defined(HEATERMETER_SERIAL)
@@ -710,9 +519,9 @@ static void reportLidParameters(void)
 void reportLcdParameters(void)
 {
   print_P(PSTR("HMLB" CSV_DELIMITER));
-  SerialX.print(g_LcdBacklight, DEC);
+  SerialX.print(lcd.getBacklight(), DEC);
   Serial_csv();
-  SerialX.print(g_HomeDisplayMode, DEC);
+  SerialX.print(Menus.getHomeDisplayMode(), DEC);
   for (unsigned char i=0; i<LED_COUNT; ++i)
   {
     Serial_csv();
@@ -729,11 +538,9 @@ void storeLcdParam(unsigned char idx, int val)
       storeLcdBacklight(val);
       break;
     case 1:
-      g_HomeDisplayMode = val;
-      config_store_byte(homeDisplayMode, g_HomeDisplayMode);
-      // If we're in home, clear in case we're switching from 4 to 2
-      if (isMenuHomeState())
-        lcd.clear();
+      Menus.setHomeDisplayMode(val);
+      config_store_byte(homeDisplayMode, val);
+      break;
     case 2:
     case 3:
     case 4:
@@ -865,7 +672,7 @@ static void storeAlarmLimits(unsigned char idx, int val)
   unsigned char alarmIndex = ALARM_ID_TO_IDX(idx);
   a.setThreshold(alarmIndex, val);
 
-  unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, alarmLow));
+  unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof(__eeprom_probe, alarmLow));
   if (ofs != 0 && val != 0)
   {
     ofs += alarmIndex * sizeof(val);
@@ -875,13 +682,7 @@ static void storeAlarmLimits(unsigned char idx, int val)
 
 void silenceRingingAlarm(void)
 {
-  /*
-  unsigned char probeIndex = ALARM_ID_TO_PROBE(g_AlarmId);
-  ProbeAlarm &a = pid.Probes[probeIndex]->Alarms;
-  unsigned char alarmIndex = ALARM_ID_TO_IDX(g_AlarmId);
-  storeAlarmLimits(g_AlarmId, disable ? -a.getThreshold(alarmIndex) : 0);
-  */
-  storeAlarmLimits(g_AlarmId, 0);
+  storeAlarmLimits(pid.getAlarmId(), 0);
   reportAlarmLimits();
 }
 
@@ -921,7 +722,7 @@ static void setTempParam(unsigned char idx, int val)
   switch (idx)
   {
     case 0:
-      g_LogPidInternals = val;
+      pid.setAutoreportInternals(val);
       break;
 #if defined(NOISEDUMP_PIN)
     case 1:
@@ -1066,41 +867,39 @@ static void tone_doWork(void)
     {
       dur = pgm_read_byte(&tone_durs[tone_idx]) * 10;
       tone4khz_begin(PIN_ALARM, dur);
-      setLcdBacklight(0x80 | 0);
+      lcd.setBacklight(0, false);
     }
     else
-      setLcdBacklight(0x80 | g_LcdBacklight);
+      lcd.setBacklight(lcd.getBacklight(), false);
   }
 #endif /* PIEZO_HZ */
 }
 
 static void checkAlarms(void)
 {
-  boolean anyRinging = false;
   for (unsigned char i=0; i<TEMP_COUNT; ++i)
   {
     for (unsigned char j=ALARM_IDX_LOW; j<=ALARM_IDX_HIGH; ++j)
     {
       boolean ringing = pid.Probes[i]->Alarms.Ringing[j];
-      unsigned char alarmId = MAKE_ALARM_ID(i, j);
-      if (ringing)
-      {
-        anyRinging = true;
-        g_AlarmId = alarmId;
-      }
-      ledmanager.publish(LEDSTIMULUS_Alarm0L + alarmId, ringing);
+      ledmanager.publish(LEDSTIMULUS_Alarm0L + MAKE_ALARM_ID(i, j), ringing);
     }
   }
 
+  bool anyRinging = pid.getAlarmId() != ALARM_ID_NONE;
   ledmanager.publish(LEDSTIMULUS_AlarmAny, anyRinging);
   if (anyRinging)
   {
+    toneEnable(true);
     reportAlarmLimits();
     Menus.setState(ST_HOME_ALARM);
   }
-  else if (Menus.getState() == ST_HOME_ALARM)
-    // No alarms ringing, return to HOME
-    Menus.setState(ST_HOME_FOOD1);
+  else
+  {
+    toneEnable(false);
+    if (Menus.getState() == ST_HOME_ALARM)
+      Menus.setState(ST_LAST);
+  }
 }
 
 static void eepromLoadBaseConfig(unsigned char forceDefault)
@@ -1125,7 +924,7 @@ static void eepromLoadBaseConfig(unsigned char forceDefault)
   pid.setLidOpenDuration(config.base.lidOpenDuration);
   memcpy(pid.Pid, config.base.pidConstants, sizeof(config.base.pidConstants));
   pid.setPidMode(config.base.pidMode);
-  setLcdBacklight(config.base.lcdBacklight);
+  lcd.setBacklight(config.base.lcdBacklight, true);
 #ifdef HEATERMETER_RFM12
   memcpy(rfMap, config.base.rfMap, sizeof(rfMap));
 #endif
@@ -1135,7 +934,7 @@ static void eepromLoadBaseConfig(unsigned char forceDefault)
   pid.setFanActiveFloor(config.base.fanActiveFloor);
   pid.setFanMaxStartupSpeed(config.base.fanMaxStartupSpeed);
   pid.setOutputFlags(config.base.pidOutputFlags);
-  g_HomeDisplayMode = config.base.homeDisplayMode;
+  Menus.setHomeDisplayMode(config.base.homeDisplayMode);
   pid.setServoMinPos(config.base.servoMinPos);
   pid.setServoMaxPos(config.base.servoMaxPos);
   pid.setServoActiveCeil(config.base.servoActiveCeil);
@@ -1241,19 +1040,16 @@ static void newTempsAvail(void)
 {
   static unsigned char pidCycleCount;
 
-  updateDisplay();
+  Menus.updateDisplay();
   ++pidCycleCount;
     
   if ((pidCycleCount % 0x20) == 0)
     outputRfStatus();
 
-  outputCsv();
+  pid.reportStatus();
   // We want to report the status before the alarm readout so
   // receivers can tell what the value was that caused the alarm
   checkAlarms();
-
-  if (g_LogPidInternals)
-    pid.pidStatus();
 
   if ((pidCycleCount % 0x04) == 1)
     outputAdcStatus();
@@ -1263,12 +1059,6 @@ static void newTempsAvail(void)
 #ifdef HEATERMETER_RFM12
   rfmanager.sendUpdate(pid.getPidOutput());
 #endif
-}
-
-static void lcdDefineChars(void)
-{
-  for (unsigned char i=0; i<8; ++i)
-    lcd.createChar_P(i, BIG_CHAR_PARTS + (i * 8));
 }
 
 static void ledExecutor(unsigned char led, unsigned char on)
@@ -1307,15 +1097,15 @@ void hmcoreSetup(void)
   pid.Probes[TEMP_PIT] = &probe0;
   pid.Probes[TEMP_FOOD1] = &probe1;
   pid.Probes[TEMP_FOOD2] = &probe2;
-  pid.Probes[TEMP_AMB] = &probe3;
+  pid.Probes[TEMP_FOOD3] = &probe3;
 
   eepromLoadConfig(0);
   pid.init();
-  lcdDefineChars();
 #ifdef HEATERMETER_RFM12
   checkInitRfManager();
 #endif
 
+  Menus.init();
   Menus.setState(ST_HOME_NOPROBES);
 }
 

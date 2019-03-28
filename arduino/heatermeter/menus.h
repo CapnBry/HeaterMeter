@@ -17,7 +17,8 @@
 
 #define ST_NONE     0
 #define ST_AUTO     1
-#define ST_VMAX     1
+#define ST_LAST     2
+#define ST_VMAX     2
 
 typedef unsigned char state_t;
 typedef unsigned char button_t;
@@ -43,6 +44,8 @@ typedef struct tagMenuTransition
 class MenuSystem
 {
 public:
+  typedef void(*DisplayUpdateFunc)(void);
+
   MenuSystem(const menu_definition_t *defs, const menu_transition_t *trans,
     const buttonread_t reader);
 
@@ -54,6 +57,9 @@ public:
   state_t getLastState(void) const { return m_lastState; }
   button_t getButton(void) const { return m_lastButton; }
   unsigned char getButtonRepeatCnt(void) const { return m_buttonRepeatCnt; }
+
+  void setUpdateDisplay(DisplayUpdateFunc f) { m_updateDisplay = f; }
+  void updateDisplay(void) { if (m_updateDisplay) m_updateDisplay(); }
 private:
   enum ButtonLongpressState {
     mbsNone,
@@ -72,6 +78,7 @@ private:
   unsigned char m_buttonRepeatCnt;
   unsigned long m_lastStateChange;
   unsigned long m_lastButtonActivity;
+  DisplayUpdateFunc m_updateDisplay;
 
   unsigned long getTimeoutDuration(void) const;
   unsigned long getElapsedDuration(void) const;
