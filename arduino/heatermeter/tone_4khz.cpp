@@ -1,5 +1,5 @@
-// HeaterMeter Copyright 2016 Bryan Mayland <bmayland@capnbry.net>
-2019
+// HeaterMeter Copyright 2019 Bryan Mayland <bmayland@capnbry.net>
+/*
   Use TIMER1's 50Hz frequency to generate a ~4kHz tone on any pin
   OCR1A is incremented 160x per overflow to generate the 8khz interrupt
 
