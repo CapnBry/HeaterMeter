@@ -667,9 +667,11 @@ static state_t menuToast(button_t button)
 
 inline unsigned char adcToFeedvolt(unsigned char adc)
 {
-  const unsigned int R1 = 22; // 22000
-  const unsigned int R2 = 68; // 68000
-  return ((R1 + R2) * 33 * adc) / (R1 * 255);
+  // Return the scaled up voltage in decivolts
+  // 33UL being the expected AVCC in decivolts
+  const unsigned char R1 = 22; // 22000
+  const unsigned char R2 = 68; // 68000
+  return ((R1 + R2) * 33UL * adc) / (R1 * 255UL);
 }
 
 static void updateProbeDiag(void)
@@ -706,19 +708,19 @@ static void updateProbeDiag(void)
   else
   {
     // BRY: This section of code is 222+ bytes so maybe remove it?
+    // Fan000=000V 00Nz - Blower Feedback ADC (8bit), Noise
+    unsigned char adc = analogReadOver(APIN_FFEEDBACK, 8);
+    snprintf_P(editString, sizeof(editString), PSTR("Fan%03u=%03uV %02uNz"),
+      adc, adcToFeedvolt(adc),
+      analogReadRange(APIN_FFEEDBACK));
+    lcd.write(editString);
+
+    lcd.setCursor(0, 1);
     // Btn000=0   BG342 - Buttons (8bit ADC and button_t), Bandgap
     snprintf_P(editString, sizeof(editString), PSTR("Btn%03u=%1u   BG%03u"),
       analogReadOver(PIN_BUTTONS, 8),
       readButton(),
       analogGetBandgapScale());
-    lcd.write(editString);
-
-    // Fan000=000V 00Nz - Blower Feedback ADC (8bit), Noise
-    lcd.setCursor(0, 1);
-    unsigned char adc = analogReadOver(APIN_FFEEDBACK, 8);
-    snprintf_P(editString, sizeof(editString), PSTR("Fan%03u=%03uV %02uNz"),
-      adc, adcToFeedvolt(adc),
-      analogReadRange(APIN_FFEEDBACK));
     lcd.write(editString);
   }
 }
