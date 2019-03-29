@@ -665,32 +665,62 @@ static state_t menuToast(button_t button)
   return ST_LAST;
 }
 
+inline unsigned char adcToFeedvolt(unsigned char adc)
+{
+  const unsigned int R1 = 22; // 22000
+  const unsigned int R2 = 68; // 68000
+  return ((R1 + R2) * 33 * adc) / (R1 * 255);
+}
+
 static void updateProbeDiag(void)
 {
   lcd.home();
 
-  // P1 ADC65535 99Nz - ProbeNum RawADCReading Noise
-  const TempProbe *probe = pid.Probes[Menus.ProbeNum];
-  snprintf_P(editString, sizeof(editString), PSTR("P%1u ADC%05u %02uNz"),
-    Menus.ProbeNum,
-    analogReadOver(probe->getPin(), 10 + TEMP_OVERSAMPLE_BITS),
-    analogReadRange(probe->getPin())
-  );
-  lcd.write(editString);
-
-  // Thermis 999.99oC - ProbeType Temp Units
-  lcd.setCursor(0, 1);
-  const char *ptype = (char *)pgm_read_word(&LCD_PROBETYPES[probe->getProbeType()]);
-  lcdprint_P(ptype, false);
-  lcd.write(' ');
-  if (probe->hasTemperature())
+  if (Menus.ProbeNum < TEMP_COUNT)
   {
-    fp.print(lcd, probe->Temperature, 6, 2);
-    lcd.write(DEGREE);
+    // P1 ADC65535 99Nz - ProbeNum RawADCReading Noise
+    const TempProbe *probe = pid.Probes[Menus.ProbeNum];
+    //const unsigned char pin = probe->getPin();
+    snprintf_P(editString, sizeof(editString), PSTR("P%1u AD%1c%05u %02uNz"),
+      Menus.ProbeNum, 
+      analogIsBandgapReference(probe->getPin()) ? 'B' : 'C',
+      analogReadOver(probe->getPin(), 10 + TEMP_OVERSAMPLE_BITS),
+      analogReadRange(probe->getPin())
+    );
+    lcd.write(editString);
+
+    // Thermis 999.99oC - ProbeType Temp Units
+    lcd.setCursor(0, 1);
+    const char *ptype = (char *)pgm_read_word(&LCD_PROBETYPES[probe->getProbeType()]);
+    lcdprint_P(ptype, false);
+    lcd.write(' ');
+    if (probe->hasTemperature())
+    {
+      fp.print(lcd, probe->Temperature, 6, 2);
+      lcd.write(DEGREE);
+    }
+    else
+      lcdprint_P(PSTR("       "), false);
+    lcd.write(pid.getUnits());
   }
   else
-    lcdprint_P(PSTR("       "), false);
-  lcd.write(pid.getUnits());
+  {
+    // BRY: This section of code is 222+ bytes so maybe remove it?
+    // Btn000=0   BG342 - Buttons (8bit ADC and button_t), Bandgap
+    snprintf_P(editString, sizeof(editString), PSTR("Btn%03u=%1u   BG%03u"),
+      analogReadOver(PIN_BUTTONS, 8),
+      readButton(),
+      analogGetBandgapScale());
+    lcd.write(editString);
+
+    // Fan000=000V 00Nz - Blower Feedback ADC (8bit), Noise
+    lcd.setCursor(0, 1);
+    unsigned char adc = analogReadOver(APIN_FFEEDBACK, 8);
+    snprintf_P(editString, sizeof(editString), PSTR("Fan%03u=%03uV %02uNz"),
+      adc, adcToFeedvolt(adc),
+      analogReadRange(APIN_FFEEDBACK));
+    lcd.write(editString);
+  }
 }
 
 static state_t menuProbeDiag(button_t button)
@@ -704,14 +734,14 @@ static state_t menuProbeDiag(button_t button)
   }
   else if (button == BUTTON_RIGHT)
   {
-    // Next Probe
-    Menus.ProbeNum = (Menus.ProbeNum + 1) % TEMP_COUNT;
+    // Next Probe, the extra one is for buttons, bandgap, and fan
+    Menus.ProbeNum = (Menus.ProbeNum + 1) % (TEMP_COUNT + 1);
   }
   else if (button == BUTTON_LEFT)
   {
     // Previous Probe
     if (Menus.ProbeNum == 0)
-      Menus.ProbeNum = TEMP_COUNT - 1;
+      Menus.ProbeNum = TEMP_COUNT;
     else
       --Menus.ProbeNum;
   }
