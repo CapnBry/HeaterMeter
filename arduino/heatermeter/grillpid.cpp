@@ -302,7 +302,8 @@ void TempProbe::setProbeType(unsigned char probeType)
 
 void TempProbe::calcTemp(unsigned int adcval)
 {
-  const float ADCmax = 1023 * pow(2, TEMP_OVERSAMPLE_BITS);
+  const unsigned char powBits = pow(2, TEMP_OVERSAMPLE_BITS);
+  const float ADCmax = 1023U * powBits;
 
   // Units 'A' = ADC value
   if (pid.getUnits() == 'A')
@@ -325,11 +326,18 @@ void TempProbe::calcTemp(unsigned int adcval)
 #if defined(GRILLPID_DYNAMIC_RANGE)
     if (analogIsBandgapReference(_pin))
     {
-      analogSetBandgapReference(_pin, adcval < (1000U * (unsigned char)pow(2, TEMP_OVERSAMPLE_BITS)));
+      analogSetBandgapReference(_pin, adcval < (1000U * powBits));
       mvScale /= 1023.0f / adcState.bandgapAdc;
+      // If ADC is within ADCRange of MAX, this is usually an unplug of the probe.
+      // Range is in 8 bit units, so it needs *4 to be brought back to 10bit
+      if (adcval + (4U * powBits * (unsigned int)analogReadRange(_pin)) > (1022U * powBits))
+      {
+        _tempStatus = TSTATUS_NONE;
+        return;
+      }
     }
     else
-      analogSetBandgapReference(_pin, adcval < (300U * (unsigned char)pow(2, TEMP_OVERSAMPLE_BITS)));
+      analogSetBandgapReference(_pin, adcval < (300U * powBits));
 #endif
     setTemperatureC(
       tcNonlinearCompensate(adcval / ADCmax * mvScale)
@@ -339,7 +347,7 @@ void TempProbe::calcTemp(unsigned int adcval)
 
   // Ignore probes within 1 LSB of max. TC don't need this as their min/max
   // values are rejected as outside limits in setTemperatureC()
-  if (adcval > 1022 * pow(2, TEMP_OVERSAMPLE_BITS) || adcval == 0)
+  if (adcval > (1022U * powBits) || adcval == 0)
   {
     _tempStatus = TSTATUS_NONE;
     return;
