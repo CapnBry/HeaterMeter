@@ -331,10 +331,11 @@ static void storeLedConf(unsigned char led, unsigned char ledConf)
 static void toneEnable(boolean enable)
 {
 #ifdef PIEZO_HZ
+  // If (enable and tone_idx != 0xff) || (!enable and tone_idx == 0xff)
+  if (enable != (tone_idx == 0xff))
+    return;
   if (enable)
   {
-    if (tone_idx != 0xff)
-      return;
     tone_last = 0;
     // Start the tone with the last element (the delay)
     // rather than the first beep (cnt-2 vs cnt-1)
