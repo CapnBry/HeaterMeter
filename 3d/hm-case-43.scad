@@ -97,10 +97,10 @@ module screwhole() {
     cylinder(lcd_mount_t/2+e, d=(2.9*2)/sin(60), $fn=6);
 }
 
-module pic_ex_cube() {
-  translate([0,33.75,2])
-    cube_fillet([pic_ex+e, 59.5, 20.8], 
-      vertical=[0, pic_ex, pic_ex, 0],
+module pic_ex_cube(interior) {
+  translate([0,33.75+interior*(pic_ex+1.3),2])
+    cube_fillet([pic_ex+e, 59.8-interior*(pic_ex*2+1.3+2.0), 20.8], 
+      vertical=[0, (1-interior)*pic_ex, (1-interior)*pic_ex, 0],
       top=[0,pic_ex,0,0],
       bottom=[0,pic_ex,0,0]);
 }
@@ -292,7 +292,7 @@ module hm_base() {
   // extra thick by Pi connectors
   if (Pi_Model != "Zero" && Pi_Model != "1A+" && Pi_Model != "3A+")
     translate([-pic_ex,wall+d_off,wall_t])
-      pic_ex_cube();
+      pic_ex_cube(0);
   // TC +/-
   if (Control_Probe == "Thermocouple")
     translate([w+wall*2-e,wall+d_off+10,wall_t+19]) tc_plusminus();
@@ -307,9 +307,10 @@ difference() {
     cube_fillet([w, d, h_b],
       bottom=[pi_screw_t,pi_screw_t,pi_screw_t,pi_screw_t],
       top=[pi_screw_t,pi_screw_t,pi_screw_t,pi_screw_t],
-      vertical=[1,1,1,1]);
+      vertical=[body_corner_radius/2,body_corner_radius/2,body_corner_radius/2,body_corner_radius/2],
+      $fn=[36,4,4]);
   if (Pi_Model != "Zero" && Pi_Model != "1A+" && Pi_Model != "3A+")
-    translate([wall-pic_ex+e,wall+d_off,wall_t]) pic_ex_cube();
+    translate([wall-pic_ex+e,wall+d_off,wall_t]) pic_ex_cube(1);
 
   // Probe jack side
   translate([w+wall*0.5, wall+d_off, wall_t+probe_centerline]) {
@@ -438,17 +439,10 @@ difference() {
   if (Pi_Model == "3B/2B/1B+")
     translate([-pic_ex, wall+d_off, wall_t+2]) {
       // USB pillar reinforcements
-      translate([0, (44.75+62.75)/2-1, 1.5])
-        cube_fillet([pic_ex+wall, 2, 20.8-1.5], bottom=[0,pic_ex,0,2], top=[0,pic_ex]);
+      translate([0, (44.75+62.75)/2-2.2/2, 1.5])
+        cube_fillet([pic_ex+wall, 2.2, 20.8-1.5], bottom=[0,pic_ex,0,2], top=[0,pic_ex]);
       translate([0, 81.5-15/2-3, 1.5])
         cube_fillet([pic_ex+wall, 2.5, 20.8-1.5], bottom=[0,pic_ex,0,2], top=[0,pic_ex]);
-      // Near pic_ex fill
-      translate([0, 33.75, 0])
-        cube_fillet([pic_ex+wall, 3, 20.8], bottom=[0,pic_ex,0,0], top=[0,pic_ex],
-        vertical=[0,0,pic_ex]);
-      // Far pic_ex fill (near ethernet)
-      translate([wall, 33.75+59.5-pic_ex, 1.5])
-       cube_fillet([pic_ex, pic_ex+e, 20.8-1.5], bottom=[0,0,0,2], vertical=[0,pic_ex]);
     }
 }
 
@@ -547,11 +541,13 @@ module hm43_split() {
   
   // top
   if (Pieces != "Bottom") {
-    translate([0,-1,h_b+2*wall_t]) rotate([180]) difference() {
-      hm43();
-      //translate([11,5,h_b+2*wall_t-0.24]) linear_extrude(0.5)
-      //  text("HeaterMeter", font = "Liberation Sans:style=Bold Italic");
-      split_volume();
+    translate([0,-1,h_b+2*wall_t]) rotate([180]) {
+      difference() {
+        hm43();
+        //translate([11,5,h_b+2*wall_t-0.24]) linear_extrude(0.5)
+        //  text("HeaterMeter", font = "Liberation Sans:style=Bold Italic");
+        split_volume();
+      }
     }
   }  // if include top
   if (MouseEarHeight > 0.0)
@@ -613,14 +609,18 @@ module cube_fillet(size, radius=-1, vertical=[0,0,0,0], top=[0,0,0,0], bottom=[0
 module cube_negative_fillet(size, radius=-1, vertical=[3,3,3,3], top=[0,0,0,0], bottom=[0,0,0,0], $fn=$fn){
     j=[1,0,1,0];
 
+    fn_V = $fn[0] == undef ? $fn : $fn[0];
+    fn_T = $fn[1] == undef ? $fn : $fn[1];
+    fn_B = $fn[2] == undef ? $fn : $fn[2];
+  
     for (i=[0:3]) {
         if (radius > -1) {
-            rotate([0, 0, 90*i]) translate([size[1-j[i]]/2, size[j[i]]/2, 0]) fillet(radius, size[2], $fn);
+            rotate([0, 0, 90*i]) translate([size[1-j[i]]/2, size[j[i]]/2, 0]) fillet(radius, size[2], fn_V);
         } else {
-            rotate([0, 0, 90*i]) translate([size[1-j[i]]/2, size[j[i]]/2, 0]) fillet(vertical[i], size[2], $fn);
+            rotate([0, 0, 90*i]) translate([size[1-j[i]]/2, size[j[i]]/2, 0]) fillet(vertical[i], size[2], fn_V);
         }
-        rotate([90*i, -90, 0]) translate([size[2]/2, size[j[i]]/2, 0 ]) fillet(top[i], size[1-j[i]], $fn);
-        rotate([90*(4-i), 90, 0]) translate([size[2]/2, size[j[i]]/2, 0]) fillet(bottom[i], size[1-j[i]], $fn);
+        rotate([90*i, -90, 0]) translate([size[2]/2, size[j[i]]/2, 0 ]) fillet(top[i], size[1-j[i]], fn_T);
+        rotate([90*(4-i), 90, 0]) translate([size[2]/2, size[j[i]]/2, 0]) fillet(bottom[i], size[1-j[i]], fn_B);
 
     }
 }
