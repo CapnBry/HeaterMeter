@@ -10,10 +10,10 @@ Pieces = "Both"; // [Both,Top,Bottom]
 // Include cutouts and mounts for LCD/Buttons
 LCD = 1; // [0:None,1:2-line]
 // Thickness of side walls (mm) - Set to trace width multiple
-wall = 2.5;
+wall = 2.0;
 /* [Advanced] */
 // Thickness of top and bottom faces (mm)
-wall_t = 2;
+wall_t = 1.45;
 // Height of the body edge bead chamfer (mm)
 body_chamfer_height = 1.5;
 // Corner ear height (mm) - 0 to disable
