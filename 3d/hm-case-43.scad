@@ -512,6 +512,32 @@ module mouseears() {
     cylinder(me_h, d=me_d, $fn=24);
 }
 
+module mouseleg(isBottom) {
+  MouseLegLength = body_corner_radius*2;
+  MouseLegWidth = 0.7;
+  if (isBottom)
+    translate([0, -MouseLegWidth/2, 0])
+      cube([MouseLegLength, MouseLegWidth, body_chamfer_height_b]);
+  else
+    translate([0, -MouseLegWidth/2, h_b+2*wall_t-body_chamfer_height_t])
+      cube([MouseLegLength, MouseLegWidth, body_chamfer_height_t]);
+}
+
+module mouselegs(isBottom) {
+  translate([body_chamfer_height_t+body_corner_radius/2,
+    body_chamfer_height_t+body_corner_radius/2, 0])
+    rotate(-135) mouseleg(isBottom);
+  translate([w+2*wall-body_chamfer_height_t-body_corner_radius/2,
+    body_chamfer_height_t+body_corner_radius/2, 0])
+    rotate(-45) mouseleg(isBottom);
+  translate([w+2*wall-body_chamfer_height_t-body_corner_radius/2,
+    d+2*wall-body_chamfer_height_t-body_corner_radius/2, 0])
+    rotate(45) mouseleg(isBottom);
+  translate([body_chamfer_height_t+body_corner_radius/2,
+    d+2*wall-body_chamfer_height_t-body_corner_radius/2, 0])
+    rotate(130) mouseleg(isBottom);
+}
+
 module split_volume() {
   if (Pi_Model == "3B/2B/1B+") {
     difference() {
@@ -537,6 +563,7 @@ module hm43_split() {
       hm43_bottom_lips(case_split);
     else
       hm43_bottom_lips(probe_centerline);
+    //mouselegs(true);
   } // if include bottom
   
   // top
@@ -548,6 +575,7 @@ module hm43_split() {
         //  text("HeaterMeter", font = "Liberation Sans:style=Bold Italic");
         split_volume();
       }
+      //mouselegs(false);
     }
   }  // if include top
   if (MouseEarHeight > 0.0)
