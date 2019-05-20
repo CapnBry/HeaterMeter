@@ -100,6 +100,7 @@ function action_hist()
     http.prepare_content("text/plain")
   end
   http.header("Cache-Control", "max-age="..step)
+  http.header("Access-Control-Allow-Origin", "*")
 
   if http.formvalue("hdr") == "1" then
     http.write("time,setpoint,probe0,probe1,probe2,probe3,output\n")
