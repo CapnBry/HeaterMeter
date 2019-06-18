@@ -18,6 +18,8 @@ wall_t = 1.45;
 body_chamfer_height = 1.5;
 // Corner ear height (mm) - 0 to disable
 MouseEarHeight = 0;
+// Corner leg height (mm) - 0 to disable
+MouseLegHeight = 0; //body_chamfer_height/2;
 
 /* [Hidden] */
 // External corner radius on the body (mm)
@@ -513,14 +515,13 @@ module mouseears() {
 }
 
 module mouseleg(isBottom) {
-  MouseLegLength = body_corner_radius*2;
-  MouseLegWidth = 0.7;
+  MouseLegWidth = 2*0.63;
   if (isBottom)
-    translate([0, -MouseLegWidth/2, 0])
-      cube([MouseLegLength, MouseLegWidth, body_chamfer_height_b]);
+    translate([body_chamfer_height_b+0.3, -MouseLegWidth/2, 0])
+      cube([body_corner_radius+body_chamfer_height_b, MouseLegWidth, MouseLegHeight]);
   else
-    translate([0, -MouseLegWidth/2, h_b+2*wall_t-body_chamfer_height_t])
-      cube([MouseLegLength, MouseLegWidth, body_chamfer_height_t]);
+    translate([body_chamfer_height_t+0.3, -MouseLegWidth/2, h_b+2*wall_t-MouseLegHeight])
+      cube([body_corner_radius+body_chamfer_height_t, MouseLegWidth, MouseLegHeight]);
 }
 
 module mouselegs(isBottom) {
@@ -535,7 +536,7 @@ module mouselegs(isBottom) {
     rotate(45) mouseleg(isBottom);
   translate([body_chamfer_height_t+body_corner_radius/2,
     d+2*wall-body_chamfer_height_t-body_corner_radius/2, 0])
-    rotate(130) mouseleg(isBottom);
+    rotate(135) mouseleg(isBottom);
 }
 
 module split_volume() {
@@ -554,7 +555,7 @@ module split_volume() {
 
 module hm43_split() {
   // bottom
-  if (Pieces != "Top") translate([0,1,0]) {
+  if (Pieces != "Top") translate([0,4,0]) {
     intersection() { 
       hm43();
       split_volume();
@@ -563,7 +564,7 @@ module hm43_split() {
       hm43_bottom_lips(case_split);
     else
       hm43_bottom_lips(probe_centerline);
-    //mouselegs(true);
+    if (MouseLegHeight > 0.0) mouselegs(true);
   } // if include bottom
   
   // top
@@ -575,7 +576,7 @@ module hm43_split() {
         //  text("HeaterMeter", font = "Liberation Sans:style=Bold Italic");
         split_volume();
       }
-      //mouselegs(false);
+      if (MouseLegHeight > 0.0) mouselegs(false);
     }
   }  // if include top
   if (MouseEarHeight > 0.0)
