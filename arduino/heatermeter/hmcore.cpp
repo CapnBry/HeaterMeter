@@ -98,11 +98,10 @@ static const struct __eeprom_data {
 static const struct  __eeprom_probe DEFAULT_PROBE_CONFIG PROGMEM = {
   "Probe  ", // Name if you change this change the hardcoded number-appender in eepromLoadProbeConfig()
   PROBETYPE_INTERNAL,  // probeType
-  0,  // offset
+  0,  // unused1, was offset
   -40,  // alarm low
   -200, // alarm high
-  0,  // unused1
-  0,  // unused2
+  0,  // offset
   {
     //2.4723753e-4,2.3402251e-4,1.3879768e-7  // Maverick ET-72/73
     //5.2668241e-4,2.0037400e-4,2.5703090e-8 // Maverick ET-732
@@ -188,8 +187,16 @@ static void storeProbeOffset(unsigned char probeIndex, int offset)
   if (ofs != 0)
   {
     pid.Probes[probeIndex]->Offset = offset;
-    econfig_write_byte((void *)(uintptr_t)ofs, offset);
+    econfig_write_word((void *)(uintptr_t)ofs, offset);
   }  
+}
+
+static void storeProbeOffsetLegacy(unsigned char probeIndex)
+{
+  // This forces the old probe offset storage location to 0
+  unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof(__eeprom_probe, unused1));
+  if (ofs != 0)
+    econfig_write_byte((void*)(uintptr_t)ofs, 0);
 }
 
 static void storeProbeType(unsigned char probeIndex, unsigned char probeType)
@@ -977,6 +984,13 @@ static void eepromLoadProbeConfig(unsigned char forceDefault)
       econfig_read_block(&config.probe, p, sizeof(__eeprom_probe));
 
     pid.Probes[i]->loadConfig(&config.probe);
+    // MIGRATION: Offset used to be signed char, now signed int. If old value is non-zero, 
+    // move it to new location and clear old value (30 bytes of code space for this migration)
+    if (config.probe.unused1 != 0)
+    {
+      storeProbeOffset(i, config.probe.unused1);
+      storeProbeOffsetLegacy(i);
+    }
     ++p;
   }  /* for i<TEMP_COUNT */
 }

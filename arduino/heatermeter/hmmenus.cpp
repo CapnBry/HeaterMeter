@@ -526,7 +526,7 @@ static state_t menuProbeOffset(button_t button)
   else if (button == BUTTON_LEAVE)
     storeAndReportProbeOffset(probeIndex, editInt);
 
-  menuNumberEdit(button, 1, -100, 100, PSTR("Offset %4d" DEGREE "%c"));
+  menuNumberEdit(button, 1, -200, 200, PSTR("Offset %4d" DEGREE "%c"));
   return ST_AUTO;
 }
 

@@ -398,8 +398,14 @@ void TempProbe::processPeriod(void)
 
 void TempProbe::setTemperatureC(float T)
 {
-  // Sanity - anything less than -20C (-4F) or greater than 500C (932F) is rejected
-  if (T <= -20.0f)
+  // Apply offset
+  float offsetC = Offset;
+  if (pid.getUnits() == 'F')
+    offsetC = offsetC * (5.0f / 9.0f);
+  T += offsetC;
+
+  // Sanity - anything less than -100C (-148F) or greater than 500C (932F) is rejected
+  if (T <= -100.0f)
     _tempStatus = TSTATUS_LOW;
   else if (T >= 500.0f)
     _tempStatus = TSTATUS_HIGH;
@@ -409,7 +415,6 @@ void TempProbe::setTemperatureC(float T)
       Temperature = (T * (9.0f / 5.0f)) + 32.0f;
     else
       Temperature = T;
-    Temperature += Offset;
     _tempStatus = TSTATUS_OK;
   }
 }
