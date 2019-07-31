@@ -146,6 +146,11 @@ $(window).load(function ()
             JSONQuery();
         window.setInterval(JSONQuery, 10000);
     }
+
+    document.addEventListener('visibilitychange', function(){
+        if (!document.hidden)
+            checkRefreshGraphOrUpdate();
+    });
 <% end %>
 });
 
@@ -691,9 +696,19 @@ function checkRefreshGraphOrUpdate()
 
     var max = 0;
     $.each(graphData, function () {
+        // The data can accumulate in the array while the browser tab
+        // isn't visible. Keep at least 504 points, but grow as much as twice that
+        // After this slice, the data arrays will have different time ranges.
+        // Keeping it above 504 means the next update will force a reload,
+        // but the old data will display when the tab becomes active
+        if (this.data.length > 504*2)
+            this.data = this.data.slice(-504);
         if (this.data.length > max)
             max = this.data.length;
     });
+
+    if (document.hidden)
+        return;
 
     // the RRD holds up to 480 points and the graph holds
     // less due to point consolidation, so best case
