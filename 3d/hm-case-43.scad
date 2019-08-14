@@ -24,8 +24,9 @@ MouseLegHeight = 0; //body_chamfer_height/2;
 /* [Hidden] */
 // External corner radius on the body (mm)
 body_corner_radius = wall*2-1/2;
+w_off = 0.5; // offset the heatermeter origin from the left edge
 d_off = 1.0; // offset the heatermeter origin from the front edge
-w = inch(3.725)+1.2; // overall interior case width
+w = inch(3.725)+0.7+w_off; // overall interior case width
 d = inch(3.75)+1.0+d_off; // overall interior case depth
 // 19.1+ headless Zero
 // 22.4 headless Pi3 (limited by nuttrapps interfering with PCB to -6.7)
@@ -101,7 +102,7 @@ module screwhole() {
 
 module pic_ex_cube(interior) {
   translate([0,33.75+interior*(pic_ex+1.3),2])
-    cube_fillet([pic_ex+e, 59.8-interior*(pic_ex*2+1.3+2.0), 20.8], 
+    cube_fillet([pic_ex+e, 59.8-interior*(pic_ex*2+1.3+1.5), 20.8], 
       vertical=[0, (1-interior)*pic_ex, (1-interior)*pic_ex, 0],
       top=[0,pic_ex,0,0],
       bottom=[0,pic_ex,0,0]);
@@ -110,7 +111,7 @@ module pic_ex_cube(interior) {
 module screw_pimount() {
   cylinder(wall_t+pi_screw_t, d=6.4, $fn=18);
   // alignment nubbies
-  cylinder(wall_t+pi_screw_t+1.4, d=2.4, $fn=12);
+  //cylinder(wall_t+pi_screw_t+1.4, d=2.4, $fn=12);
 }
 
 module screw_keyhole() {
@@ -352,10 +353,10 @@ difference() {
   
   // lcd hole
   if (LCD)
-    translate([wall+10.7, wall+d_off+inch(2), h_b+wall_t-lcd_mount_t-e]) lcd_neg();
+    translate([wall+10.375+w_off, wall+d_off+inch(2), h_b+wall_t-lcd_mount_t-e]) lcd_neg();
   
   // button holes
-  if (LCD) translate([wall+48.7, wall+d_off+inch(1.15), h_b+wall_t-e]) {
+  if (LCD) translate([wall+inch(1.925)+w_off, wall+d_off+inch(1.15), h_b+wall_t-e]) {
     translate([-inch(1.1)/2,0,0]) btn_rnd();  // left
     translate([inch(1.1)/2,0,0]) btn_rnd();   // right
     translate([0,inch(0.9)/2,0]) btn_rnd();   // up
@@ -406,7 +407,7 @@ difference() {
   } // if !Zero
   
   // close nut traps
-  if (!is_jig) translate([wall+inch(0.825)+0.5,wall+d_off+inch(0.1),0]) {
+  if (!is_jig) translate([wall+inch(0.825)+w_off,wall+d_off+inch(0.1),0]) {
       nuttrap();
       translate([inch(2.0),0,0]) nuttrap();
     }
@@ -422,16 +423,15 @@ difference() {
     union() {
       // Filled block above LCD hole
       translate([wall, wall+d_off+78, h_b+wall_t-lcd_mount_t])
-        cube([w,d-d_off-78,lcd_mount_t+e], 
-          bottom=[lcd_mount_t/2,lcd_mount_t/2,0,lcd_mount_t/2]);
+        cube([w,d-d_off-78,lcd_mount_t+e]);
       // LCD grab notch
-      translate([wall+10.7, wall+d_off+inch(2), h_b+wall_t-lcd_mount_t])
+      translate([wall+10.375+w_off, wall+d_off+inch(2), h_b+wall_t-lcd_mount_t])
         translate([(77.5-20)/2,34.0-wall_t,-(1.8+wall_t)])
           // 1.8=thickness of LCD pcb
           cube_fillet([20,1.8+wall_t+wall,1.8+wall_t+e], top=[0,0,1.8+wall_t+e],
             vertical=[wall/2,wall/2]);
     }
-    translate([wall+10.7, wall+d_off+inch(2), h_b+wall_t-e]) {
+    translate([wall+10.375+w_off, wall+d_off+inch(2), h_b+wall_t-e]) {
       translate([0, 0, -lcd_mount_t]) lcd_neg();
       // vv Keep screw holes where they have been since the beginning
       translate([0, 0.5, 0]) lcd_mount();
