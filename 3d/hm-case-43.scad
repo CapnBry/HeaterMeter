@@ -20,6 +20,8 @@ body_chamfer_height = 1.5;
 MouseEarHeight = 0;
 // Corner leg height (mm) - 0 to disable
 MouseLegHeight = 0; //body_chamfer_height/2;
+// Screw hardware
+NutHardware = 0; // [0:Captive Nut,1:Injection Threaded Insert]
 
 /* [Hidden] */
 // External corner radius on the body (mm)
@@ -48,6 +50,7 @@ is_jig = 0; // generate a jig for soldering LEDs
 
 function inch(x) = x*25.4;
 
+echo(str("Case dimensions (mm): ", w+2*wall, "x", d+2*wall, "x", h_b+2*wall_t));
 main();
 
 module main()
@@ -172,6 +175,7 @@ module nuttrap() {
   nut_d = nut_ingress / sin(60);
   nut_ingress_off = nut_ingress/sqrt(3)/2;
   oa_h=wall_t+0.4+nut_h+wall_t+[0,6.7][LCD];
+  screw_l=[20,25][LCD];
 
   // bottom half for M3 socket cap screw (flush)
   difference() {
@@ -184,27 +188,42 @@ module nuttrap() {
   }
   
   // top half M3 nut trap
-  translate([0,0,h_b+wall_t-oa_h])
-  difference() {
-    translate([-(nut_d/2+ww_w), -nut_ingress/2-d_off, 0])
-      cube_fillet([nut_d+2*ww_w, nut_ingress+d_off+ww_d, oa_h+e],
-        vertical=[ww_d/2,3.4], $fn=20);
-    // M3 screw
-    translate([0,0,-e]) cylinder(wall_t, d1=4, d2=3.4, $fn=16);
-    // nut hole / M3 extra
-    translate([0,0,wall_t+0.3]) {
-      // nut 2x for an elongated trap
-      translate([-0.2,0,0]) cylinder(nut_h*1.5+e, d=nut_d, $fn=6);
-      translate([+0.2,0,0]) cylinder(nut_h*1.5+e, d=nut_d, $fn=6);
-      cylinder(oa_h-wall_t-0.3, d=4, $fn=16);  // M3 with plenty of clearance
-      //translate([-50,-50,-100]) cube([100,100,100+e]); // cutaway top
+  if (NutHardware == 0) { // Captive Nut Slots
+    translate([0,0,h_b+wall_t-oa_h])
+    difference() {
+      translate([-(nut_d/2+ww_w), -nut_ingress/2-d_off, 0])
+        cube_fillet([nut_d+2*ww_w, nut_ingress+d_off+ww_d, oa_h+e],
+          vertical=[ww_d/2,3.4], $fn=20);
+      // M3 screw
+      translate([0,0,-e]) cylinder(wall_t, d1=4, d2=3.4, $fn=16);
+      // nut hole / M3 extra
+      translate([0,0,wall_t+0.3]) {
+        // nut 2x for an elongated trap
+        translate([-0.2,0,0]) cylinder(nut_h*1.5+e, d=nut_d, $fn=6);
+        translate([+0.2,0,0]) cylinder(nut_h*1.5+e, d=nut_d, $fn=6);
+        cylinder(oa_h-wall_t-0.3, d=4, $fn=16);  // M3 with plenty of clearance
+        //translate([-50,-50,-100]) cube([100,100,100+e]); // cutaway top
+      }
+      // nut ingress (sideways trapezoid with wider side at ingress)
+      translate([nut_ingress_off,-nut_ingress/2,wall_t+0.3])
+         linear_extrude(nut_h+e) polygon([[0,0],
+           [nut_d/2+ww_w-nut_ingress_off+0.4+e, -0.8],       
+           [nut_d/2+ww_w-nut_ingress_off+0.4+e, nut_ingress+0.8],
+           [0,nut_ingress]]);
     }
-    // nut ingress (sideways trapezoid with wider side at ingress)
-    translate([nut_ingress_off,-nut_ingress/2,wall_t+0.3])
-       linear_extrude(nut_h+e) polygon([[0,0],
-         [nut_d/2+ww_w-nut_ingress_off+0.4+e, -0.8],       
-         [nut_d/2+ww_w-nut_ingress_off+0.4+e, nut_ingress+0.8],
-         [0,nut_ingress]]);
+  } else if (NutHardware == 1) { // Inection molding threaded insert
+    translate([0,0,h_b+wall_t-(h_b-screw_l+2)])
+    difference() {
+      // 5.0mm dia 5mm tall, with 5.6mm alignment area at top 1.2mm tall 
+      union() {
+        cylinder((h_b-screw_l)+2, d=5.0+2*wall, $fn=24);
+        cylinder(1.2-e, d=5.6+2*wall, $fn=24);
+        translate([(5.0+2*wall)/-2, -nut_ingress/2-d_off, 0])
+          cube([5.0+2*wall, nut_ingress/2+d_off, (h_b-screw_l)+2]);
+      }
+      cylinder(5+1.2, d=5.0, $fn=24);
+      translate([0,0,-e]) cylinder(1.2, d=5.6, $fn=24); // alignment helper
+    }
   }
 }
 
@@ -542,10 +561,10 @@ module mouselegs(isBottom) {
 module split_volume() {
   if (Pi_Model == "3B/2B/1B+") {
     difference() {
-      translate([-pic_ex-e,-e,-e])
-        cube([w+pic_ex+2*wall+2*e, d+2*wall+2*e, wall_t+case_split+2*e]);
+      translate([-pic_ex-1,-1,-1])
+        cube([w+pic_ex+2*wall+2, d+2*wall+2, wall_t+case_split+1]);
       translate([w,0,wall_t+probe_centerline])
-        cube([3*wall, d+2*wall+2*e, wall_t+probe_centerline+2*e]);
+        cube([3*wall, d+2*wall+2*e, wall_t+probe_centerline+e]);
     }
   }
   else
