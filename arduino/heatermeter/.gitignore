@@ -4,6 +4,7 @@ Visual Micro
 Debug
 Release
 __vm
+.vs
 *.sdf
 *.suo
 *.user
