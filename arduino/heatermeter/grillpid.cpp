@@ -624,39 +624,46 @@ inline void GrillPid::commitFanOutput(void)
   const unsigned int LONG_PWM_PERIOD = 10000;
   const unsigned int PERIOD_SCALE = (LONG_PWM_PERIOD / TEMP_MEASURE_PERIOD);
 
+  unsigned char newFanSpeed;
   if (_pidOutput < _fanActiveFloor)
-    _fanSpeed = 0;
+    newFanSpeed = 0;
   else
   {
     // _fanActiveFloor should be constrained to 0-99 to prevent a divide by 0
     unsigned char range = 100 - _fanActiveFloor;
     unsigned char max = getFanCurrentMaxSpeed();
-    _fanSpeed = (unsigned int)(_pidOutput - _fanActiveFloor) * max / range;
+    newFanSpeed = (unsigned int)(_pidOutput - _fanActiveFloor) * max / range;
   }
 
   /* For anything above _minFanSpeed, do a nomal PWM write.
      For below _minFanSpeed we use a "long pulse PWM", where
      the pulse is 10 seconds in length.  For each percent we are
      emulating, run the fan for one interval. */
-  if (_fanSpeed >= _fanMinSpeed)
+  _longPwmRemaining = 0;
+  if (newFanSpeed >= _fanMinSpeed)
     _longPwmTmr = 0;
   else
   {
-    // Simple PWM, ON for first [FanSpeed] intervals then OFF
-    // for the remainder of the period
-    if (((PERIOD_SCALE * _fanSpeed / _fanMinSpeed) > _longPwmTmr))
-      _fanSpeed = _fanMinSpeed;
+    unsigned int runningDur = _longPwmTmr * TEMP_MEASURE_PERIOD;
+    unsigned int targetDur = LONG_PWM_PERIOD / _fanMinSpeed * newFanSpeed;
+    if (targetDur > runningDur)
+    {
+      newFanSpeed = _fanMinSpeed;
+      _longPwmRemaining = targetDur - runningDur;
+      //SerialX.print("HMLG,"); SerialX.print("L:"); SerialX.print(_longPwmDur, DEC); Serial_nl();
+    }
     else
-      _fanSpeed = 0;
+      newFanSpeed = 0;
 
     if (++_longPwmTmr > (PERIOD_SCALE - 1))
       _longPwmTmr = 0;
   }  /* long PWM */
 
   if (bit_is_set(_outputFlags, PIDFLAG_INVERT_FAN))
-    _fanSpeed = _fanMaxSpeed - _fanSpeed;
+    newFanSpeed = _fanMaxSpeed - newFanSpeed;
 
   // 0 is always 0
+  _fanSpeed = newFanSpeed;
   if (_fanSpeed == 0)
     _lastBlowerOutput = 0;
   else
@@ -835,7 +842,14 @@ boolean GrillPid::doWork(void)
 {
   unsigned int elapsed = millis() - _lastWorkMillis;
   if (elapsed < (TEMP_MEASURE_PERIOD / TEMP_OUTADJUST_CNT))
+  {
+    if (_longPwmRemaining && elapsed > _longPwmRemaining)
+    {
+      analogWrite(PIN_BLOWER, bit_is_set(_outputFlags, PIDFLAG_INVERT_FAN) ? _fanMaxSpeed : 0);
+      _longPwmRemaining = 0;
+    }
     return false;
+  }
   _lastWorkMillis = millis();
 
   if (_periodCounter < (TEMP_OUTADJUST_CNT-1))
