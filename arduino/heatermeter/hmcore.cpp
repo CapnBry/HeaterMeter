@@ -118,7 +118,7 @@ static const struct  __eeprom_probe DEFAULT_PROBE_CONFIG PROGMEM = {
 // A simple beep-beep-beep-(pause) alarm
 static const unsigned char tone_durs[] PROGMEM = { 10, 5, 10, 5, 10, 50 };  // in 10ms units
 #define tone_cnt (sizeof(tone_durs)/sizeof(tone_durs[0]))
-static unsigned char tone_idx;
+static unsigned char tone_idx = 0xff;
 static unsigned long tone_last;
 #endif /* PIZEO_HZ */
 
