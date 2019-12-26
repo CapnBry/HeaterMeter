@@ -620,10 +620,6 @@ inline unsigned char FeedvoltToAdc(float v)
 
 inline void GrillPid::commitFanOutput(void)
 {
-  /* Long PWM period is 10 sec */
-  const unsigned int LONG_PWM_PERIOD = 10000;
-  const unsigned int PERIOD_SCALE = (LONG_PWM_PERIOD / TEMP_MEASURE_PERIOD);
-
   unsigned char newFanSpeed;
   if (_pidOutput < _fanActiveFloor)
     newFanSpeed = 0;
@@ -645,17 +641,17 @@ inline void GrillPid::commitFanOutput(void)
   else
   {
     unsigned int runningDur = _longPwmTmr * TEMP_MEASURE_PERIOD;
-    unsigned int targetDur = LONG_PWM_PERIOD / _fanMinSpeed * newFanSpeed;
+    unsigned int targetDur = (TEMP_LONG_PWM_CNT * TEMP_MEASURE_PERIOD) / _fanMinSpeed * newFanSpeed;
     if (targetDur > runningDur)
     {
       newFanSpeed = _fanMinSpeed;
       _longPwmRemaining = targetDur - runningDur;
-      //SerialX.print("HMLG,"); SerialX.print("L:"); SerialX.print(_longPwmDur, DEC); Serial_nl();
+      //SerialX.print("HMLG,"); SerialX.print("L:"); SerialX.print(_longPwmRemaining, DEC); Serial_nl();
     }
     else
       newFanSpeed = 0;
 
-    if (++_longPwmTmr > (PERIOD_SCALE - 1))
+    if (++_longPwmTmr > (TEMP_LONG_PWM_CNT - 1))
       _longPwmTmr = 0;
   }  /* long PWM */
 
@@ -673,6 +669,7 @@ inline void GrillPid::commitFanOutput(void)
       _lastBlowerOutput = mappct(_fanSpeed, FeedvoltToAdc(5.0f), FeedvoltToAdc(12.1f));
     else
       _lastBlowerOutput = mappct(_fanSpeed, 0, 255);
+#if (TEMP_OUTADJUST_CNT > 0)
     // If going from 0% to non-0%, turn the blower fully on for one period
     // to get it moving (boost mode)
     if (needBoost)
@@ -683,6 +680,7 @@ inline void GrillPid::commitFanOutput(void)
       _feedvoltLastOutput = 128;
       return;
     }
+#endif
   }
   adjustFeedbackVoltage();
 }
@@ -841,24 +839,26 @@ void GrillPid::reportStatus(void) const
 boolean GrillPid::doWork(void)
 {
   unsigned int elapsed = millis() - _lastWorkMillis;
-  if (elapsed < (TEMP_MEASURE_PERIOD / TEMP_OUTADJUST_CNT))
+  if (_longPwmRemaining && elapsed > _longPwmRemaining)
   {
-    if (_longPwmRemaining && elapsed > _longPwmRemaining)
-    {
-      analogWrite(PIN_BLOWER, bit_is_set(_outputFlags, PIDFLAG_INVERT_FAN) ? _fanMaxSpeed : 0);
-      _longPwmRemaining = 0;
-    }
-    return false;
+    analogWrite(PIN_BLOWER, bit_is_set(_outputFlags, PIDFLAG_INVERT_FAN) ? _fanMaxSpeed : 0);
+    _longPwmRemaining = 0;
+    _lastBlowerOutput = 0;
   }
-  _lastWorkMillis = millis();
 
-  if (_periodCounter < (TEMP_OUTADJUST_CNT-1))
+#if (TEMP_OUTADJUST_CNT > 0)
+  if (elapsed > (_periodCounter * (TEMP_MEASURE_PERIOD / TEMP_OUTADJUST_CNT)))
   {
     ++_periodCounter;
     adjustFeedbackVoltage();
-    return false;
   }
-  _periodCounter = 0;
+#endif
+
+  if (elapsed < TEMP_MEASURE_PERIOD)
+    return false;
+
+  _periodCounter = 1;
+  _lastWorkMillis = millis();
 
 #if defined(GRILLPID_CALC_TEMP) 
   _alarmId = ALARM_ID_NONE;

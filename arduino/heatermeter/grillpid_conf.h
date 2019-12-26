@@ -22,8 +22,11 @@
 
 // The time (ms) of the measurement period
 #define TEMP_MEASURE_PERIOD 1000
+// Number of TEMP_MEASURE_PERIOD per Long PWM mode period
+#define TEMP_LONG_PWM_CNT 10
 // Number of times the ouput is adusted over TEMP_MEASURE_PERIOD
-// This affects fan boost mode and FFEEDBACK output
+// This affects fan boost mode and PIDFLAG_FAN_FEEDVOLT output
+// Set to 0 to disable both of these
 #define TEMP_OUTADJUST_CNT 3
 // 2/(1+Number of samples used in the exponential moving average)
 #define TEMPPROBE_AVG_SMOOTH (2.0f/(1.0f+60.0f))
