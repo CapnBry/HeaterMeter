@@ -13,8 +13,6 @@
 
 #define STEINHART_COUNT 4
 
-//#define NOISEDUMP_PIN 5
-
 struct __eeprom_probe
 {
   char name[PROBE_NAME_SIZE];

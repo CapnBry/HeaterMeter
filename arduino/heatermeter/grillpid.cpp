@@ -67,14 +67,10 @@ static struct tagAdcState
   bool useBandgapReference[NUM_ANALOG_INPUTS]; // Use 1.1V reference instead of AVCC
   unsigned int bandgapAdc;                     // 10-bit adc reading of BG with AVCC ref
 #endif
-#if defined(NOISEDUMP_PIN)
-  unsigned int data[256];
-#endif
+  unsigned int noiseDumpData[256];
 } adcState;
 
-#if defined(NOISEDUMP_PIN)
-unsigned char g_NoisePin = NOISEDUMP_PIN;
-#endif
+volatile unsigned char g_NoisePin = 0xff;
 
 ISR(ADC_vect)
 {
@@ -113,14 +109,13 @@ ISR(ADC_vect)
     return;
   }
 
+  unsigned char pin = ADMUX & 0x0f;
   if (adcState.cnt != 0)
   {
     --adcState.cnt;
     unsigned int adc = ADC;
-#if defined(NOISEDUMP_PIN)
-    if ((ADMUX & 0x07) == g_NoisePin)
-      adcState.data[adcState.cnt] = adc;
-#endif
+    if (pin == g_NoisePin)
+      adcState.noiseDumpData[adcState.cnt] = adc;
     adcState.accumulator += adc;
 
     unsigned char a = adc >> 2;
@@ -131,7 +126,6 @@ ISR(ADC_vect)
   }
   else
   {
-    unsigned char pin = ADMUX & 0x0f;
 #if defined(GRILLPID_DYNAMIC_RANGE)
     if (pin > NUM_ANALOG_INPUTS)
     {
@@ -208,23 +202,24 @@ unsigned int analogGetBandgapScale(void)
 
 static void adcDump(void)
 {
-#if defined(NOISEDUMP_PIN)
-  static uint8_t x;
-  ++x;
-  if (x == 5)
+  if (g_NoisePin == 0xff)
+    return;
+
+  static uint8_t dumpPeriod;
+  ++dumpPeriod;
+  if (dumpPeriod == 5)
   {
-    x = 0;
-    ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0);
+    dumpPeriod = 0;
     SerialX.print("HMLG,NOISE ");
-    for (unsigned int i=0; i<adcState.top; ++i)
+    ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0);
+    for (unsigned char i=0; i<adcState.top; ++i)
     {
-      SerialX.print(adcState.data[i], DEC);
+      SerialX.print(adcState.noiseDumpData[i], DEC);
       SerialX.print(' ');
     }
-    Serial_nl();
     ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADIE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0) | bit(ADSC);
+    Serial_nl();
   }
-#endif
 }
 
 static void calcExpMovingAverage(const float smooth, float *currAverage, float newValue)
