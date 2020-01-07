@@ -212,10 +212,19 @@ function keyPressed(e)
     return;
   switch (e.which)
   {
+    case 78: // N
+      toggleNoiseGraph();
+      break;
     case 80: // P
       togglePidInt();
       break;
   }
+}
+
+function toggleNoiseGraph()
+{
+  var target = $('#noisegraph').css('display') === 'none' ? '#nn0' : '#noiseoff';
+  $(target).trigger('click');
 }
 
 function togglePidInt()
@@ -1098,7 +1107,7 @@ img.preload { display: none; }
         <div class="noisebtn" id="nn3" data-adc="2">2</div>
         <div class="noisebtn" data-adc="1" title="Fan feedback">FFB</div>
         <div class="noisebtn last" data-adc="0" title="Buttons">Btn</div>
-        <div class="noisebtn first last" style="margin-top: 4px;" data-adc="255">Disable</div>
+        <div class="noisebtn first last" style="margin-top: 4px;" id="noiseoff" data-adc="255">Disable</div>
 <% end %>
       </div>
       <div style="position: relative;">
