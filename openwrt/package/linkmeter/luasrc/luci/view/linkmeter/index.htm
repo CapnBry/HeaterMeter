@@ -74,7 +74,6 @@ $(document).ready(function()
     $("#graph").bind("plothover", graphHover);
     $("#graphcontainer").bind("mouseleave", function () { $("#graphtt").fadeOut(); });
     $("div.legfill").click(legendClicked);
-    $("div.noisebtn").click(noisebtnClicked);
     $("#fancontainer").click(togglePidInt);
     $(document).keydown(keyPressed);
 
@@ -87,6 +86,8 @@ $(document).ready(function()
     }
 
 <% if context.authuser == "root" then %>
+    $(".noisebtn").click(noisebtnClicked);
+    $(".noise").click(noisebtnClicked);
     $(".pname").editable(nameChanged, {cssclass: "jedit", maxlength: 13, select: true});
     $("#pn0").editable(nameChanged, {cssclass: "jedit", maxlength: 13, width: "13em", select: true});
     $("#set").editable(tempChanged, {cssclass: "jedit", style: "display: inline", select: true});
@@ -304,9 +305,11 @@ function legendClicked()
 
 function noisebtnClicked()
 {
-    var probe = $(this).text();
+    var probe = $(this).data('adc');
     $.get("<%=build_url("admin/lm/set")%>",
-      {tp: "," + probe });
+      {tp: "," + probe },
+      function () { if (probe == 255) $('#noisegraph').hide(); }
+    );
 }
 
 function refreshGraphData()
@@ -769,6 +772,7 @@ function connectionSuccess(o)
     for(var i = 0; i < 4; i++)
     {
         if (updateEditables) $("#pn" + i).text(o.temps[i].n);
+        $("#nn" + i).text(o.temps[i].n);
         var val = o.temps[i].c;
         var tempElem = $("#temp" + i);
         if (val === null)
@@ -965,16 +969,16 @@ td.probe { width: 33%; position: relative; }
     padding: 4px 30px 4px 30px; border: 1px solid #000; }
 #navcontainer li a:hover { background-color: #246; color: #f3f1e9;
     border: 1px solid #333; }
-.noisebtn { color: #555; text-align: center; height: 32px; width: 32px; font-size: 15px;
+.noisebtn { color: #555; text-align: center; height: 32px; font-size: 15px;
     border: 1px solid #dcdcdc; line-height: 32px; background-color: #ededed;
-    float: right; }
-.first.noisebtn { border-radius: 6px 6px 0 0; margin-top: 6px; }
-.last.noisebtn { border-radius: 0 0 6px 6px; }
+    margin-left: 576px; }
+.first.noisebtn { border-top-left-radius: 6px; border-top-right-radius: 6px; }
+.last.noisebtn { border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
 #updatedtime { position: absolute; top: 8px; right: 13px; color: #bbb; font-size: 12pt; }
 #lid { position: absolute; top: 8px; left: 13px; color: #bbb; font-size: 12pt; }
 #png { display: none; height: 350px; margin: 8px auto 0px auto; }
-#noisegraph { display: none; height: 256px; width: 1058px; margin: 8px auto 0px auto; }
-#noisegraph_g { height: 256px; width: 1024px; float: left; }
+#noisegraph { display: none; height: 256px; width: 700px; margin: 8px auto 0px auto; }
+#noisegraph_g { height: 256px; width: 576px; float: left; }
 #graph { height: 350px; width: 700px; margin: 8px auto 0px auto; }
 #graphcontainer { display: inline-block; }
 #graph_overview { height: 90px; width: 700px; margin-left: auto; margin-right: auto; }
@@ -1047,7 +1051,7 @@ img.preload { display: none; }
             <div class="pival" id="pivdt">-&deg;</div>
           </div>
           <div class="rfstatus" id="rfs0"></div>
-          <div class="noise" id="noise0"></div>
+          <div class="noise" id="noise0" data-adc="5"></div>
         </div>
 
         <div id="fancontainer">
@@ -1061,7 +1065,7 @@ img.preload { display: none; }
             <td class="probe first">
                 <div class="dph" id="dph1"></div>
                 <div class="rfstatus" id="rfs1"></div>
-                <div class="noise" id="noise1"></div>
+                <div class="noise" id="noise1" data-adc="4"></div>
                 <div class="legbord"><div class="legfill pcolor1" id="pl1"></div></div>
                 <div class="pname" id="pn1">-</div>
                 <div class="ptemp" id="temp1">-</div>
@@ -1069,7 +1073,7 @@ img.preload { display: none; }
             <td class="probe">
                 <div class="dph" id="dph2"></div>
                 <div class="rfstatus" id="rfs2"></div>
-                <div class="noise" id="noise2"></div>
+                <div class="noise" id="noise2" data-adc="3"></div>
                 <div class="legbord"><div class="legfill pcolor2" id="pl2"></div></div>
                 <div class="pname" id="pn2">-</div>
                 <div class="ptemp" id="temp2">-</div>
@@ -1077,7 +1081,7 @@ img.preload { display: none; }
             <td class="probe last">
                 <div class="dph" id="dph3"></div>
                 <div class="rfstatus" id="rfs3"></div>
-                <div class="noise" id="noise3"></div>
+                <div class="noise" id="noise3" data-adc="2"></div>
                 <div class="legbord"><div class="legfill pcolor3" id="pl3"></div></div>
                 <div class="pname" id="pn3">-</div>
                 <div class="ptemp" id="temp3">-</div>
@@ -1085,18 +1089,19 @@ img.preload { display: none; }
         </tr></table>
       </div></div>
 <% end %>
-      <div style="position: relative;">
-        <div id="noisegraph">
-          <div id="noisegraph_g"></div>
+      <div id="noisegraph">
+        <div id="noisegraph_g"></div>
 <% if context.authuser == "root" then %>
-          <div class="noisebtn first">0</div>
-          <div class="noisebtn">1</div>
-          <div class="noisebtn">2</div>
-          <div class="noisebtn">3</div>
-          <div class="noisebtn">4</div>
-          <div class="noisebtn last">5</div>
+        <div class="noisebtn first" id="nn0" data-adc="5">5</div>
+        <div class="noisebtn" id="nn1" data-adc="4">4</div>
+        <div class="noisebtn" id="nn2" data-adc="3">3</div>
+        <div class="noisebtn" id="nn3" data-adc="2">2</div>
+        <div class="noisebtn" data-adc="1" title="Fan feedback">FFB</div>
+        <div class="noisebtn last" data-adc="0" title="Buttons">Btn</div>
+        <div class="noisebtn first last" style="margin-top: 4px;" data-adc="255">Disable</div>
 <% end %>
-        </div>
+      </div>
+      <div style="position: relative;">
         <div id="graphcontainer">
           <div id="graph"></div>
           <div id="graphtt">
