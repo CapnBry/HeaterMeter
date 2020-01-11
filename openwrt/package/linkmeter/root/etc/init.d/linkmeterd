@@ -2,7 +2,7 @@
 
 NAME=linkmeterd
 DESC="LinkMeter/HeaterMeter Service"
-START=99
+START=70
 
 USE_PROCD=1
 
