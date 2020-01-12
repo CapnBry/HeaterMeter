@@ -68,6 +68,7 @@ static struct tagAdcState
   unsigned int bandgapAdc;                     // 10-bit adc reading of BG with AVCC ref
 #endif
   unsigned int noiseDumpData[256];
+  unsigned char dumpPeriod;
 } adcState;
 
 volatile unsigned char g_NoisePin = 0xff;
@@ -205,14 +206,18 @@ static void adcDump(void)
   if (g_NoisePin == 0xff)
     return;
 
-  static uint8_t dumpPeriod;
-  ++dumpPeriod;
-  if (dumpPeriod == 5)
+  ++adcState.dumpPeriod;
+  if (adcState.dumpPeriod >= 5)
   {
-    dumpPeriod = 0;
+    // If in the middle of sampling this pin, try again next call
+    if (adcState.pin == g_NoisePin)
+      return;
+    adcState.dumpPeriod = 0;
     SerialX.print("HMLG,NOISE ");
-    ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0);
-    for (unsigned char i=0; i<adcState.top; ++i)
+    unsigned char top = adcState.top; //g_NoisePin == ADC_INTERLEAVE_HIGHFREQ ? 4 : adcState.top;
+    // disable ADC interrupt
+    ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0); 
+    for (unsigned char i=0; i<top; ++i)
     {
       SerialX.print(adcState.noiseDumpData[i], DEC);
       SerialX.print(' ');
