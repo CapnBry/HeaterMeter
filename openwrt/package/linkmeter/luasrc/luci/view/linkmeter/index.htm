@@ -296,7 +296,7 @@ function graphNoise(s)
       { label: "Average", data: aarray }
     ], { legend: { backgroundColor: "#333" },
       xaxis: { font: { color: "#ccc" }, ticks: 16 },
-      yaxis: { font: { color: "#ccc" }},
+      yaxis: { font: { color: "#ccc" }, minTickSize: 1, tickDecimals: 0 },
       grid: { color: "#999" } }
   );
   $("#noisegraph").show();
