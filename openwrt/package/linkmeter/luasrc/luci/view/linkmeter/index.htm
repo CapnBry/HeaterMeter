@@ -987,7 +987,7 @@ td.probe { width: 33%; position: relative; }
 #lid { position: absolute; top: 8px; left: 13px; color: #bbb; font-size: 12pt; }
 #png { display: none; height: 350px; margin: 8px auto 0px auto; }
 #noisegraph { display: none; height: 256px; width: 700px; margin: 8px auto 0px auto; }
-#noisegraph_g { height: 256px; width: 576px; float: left; }
+#noisegraph_g { height: 256px; width: <%= context.authuser == "root" and '576' or '700' %>px; float: left; }
 #graph { height: 350px; width: 700px; margin: 8px auto 0px auto; }
 #graphcontainer { display: inline-block; }
 #graph_overview { height: 90px; width: 700px; margin-left: auto; margin-right: auto; }
