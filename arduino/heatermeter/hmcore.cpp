@@ -733,8 +733,7 @@ static void setTempParam(unsigned char idx, int val)
       pid.setAutoreportInternals(val);
       break;
     case 1:
-      extern volatile unsigned char g_NoisePin;
-      g_NoisePin = val;
+      pid.setNoisePin(val);
       break;
   }
 }

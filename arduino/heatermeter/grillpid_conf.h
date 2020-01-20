@@ -46,6 +46,8 @@
 // timing of the servo pulse length
 #define SERVO_BUSYWAIT         0
 #define GRILLPID_PONMEER_LAMBDA 0.4
+// TEMP_MEASURE_PERIODs between sending noise dump
+#define GRILLPID_NOISE_REPORT_INTERVAL 5
 
 #define PROBE_NAME_SIZE 13
 

@@ -268,6 +268,8 @@ public:
   unsigned long getLastWorkMillis(void) const { return _lastWorkMillis; }
   unsigned char getPidIMax(void) const { return isPitTempReached() ? 100 : _fanMaxStartupSpeed; }
   unsigned char getAlarmId(void) const { return _alarmId; }
+  // Pin number for tracking and dumping raw ADC values
+  void setNoisePin(unsigned char pin);
 
   // PID output moving average
   float PidOutputAvg;

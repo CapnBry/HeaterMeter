@@ -67,11 +67,10 @@ static struct tagAdcState
   bool useBandgapReference[NUM_ANALOG_INPUTS]; // Use 1.1V reference instead of AVCC
   unsigned int bandgapAdc;                     // 10-bit adc reading of BG with AVCC ref
 #endif
+  unsigned char noisePin; // which pin to record ADC data on
   unsigned int noiseDumpData[256];
   unsigned char dumpPeriod;
 } adcState;
-
-volatile unsigned char g_NoisePin = 0xff;
 
 ISR(ADC_vect)
 {
@@ -115,7 +114,7 @@ ISR(ADC_vect)
   {
     --adcState.cnt;
     unsigned int adc = ADC;
-    if (pin == g_NoisePin)
+    if (pin == adcState.noisePin)
       adcState.noiseDumpData[adcState.cnt] = adc;
     adcState.accumulator += adc;
 
@@ -203,18 +202,18 @@ unsigned int analogGetBandgapScale(void)
 
 static void adcDump(void)
 {
-  if (g_NoisePin == 0xff)
+  if (adcState.noisePin == 0xff)
     return;
 
   ++adcState.dumpPeriod;
-  if (adcState.dumpPeriod >= 5)
+  if (adcState.dumpPeriod >= GRILLPID_NOISE_REPORT_INTERVAL)
   {
     // If in the middle of sampling this pin, try again next call
-    if (adcState.pin == g_NoisePin)
+    if (adcState.pin == adcState.noisePin)
       return;
     adcState.dumpPeriod = 0;
     SerialX.print("HMLG,NOISE ");
-    unsigned char top = adcState.top; //g_NoisePin == ADC_INTERLEAVE_HIGHFREQ ? 4 : adcState.top;
+    unsigned char top = adcState.top; //adcState.noisePin == ADC_INTERLEAVE_HIGHFREQ ? 4 : adcState.top;
     // disable ADC interrupt
     ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0); 
     for (unsigned char i=0; i<top; ++i)
@@ -454,6 +453,7 @@ void GrillPid::init(void)
   ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADIE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0) | bit(ADSC);
 
   updateControlProbe();
+  adcState.noisePin = 0xff;
 }
 
 void __attribute__ ((noinline)) GrillPid::updateControlProbe(void)
@@ -951,4 +951,11 @@ void GrillPid::setUnits(char units)
       setPidMode(PIDMODE_OFF);
       break;
   }
+}
+
+void GrillPid::setNoisePin(unsigned char pin)
+{
+  adcState.noisePin = pin;
+  // force update next period
+  adcState.dumpPeriod = GRILLPID_NOISE_REPORT_INTERVAL - 1;
 }
