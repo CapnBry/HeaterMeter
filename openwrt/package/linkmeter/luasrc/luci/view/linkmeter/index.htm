@@ -645,13 +645,13 @@ function tstatSuccess(csv)
 {
     // mapCsv translates csv field index to graphData index
     // a graphData index of -1 means not to map it
-    var mapCsv = [-1,2,6,5,4,3,0];
-    
+    const mapCsv = [-1,2,6,5,4,3,0,-1,-1];
+
     clearLoadingIndic();
     $.each(csv.split('\n'), function (){
         if (this == "") return;
         var line = this.split(",");
-        if (line.length != mapCsv.length) return;
+        if (line.length > mapCsv.length) return;
         line[0] = line[0] * 1000;
         for (var valIdx=1; valIdx<line.length; ++valIdx)
         {
@@ -661,7 +661,7 @@ function tstatSuccess(csv)
             var value = parseFloat(line[valIdx]);
             if (dest == 0)
                 addFanGraphPoint(line[0], value);
-            else    
+            else
                 addGraphPoint(graphData[dest].data, line[0], value);
         }
     });
@@ -868,7 +868,16 @@ function connectionSuccess(o)
     $("#fana").animate({left: o.fan.a + "%"});
     $("#fanc").animate({width: o.fan.c + "%"});
     $("#fanf").animate({width: o.fan.f + "%"});
-    $("#fanl").html("Output " + o.fan.c + "%");
+    let outputDesc = "Output " + o.fan.c + "%";
+    // Only display output details if the output, fan, and servo don't have the same value
+    if (o.fan.c !== o.fan.f || o.fan.c !== o.fan.s)
+    {
+      if (o.fan.hasOwnProperty('f') && o.fan.f !== null)
+        outputDesc = outputDesc + " / Fan " + o.fan.f + "%";
+      if (o.fan.hasOwnProperty('s') && o.fan.s !== null)
+        outputDesc = outputDesc + " / Servo " + o.fan.s + "%";
+    }
+    $("#fanl").html(outputDesc);
     
     updateLid(o.lid);
     updateTime(lastUpdateUtc); //o.time);
