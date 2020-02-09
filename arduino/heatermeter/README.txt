@@ -89,7 +89,7 @@ $HMPO,Probe0,Probe1,Probe2,Probe3
 PID Internal Status (Sum cPID* to get output)
 $HMPS,cPidB,cPidP,cPidI,cPidD,tempD
 PID State Update
-$HMSU,SetPoint,Pit,Food1,Food2,Ambient,Fan,FanMovAvg,LidOpenCountdown
+$HMSU,SetPoint,Pit,Food1,Food2,Ambient,OutputPct,OutputMovAvg,LidOpenCountdown,FanPct,ServoPct
 RF Status
 $HMRF,255,0,CrcStatus[,NodeId,Flags,Rssi...]
 RF Mapping

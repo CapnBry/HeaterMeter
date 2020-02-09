@@ -173,7 +173,9 @@ private:
   unsigned char _outputFlags;
 
   // Current fan speed (percent)
-  unsigned char _fanSpeed;
+  unsigned char _fanPct;
+  // Current servo output (percent)
+  unsigned char _servoPct;
   // Feedback switching mode voltage controller
   unsigned char _feedvoltLastOutput;
   // Desired fan target (0-255)
@@ -264,7 +266,8 @@ public:
   void setPidMode(unsigned char mode);
   unsigned char getPidMode(void) const { return _pidMode; }
   // Current fan speed output in percent
-  unsigned char getFanSpeed(void) const { return _fanSpeed; };
+  unsigned char getFanPct(void) const { return _fanPct; };
+  unsigned char getServoPct(void) const { return _servoPct; };
   unsigned long getLastWorkMillis(void) const { return _lastWorkMillis; }
   unsigned char getPidIMax(void) const { return isPitTempReached() ? 100 : _fanMaxStartupSpeed; }
   unsigned char getAlarmId(void) const { return _alarmId; }

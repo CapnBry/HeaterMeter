@@ -659,16 +659,16 @@ inline void GrillPid::commitFanOutput(void)
     newFanSpeed = _fanMaxSpeed - newFanSpeed;
 
   // 0 is always 0
-  _fanSpeed = newFanSpeed;
-  if (_fanSpeed == 0)
+  _fanPct = newFanSpeed;
+  if (_fanPct == 0)
     _lastBlowerOutput = 0;
   else
   {
     bool needBoost = _lastBlowerOutput == 0;
     if (bit_is_set(_outputFlags, PIDFLAG_FAN_FEEDVOLT))
-      _lastBlowerOutput = mappct(_fanSpeed, FeedvoltToAdc(5.0f), FeedvoltToAdc(12.1f));
+      _lastBlowerOutput = mappct(_fanPct, FeedvoltToAdc(5.0f), FeedvoltToAdc(12.1f));
     else
-      _lastBlowerOutput = mappct(_fanSpeed, 0, 255);
+      _lastBlowerOutput = mappct(_fanPct, 0, 255);
 #if (TEMP_OUTADJUST_CNT > 0)
     // If going from 0% to non-0%, turn the blower fully on for one period
     // to get it moving (boost mode)
@@ -715,18 +715,18 @@ unsigned int GrillPid::getServoStepNext(unsigned int curr)
 inline void GrillPid::commitServoOutput(void)
 {
 #if defined(GRILLPID_SERVO_ENABLED)
-  unsigned char output;
   // Servo is open 0% at 0 PID output and 100% at _servoActiveCeil PID output
   if (_pidOutput >= _servoActiveCeil)
-    output = 100;
+    _servoPct = 100;
   else
-    output = (unsigned int)_pidOutput * 100U / _servoActiveCeil;
+    _servoPct = (unsigned int)_pidOutput * 100U / _servoActiveCeil;
 
   if (bit_is_set(_outputFlags, PIDFLAG_INVERT_SERVO))
-    output = 100 - output;
+    _servoPct = 100 - _servoPct;
 
-  // Get the output speed in 10x usec by LERPing between min and max
-  output = mappct(output, _servoMinPos, _servoMaxPos);
+  // Get the output position in 10x usec by LERPing between min and max
+  unsigned char output;
+  output = mappct(_servoPct, _servoMinPos, _servoMaxPos);
   unsigned int targetTicks = uSecToTicks(10U * output);
 #if defined(SERVO_MIN_THRESH)
   if (_servoHoldoff < 0xff)
@@ -828,7 +828,9 @@ void GrillPid::reportStatus(void) const
   Serial_csv();
   SerialX.print(LidOpenResumeCountdown, DEC);
   Serial_csv();
-  SerialX.print(getFanSpeed(), DEC);
+  SerialX.print(getFanPct(), DEC);
+  Serial_csv();
+  SerialX.print(getServoPct(), DEC);
   Serial_nl();
 
   if (_autoreportInternals)
