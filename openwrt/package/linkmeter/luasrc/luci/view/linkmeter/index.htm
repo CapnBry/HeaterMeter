@@ -19,10 +19,12 @@ var lastLidOpen = -1;
 var lastPeaks;
 
 // mapJson translates the json temps array index to graphData index
-var mapJson = [6,5,4,3];
+var mapJson = [8,7,6,5];
 var graphLoaded = false;
 var graphData =  [
-        { label: "", color: "#6cf", lines: { show: true, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // fanspeed
+        { label: "Output", color: "#6cf", lines: { show: true, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },
+        { label: "Fan", color: "#6cf", lines: { show: false, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },
+        { label: "Servo", color: "#6cf", lines: { show: false, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },
         { label: "", color: "#fd9", lines: { show: true, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },  // lidopen
         { label: "Set", color: "rgba(255,0,0,0.8)", lines: { show: true, lineWidth: 1 }, shadowSize: 0, data: [] },
         { label: "Food3", lines: { show: true }, data: [] },
@@ -68,8 +70,8 @@ $(document).ready(function()
     graphOpts.legend.container = $("#graph_legend");
     $("#graph_overview").bind("plotselected", overviewSelected);
     $("#graph_overview").bind("plotunselected", overviewUnselected);
-    $("#showfan").click(showFanChanged);
     $("#graphtt").click(graphttClicked);
+    $("#outputselect").change(outputSelectChanged);
     $("#rangeselect").change(rangeSelectChanged);
     $("#graph").bind("plothover", graphHover);
     $("#graphcontainer").bind("mouseleave", function () { $("#graphtt").fadeOut(); });
@@ -77,13 +79,7 @@ $(document).ready(function()
     $("#fancontainer").click(togglePidInt);
     $(document).keydown(keyPressed);
 
-    // Set colors of the graph and temp shadows to match the CSS
-    for (var srs=0; srs<4; ++srs)
-    {
-      var color = $(".pcolor" + srs).css("background-color");
-      $("#temp" + srs).css("text-shadow", "2px 2px 1px " + color);
-      graphData[mapJson[srs]].color = color;
-    }
+    copyUserColors();
 
 <% if context.authuser == "root" then %>
     $(".noisebtn").click(noisebtnClicked);
@@ -155,6 +151,20 @@ $(window).load(function ()
 <% end %>
 });
 
+function copyUserColors()
+{
+    // Set colors of the graph and temp shadows to match the CSS
+    for (var srs=0; srs<4; ++srs)
+    {
+      var color = $(".pcolor" + srs).css("background-color");
+      $("#temp" + srs).css("text-shadow", "2px 2px 1px " + color);
+      graphData[mapJson[srs]].color = color;
+    }
+    graphData[0].color = $(".ooutcolor").css("background-color");
+    graphData[1].color = $(".ofancolor").css("background-color");
+    graphData[2].color = $(".osercolor").css("background-color");
+}
+
 function storePref(k, v)
 {
   if ("localStorage" in window && window["localStorage"] !== null)
@@ -166,20 +176,29 @@ function loadPrefs()
   if ("localStorage" in window && window["localStorage"] !== null)
   {
     $("#rangeselect").val(localStorage["prefs.graphrange"] || "");
-    var graphlines = localStorage["pref.graphlines"] || "0123456";
-    $("#showfan").prop("checked", graphlines.indexOf("0") != -1);
+    let graphlines = localStorage["prefs.graphlines"] || "0345678";
     for (i=0; i<graphData.length; ++i)
       graphData[i].lines.show = graphlines.indexOf(i) != -1;
+    // The first graphline is which output is selected
+    let output = parseInt(graphlines.substr(0, 1))
+    if (output < 3)
+      $("#outputselect").val(output+1);
+    else
+      $("#outputselect").val(0);
+
+    // Remove the old pref.graphlines from before output details. Now is prefs.graphlines
+    if (localStorage["pref.graphlines"])
+      localStorage.removeItem("pref.graphlines");
   }
 }
 
 function storePrefGraphlines()
 {
-  var graphlines = "";
+  let graphlines = "";
   for (i=0; i<graphData.length; ++i)
     if (graphData[i].lines.show)
       graphlines += i;
-  storePref("pref.graphlines", graphlines);
+  storePref("prefs.graphlines", graphlines);
 }
 
 function rangeSelectChanged()
@@ -271,7 +290,7 @@ function peakEvent(o)
   if (o.L.time) { o.L.time *= 1000; /* data.push([o.L.time, o.L.val]); */ }
   if (o.C.time) { o.C.time *= 1000; /* data.push([o.C.time, o.C.val]); */ }
   // do not display the peaks on the graph
-  //graphData[7].data = data;
+  //graphData[9].data = data;
   // Wait until next updateGraph() to display
 }
 
@@ -358,20 +377,21 @@ function clearLoadingIndic()
     $("#rangeselect").removeAttr("disabled");
 }
 
-function showFanChanged()
+function outputSelectChanged()
 {
-    if ($("#showfan").prop("checked"))
+    let val = $("#outputselect").val();
+
+    graphData[0].lines.show = false;
+    graphData[1].lines.show = false;
+    graphData[2].lines.show = false;
+    graphData[3].lines.show = false;
+
+    if (val > 0)
     {
-        graphData[0].lines.show = true;
-        graphData[1].lines.show = true;
-        storePrefGraphlines();
+        graphData[val-1].lines.show = true;
+        graphData[3].lines.show = true;
     }
-    else
-    {
-        graphData[0].lines.show = false;
-        graphData[1].lines.show = false;
-        storePrefGraphlines();
-    }
+    storePrefGraphlines();
     updateGraph();
 }
 
@@ -462,8 +482,8 @@ function graphClicked(event, pos, item)
     var sInfo = "";
     var srsClosestY = -1;
     var srsClosestYIdx;
-    // Display on tooltip as Pit, Food1, Food2, Amb, Set, Fan
-    var SERIES_DISPLAY_ORDER = [ 6, 5, 4, 3, 2, 0 ];
+    // Display on tooltip as Pit, Food1, Food2, Amb, Set, Output, Fan, Servo
+    var SERIES_DISPLAY_ORDER = [ 8, 7, 6, 5, 4, 0, 1, 2 ];
     for (var idx=0; idx<SERIES_DISPLAY_ORDER.length; ++idx)
     {
         var srs = SERIES_DISPLAY_ORDER[idx];
@@ -498,10 +518,10 @@ function graphClicked(event, pos, item)
         }
             
         if (!isNaN(val))
-            if (srs == 0)
+            if (srs == 0 || srs == 1 || srs == 2)
             {
                 if (val >= 0)
-                    sInfo = sInfo + "Fan " + Math.round(val) + "%<br />";
+                    sInfo = sInfo + "<b>" + graphData[srs].label + "</b> " + Math.round(val) + "%<br />";
             }
             else 
             {
@@ -612,9 +632,9 @@ function updateGraph()
       lastOverviewPlot.clearSelection(false); 
       
     // Hide the peaks on the overview graph
-    graphData[7].points.show = false;
+    graphData[9].points.show = false;
     lastOverviewPlot = $.plot($("#graph_overview"), graphData, graphOpts2);
-    graphData[7].points.show = true;
+    graphData[9].points.show = true;
     
     if (extendSelection)
         selectedArea.xaxis.to = lastOverviewPlot.getAxes().xaxis.max;
@@ -624,20 +644,23 @@ function updateGraph()
         doPlot();
 }
 
-function addFanGraphPoint(time, value)
+function addOutputGraphPoint(time, value)
 {
+    // The output graph is unique in that it holds both the output and the liddetect
+    // If value is negative then add a 100% point to the lid indicator series
+    // If value is positive it is the composite output value
     if (isNaN(value))
         return;
-        
+
     if (value < 0)
     {
         addGraphPoint(graphData[0].data, time, 0);
-        addGraphPoint(graphData[1].data, time, 100);
+        addGraphPoint(graphData[3].data, time, 100);
     } 
     else 
     {
         addGraphPoint(graphData[0].data, time, value);
-        addGraphPoint(graphData[1].data, time, -1);
+        addGraphPoint(graphData[3].data, time, -1);
     }
 }
 
@@ -645,7 +668,7 @@ function tstatSuccess(csv)
 {
     // mapCsv translates csv field index to graphData index
     // a graphData index of -1 means not to map it
-    const mapCsv = [-1,2,6,5,4,3,0,-1,-1];
+    const mapCsv = [-1,4,8,7,6,5,0,1,2];
 
     clearLoadingIndic();
     $.each(csv.split('\n'), function (){
@@ -660,7 +683,7 @@ function tstatSuccess(csv)
                 continue;
             var value = parseFloat(line[valIdx]);
             if (dest == 0)
-                addFanGraphPoint(line[0], value);
+                addOutputGraphPoint(line[0], value);
             else
                 addGraphPoint(graphData[dest].data, line[0], value);
         }
@@ -767,9 +790,13 @@ function connectionSuccess(o)
 
     if (graphLoaded)
     {
-        addFanGraphPoint(o.time, o.lid > 0 ? -o.lid : o.fan.c);
+        addOutputGraphPoint(o.time, o.lid > 0 ? -o.lid : o.fan.c);
+        if (o.fan.f !== null)
+          addGraphPoint(graphData[1].data, o.time, o.fan.f);
+        if (o.fan.s !== null)
+          addGraphPoint(graphData[2].data, o.time, o.fan.s);
         if (o.set !== null && o.set > 0)
-          addGraphPoint(graphData[2].data, o.time, o.set);
+          addGraphPoint(graphData[4].data, o.time, o.set);
     }
 
     // If control probe has a value, set the window title to that value
@@ -1023,6 +1050,9 @@ img.preload { display: none; }
 .pcolor1 { background: #6c3; }
 .pcolor2 { background: #297; }
 .pcolor3 { background: #789; }
+.ooutcolor { background: #6cf; }
+.ofancolor { background: #4c99bf; }
+.osercolor { background: #cef; }
 <%=nixio.fs.readfile("/usr/share/linkmeter/user.css") or ""%>
 </style>
 </head>
@@ -1147,7 +1177,12 @@ img.preload { display: none; }
     </div>
 </div>
 <div id="graph_opts">
-    <input type="checkbox" id="showfan" checked="checked"/><label for="showfan">Show fan speed</label>
+    <select id="outputselect">
+        <option value="0">Hide output</option>
+        <option value="1" selected>Show output</option>
+        <option value="2">Show fan</option>
+        <option value="3">Show servo</option>
+    </select>
     <select id="rangeselect">
         <option value="" selected>Auto scale</option>
         <option value="460">1 hour</option>
@@ -1162,6 +1197,7 @@ img.preload { display: none; }
     <p></p>
     <div id="alarmclear"></div>
 </div>
+<div><div class="ooutcolor"></div><div class="ofancolor"></div><div class="osercolor"></div></div>
 <img src="<%=resource%>/noise.png" class="preload">
 <img src="<%=resource%>/rf.png" class="preload">
 <div id="share">Download
