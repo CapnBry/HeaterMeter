@@ -18,7 +18,7 @@ extern GrillPid pid;
 #define uSecToTicks(x) ((unsigned int)(clockCyclesPerMicrosecond() / 8) * x)
 
 // LERP percentage o into the unsigned range [A,B]. B - A must be < 655
-#define mappct(o, a, b)  (((b - a) * (unsigned int)o / 100) + a)
+#define mappct(o, a, b)  ((((int)b - (int)a) * (int)o / 100) + (int)a)
 
 #define DIFFMAX(x,y,d) ((x - y + d) <= (d*2U))
 
