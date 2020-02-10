@@ -217,12 +217,12 @@ module nuttrap() {
       // 5.0mm dia 5mm tall, with 5.6mm alignment area at top 1.2mm tall 
       union() {
         cylinder((h_b-screw_l)+2, d=5.0+2*wall, $fn=24);
-        cylinder(1.2-e, d=5.6+2*wall, $fn=24);
+        cylinder(1.2-e, d1=5.6+2*wall, d2=5.0+2*wall, $fn=24);
         translate([(5.0+2*wall)/-2, -nut_ingress/2-d_off, 0])
           cube([5.0+2*wall, nut_ingress/2+d_off, (h_b-screw_l)+2]);
       }
       cylinder(5+1.2, d=5.0, $fn=24);
-      translate([0,0,-e]) cylinder(1.2, d=5.6, $fn=24); // alignment helper
+      translate([0,0,-e]) cylinder(1.2, d1=5.6, d2=5.0, $fn=24); // alignment helper
     }
   }
 }
