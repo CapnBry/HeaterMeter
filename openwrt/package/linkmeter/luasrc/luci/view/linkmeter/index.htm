@@ -84,6 +84,7 @@ $(document).ready(function()
 <% if context.authuser == "root" then %>
     $(".noisebtn").click(noisebtnClicked);
     $(".noise").click(noisebtnClicked);
+    $(".alarmact").click(alarmBtnClicked);
     $(".pname").editable(nameChanged, {cssclass: "jedit", maxlength: 13, select: true});
     $("#pn0").editable(nameChanged, {cssclass: "jedit", maxlength: 13, width: "13em", select: true});
     $("#set").editable(tempChanged, {cssclass: "jedit", style: "display: inline", select: true});
@@ -92,12 +93,12 @@ $(document).ready(function()
         if (lastLidOpen == -1) return;
         $(this).html("Toggling...");
         var enable = (lastLidOpen == 0) ? ",,1" : ",,0";
-        $.get("<%=build_url("admin/lm/set")%>", {ld: enable});
+        $.post("<%=build_url("admin/lm/set")%>", {ld: enable});
     });
     
     $("#alarmclear").click(function () {
         $(this).html("Silencing...");
-        $.get("<%=build_url("admin/lm/set")%>", {al: "0,0,0,0,0,0,0,0"});
+        $.post("<%=build_url("admin/lm/set")%>", {al: "0,0,0,0,0,0,0,0"});
     }).show();
         
 <% end %>
@@ -251,11 +252,11 @@ function togglePidInt()
   if ($("#pidint").is(":visible"))
     // Use a timeout on success to make sure the next (final) update
     // doesn't turn the display back on and leave it on
-    $.get("<%=build_url("admin/lm/set")%>", {tp: 0},
+    $.post("<%=build_url("admin/lm/set")%>", {tp: 0},
       function () { $("#pidint").delay(1000).fadeOut('fast'); }
     );
   else
-    $.get("<%=build_url("admin/lm/set")%>", {tp: 1});
+    $.post("<%=build_url("admin/lm/set")%>", {tp: 1});
 }
 
 function pidIntBar(target, val)
@@ -325,7 +326,7 @@ function legendClicked()
 {
     // The ID should be "pl?" so pull the json probe index off the end
     // and get the graphdata index
-    var idx = mapJson[parseInt(this.id.substring(2))];
+    var idx = mapJson[parseInt(this.id.substr(-1))];
     graphData[idx].lines.show = !graphData[idx].lines.show;
     storePrefGraphlines();
     updateGraph();
@@ -333,11 +334,20 @@ function legendClicked()
 
 function noisebtnClicked()
 {
-    var probe = $(this).data('adc');
-    $.get("<%=build_url("admin/lm/set")%>",
+    let probe = $(this).data('adc');
+    $.post("<%=build_url("admin/lm/set")%>",
       {tp: "," + probe },
       function () { if (probe == 255) $('#noisegraph').hide(); }
     );
+}
+
+function alarmBtnClicked()
+{
+    let probe = this.id.substr(-1);
+    let tempdiv = $('#temp' + probe);
+    // Only one alarm can be ringing so silence all if this probe shows alarm state
+    if (tempdiv.hasClass('alarmHigh') || tempdiv.hasClass('alarmLow'))
+        $.post("<%=build_url("admin/lm/set")%>", {al: "0,0,0,0,0,0,0,0"});
 }
 
 function refreshGraphData()
@@ -695,7 +705,7 @@ function tstatSuccess(csv)
 function nameChanged(value, settings)
 {
     var params = {}; params[this.id] = value;
-    $.get("<%=build_url("admin/lm/set")%>", params);
+    $.post("<%=build_url("admin/lm/set")%>", params);
     return value;
 }
 
@@ -703,7 +713,7 @@ function tempChanged(value, settings)
 {
     if (value.length > 0)
     {
-        $.get("<%=build_url("admin/lm/set")%>", {sp: value});
+        $.post("<%=build_url("admin/lm/set")%>", {sp: value});
         return value;
     }
     else return "err";
@@ -769,6 +779,75 @@ function updateLid(val)
         lid.html("Lid Open " + formatTimer(val, true));
     }
     lastLidOpen = val;
+}
+
+function updateAlarmsIcon(o, i)
+{
+    if (o.temps[i].a)
+    {
+        let alarmdiv = "#alarm" + i;
+        let lo = o.temps[i].a.l;
+        let hi = o.temps[i].a.h;
+
+        if (lo > 0 && hi > 0)
+            $(alarmdiv).css('background-position', '0px')
+              .attr('title', 'Alarms active:\n' + lo + ' low and ' + hi + ' high')
+              .show();
+        else if (lo > 0)
+            $(alarmdiv).css('background-position', '-16px')
+              .attr('title', 'Alarm active:\n' + lo + ' low')
+              .show();
+        else if (hi > 0)
+            $(alarmdiv).css('background-position', '-32px')
+              .attr('title', 'Alarm active:\n' + hi + ' high')
+              .show();
+        else
+            $(alarmdiv).hide();
+    }
+}
+
+function updateNoiseIcon(o, i)
+{
+    let noiseDiv = "#noise" + i;
+    if (o.adc && o.adc.length > 4)
+    {
+        let noise = o.adc[5-i];
+        if (noise < 2)
+            $(noiseDiv).hide();
+        else
+            $(noiseDiv).css('background-position', (noise < 5) ? "0px" : "-16px")
+                .attr('title', "Noise: " + noise.toString())
+                .show();
+    }
+}
+
+function updateRfIcon(o, i)
+{
+    let rfsDiv = "#rfs" + i;
+    if (o.temps[i].hasOwnProperty('rf'))
+    {
+        let rf = o.temps[i].rf;
+        let img, details;
+        if (rf == 0)
+        {
+            img = 0;
+            details = "offline";
+        }
+        else 
+        {
+            img = rf.s + 1;
+            details = "Signal " + rf.s + "/3";
+            if (rf.b > 0)
+                details += " Low Battery";
+        }
+
+        img = (img * -16) + "px";
+        $(rfsDiv).css('background-position', img)
+            .attr('title', details)
+            .show();
+    }
+    else
+        $(rfsDiv).hide();
 }
 
 function connectionSuccess(o)
@@ -841,45 +920,9 @@ function connectionSuccess(o)
         if (graphLoaded)
             addGraphPoint(graphData[dataIdx].data, o.time, val);
 
-        var rfsDiv = "#rfs" + i;
-        var noiseDiv = "#noise" + i;
-        if (typeof o.temps[i].rf !== "undefined")
-        {
-            var rf = o.temps[i].rf;
-            var img, detals;
-            if (rf == 0)
-            {
-                img = 0;
-                details = "offline";
-            }
-            else 
-            {
-                img = rf.s + 1;
-                details = "Signal " + rf.s + "/3";
-                if (rf.b > 0)
-                  details += " Low Battery";
-            }
-
-            img = (img * -16) + "px";
-            $(rfsDiv).css('background-position', img)
-                .attr('title', details)
-                .show();
-            $(noiseDiv).hide();
-        }
-        else
-        {
-            $(rfsDiv).hide();
-            if (o.adc && o.adc.length > 4)
-            {
-                var noise = o.adc[5-i];
-                if (noise < 2)
-                  $(noiseDiv).hide();
-                else
-                  $(noiseDiv).css('background-position', (noise < 5) ? "0px" : "16px")
-                      .attr('title', "Noise: " + noise.toString())
-                      .show();
-            }
-        }
+        updateAlarmsIcon(o, i);
+        updateNoiseIcon(o, i);
+        updateRfIcon(o, i);
     }
     if (o.ramp)
     {
@@ -970,8 +1013,7 @@ h2 { color: #bbb; }
 td.probe { width: 33%; position: relative; }
 .first.probe { border-right: 1px solid #235; }
 .last.probe { border-left: 1px solid #235; }
-.legbord { border: 1px solid #ccc; padding: 1px; display: inline-block; }
-.legfill { width: 14px; height: 14px; }
+.legfill { border: 1px solid #ccc; padding: 1px; display: inline-block; width: 16px; height: 16px; }
 .dph { color: #003; font-size: 10pt; text-align: right; position: absolute; right: 0; bottom: 0; }
 .pname { color: #003; font-size: 18pt; line-height: 16pt; display: inline-block; }
 .ptemp { font-size: 32pt; line-height: 26pt; color: #fff; }
@@ -992,10 +1034,11 @@ td.probe { width: 33%; position: relative; }
     position: fixed; z-index: 3; top: 100px; display: none;
     left: 50%; margin-left: -240px; }
 #alarmclear { display: none; position: absolute; bottom: 4px; right: 4px; color: #ccc; }
-.rfstatus { display: none; position: absolute; left: 0; bottom: 0;
-    width: 16px; height: 16px; background-image: url('<%=resource%>/rf.png'); }
-.noise { display: none; position: absolute; left: 0; bottom: 0;
-    width: 16px; height: 16px; background-image: url('<%=resource%>/noise.png'); }
+.probeicons { left: 0; bottom: 0; position: absolute; height: 16px; }
+.probeicon { display: none; float: left; width: 16px; height: 16px; margin-left: 2px; }
+.alarmact { background-image: url('<%=resource%>/alarms.png'); }
+.noise { background-image: url('<%=resource%>/noise.png'); }
+.rfstatus { background-image: url('<%=resource%>/rf.png'); }
 #pidint { width: 200px; background-color: #fcfcfc; border-radius: 5px; 
     border: 1px solid #333; position: absolute; font-size: 10pt;
     bottom: 0px; line-height: 12pt; padding: 3px; display: none; }
@@ -1098,8 +1141,11 @@ img.preload { display: none; }
             <div class="pilabel">dT</div>
             <div class="pival" id="pivdt">-&deg;</div>
           </div>
-          <div class="rfstatus" id="rfs0"></div>
-          <div class="noise" id="noise0" data-adc="5"></div>
+          <div class="probeicons">
+            <div class="probeicon alarmact" id="alarm0"></div>
+            <div class="probeicon noise" id="noise0" data-adc="5"></div>
+            <div class="probeicon rfstatus" id="rfs0"></div>
+          </div>
         </div>
 
         <div id="fancontainer">
@@ -1111,28 +1157,37 @@ img.preload { display: none; }
 
         <table id="probelist"><tr>
             <td class="probe first">
-                <div class="dph" id="dph1"></div>
-                <div class="rfstatus" id="rfs1"></div>
-                <div class="noise" id="noise1" data-adc="4"></div>
-                <div class="legbord"><div class="legfill pcolor1" id="pl1"></div></div>
+                <div class="probeicons">
+                  <div class="probeicon alarmact" id="alarm1"></div>
+                  <div class="probeicon noise" id="noise1" data-adc="4"></div>
+                  <div class="probeicon rfstatus" id="rfs1"></div>
+                </div>
+                <div class="legfill pcolor1" id="pl1"></div>
                 <div class="pname" id="pn1">-</div>
                 <div class="ptemp" id="temp1">-</div>
+                <div class="dph" id="dph1"></div>
             </td>
             <td class="probe">
-                <div class="dph" id="dph2"></div>
-                <div class="rfstatus" id="rfs2"></div>
-                <div class="noise" id="noise2" data-adc="3"></div>
-                <div class="legbord"><div class="legfill pcolor2" id="pl2"></div></div>
+                <div class="probeicons">
+                  <div class="probeicon alarmact" id="alarm2"></div>
+                  <div class="probeicon noise" id="noise2" data-adc="3"></div>
+                  <div class="probeicon rfstatus" id="rfs2"></div>
+                </div>
+                <div class="legfill pcolor2" id="pl2"></div>
                 <div class="pname" id="pn2">-</div>
                 <div class="ptemp" id="temp2">-</div>
+                <div class="dph" id="dph2"></div>
             </td>
             <td class="probe last">
-                <div class="dph" id="dph3"></div>
-                <div class="rfstatus" id="rfs3"></div>
-                <div class="noise" id="noise3" data-adc="2"></div>
-                <div class="legbord"><div class="legfill pcolor3" id="pl3"></div></div>
+                <div class="probeicons">
+                  <div class="probeicon alarmact" id="alarm3"></div>
+                  <div class="probeicon noise" id="noise3" data-adc="2"></div>
+                  <div class="probeicon rfstatus" id="rfs3"></div>
+                </div>
+                <div class="legfill pcolor3" id="pl3"></div>
                 <div class="pname" id="pn3">-</div>
                 <div class="ptemp" id="temp3">-</div>
+                <div class="dph" id="dph3"></div>
             </td>
         </tr></table>
       </div></div>
