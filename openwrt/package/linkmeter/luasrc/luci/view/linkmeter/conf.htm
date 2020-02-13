@@ -650,16 +650,16 @@ time they are restarted.</div>
     min <input type="text" maxlength="3" id="fmin" style="width: 2em;"/>% max
       <input type="text" maxlength="3" id="fmax" style="width: 2em;"/>% startup max
       <input type="text" maxlength="3" id="fsmax" style="width: 2em;"/>%
-    <label><input type="checkbox" id="oflag0"/> Invert output</label>
+    <label><input type="checkbox" id="oflag0"/> <abbr title="Decrease fan as output increases">Invert output</abbr></label>
   </div>
   <div class="cbi-value">
     Servo pulse duration
     <input type="hidden" id="smin"/>
-      <input type="text" maxlength="4" id="sminX" style="width: 3em;"/>us -
+      closed <input type="text" maxlength="4" id="sminX" style="width: 3em;"/>us,
     <input type="hidden" id="smax"/>
-      <input type="text" maxlength="4" id="smaxX" style="width: 3em;"/>us,
+      open <input type="text" maxlength="4" id="smaxX" style="width: 3em;"/>us,
     fully open at <input type="text" maxlength="3" id="sceil" style="width: 2em;"/>%
-    <label><input type="checkbox" id="oflag1"/> Invert output</label>
+    <label><input type="checkbox" id="oflag1"/> <abbr title="Close servo as output increases">Invert output</abbr></label>
   </div>
   <div class="cbi-value cbi-value-last">
     A/C input line noise filter
