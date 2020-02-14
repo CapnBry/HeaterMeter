@@ -1,0 +1,19 @@
+--- modules/luci-mod-admin-full/luasrc/view/admin_system/applyreboot.htm.orig	2020-02-14 09:58:40.742463469 -0500
++++ modules/luci-mod-admin-full/luasrc/view/admin_system/applyreboot.htm	2020-02-14 10:13:09.799659252 -0500
+@@ -12,13 +12,14 @@
+ 		<script type="text/javascript">//<![CDATA[
+ 			var interval = window.setInterval(function() {
+ 				var img = new Image();
++				let host = document.location.protocol + '//<%=addr or luci.http.getenv("SERVER_NAME") or luci.http.getenv("HTTP_HOST")%>';
+ 
+ 				img.onload = function() {
+ 					window.clearInterval(interval);
+-					location.href = ('https:' == document.location.protocol ? 'https://' : 'http://') + '<%=addr or luci.http.getenv("SERVER_NAME")%>/';
++					location.href = host;
+ 				};
+ 
+-				img.src = ('https:' == document.location.protocol ? 'https://' : 'http://') + '<%=addr or luci.http.getenv("SERVER_NAME")%><%=resource%>/icons/loading.gif?' + Math.random();
++				img.src = host + '<%=resource%>/icons/loading.gif?' + Math.random();
+ 			}, 5000);
+ 		//]]></script>
+ 	</head>
