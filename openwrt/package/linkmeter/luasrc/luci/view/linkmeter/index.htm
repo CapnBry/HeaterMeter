@@ -1089,6 +1089,10 @@ td.probe { width: 33%; position: relative; }
 img.preload { display: none; }
 #share { position: fixed; bottom: 0px; padding: 2px 16px; background: rgba(20, 20, 20, 0.2);
   border-radius: 4px 4px 0 0; }
+.botright { position: fixed; bottom: 0px; right: 0px; padding: 2px 16px; background: rgba(20, 20, 20, 0.2);
+  border-radius: 4px 4px 0 0; }
+.botright a { color: #66c; }
+.botright a:visited { color: #999; }
 .pcolor0 { background: #e73; }
 .pcolor1 { background: #6c3; }
 .pcolor2 { background: #297; }
@@ -1259,6 +1263,7 @@ img.preload { display: none; }
   <img src="<%=resource%>/chart_curve.png" alt="save_graph" title="Save graph image" onclick="downloadPng();">
   <a id="dlcsv" target="_blank" href=""><img src="<%=resource%>/table_go.png" alt="save_csv" title="Save CSV data"></a>
 </div>
+<div class="botright"><a href="<%= context.authuser == "root" and build_url("admin/lm/light") or build_url("lm/light")%>">Lo-fi Home</a></div>
 </body>
 
 </html>
