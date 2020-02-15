@@ -67,6 +67,8 @@ var graphData =  [
 $(document).ready(function()
 {
     loadPrefs();
+    copyUserColors();
+
     graphOpts.legend.container = $("#graph_legend");
     $("#graph_overview").bind("plotselected", overviewSelected);
     $("#graph_overview").bind("plotunselected", overviewUnselected);
@@ -78,8 +80,6 @@ $(document).ready(function()
     $("div.legfill").click(legendClicked);
     $("#fancontainer").click(togglePidInt);
     $(document).keydown(keyPressed);
-
-    copyUserColors();
 
 <% if context.authuser == "root" then %>
     $(".noisebtn").click(noisebtnClicked);
@@ -1117,6 +1117,8 @@ img.preload { display: none; }
       <div onclick="downloadPng();">
         <h2 style="margin-bottom: 0;">Archive <%=fshort%></h2>
         <img src="<%=resource%>/picture_save.png" alt="save" title="Save graph image"> Save graph image
+        <!-- Need some blank but visible elements to be able to pull their color css -->
+        <div class="pcolor0"></div><div class="pcolor1"></div><div class="pcolor2"></div><div class="pcolor3"></div>
       </div>
 <% else %>
       </form>
@@ -1195,7 +1197,6 @@ img.preload { display: none; }
             </td>
         </tr></table>
       </div></div>
-<% end %>
       <div id="noisegraph">
         <div id="noisegraph_g"></div>
 <% if context.authuser == "root" then %>
@@ -1208,6 +1209,7 @@ img.preload { display: none; }
         <div class="noisebtn first last" style="margin-top: 4px;" id="noiseoff" data-adc="255">Disable</div>
 <% end %>
       </div>
+<% end %>
       <div style="position: relative;">
         <div id="graphcontainer">
           <div id="graph"></div>
