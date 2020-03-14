@@ -32,16 +32,16 @@ wifi_config() {
   done < "$INFILE"
 
   [ -n "$wifi_encryption" ] && wifi_encryption="-e $wifi_encryption"
-  [ -n "$wifi_password" ] && wifi_password="-p $wifi_password"
+  [ -n "$wifi_password" ] && wifi_password="-p '$wifi_password'"
   [ -n "$wifi_band" ] && wifi_band="-b $wifi_band"
 
   RESTART_NET=0
   if [ "$wifi_mode" == "ap" -a -n "$wifi_ssid" ] ; then
     [ -n "$wifi_channel" ] && wifi_channel="-c $wifi_channel"
-    wifi-ap -s "$wifi_ssid" $wifi_encryption $wifi_password $wifi_band $wifi_channel
+    eval "wifi-ap -s '$wifi_ssid' $wifi_encryption $wifi_password $wifi_band $wifi_channel"
     RESTART_NET=1
   elif [ -n "$wifi_ssid" ] ; then
-    wifi-client -s "$wifi_ssid" $wifi_encryption $wifi_password $wifi_band
+    eval "wifi-client -s '$wifi_ssid' $wifi_encryption $wifi_password $wifi_band"
     RESTART_NET=1
   fi
 
