@@ -69,5 +69,9 @@ if [ "$TARGET" = "BCM2708" ] ; then
   patch -N -p1 -d $WRT_PATH < patches/230-e2fsprogs-compat.patch
   mkdir $WRT_PATH/package/network/services/uhttpd/patches && \
     cp patches/910-uhttpd-read.patch $WRT_PATH/package/network/services/uhttpd/patches
+
+# Get 43430-stdio firmware from base out of the way since we are using firmware from firmware-brcmfmac43430 package
+  FIRMWARE_PATH=$WRT_PATH/target/linux/brcm2708/base-files/lib/firmware/brcm/
+  mv $FIRMWARE_PATH/brcmfmac43430-sdio.txt $FIRMWARE_PATH/brcmfmac43430-sdio.txt-base
 fi
 
