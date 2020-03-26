@@ -4,7 +4,7 @@ REPO_PATH=$(pwd)
 TARGET="$1"
 WRT_PATH="$2"
 
-if [ -z "$WRT_PATH" ] ; then
+usage () {
   echo "Usage: ./install.sh <target> <wrt path>"
   echo "    Target: BCM47XX or BCM2708 (case sensitive)"
   echo "BCM47XX - svn://svn.openwrt.org/openwrt/trunk@29665"
@@ -12,6 +12,10 @@ if [ -z "$WRT_PATH" ] ; then
   echo ""
   echo "Be sure both your WRT_PATH and WRT_PATH/feeds/luci are 'git reset --hard HEAD'"
   exit 1
+}
+
+if [ -z "$WRT_PATH" ] ; then
+  usage
 fi
 
 if [ "$TARGET" = "BCM47XX" ] ; then
@@ -20,9 +24,7 @@ src-svn packages svn://svn.openwrt.org/openwrt/packages@29665
 src-svn luci http://svn.luci.subsignal.org/luci/trunk/contrib/package@8686
 src-link linkmeter $REPO_PATH/package
 EOFEEDS
-fi
-
-if [ "$TARGET" = "BCM2708" ] ; then
+elif [ "$TARGET" = "BCM2708" ] ; then
   cat << EOFEEDS > $WRT_PATH/feeds.conf
 src-git packages https://git.lede-project.org/feed/packages.git^9f6eee3960125e75b9d09e4ea80dbf7a9de2b455
 src-git luci https://git.lede-project.org/project/luci.git^5e2800232efad8c4edd3d284b2a048319fe83bd8
@@ -30,6 +32,8 @@ src-git luci https://git.lede-project.org/project/luci.git^5e2800232efad8c4edd3d
 #src-git telephony https://git.lede-project.org/feed/telephony.git
 src-link linkmeter $REPO_PATH/package
 EOFEEDS
+else
+  usage
 fi
 
 $WRT_PATH/scripts/feeds update
@@ -62,8 +66,12 @@ if [ "$TARGET" = "BCM2708" ] ; then
   patch -N -p1 -d $WRT_PATH < patches/0720-bcm2708-firmware-latest.patch
   patch -N -p1 -d $WRT_PATH < patches/0740-firmware-brcm43455.patch   
   patch -N -p1 -d $WRT_PATH < patches/229-netifd-add-hostname.patch
-  patch -N -p1 -d $WRT_PATH < patches/900-dnsmasq-2-78.patch
+  patch -N -p1 -d $WRT_PATH < patches/230-e2fsprogs-compat.patch
   mkdir $WRT_PATH/package/network/services/uhttpd/patches && \
     cp patches/910-uhttpd-read.patch $WRT_PATH/package/network/services/uhttpd/patches
+
+# Get 43430-stdio firmware from base out of the way since we are using firmware from firmware-brcmfmac43430 package
+  FIRMWARE_PATH=$WRT_PATH/target/linux/brcm2708/base-files/lib/firmware/brcm/
+  mv $FIRMWARE_PATH/brcmfmac43430-sdio.txt $FIRMWARE_PATH/brcmfmac43430-sdio.txt-base
 fi
 
