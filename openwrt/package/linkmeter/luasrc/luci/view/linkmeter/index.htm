@@ -180,12 +180,19 @@ function loadPrefs()
     let graphlines = localStorage["prefs.graphlines"] || "0345678";
     for (i=0; i<graphData.length; ++i)
       graphData[i].lines.show = graphlines.indexOf(i) != -1;
-    // The first graphline is which output is selected
-    let output = parseInt(graphlines.substr(0, 1))
-    if (output < 3)
-      $("#outputselect").val(output+1);
+
+    // If fan and servo enabled, that's outputselect 4
+    if (graphlines.substr(0, 2) == "12")
+      $("#outputselect").val(4);
     else
-      $("#outputselect").val(0);
+    {
+      // The first graphline is which output is selected
+      let output = parseInt(graphlines.substr(0, 1))
+      if (output < 3)
+        $("#outputselect").val(output+1);
+      else
+        $("#outputselect").val(0);
+    }
 
     // Remove the old pref.graphlines from before output details. Now is prefs.graphlines
     if (localStorage["pref.graphlines"])
@@ -396,7 +403,14 @@ function outputSelectChanged()
     graphData[2].lines.show = false;
     graphData[3].lines.show = false;
 
-    if (val > 0)
+    // special case for 4 = show Fan(1) and Servo(2)
+    if (val == 4)
+    {
+        graphData[1].lines.show = true;
+        graphData[2].lines.show = true;
+        graphData[3].lines.show = true;
+    }
+    else if (val > 0)
     {
         graphData[val-1].lines.show = true;
         graphData[3].lines.show = true;
@@ -1243,6 +1257,7 @@ img.preload { display: none; }
         <option value="1" selected>Show output</option>
         <option value="2">Show fan</option>
         <option value="3">Show servo</option>
+        <option value="4">Show fan/servo</option>
     </select>
     <select id="rangeselect">
         <option value="" selected>Auto scale</option>
