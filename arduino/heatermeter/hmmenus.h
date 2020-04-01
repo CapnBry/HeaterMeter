@@ -35,6 +35,17 @@ enum HmMenuStates {
   ST_MAXFANSPEED,
   ST_TOAST,
   ST_ENG_PROBEDIAG,
+  ST_NETINFO,
+};
+
+enum class HmMenuInteractiveTopic : unsigned char {
+  NETINFO = 0
+};
+
+enum class HmMenuSystemHostState : unsigned char {
+  OFFLINE, // No host detected
+  ONLINE,  // Host detected but not active
+  ACTIVE   // Host controlling display
 };
 
 class HmMenuSystem : public MenuSystem
@@ -45,16 +56,32 @@ public:
     {};
 
   void init(void);
+  void doWork(void) override;
+
   void displayToast(char *msg);
-  unsigned char *getToastLine0(void) { return &_toastMsg[0]; }
-  unsigned char *getToastLine1(void) { return &_toastMsg[sizeof(_toastMsg)/2]; }
+  void displayHostMsg(void);
+  unsigned char *getHostMsgLine0(void) { return &_hostMsgBuf[0]; }
+  unsigned char *getHostMsgLine1(void) { return &_hostMsgBuf[sizeof(_hostMsgBuf)/2]; }
   unsigned char ProbeNum;
 
   unsigned char getHomeDisplayMode(void) const { return _homeDisplayMode; }
   void setHomeDisplayMode(unsigned char v);
+
+  // LCD Interactive Menu Functions - Host-Driven
+  unsigned int getHostOpaque(void) const { return _hostOpaque; }
+  void setHostOpaque(unsigned int v) { _hostOpaque = v;  }
+  void sendHostInteract(HmMenuInteractiveTopic topic, button_t button);
+  void hostMsgReceived(char* msg);
+  void hostSplitLines(char* msg);
+  HmMenuSystemHostState getHostState(void) const { return _hostState; }
+  void setHostStateOnline(void) { if (_hostState == HmMenuSystemHostState::OFFLINE) _hostState = HmMenuSystemHostState::ONLINE; }
+  //void setHostState(HmMenuSystemHostState state) { _hostState = state; }
 private:
-  unsigned char _toastMsg[33];
   unsigned char _homeDisplayMode;
+  unsigned char _hostMsgBuf[33];
+  unsigned int _hostOpaque;
+  HmMenuSystemHostState _hostState;
+  unsigned long _hostInteractiveSentTime;
 };
 
 extern HmMenuSystem Menus;

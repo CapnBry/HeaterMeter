@@ -741,7 +741,13 @@ static void setTempParam(unsigned char idx, int val)
 static void handleCommandUrl(char *URL)
 {
   unsigned char urlLen = strlen(URL);
-  if (strncmp_P(URL, PSTR("set?sp="), 7) == 0) 
+
+  // Any complete line from the host turns us on(line)
+  // Set this first so the code below knows the host is online
+  // BRY: Disabled until I rewrite the host side
+  //Menus.setHostStateOnline();
+
+  if (strncmp_P(URL, PSTR("set?sp="), 7) == 0)
   {
     // store the units first, in case of 'O' disabling the PID output
     storePidUnits(URL[urlLen - 1]);
@@ -796,6 +802,10 @@ static void handleCommandUrl(char *URL)
   else if (strncmp_P(URL, PSTR("set?tp="), 7) == 0)
   {
     csvParseI(URL + 7, setTempParam);
+  }
+  else if (strncmp_P(URL, PSTR("set?hi="), 7) == 0)
+  {
+    Menus.hostMsgReceived(URL + 7);
   }
   else if (strncmp_P(URL, PSTR("config"), 6) == 0)
   {

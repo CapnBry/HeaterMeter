@@ -79,6 +79,31 @@ const char BIG_CHAR_PARTS[] PROGMEM = {
   0b11111,
 };
 
+const char BIG_CHAR_BANK2[] PROGMEM = {
+  // Up Arrow
+  0b00000,
+  0b00100,
+  0b01110,
+  0b11111,
+  0b00100,
+  0b00100,
+  0b00100,
+  0b00000,
+
+  // Down Arrow
+  0b00000,
+  0b00100,
+  0b00100,
+  0b00100,
+  0b11111,
+  0b01110,
+  0b00100,
+  0b00000,
+};
+
+#define BIG_CHAR_BANK2_LEN (sizeof(BIG_CHAR_BANK2)/8)
+
+// Bignum chars (Bank 1)
 #define C_BLK  32 
 #define C_LT   0
 #define C_CT   1
@@ -88,6 +113,10 @@ const char BIG_CHAR_PARTS[] PROGMEM = {
 #define C_RB   5
 #define C_UMB  6
 #define C_BMB  7
+
+// Bank 2
+#define C_UPARROW 0
+#define C_DNARROW 1
 
 #define C_WIDTH 3
 

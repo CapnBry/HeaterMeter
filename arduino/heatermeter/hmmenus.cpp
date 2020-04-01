@@ -18,6 +18,7 @@ static state_t menuAlarmTriggered(button_t button);
 static state_t menuLcdBacklight(button_t button);
 static state_t menuToast(button_t button);
 static state_t menuProbeDiag(button_t button);
+static state_t menuNetInfo(button_t button);
 
 static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_HOME_FOOD1, menuHome, 5, BUTTON_LEFT },
@@ -38,6 +39,7 @@ static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_LCDBACKLIGHT, menuLcdBacklight, 10},
   { ST_TOAST, menuToast, 20 },
   { ST_ENG_PROBEDIAG, menuProbeDiag, 0, BUTTON_LEFT },
+  { ST_NETINFO, menuNetInfo, 10 },
   { 0, 0 },
 };
 
@@ -103,7 +105,10 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   { ST_LIDOPEN_OFF, BUTTON_RIGHT, ST_LIDOPEN_DUR },
 
   { ST_LIDOPEN_DUR, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  { ST_LIDOPEN_DUR, BUTTON_RIGHT, ST_RESETCONFIG },
+  { ST_LIDOPEN_DUR, BUTTON_RIGHT, ST_NETINFO },
+
+  { ST_NETINFO, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_NETINFO, BUTTON_RIGHT, ST_RESETCONFIG },
 
   { ST_RESETCONFIG, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_RESETCONFIG, BUTTON_RIGHT, ST_SETPOINT },
@@ -137,6 +142,23 @@ static button_t readButton(void)
     return BUTTON_RIGHT;  
     
   return BUTTON_NONE;
+}
+
+static void lcdDefineChars(unsigned char bank)
+{
+  static unsigned char _currentBank = 0;
+  if (_currentBank == bank)
+    return;
+
+  // On first upload, send all 8 characters. After that, just swap up to BANK2_LEN
+  unsigned char max = (_currentBank == 0) ? 8 : BIG_CHAR_BANK2_LEN;
+  for (unsigned char i = 0; i < max; ++i)
+  {
+    const char* data = (bank == 1 || i >= BIG_CHAR_BANK2_LEN) ? BIG_CHAR_PARTS : BIG_CHAR_BANK2;
+    //const char* data = (bank == 1) ? BIG_CHAR_PARTS : BIG_CHAR_BANK2;
+    lcd.createChar_P(i, data + (i * 8));
+  }
+  _currentBank = bank;
 }
 
 static void lcdPrintBigNum(float val)
@@ -189,12 +211,6 @@ static void lcdPrintBigNum(float val)
   } while (x != 0);
 }
 
-static void lcdDefineChars(void)
-{
-  for (unsigned char i = 0; i<8; ++i)
-    lcd.createChar_P(i, BIG_CHAR_PARTS + (i * 8));
-}
-
 void lcdprint_P(const char *p, const boolean doClear)
 {
   if (doClear)
@@ -232,10 +248,13 @@ static void updateHome(void)
       TempProbe *probe = pid.Probes[mode];
       if (probe->hasTemperature())
       {
+        lcdDefineChars(1);
         lcdPrintBigNum(probe->Temperature);
         return;
       }
     }
+    else
+      lcdDefineChars(2);
 
     /* Default Pit / Fan Speed first line */
     int pitTemp;
@@ -256,8 +275,8 @@ static void updateHome(void)
       char c1, c2;
       if (pid.isManualOutputMode())
       {
-        c1 = '^';  // LCD_ARROWUP
-        c2 = '^';  // LCD_ARROWDN
+        c1 = C_UPARROW; // '^';
+        c2 = C_DNARROW; // '^';
       }
       else
       {
@@ -268,7 +287,7 @@ static void updateHome(void)
         pitTemp, pid.getUnits(), c1, pid.getPidOutput(), c2);
     }
 
-    lcd.print(buffer);
+    lcd.write(buffer, sizeof(buffer));
     // Display mode 0xff is 2-line, which only has space for 1 non-pit value
     if (Menus.getHomeDisplayMode() == 0xff)
       probeIdxLow = probeIdxHigh = state - ST_HOME_FOOD1 + TEMP_FOOD1;
@@ -479,6 +498,7 @@ static state_t menuSetpoint(button_t button)
 {
   if (button == BUTTON_ENTER)
   {
+    lcdDefineChars(2); // force BANK2 if coming from bignums
     lcdprint_P(PSTR("Set temperature:"), true);
     editInt = pid.getSetPoint();
   }
@@ -655,10 +675,7 @@ static state_t menuToast(button_t button)
 {
   if (button == BUTTON_ENTER)
   {
-    lcd.home();
-    lcd.write(Menus.getToastLine0(), 16);
-    lcd.setCursor(0, 1);
-    lcd.write(Menus.getToastLine1(), 16);
+    Menus.displayHostMsg();
     return ST_AUTO;
   }
   // Timeout or button press returns you to the previous menu
@@ -751,28 +768,49 @@ static state_t menuProbeDiag(button_t button)
   return ST_AUTO;
 }
 
+static state_t menuNetInfo(button_t button)
+{
+  if (Menus.getHostState() == HmMenuSystemHostState::OFFLINE)
+    return ST_RESETCONFIG;
+
+  if (button != BUTTON_RIGHT)
+    Menus.sendHostInteract(HmMenuInteractiveTopic::NETINFO, button);
+
+  return ST_AUTO;
+}
+
+
 void HmMenuSystem::displayToast(char *msg)
 {
-  /* This function attempts to clumsily split msg into two lines for display 
-     and pads the extra space characters with space. If there is no comma in
-     msg, then just the first line is written */
-  unsigned char dst = 0;
-  while (*msg && dst < sizeof(_toastMsg))
-  {
-    if (*msg != ',')
-      _toastMsg[dst++] = *msg;
-    else
-      while (dst < (sizeof(_toastMsg)/2))
-        _toastMsg[dst++] = ' ';
-    ++msg;
-  }
-  while (dst < sizeof(_toastMsg))
-     _toastMsg[dst++] = ' ';
-
+  hostSplitLines(msg);
   if (getState() != ST_TOAST)
     setState(ST_TOAST);
   else
     menuToast(BUTTON_ENTER); // If already in a toast force a refresh
+}
+
+void HmMenuSystem::hostSplitLines(char* msg)
+{
+  /* This function attempts to clumsily split msg into two lines for display
+     and pads the extra space characters with space. If there is no comma in
+     msg, then just the first line is written */
+  unsigned char dst = 0;
+  char c;
+  while ((c = *msg) && dst < sizeof(_hostMsgBuf))
+  {
+    // Convert chr(1)-chr(8) to chr(0)-chr(7)
+    // which is easier than making the entire path null-safe
+    if (c < 9)
+      --c;
+    if (c != ',')
+      _hostMsgBuf[dst++] = c;
+    else
+      while (dst < (sizeof(_hostMsgBuf) / 2))
+        _hostMsgBuf[dst++] = ' ';
+    ++msg;
+  }
+  while (dst < sizeof(_hostMsgBuf))
+    _hostMsgBuf[dst++] = ' ';
 }
 
 void HmMenuSystem::setHomeDisplayMode(unsigned char v)
@@ -790,7 +828,79 @@ void HmMenuSystem::setHomeDisplayMode(unsigned char v)
 
 void HmMenuSystem::init(void)
 {
-  lcdDefineChars();
+  lcdDefineChars(2);
+}
+
+void HmMenuSystem::doWork(void)
+{
+  const unsigned int HOSTINTERACTIVE_WAIT = 100U;
+  const unsigned int HOSTINTERACTIVE_TIMEOUT = 800U;
+  if (getHostState() == HmMenuSystemHostState::ACTIVE)
+  {
+    unsigned int duration = millis() - _hostInteractiveSentTime;
+    // If past timeout, assume host is now offline so the menu system can adapt
+    // and switch to another menu
+    if (duration > HOSTINTERACTIVE_TIMEOUT)
+    {
+      _hostState = HmMenuSystemHostState::OFFLINE;
+      lcdprint_P(PSTR("Offline"), true);
+      // TODO: How to refresh current menu handler?
+    }
+    // If the host is slow to respond, display a wait message.
+    else if (duration > HOSTINTERACTIVE_WAIT)
+    {
+      lcdprint_P(PSTR("Waiting..."), true);
+    }
+  }
+  MenuSystem::doWork();
+}
+
+void HmMenuSystem::sendHostInteract(HmMenuInteractiveTopic topic, button_t button)
+{
+  if (button == BUTTON_ENTER)
+    setHostOpaque(0);
+
+  print_P(PSTR("HMHI" CSV_DELIMITER));
+  SerialX.print(_hostOpaque, DEC);
+  Serial_csv();
+  SerialX.print(static_cast<unsigned char>(topic), DEC);
+  Serial_csv();
+  SerialX.print(button, DEC);
+  Serial_nl();
+
+  if (button == BUTTON_LEAVE)
+    _hostState = HmMenuSystemHostState::ONLINE;
+  else
+  {
+    _hostState = HmMenuSystemHostState::ACTIVE;
+    _hostInteractiveSentTime = millis();
+  }
+}
+
+/* Display the message in hostMsgBuf on the LCD, overwriting everything */
+void HmMenuSystem::displayHostMsg(void)
+{
+  lcd.home();
+  lcd.write(Menus.getHostMsgLine0(), 16);
+  lcd.setCursor(0, 1);
+  lcd.write(Menus.getHostMsgLine1(), 16);
+}
+
+void HmMenuSystem::hostMsgReceived(char* msg)
+{
+  /* msg: HostOpaque[,MsgLine1][,MsgLine2] */
+  // Do not display if have already switched menus
+  if (getHostState() != HmMenuSystemHostState::ACTIVE)
+    return;
+  _hostState = HmMenuSystemHostState::ONLINE;
+
+  setHostOpaque(atoi(msg));
+  while (*msg && *msg != ',')
+    ++msg;
+  if (*msg)
+    ++msg;
+  hostSplitLines(msg);
+  displayHostMsg();
 }
 
 HmMenuSystem Menus(MENU_DEFINITIONS, MENU_TRANSITIONS, &readButton);

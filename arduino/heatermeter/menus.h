@@ -50,7 +50,7 @@ public:
     const buttonread_t reader);
 
   // Call in loop() to handle buttons
-  void doWork(void);
+  virtual void doWork(void);
   
   void setState(state_t state);
   state_t getState(void) const { return m_state; }
