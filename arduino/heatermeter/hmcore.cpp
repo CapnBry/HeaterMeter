@@ -1128,7 +1128,7 @@ void hmcoreSetup(void)
 #endif
 
   Menus.init();
-  Menus.setState(ST_HOME_NOPROBES);
+  Menus.setState(ST_BOOT);
 }
 
 void hmcoreLoop(void)

@@ -36,6 +36,7 @@ enum HmMenuStates {
   ST_TOAST,
   ST_ENG_PROBEDIAG,
   ST_NETINFO,
+  ST_BOOT,
 };
 
 enum class HmMenuInteractiveTopic : unsigned char {

@@ -19,6 +19,7 @@ static state_t menuLcdBacklight(button_t button);
 static state_t menuToast(button_t button);
 static state_t menuProbeDiag(button_t button);
 static state_t menuNetInfo(button_t button);
+static state_t menuBoot(button_t button);
 
 static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_HOME_FOOD1, menuHome, 5, BUTTON_LEFT },
@@ -40,10 +41,13 @@ static const menu_definition_t MENU_DEFINITIONS[] PROGMEM = {
   { ST_TOAST, menuToast, 20 },
   { ST_ENG_PROBEDIAG, menuProbeDiag, 0, BUTTON_LEFT },
   { ST_NETINFO, menuNetInfo, 10 },
+  { ST_BOOT, menuBoot, 1 },
   { 0, 0 },
 };
 
 const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
+  { ST_BOOT, BUTTON_ANY | BUTTON_TIMEOUT, ST_HOME_NOPROBES },
+
   { ST_HOME_FOOD1, BUTTON_DOWN | BUTTON_TIMEOUT, ST_HOME_FOOD2 },
   { ST_HOME_FOOD1, BUTTON_RIGHT,   ST_SETPOINT },
   { ST_HOME_FOOD1, BUTTON_UP,      ST_HOME_FOOD3 },
@@ -779,6 +783,17 @@ static state_t menuNetInfo(button_t button)
   return ST_AUTO;
 }
 
+static state_t menuBoot(button_t button)
+{
+  if (button == BUTTON_ENTER)
+  {
+    lcdprint_P(PSTR("> HeaterMeter <"), true);
+    lcd.setCursor(16 - 1 - strlen(HM_VERSION), 1);
+    lcdprint_P(PSTR(HM_VERSION), false);
+    lcd.write(HM_BOARD_REV);
+  }
+  return ST_AUTO;
+}
 
 void HmMenuSystem::displayToast(char *msg)
 {
@@ -902,6 +917,7 @@ void HmMenuSystem::hostMsgReceived(char* msg)
   hostSplitLines(msg);
   displayHostMsg();
 }
+
 
 HmMenuSystem Menus(MENU_DEFINITIONS, MENU_TRANSITIONS, &readButton);
 
