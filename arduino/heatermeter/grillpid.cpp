@@ -17,7 +17,7 @@ extern GrillPid pid;
 // For this calculation to work, ccpm()/8 must return a round number
 #define uSecToTicks(x) ((unsigned int)(clockCyclesPerMicrosecond() / 8) * x)
 
-// LERP percentage o into the unsigned range [A,B]. B - A must be < 655
+// LERP percentage o into the range [A,B]. B - A must be < 327
 #define mappct(o, a, b)  ((((int)b - (int)a) * (int)o / 100) + (int)a)
 
 #define DIFFMAX(x,y,d) ((x - y + d) <= (d*2U))
