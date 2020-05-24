@@ -36,9 +36,9 @@ function action_conf()
 end
 
 function action_hist()
-  local http = require "luci.http"
-  local rrd = require "rrd"
-  local uci = luci.model.uci.cursor()
+  local http = require("luci.http")
+  local rrd = require("rrd")
+  local uci = require("uci"):cursor()
 
   local RRD_FILE = http.formvalue("rrd") or uci:get("linkmeter", "daemon", "rrd_file")
   local nancnt = tonumber(http.formvalue("nancnt"))
@@ -99,8 +99,10 @@ function action_hist()
   else
     http.prepare_content("text/plain")
   end
+  if uci:get("linkmeter", "api", "allowcors") == "1" then
+    http.header("Access-Control-Allow-Origin", "*")
+  end
   http.header("Cache-Control", "max-age="..step)
-  http.header("Access-Control-Allow-Origin", "*")
 
   if http.formvalue("hdr") == "1" then
     http.write("time,setpoint,probe0,probe1,probe2,probe3,output\n")
@@ -121,9 +123,13 @@ function action_hist()
 end
 
 function action_stream()
-  local http = require "luci.http"
+  local http = require("luci.http")
+  local uci = require("uci"):cursor()
   http.prepare_content("text/event-stream")
-  require "lmclient"
+  if uci:get("linkmeter", "api", "allowcors") == "1" then
+    http.header("Access-Control-Allow-Origin", "*")
+  end
+  require("lmclient")
   LmClient:stream("$LMSS", function (o)
     http.write(o)
     collectgarbage("collect")
