@@ -40,6 +40,7 @@ flat_hole_d = (oa_w - center_w) / 4 - 0.5;
 e=0.01;
 
 do_render();
+//fit_test(true);
 
 module do_render() {
   if (count == 0)
@@ -91,6 +92,14 @@ module rextrude_180(diameter, h) {
     rotate_extrude()
       children();
   }
+}
+
+module fit_test(is_end) {
+  if (is_end)
+    mirror([0,1,0]) translate([0,-20,0]) scale([10,10,10]) lip_poly_stack_end();
+  else
+    translate([0,0,0]) scale([10,10,10]) lip_poly_stack(height);
+  translate([0,-96.5,0]) scale([10,10,10]) lip_poly_stack(height);
 }
 
 module half(is_end) {
@@ -223,13 +232,14 @@ module lip_poly_stack(interior_h) {
 module lip_poly_stack_end() {
   t_sock = wall;
   stub = wall_t - 1.8;
+  extra_tight = 0.1; // extend more under the snap lip since there is only one point of contact for this piece
 
   polygon([
     [0, 0], [t_sock, 0], 
     // these points define the height, should be 1+0.8+0.8=2.6
     // but cut down to wall_t to be flush with flat(), this means wall_t
     // needs to be at least 1.8 to form a proper-sided socket
-    [t_sock, wall_t], [0.5, wall_t], [0, wall_t-0.5], [0, wall_t-1],
-    [0.8, wall_t-1-0.8], [0.8-stub, wall_t-1-0.8-stub]
+    [t_sock, wall_t], [0.5-extra_tight, wall_t], [-extra_tight, wall_t-0.5], [-extra_tight, wall_t-1],
+    [0.8-extra_tight, wall_t-1-0.8], [0.8-extra_tight-stub, wall_t-1-0.8-stub]
   ]);
 }
