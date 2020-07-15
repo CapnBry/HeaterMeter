@@ -4,6 +4,7 @@
 #include "strings.h"
 #include "floatprint.h"
 #include "bigchars.h"
+#include "tone_4khz.h"
 
 static state_t menuHome(button_t button);
 static state_t menuSetpoint(button_t button);
@@ -768,6 +769,10 @@ static state_t menuProbeDiag(button_t button)
     else
       --Menus.ProbeNum;
   }
+
+  // When entering the extra non-probe display, beep to test buzzer
+  if (Menus.ProbeNum == TEMP_COUNT && (button & (BUTTON_LEFT | BUTTON_RIGHT)))
+    tone4khz_begin(200);
 
   return ST_AUTO;
 }

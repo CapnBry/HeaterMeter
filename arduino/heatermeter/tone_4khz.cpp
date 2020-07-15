@@ -42,7 +42,8 @@ void tone4khz_end(void)
   digitalWriteFast(PIN_ALARM, LOW);
 }
 
-void tone4khz_begin(unsigned char pin, unsigned char dur)
+__attribute__((noinline))
+  void tone4khz_begin(unsigned char dur)
 {
   // Stop the tone if it is running
   tone4khz_end();

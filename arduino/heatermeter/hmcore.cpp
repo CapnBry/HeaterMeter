@@ -881,7 +881,7 @@ static void tone_doWork(void)
     if (tone_idx % 2 == 0)
     {
       dur = pgm_read_byte(&tone_durs[tone_idx]) * 10;
-      tone4khz_begin(PIN_ALARM, dur);
+      tone4khz_begin(dur);
       lcd.setBacklight(0, false);
     }
     else
