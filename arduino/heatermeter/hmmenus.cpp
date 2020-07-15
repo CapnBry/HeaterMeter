@@ -729,7 +729,7 @@ static void updateProbeDiag(void)
   }
   else
   {
-    // BRY: This section of code is 222+ bytes so maybe remove it?
+    // SIZE: This section of code is 222+ bytes so maybe remove it?
     // Fan000=000V 00Nz - Blower Feedback ADC (8bit), Noise
     unsigned char adc = analogReadOver(APIN_FFEEDBACK, 8);
     snprintf_P(editString, sizeof(editString), PSTR("Fan%03u=%03uV %02uNz"),

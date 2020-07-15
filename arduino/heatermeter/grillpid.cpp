@@ -213,7 +213,8 @@ static void adcDump(void)
       return;
     adcState.dumpPeriod = 0;
     SerialX.print("HMLG,NOISE ");
-    unsigned char top = adcState.top; //adcState.noisePin == ADC_INTERLEAVE_HIGHFREQ ? 4 : adcState.top;
+    // SIZE: Just using adcState.top saves 14 bytes
+    unsigned char top = adcState.noisePin == ADC_INTERLEAVE_HIGHFREQ ? 4 : adcState.top;
     // disable ADC interrupt
     ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0); 
     for (unsigned char i=0; i<top; ++i)
