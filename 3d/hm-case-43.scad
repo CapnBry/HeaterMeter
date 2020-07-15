@@ -97,10 +97,7 @@ module phole() {
 }
 
 module screwhole() {
-  translate([0,0,-e]) cylinder(3.5, d=6, $fn=18);
-  translate([0,0,3+0.4]) cylinder(h_b-3.5-0.4+wall_t, d=3.4, $fn=18);
-  translate([0.0,0,h_b+wall_t-lcd_mount_t/2-e])
-    cylinder(lcd_mount_t/2+e, d=(2.9*2)/sin(60), $fn=6);
+  rotate(90) translate([0,0,-e]) cylinder(3.5, d=6, $fn=18);
 }
 
 module pic_ex_cube(interior) {
@@ -182,9 +179,11 @@ module nuttrap() {
     translate([-5.5/2-ww_w, -nut_ingress/2-d_off-e, 0])
       cube_fillet([5.5+2*ww_w, nut_ingress+d_off+ww_d, 6], vertical=[3.4,3.4], $fn=20);
     // socket cap
-    translate([0,0,-e]) cylinder(3.5, d=6, $fn=18);
+    rotate(90) translate([0,0,-e]) cylinder(3.5, d=6, $fn=18);
     // screw shaft
-    translate([0,0,3.5+0.3]) cylinder(oa_h-3, d=3.4, $fn=18);
+    translate([0,0,3.5+0.3]) cylinder(oa_h-3, d=3.4, $fn=16);
+    // rectangular hole to remove some of the solid layer material
+    translate([-5.7/2, -(6*PI/18)/2, 0]) cube([5.7, 6*PI/18, 3.5+0.3+e]);
   }
   
   // top half M3 nut trap
@@ -318,6 +317,12 @@ module hm_base() {
   // TC +/-
   if (Control_Probe == "Thermocouple")
     translate([w+wall*2-e,wall+d_off+10,wall_t+19]) tc_plusminus();
+
+  // Eliminate the chamfer where the screws are
+  translate([wall+inch(0.825)+0.5,wall+d_off+inch(0.1),0]) {
+    cylinder(body_chamfer_height_b, d=6+2*wall, $fn=24);
+    translate([inch(2.0),0,0]) cylinder(body_chamfer_height_b, d=6+2*wall, $fn=24);
+  }
 }
 
 module hm43() {
@@ -491,10 +496,15 @@ module hm43_bottom_lips(split) {
     // left guide lip assortment
     translate([0, d_off+5.25+9.4/2, 0])
       rotate([-90]) rotate(90) mirror([0,1,0]) lip_guide(25.25-5.25-9.4/2-16.7/2);
-    *translate([-pic_ex, d_off+52, 0])
-      rotate([-90]) rotate(90) mirror([0,1,0]) lip_guide(3.5);
-    *translate([-pic_ex, d_off+70, 0])
-      rotate([-90]) rotate(90) mirror([0,1,0]) lip_guide(3.5);
+    if (Pi_Model == "Zero" || Pi_Model == "1A+" || Pi_Model == "3A+")
+      translate([0, d_off+40, 0])
+        rotate([-90]) rotate(90) mirror([0,1,0]) lip_guide(45);
+    else if (Pi_Model == "3B/2B/1B+") {
+      *translate([-pic_ex, d_off+52, 0])
+        rotate([-90]) rotate(90) mirror([0,1,0]) lip_guide(3.5);
+      *translate([-pic_ex, d_off+70, 0])
+        rotate([-90]) rotate(90) mirror([0,1,0]) lip_guide(3.5);
+    }
   }
   // probe side guide lip
   translate([wall+w, wall+d-45, probe_centerline+wall_t])
