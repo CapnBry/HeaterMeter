@@ -519,26 +519,6 @@ static state_t menuSetpoint(button_t button)
   return ST_AUTO;
 }
 
-static state_t menuProbename(button_t button)
-{
-  char buffer[17];
-  unsigned char probeIndex = Menus.getState() - ST_PROBENAME1 + 1;
-
-  if (button == BUTTON_ENTER)
-  {
-    loadProbeName(probeIndex);
-    snprintf_P(buffer, sizeof(buffer), PSTR("Set probe %1d name"), probeIndex);
-  }
-
-  // note that we only load the buffer with text on the ENTER call,
-  // after that it is OK to have garbage in it  
-  state_t retVal = menuStringEdit(button, buffer, PROBE_NAME_SIZE - 1);
-  if (retVal == Menus.getState())
-    storeAndReportProbeName(probeIndex, editString);
-    
-  return retVal;
-}
-
 static state_t menuProbeOffset(button_t button)
 {
   unsigned char probeIndex = Menus.getState() - ST_PROBEOFF0;

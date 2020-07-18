@@ -49,7 +49,6 @@ void eepromLoadConfig(unsigned char forceDefault);
 void storePidMode();
 void storeSetPoint(int sp);
 void loadProbeName(unsigned char probeIndex);
-void storeAndReportProbeName(unsigned char probeIndex, const char *name);
 void storeAndReportProbeOffset(unsigned char probeIndex, int offset);
 void storeAndReportMaxFanSpeed(unsigned char maxFanSpeed);
 void storeLcdBacklight(unsigned char lcdBacklight);

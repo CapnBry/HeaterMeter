@@ -502,12 +502,6 @@ void storeAndReportProbeOffset(unsigned char probeIndex, int offset)
   reportProbeOffsets();
 }
 
-void storeAndReportProbeName(unsigned char probeIndex, char *name)
-{
-  storeProbeName(probeIndex, name);
-  reportProbeNames();
-}
-
 static void reportVersion(void)
 {
   print_P(PSTR("UCID" CSV_DELIMITER "HeaterMeter" CSV_DELIMITER HM_VERSION));
@@ -770,18 +764,22 @@ static void handleCommandUrl(char *URL)
     csvParseI(URL + 7, storeProbeOffset);
     reportProbeOffsets();
   }
-  else if (strncmp_P(URL, PSTR("set?pid"), 7) == 0 && urlLen > 9)
+  else if (strncmp_P(URL, PSTR("set?pid"), 7) == 0)
   {
-    float f = atof(URL + 9);
-    storePidParam(URL[7], f);
+    if (urlLen > 9)
+    {
+      float f = atof(URL + 9);
+      storePidParam(URL[7], f);
+    }
     reportPidParams();
   }
-  else if (strncmp_P(URL, PSTR("set?pn"), 6) == 0 && urlLen > 8)
+  else if (strncmp_P(URL, PSTR("set?pn"), 6) == 0)
   {
-    // Store probe name will only store it if a valid probe number is passed
-    storeAndReportProbeName(URL[6] - '0', URL + 8);
+    if (urlLen > 8)
+      storeProbeName(URL[6] - '0', URL + 8);
+    reportProbeNames();
   }
-  else if (strncmp_P(URL, PSTR("set?pc"), 6) == 0 && urlLen > 8)
+  else if (strncmp_P(URL, PSTR("set?pc"), 6) == 0 && urlLen > 7)
   {
     storeProbeCoeff(URL[6] - '0', URL + 8);
   }
@@ -810,6 +808,10 @@ static void handleCommandUrl(char *URL)
   else if (strncmp_P(URL, PSTR("config"), 6) == 0)
   {
     reportConfig();
+  }
+  else if (strncmp_P(URL, PSTR("ucid"), 4) == 0)
+  {
+    reportVersion();
   }
   else if (strncmp_P(URL, PSTR("reboot"), 5) == 0)
   {
