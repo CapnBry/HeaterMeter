@@ -709,6 +709,7 @@ time they are restarted.</div>
   <input type="password" maxlength="32" id="set_apikey" style="font-family: monospace" />
   <img src="<%=resource%>/cbi/reload.gif" style="vertical-align:middle" title="Reveal/hide password" onclick="var e = document.getElementById('set_apikey'); e.type = (e.type=='password') ? 'text' : 'password';" />
   <input type="button" class="cbi-button cbi-button-apply" onclick="newApiKey()" value="New"/>
+  <input type="button" class="cbi-button" onclick="ifrmTarget('<%=build_url('admin/lm/apikey')%>', 'HeaterMeter API Key')" value="View as QR Code"/>
 </div>
 <div class="cbi-value cbi-value-last">Version <span id="ucid"></span><br/><span id="cerr"></span></div>
 </fieldset>

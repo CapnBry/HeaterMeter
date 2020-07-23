@@ -11,6 +11,7 @@ function index()
   entry({"admin", "lm", "credits"}, template("linkmeter/credits"), "Credits", 70)
 
   entry({"admin", "lm", "usercss"}, cbi("linkmeter/usercss"))
+  entry({"admin", "lm", "apikey"}, template("linkmeter/qr-apikey"))
 
   entry({"admin", "lm", "stashdb"}, call("action_stashdb"))
   entry({"admin", "lm", "reboot"}, call("action_reboot"))
