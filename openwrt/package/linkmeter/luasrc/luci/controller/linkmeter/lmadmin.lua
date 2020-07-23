@@ -99,6 +99,12 @@ function action_stashdb()
     http.prepare_content("text/plain")
     return http.write("Invalid stashfile specified: "..stashfile)
   end
+  -- POST-only for these operations
+  if http.getenv("REQUEST_METHOD") ~= "POST" then
+    http.status(405, "Not Allowed")
+    http.prepare_content("text/plain")
+    return http.write("POST only")
+  end
 
   -- the stashfile should start with a slash
   if stashfile:sub(1,1) ~= "/" then stashfile = "/"..stashfile end
