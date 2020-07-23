@@ -1,4 +1,9 @@
 <%+header%>
+<style>
+  .btn-stash { background-image: url(<%=resource%>/database_add.png); padding: 2px; padding-left: 20px; }
+  .btn-delete { background-image: url(<%=resource%>/database_delete.png); padding: 2px; padding-left: 20px; }
+  .btn-activate { background-image: url(<%=resource%>/arrow_switch.png); padding: 2px; padding-left: 20px; }
+</style>
 <h2>LinkMeter Database Archives</h2>
 <h3>Stash (archive) database</h3>
 <p>The temperature log stores at most 24 hours of data. To make your log
@@ -6,11 +11,8 @@ available for later review or continuation, the information can be "stashed"
 to storage. Using the stash command copies the current log file at the point
 it is stashed.</p>
 <p>Storage requirements are about 105KB per stash.</p>
-<p>Reload this page after stashing to see the file in the stored list.</p>
-<form method="GET" action="<%=build_url("admin/lm/stashdb")%>">
-  Filename: <input name="rrd" type="text" value="<%=os.date("%Y-%m-%d")%>" />
-  <input type="submit" value="Stash" />
-</form>
+Filename: <input id="rrd" name="rrd" type="text" value="<%=os.date("%Y-%m-%d")%>" />
+  <input type="submit" class="cbi-button btn-stash" value="Stash" onclick="stashPost()" />
 <% 
   local uci = luci.model.uci.cursor()
   local STASH_PATH = uci:get("linkmeter", "daemon", "stashpath")
@@ -59,8 +61,6 @@ table.sort(files, function(a,b) return a.stat.mtime < b.stat.mtime end )
 for _,f in ipairs(files) do
     local urlView = build_url("admin/lm/home").."?rrd="..f.path
     local urlCsv = build_url("lm/hist").."?hdr=1&amp;rrd="..f.path
-    local urlDelete = build_url("admin/lm/stashdb").."?delete=1&amp;rrd="..f.name
-    local urlActivate = build_url("admin/lm/stashdb").."?restore=1&amp;rrd="..f.name
     if f.conf then f.conf = jsonc.parse(f.conf) end
 %>
     <tr>
@@ -74,8 +74,8 @@ for _,f in ipairs(files) do
         <div><%=f.conf and f.conf.stash and f.conf.stash.desc%></div>
       </td>
       <td>
-        <a href="<%=urlDelete%>"><img src="<%=resource%>/database_delete.png" />Delete</a>
-<% if f.stat.mtime > yesterday then %>       <br/><a href="<%=urlActivate%>"><img src="<%=resource%>/arrow_switch.png" />Activate as current</a><% end %>
+        <input type="submit" class="cbi-button btn-delete" value="Delete" onclick="stashAction('delete', '<%=f.name%>')" />
+<% if f.stat.mtime > yesterday then %>        <br/><input type="submit" class="cbi-button btn-activate" value="Activate as current" onclick="stashAction('restore', '<%=f.name%>')" /><% end %>
       </td>
     </tr>
     <tr><td colspan="3" style="background: #ccc; height: 2px;"></td></tr>
@@ -93,8 +93,36 @@ for _,f in ipairs(files) do
   
   <h3>Reset current database</h3>
   <p>This will clear all data in the current running database and start a new one.<br/>
-  <img src="<%=resource%>/database_delete.png" />
-  <a href="<%=build_url("admin/lm/stashdb").."?reset=1"%>">Reset
-  Database</a></p>
-<%+footer%>
+    <input type="submit" class="cbi-button btn-delete" value="Reset Database" onclick="stashAction('reset')" />
+  </p>
+<%+linkmeter/include-ifrm%>
+<script src="<%=resource%>/js/jquery-all.js" type="text/javascript"></script>
+<script type="text/javascript">//<![CDATA[
+function stashAction(action, rrd)
+{
+  let postdata = {};
+  if (action !== '')
+    postdata[action] = 1;
+  if (rrd)
+    postdata['rrd'] = rrd;
 
+  return ifrmTarget('<%=build_url("admin/lm/stashdb")%>',
+    'Stash ' + action + '...',
+    function () { setTimeout(ifrmLoaded, 2000); },
+    postdata
+  );
+}
+
+function stashPost()
+{
+  return stashAction('', $('#rrd').val());
+}
+
+function ifrmLoaded()
+{
+  if (frameLoadFired) return;
+  frameLoadFired = true;
+  window.location.reload();
+}
+//]]></script>
+<%+footer%>
