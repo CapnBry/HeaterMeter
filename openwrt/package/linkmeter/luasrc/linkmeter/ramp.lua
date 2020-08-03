@@ -28,10 +28,10 @@ local function uciSetSingle(param, val)
 end
 
 local function cancelRamp()
-  uciSetSingle("watch", 0)
+  uciSetSingle("enabled", "0")
   uciSetSingle("startsetpoint", "")
   ctx.state = RAMPSTATE_NONE
-  ctx.params.watch = 0
+  ctx.params.enabled = false
 
   linkmeterd.publishStatusVal("ramp", nil)
 end
@@ -49,12 +49,15 @@ local function reloadRampParameters()
   uci = uci.cursor()
 
   ctx.params = {
-    watch = tonumber(uci:get("linkmeter", "ramp", "watch")) or 0,
+    enabled = uci:get("linkmeter", "ramp", "enabled") == "1",
+    watch = {},
     target = tonumber(uci:get("linkmeter", "ramp", "target")) or 999,
     trigger = tonumber(uci:get("linkmeter", "ramp", "trigger")) or 999
   }
+  -- Split the watch string "1 2 3" into a table {1,2,3}
+  (uci:get("linkmeter", "ramp", "watch") or ""):gsub("([^%s])", function(x) ctx.params.watch[#ctx.params.watch+1] = tonumber(x) end)
 
-  if ctx.params.watch ~= 0 then
+  if ctx.params.enabled then
     ctx.startSetpoint = tonumber(uci:get("linkmeter", "ramp", "startsetpoint"))
   end
 end
@@ -65,17 +68,23 @@ local function updateState(now, vals)
   local setpoint = tonumber(vals[1])
   if ctx.lastSetpoint ~= setpoint then setpointChanged(setpoint) end
 
-  -- No setpoint (manual mode or off) or watch probe 0 = Disabled
-  if setpoint == nil or (ctx.params.watch or 0) == 0 then
+  -- No setpoint (manual mode or off) or not enabled or no watch probe length = Disabled
+  if setpoint == nil or not ctx.params.enabled or #ctx.params.watch == 0 then
     if ctx.state ~= RAMPSTATE_NONE then cancelRamp() end
     return
   end
 
-  local watchVal = vals[2+ctx.params.watch]
+  local watchVal
+  for _,w in pairs(ctx.params.watch) do
+    local probeVal = tonumber(vals[2+w]) -- returns nil for both not number as well as 'U' (probe unplugged)
+    if probeVal ~= nil then
+      watchVal = watchVal and (watchVal + probeVal) or probeVal
+    end
+  end
   -- If watchprobe is unplugged or not a number, just pause the ramping
-  if watchVal == "U" then return end
-  watchVal = tonumber(watchVal)
   if watchVal == nil then return end
+  -- Divide probe sum by count
+  watchVal = watchVal / #ctx.params.watch
 
   if ctx.state == RAMPSTATE_NONE and
     (watchVal > ctx.params.trigger or ctx.startSetpoint ~= nil) then
@@ -87,8 +96,8 @@ local function updateState(now, vals)
       -- to be able to restore in case of power loss
       uciSetSingle("startsetpoint", setpoint)
     end
-    log(("Beginning ramp: Set(%d->%d) Watch-%d(%d->%d)"):format(
-      ctx.startSetpoint, ctx.params.target, ctx.params.watch, ctx.params.trigger, ctx.params.target))
+    log(("Beginning ramp: Set(%d->%d) Watch(%d->%d)"):format(
+      ctx.startSetpoint, ctx.params.target, ctx.params.trigger, ctx.params.target))
   end
 
   if ctx.state == RAMPSTATE_RAMPING then

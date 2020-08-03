@@ -113,6 +113,7 @@ end
 s = m:section(NamedSection, "ramp", nil, "Ramp Mode",
   [[Lowers the setpoint between a food probe's trigger and target temperatures
   until both the watched probe and the setpoint meet at the target tempeature.
+  If multiple Watch Probes are selected, their values will be averaged.
   Manually changing the setpoint will disable ramp mode.
   ]])
 
@@ -121,8 +122,8 @@ local function rampValueChangeNotify(self, section, value)
   rampValueChanged = true
   m:set(section, self.option, value)
 
-  -- if switching to disabled clear any start setpoint
-  if self.option == "watch" and value == "0" then
+  -- if switching to disabled clear any start setpoint (stored when active to be able to continue)
+  if self.option == "enabled" and value == "0" then
     m:del(section, "startsetpoint")
   end
 end
@@ -131,12 +132,32 @@ local function notifyRampChanged()
   LmClient():query("$LMRA")
 end
 
-v = s:option(ListValue, "watch", "Watch probe")
+v = s:option(Flag, "enabled", "Ramp mode enabled")
+v.rmempty = false -- prevents rampValueChangeNotify from not getting called on disable
 v.write = rampValueChangeNotify
-v:value(0, "Disabled")
+v.validate = function(self, fvalue, section)
+  local watch = self.map:formvalue("cbid.linkmeter.ramp.watch")
+  if (fvalue == "1") and not watch then
+    return nil, "At least one watch probe must be enabled"
+  else
+    return fvalue
+  end
+end
+
+v = s:option(MultiValue, "watch", "Watch probes")
+-- parse() implementation prevents "One or more required fields have no value!" error
+-- and allows the watch checkbox state to be preserved even if enabled=false
+v.parse = function(self, section, novld)
+  if self:formvalue(section) then
+    -- watch has a value, call inherited handler
+    return AbstractValue.parse(self, section, novld)
+  end
+end
+v:depends("enabled", "1")
 for probe = 1,3 do
   v:value(probe, lmcf["pn" .. probe])
 end
+
 v = s:option(Value, "trigger", "Trigger temperature")
 v.write = rampValueChangeNotify
 v.default = "180"
