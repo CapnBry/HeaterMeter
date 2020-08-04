@@ -163,7 +163,7 @@ v.write = rampValueChangeNotify
 v.default = "180"
 v = s:option(Value, "target", "Target temperature")
 v.write = rampValueChangeNotify
-v.default = "200"
+v.default = "205"
 
 --
 -- Email Notifications

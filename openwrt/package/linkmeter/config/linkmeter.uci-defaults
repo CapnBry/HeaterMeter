@@ -138,7 +138,7 @@ uci_set_nomodify linkmeter.alarms_push.pushbullettitle '$pn HM Alert'
 uci_set_nomodify linkmeter.alarms_push.message '$pn $al_type alarm $al_prep $al_thresh, currently $pcurr'
 
 uci_add_section linkmeter.ramp
-uci_set_nomodify linkmeter.ramp.watch '0'
+uci_set_nomodify linkmeter.ramp.enabled '0'
 
 uci_add_section linkmeter.api
 uci_set_nomodify linkmeter.api.disabled '0'
