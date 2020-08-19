@@ -45,6 +45,11 @@ pi_screw_t = 2.3;
 body_chamfer_height_t = body_chamfer_height;
 body_chamfer_height_b = body_chamfer_height;
 
+led_dia = 2.9;
+led_h = 4.6 - 1;
+led_fudge = 0.3; // total extra diameter to expand the hole and head sphere
+led_inset = 0.5; // amount to extend LED through case
+
 e = 0.01;
 is_jig = 0; // generate a jig for soldering LEDs
 
@@ -159,9 +164,17 @@ module tc_plusminus() {
   }
 }
 
-module led_hole() {
-  dia = is_jig ? 3.2 : 3.4;
-  cylinder(wall_t+2*e, d1=dia, d2=dia, $fn=16);
+module led() {
+  translate([0, 0, -(led_h+1)]) {
+    cylinder(1, d=led_dia+0.3+led_fudge, $fn=24);
+    translate([0, 0, 1-e]) cylinder(led_h-led_dia/2+e, d=led_dia+led_fudge, $fn=24);
+    translate([0, 0, 1+led_h-led_dia/2]) sphere(d=led_dia+led_fudge, $fn=24);
+  }
+}
+
+module led_pillar() {
+  translate([0,0,-led_h-e])
+    cylinder(led_h-led_inset, d=led_dia+led_fudge+2*wall, $fn=24);
 }
 
 module nuttrap() {
@@ -327,17 +340,28 @@ module hm_base() {
 
 module hm43() {
 difference() {
-  hm_base();
-  
-  // Main cutout
-  translate([wall, wall, wall_t])
-    cube_fillet([w, d, h_b],
-      bottom=[pi_screw_t,pi_screw_t,pi_screw_t,pi_screw_t],
-      top=[pi_screw_t,pi_screw_t,pi_screw_t,pi_screw_t],
-      vertical=[body_corner_radius/2,body_corner_radius/2,body_corner_radius/2,body_corner_radius/2],
-      $fn=[36,4,4]);
-  if (Pi_Model != "Zero" && Pi_Model != "1A+" && Pi_Model != "3A+")
-    translate([wall-pic_ex+e,wall+d_off,wall_t]) pic_ex_cube(1);
+  union() {
+    difference() {
+      hm_base();
+
+      // Main cutout
+      translate([wall, wall, wall_t])
+        cube_fillet([w, d, h_b],
+          bottom=[pi_screw_t,pi_screw_t,pi_screw_t,pi_screw_t],
+          top=[pi_screw_t,pi_screw_t,pi_screw_t,pi_screw_t],
+          vertical=[body_corner_radius/2,body_corner_radius/2,body_corner_radius/2,body_corner_radius/2],
+          $fn=[36,4,4]);
+      if (Pi_Model != "Zero" && Pi_Model != "1A+" && Pi_Model != "3A+")
+        translate([wall-pic_ex+e,wall+d_off,wall_t]) pic_ex_cube(1);
+    } // main diff
+
+    if (LCD) translate([wall+inch(1.925)+w_off, wall+d_off+inch(1.15), h_b+2*wall_t])
+      translate([inch(1.3), inch(-0.05), led_inset]) {
+        led_pillar();  //red
+        translate([0, inch(0.35), 0]) led_pillar(); //yellow
+        translate([0, inch(0.70), 0]) led_pillar(); //green
+      }
+  } // main union
 
   // Probe jack side
   translate([w+wall*0.5, wall+d_off, wall_t+probe_centerline]) {
@@ -380,16 +404,16 @@ difference() {
     translate([wall+10.375+w_off, wall+d_off+inch(2), h_b+wall_t-lcd_mount_t-e]) lcd_neg();
   
   // button holes
-  if (LCD) translate([wall+inch(1.925)+w_off, wall+d_off+inch(1.15), h_b+wall_t-e]) {
-    translate([-inch(1.1)/2,0,0]) btn_rnd();  // left
-    translate([inch(1.1)/2,0,0]) btn_rnd();   // right
-    translate([0,inch(0.9)/2,0]) btn_rnd();   // up
-    translate([0,-inch(0.9)/2,0]) btn_rnd();  // down
+  if (LCD) translate([wall+inch(1.925)+w_off, wall+d_off+inch(1.15), h_b+2*wall_t]) {
+    translate([-inch(1.1)/2,0,-wall_t-e]) btn_rnd();  // left
+    translate([inch(1.1)/2,0,-wall_t-e]) btn_rnd();   // right
+    translate([0,inch(0.9)/2,-wall_t-e]) btn_rnd();   // up
+    translate([0,-inch(0.9)/2,-wall_t-e]) btn_rnd();  // down
     // LED holes
-    translate([inch(1.3), inch(-0.05), 0]) {
-      led_hole();  //red
-      translate([0, inch(0.35), 0]) led_hole(); //yellow
-      translate([0, inch(0.70), 0]) led_hole(); //green
+    translate([inch(1.3), inch(-0.05), led_inset]) {
+      led();  //red
+      translate([0, inch(0.35), 0]) led(); //yellow
+      translate([0, inch(0.70), 0]) led(); //green
     }  
   }
   // close screw holes
