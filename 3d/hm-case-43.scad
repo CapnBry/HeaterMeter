@@ -145,7 +145,7 @@ module screw_keyhole_p() {
 }
 
 module btn_rnd() {
-  dia = is_jig ? 6.0 : 7.2;
+  dia = is_jig ? 6.0 : 7.2; // TPU button covers was 8.0
   cylinder(wall_t+2*e, d1=dia, d2=dia+1.5*wall_t, $fn=24);
   translate([-6.5,-6.5,0]) cube([13,13,0.5+e]);
 }
@@ -246,26 +246,26 @@ module locklip_p(l, l_offset=0,
   lip_w=2.5,  // thickness of attachment beam
   insert_inset=[0,0] // inset the insert inside mating area
   ) {
-  translate([l_offset,0,0]) rotate([90,0,0]) rotate([0,90,0])
+  translate([l_offset,0,0]) rotate([90,0,90])
     difference() {
-      linear_extrude(height=l-2*l_offset) polygon(points=[
+      linear_extrude(l-2*l_offset, convexity=11) polygon(points=[
         [0.1, -lip_w-lip_insert_depth-lip_h_off],  // 0.1 to add depth to keep extrusion manifold
-        [0.1, 0],
-        [-lip_insert_depth-lip_h_off, 0],
-        [-lip_insert_depth-lip_h_off, lip_v_off],
-        [-lip_h_off, lip_v_off+lip_insert_depth],
-        [-lip_insert_depth-lip_h_off, lip_v_off+2*lip_insert_depth,],
+        [-lip_w-lip_insert_depth-lip_h_off, 0],
         [-lip_w-lip_insert_depth-lip_h_off, lip_v_off+2*lip_insert_depth],
-        [-lip_w-lip_insert_depth-lip_h_off, 0]
+        [-lip_insert_depth-lip_h_off, lip_v_off+2*lip_insert_depth,],
+        [-lip_h_off, lip_v_off+lip_insert_depth],
+        [-lip_insert_depth-lip_h_off, lip_v_off],
+        [-lip_insert_depth-lip_h_off, 0],
+        [0.1, 0]
       ]);
       translate([-lip_w-lip_insert_depth-lip_h_off-e, 0, 0]) {
         if (insert_inset[0] > 0)
           translate([0,0,-e])
-            cube([lip_w+lip_insert_depth+lip_h_off+2*e,
+            cube([lip_w+lip_insert_depth+lip_h_off+0.1+2*e,
               lip_v_off+2*lip_insert_depth+e, insert_inset[0]+e]);
         if (insert_inset[1] > 0)
           translate([0, 0, l-2*l_offset-insert_inset[1]])
-            cube([lip_w+lip_insert_depth+lip_h_off+2*e,
+            cube([lip_w+lip_insert_depth+lip_h_off+0.1+2*e,
               lip_v_off+2*lip_insert_depth+e, insert_inset[1]+e]);
       }
     }
@@ -405,6 +405,7 @@ difference() {
   
   // button holes
   if (LCD) translate([wall+inch(1.925)+w_off, wall+d_off+inch(1.15), h_b+2*wall_t]) {
+    //translate([-inch(1.1)/2,-13/2,-wall_t-e]) cube([inch(1.1), 13, 0.5+e]);  // clear space between
     translate([-inch(1.1)/2,0,-wall_t-e]) btn_rnd();  // left
     translate([inch(1.1)/2,0,-wall_t-e]) btn_rnd();   // right
     translate([0,inch(0.9)/2,-wall_t-e]) btn_rnd();   // up
@@ -510,13 +511,17 @@ module hm43_bottom_lips(split) {
   translate([wall, wall, split+wall_t]) {
     // bottom locklip (positive)
     translate([0,d,0]) {
-      locklip_p(28, insert_inset=[2,0]);
-      translate([w-34,0,0]) locklip_p(34-wall, insert_inset=[0,1]);
+      locklip_p(28, insert_inset=[0,0]);
+      translate([w-34,0,0]) locklip_p(34-wall, insert_inset=[0,0]);
     }
 
-    // front guide lip
+    // front guide lip (left, mid, right)
+    translate([body_corner_radius, 0, 0])
+      rotate([0,90]) lip_guide(12);
     translate([w/2-9, 0, 0])
       rotate([0,90]) lip_guide(25);
+    translate([w-body_corner_radius-12, 0, 0])
+      rotate([0,90]) lip_guide(12);
     // left guide lip assortment
     translate([0, d_off+5.25+9.4/2, 0])
       rotate([-90]) rotate(90) mirror([0,1,0]) lip_guide(25.25-5.25-9.4/2-16.7/2);
