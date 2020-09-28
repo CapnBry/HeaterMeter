@@ -122,9 +122,12 @@ $(window).load(function ()
         });
         source.addEventListener("log", function (e) {
             if (e.data.substr(9, 6) == "NOISE ")
-                graphNoise(e.data);
+                graphNoise(e.data, 0);
             else
                 console.log(e.data);
+        });
+        source.addEventListener("noisedump", function (e) {
+            graphNoise(e.data, 1);
         });
         source.addEventListener("alarm", function (e) {
             var o = JSON.parse(e.data);
@@ -302,18 +305,43 @@ function peakEvent(o)
   // Wait until next updateGraph() to display
 }
 
-function graphNoise(s)
+function graphNoise(s, version)
 {
-  var FREQ = 16000000 / 128 / 13;
-  var vals = s.substr(15, s.length - 18).split(' ');
+  const FREQ = 16000000 / 128 / 13;
+  // Convert s to an array of int => vals
+  let vals;
+  if (version == 0) // Log Message "NOISE 0 1 2 3 4 5..."
+  {
+    vals = s.substr(15, s.length - 18).split(' ').map(function(x) { parseInt(x) });
+  } // version 0
+  else { // version = 1, differential encoded "+NNN.+-"
+    const noisediffsRe = /[\+\-\.][0-9]*/g;
+    let curr = 0;
+    vals = s.match(noisediffsRe).map(function(x) {
+      if (x == '.')
+        return curr;
+      if (x == '+')
+        return ++curr;
+      if (x == '-')
+        return --curr;
+
+      curr += parseInt(x);
+      return curr;
+    });
+  } // version 1
+  // Make a copy of vals and sort them while it is still an array of int
   var sorted = vals.slice(0).sort(function(a,b) {return a - b;});
+
+  // Average vals and convert to array of [x, y]
   var avg = 0;
   for (var i=0; i<vals.length; ++i)
   {
-    vals[i] = [i * 1000 / FREQ, parseInt(vals[i])];
-    avg += vals[i][1];
+    avg += vals[i];
+    vals[i] = [i * 1000 / FREQ, vals[i]];
   }
   avg /= vals.length;
+
+  // Plot
   var MAX = (vals.length - 1) * 1000 / FREQ;
   var median = sorted[Math.floor(sorted.length/2)];
   var marray = [[0,median], [MAX,median]];

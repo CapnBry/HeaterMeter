@@ -388,6 +388,17 @@ local function segLogMessage(line)
   broadcastStatus(stsLogMessage)
 end
 
+local lastNoiseDump
+local function stsNoiseDump()
+  local vals = segSplit(lastNoiseDump)
+  return ('event: noisedump\ndata: "%s"\n\n'):format(vals[1])
+end
+
+local function segNoiseDump(line)
+  lastNoiseDump = line
+  broadcastStatus(stsNoiseDump)
+end
+
 local lastPidInternals
 local function stsPidInternals()
   local vals = segSplit(lastPidInternals)
@@ -1039,6 +1050,7 @@ local segmentMap = {
   ["$HMLB"] = segLcdBacklight,
   ["$HMLD"] = segLidParams,
   ["$HMLG"] = segLogMessage,
+  ["$HMND"] = segNoiseDump,
   ["$HMPC"] = segProbeCoeffs,
   ["$HMPD"] = segPidParams,
   ["$HMPN"] = segProbeNames,
