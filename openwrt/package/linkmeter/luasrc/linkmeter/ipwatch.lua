@@ -92,10 +92,32 @@ local function onTick(now)
   end
 end
 
+local HOSTBUTTON = { ENTER = 0x80, LEAVE = 0x40, TIMEOUT = 0x20, LEFT = 0x01, RIGHT = 0x02, UP = 0x04, DOWN = 0x08 }
+local HOSTTOPIC = { NETINFO = 0 }
+local NETINFO_MENU = { TITLE = 0, IPADDR = 1 }
+local function hiNetInfo(topic, opaque, button)
+  if topic ~= HOSTTOPIC.NETINFO then return end
+
+  if button == HOSTBUTTON.ENTER then
+    return linkmeterd.hostInteractiveReply(NETINFO_MENU.TITLE, "\002   Network   \002", "  Information  ")
+  end
+
+  -- Menu transitions
+  if (opaque == NETINFO_MENU.TITLE) and (button == HOSTBUTTON.DOWN) then
+    opaque = NETINFO_MENU.IPADDR
+  end
+
+  -- Menu handlers
+  if opaque == NETINFO_MENU.IPADDR then
+    return linkmeterd.hostInteractiveReply(opaque, "Network Address", lastIp or "Unknown")
+  end
+end
+
 function init()
   lastIp = nil
   -- Delay checking IP for 2 seconds
   lastIpCheck = os.time() + 2 - IP_CHECK_INTERVAL
 
   linkmeterd.registerTickListener(onTick)
+  linkmeterd.registerHostInteractiveListener(HOSTTOPIC.NETINFO, hiNetInfo) -- HmMenuInteractiveTopic::NETINFO
 end

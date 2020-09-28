@@ -23,6 +23,7 @@ local serialPolle
 local statusListeners = {}
 local pluginStatusListeners = {}
 local pluginSegmentListeners = {}
+local pluginHostInteractiveListeners = {}
 local lastHmUpdate
 local lastAutoback
 local autobackActivePeriod
@@ -214,6 +215,7 @@ end
 
 function hmWrite(s)
   if serialPolle then
+    --print("WRITE:" .. s)
     -- Break the data into 8 byte chunks (the size of the FIFO on the Pi3/W minuart)
     -- write always returns that it wrote the entire data, and poll('out') always times out
     for i=1, #s, 8 do
@@ -436,6 +438,44 @@ end
 
 local function segFanParams(line)
   return segConfig(line, {"fmin", "fmax", "smin", "smax", "oflag", "fsmax", "fflor", "sceil"}, true)
+end
+
+function registerHostInteractiveListener(topic, f)
+  -- function (topic, opaque, button)
+  -- All parameters are numeric
+  unregisterSegmentListener(topic)
+  pluginHostInteractiveListeners[#pluginHostInteractiveListeners+1] = {t = topic, f = f }
+end
+
+function unregisterHostInteractiveListener(topic)
+  for i = 1, #pluginHostInteractiveListeners do
+    if pluginHostInteractiveListeners[i].t == topic then
+      table.remove(pluginHostInteractiveListeners, i)
+      return
+    end
+  end
+end
+
+local function findHostInteractiveHandler(topic)
+  for i = 1, #pluginHostInteractiveListeners do
+    if pluginHostInteractiveListeners[i].t == topic then
+      return pluginHostInteractiveListeners[i].f
+    end
+  end
+end
+
+local function segHostInteractive(line)
+-- HMHI,Topic,HostOpaque,Button
+  local vals = segSplit(line)
+  local topic = tonumber(vals[2])
+  local handler = findHostInteractiveHandler(topic)
+  if handler ~= nil then
+    handler(topic, tonumber(vals[1]), tonumber(vals[3]))
+  end
+end
+
+function hostInteractiveReply(opaque, line1, line2)
+  hmWrite(("/set?hi=%d,%s,%s\n"):format(opaque, line1 or "", line2 or ""))
 end
 
 local function segProbeCoeffs(line)
@@ -995,6 +1035,7 @@ local segmentMap = {
   ["$HMAL"] = segAlarmLimits,
   ["$HMAR"] = segAdcRange,
   ["$HMFN"] = segFanParams,
+  ["$HMHI"] = segHostInteractive,
   ["$HMLB"] = segLcdBacklight,
   ["$HMLD"] = segLidParams,
   ["$HMLG"] = segLogMessage,
