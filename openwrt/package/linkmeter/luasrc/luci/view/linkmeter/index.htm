@@ -312,7 +312,7 @@ function graphNoise(s, version)
   let vals;
   if (version == 0) // Log Message "NOISE 0 1 2 3 4 5..."
   {
-    vals = s.substr(15, s.length - 18).split(' ').map(function(x) { parseInt(x) });
+    vals = s.substr(15, s.length - 18).split(' ').map(function(x) { return parseInt(x); });
   } // version 0
   else { // version = 1, differential encoded "+NNN.+-"
     const noisediffsRe = /[\+\-\.][0-9]*/g;
