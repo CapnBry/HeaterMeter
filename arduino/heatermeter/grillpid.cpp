@@ -67,9 +67,12 @@ static struct tagAdcState
   bool useBandgapReference[NUM_ANALOG_INPUTS]; // Use 1.1V reference instead of AVCC
   unsigned int bandgapAdc;                     // 10-bit adc reading of BG with AVCC ref
 #endif
-  unsigned char noisePin; // which pin to record ADC data on
-  unsigned int noiseDumpData[256];
-  unsigned char dumpPeriod;
+  struct {
+    unsigned char dumpPeriod;
+    unsigned char pinRequested; // pin to record ADC data on next time it comes around
+    unsigned char pinData; // pin data[] contains, set after data is full
+    unsigned int data[256];
+  } noise;
 } adcState;
 
 ISR(ADC_vect)
@@ -87,13 +90,17 @@ ISR(ADC_vect)
     }
     else if (adcState.discard == 1)
     {
-      adcState.accumulator = 0;
-      adcState.thisHigh = 0;
-      adcState.thisLow = 0xff;
+      if (adcState.pin == adcState.noise.pinRequested)
+        adcState.noise.pinData = adcState.noise.pinRequested;
       adcState.pin = ADMUX & 0x0f;
+      if (adcState.pin == adcState.noise.pinRequested)
+        adcState.noise.pinData = 0xff;
+      adcState.accumulator = 0;
     }
     else if (adcState.discard == 0)
     {
+      adcState.thisHigh = 0;
+      adcState.thisLow = 0xff;
       if (adcState.pin == ADC_INTERLEAVE_HIGHFREQ)
       {
         adcState.cnt = 4;
@@ -104,7 +111,6 @@ ISR(ADC_vect)
       }
       else
         adcState.cnt = adcState.top;
-
     }
     return;
   }
@@ -114,8 +120,8 @@ ISR(ADC_vect)
   {
     --adcState.cnt;
     unsigned int adc = ADC;
-    if (pin == adcState.noisePin)
-      adcState.noiseDumpData[adcState.cnt] = adc;
+    if (pin == adcState.noise.pinRequested)
+      adcState.noise.data[adcState.cnt] = adc;
     adcState.accumulator += adc;
 
     unsigned char a = adc >> 2;
@@ -202,28 +208,54 @@ unsigned int analogGetBandgapScale(void)
 
 static void adcDump(void)
 {
-  if (adcState.noisePin == 0xff)
+  if (adcState.noise.pinRequested == 0xff)
     return;
 
-  ++adcState.dumpPeriod;
-  if (adcState.dumpPeriod >= GRILLPID_NOISE_REPORT_INTERVAL)
+  ++adcState.noise.dumpPeriod;
+  if (adcState.noise.dumpPeriod >= GRILLPID_NOISE_REPORT_INTERVAL)
   {
-    // If in the middle of sampling this pin, try again next call
-    if (adcState.pin == adcState.noisePin)
-      return;
-    adcState.dumpPeriod = 0;
-    SerialX.print("HMLG,NOISE ");
+    ATOMIC_BLOCK(ATOMIC_FORCEON)
+    {
+      // If the data isn't for the requested pin, or currently sampling (pinData=0xff), try again
+      if (adcState.noise.pinData != adcState.noise.pinRequested)
+        return;
+      adcState.noise.pinRequested = 0xff;
+    }
+
+    adcState.noise.dumpPeriod = 0;
+    print_P(PSTR("HMND" CSV_DELIMITER));
     // SIZE: Just using adcState.top saves 14 bytes
-    unsigned char top = adcState.noisePin == ADC_INTERLEAVE_HIGHFREQ ? 4 : adcState.top;
-    // disable ADC interrupt
-    ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0); 
+    unsigned char top = adcState.noise.pinData == ADC_INTERLEAVE_HIGHFREQ ? 4 : adcState.top;
+    unsigned int last = 0;
     for (unsigned char i=0; i<top; ++i)
     {
-      SerialX.print(adcState.noiseDumpData[i], DEC);
-      SerialX.print(' ');
+      /* Noisedump output is differential encoded.
+        curr == last -> .
+        curr < last -> -
+        curr > last -> +
+        If the difference is more than 1, then the sign is followed by the difference, +XXXX or -XXXX */
+      unsigned int curr = adcState.noise.data[i];
+      if (last < curr)
+      {
+        Serial_char('+');
+        unsigned int diff = curr - last;
+        if (diff > 1)
+          SerialX.print(diff, DEC);
+      }
+      else if (last > curr)
+      {
+        Serial_char('-');
+        unsigned int diff = last - curr;
+        if (diff > 1)
+          SerialX.print(diff, DEC);
+      }
+      else
+        Serial_char('.');
+      last = curr;
     }
-    ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADIE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0) | bit(ADSC);
     Serial_nl();
+
+    adcState.noise.pinRequested = adcState.noise.pinData;
   }
 }
 
@@ -454,7 +486,7 @@ void GrillPid::init(void)
   ADCSRA = bit(ADEN) | bit(ADATE) | bit(ADIE) | bit(ADPS2) | bit(ADPS1) | bit (ADPS0) | bit(ADSC);
 
   updateControlProbe();
-  adcState.noisePin = 0xff;
+  adcState.noise.pinRequested = 0xff;
 }
 
 void __attribute__ ((noinline)) GrillPid::updateControlProbe(void)
@@ -958,7 +990,8 @@ void GrillPid::setUnits(char units)
 
 void GrillPid::setNoisePin(unsigned char pin)
 {
-  adcState.noisePin = pin;
+  adcState.noise.pinRequested = pin;
+  adcState.noise.pinData = 0xff;
   // force update next period
-  adcState.dumpPeriod = GRILLPID_NOISE_REPORT_INTERVAL - 1;
+  adcState.noise.dumpPeriod = GRILLPID_NOISE_REPORT_INTERVAL - 1;
 }
