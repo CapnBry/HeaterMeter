@@ -36,8 +36,11 @@ local function postDeviceData(dd)
     ('],"serial":"%s","revision":"%s","model":"%s","uptime":%s,"hostname":"%s"}'):format(
     serial, revision, hardware, uptime, hostname)
 
-  os.execute(("curl --silent -o /dev/null -d devicedata='%s' %s &"):format(
-   dd, 'https://heatermeter.com/devices/'));
+  os.execute(("(" ..
+    "echo -1 > /tmp/hmlivereg ;" ..
+    "curl --silent -o /dev/null -d devicedata='%s' %s ; " ..
+    "echo $? > /tmp/hmlivereg" ..
+    ")&"):format(dd, 'https://heatermeter.com/devices/'))
 end
 
 local lastIpCheck
@@ -85,6 +88,25 @@ local function checkIpUpdate(now)
   end
 end
 
+local function hmliveResultStr()
+  local regResult = tonumber(nixio.fs.readfile("/tmp/hmlivereg") or "-2")
+  if regResult == -2 then
+    return "Not attempted"
+  elseif regResult == -1 then
+    return "In process..."
+  elseif regResult == 0 then
+    return "SUCCESS"
+  elseif regResult == 6 then
+    return "FAIL: No DNS"
+  elseif regResult == 7 then
+    return "FAIL: Timeout"
+  elseif regResult == 51 then
+    return "FAIL: SSL cert"
+  else
+    return "Error code " .. tostring(regResult)
+  end
+end
+
 local function onTick(now)
   if now - lastIpCheck > IP_CHECK_INTERVAL then
     checkIpUpdate(now)
@@ -94,22 +116,28 @@ end
 
 local HOSTBUTTON = { ENTER = 0x80, LEAVE = 0x40, TIMEOUT = 0x20, LEFT = 0x01, RIGHT = 0x02, UP = 0x04, DOWN = 0x08 }
 local HOSTTOPIC = { NETINFO = 0 }
-local NETINFO_MENU = { TITLE = 0, IPADDR = 1 }
+local NETINFO_MENU = { TITLE = 0, IPADDR = 1, LIVREG = 2, LAST = 2 }
 local function hiNetInfo(topic, opaque, button)
   if topic ~= HOSTTOPIC.NETINFO then return end
 
-  if button == HOSTBUTTON.ENTER then
-    return linkmeterd.hostInteractiveReply(NETINFO_MENU.TITLE, "\002   Network   \002", "  Information  ")
-  end
-
   -- Menu transitions
-  if (opaque == NETINFO_MENU.TITLE) and (button == HOSTBUTTON.DOWN) then
-    opaque = NETINFO_MENU.IPADDR
+  if button == HOSTBUTTON.DOWN then
+    if opaque < NETINFO_MENU.LAST then
+      opaque = opaque + 1
+    end
+  elseif button == HOSTBUTTON.UP then
+    if opaque > NETINFO_MENU.TITLE then
+      opaque = opaque - 1
+    end
   end
 
   -- Menu handlers
-  if opaque == NETINFO_MENU.IPADDR then
+  if opaque == NETINFO_MENU.TITLE then
+    return linkmeterd.hostInteractiveReply(NETINFO_MENU.TITLE, "\002   Network   \002", "  Information  ")
+  elseif opaque == NETINFO_MENU.IPADDR then
     return linkmeterd.hostInteractiveReply(opaque, "Network Address", lastIp or "Unknown")
+  elseif opaque == NETINFO_MENU.LIVREG then
+    return linkmeterd.hostInteractiveReply(opaque, "Device register", hmliveResultStr())
   end
 end
 
