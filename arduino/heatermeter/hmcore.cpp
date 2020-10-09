@@ -739,7 +739,7 @@ static void handleCommandUrl(char *URL)
   // Any complete line from the host turns us on(line)
   // Set this first so the code below knows the host is online
   // BRY: Disabled until I rewrite the host side
-  //Menus.setHostStateOnline();
+  Menus.setHostStateOnline();
 
   if (strncmp_P(URL, PSTR("set?sp="), 7) == 0)
   {

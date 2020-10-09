@@ -70,8 +70,11 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
 
   { ST_MANUALMODE, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_MANUALMODE, BUTTON_LEFT | BUTTON_LONG, ST_ENG_PROBEDIAG },
-  { ST_MANUALMODE, BUTTON_RIGHT, ST_LCDBACKLIGHT },
+  { ST_MANUALMODE, BUTTON_RIGHT, ST_NETINFO },
   
+  { ST_NETINFO, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
+  { ST_NETINFO, BUTTON_RIGHT, ST_LCDBACKLIGHT },
+
   { ST_LCDBACKLIGHT, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_LCDBACKLIGHT, BUTTON_RIGHT, ST_MAXFANSPEED },
 
@@ -111,9 +114,6 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
 
   { ST_LIDOPEN_DUR, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_LIDOPEN_DUR, BUTTON_RIGHT, ST_NETINFO },
-
-  { ST_NETINFO, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  { ST_NETINFO, BUTTON_RIGHT, ST_RESETCONFIG },
 
   { ST_RESETCONFIG, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_RESETCONFIG, BUTTON_RIGHT, ST_SETPOINT },
@@ -861,7 +861,7 @@ void HmMenuSystem::sendHostInteract(HmMenuInteractiveTopic topic, button_t butto
     setHostOpaque(0);
 
   print_P(PSTR("HMHI" CSV_DELIMITER));
-  SerialX.print(_hostOpaque, DEC);
+  SerialX.print(_hostOpaque, DEC); // Opaque comes first to be the same as the reply message
   Serial_csv();
   SerialX.print(static_cast<unsigned char>(topic), DEC);
   Serial_csv();
@@ -894,7 +894,8 @@ void HmMenuSystem::hostMsgReceived(char* msg)
     return;
   _hostState = HmMenuSystemHostState::ONLINE;
 
-  setHostOpaque(atoi(msg));
+  int16_t opaque = atoi(msg);
+  setHostOpaque(opaque);
   while (*msg && *msg != ',')
     ++msg;
   if (*msg)
