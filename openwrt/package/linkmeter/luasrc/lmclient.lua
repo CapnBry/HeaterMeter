@@ -95,7 +95,11 @@ if arg and arg[0]:find("lmclient") then
   end
   
   if strm then
-    print(LmClient:stream(qry, function (r) print(r) end))
+    print(LmClient:stream(qry, function (r)
+      io.stdout:write(r)
+      io.stdout:write('\n')
+      io.stdout:flush()
+    end))
   else
     print(LmClient():query(qry))
   end

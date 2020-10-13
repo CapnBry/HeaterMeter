@@ -40,7 +40,6 @@ local hmConfig
 local segmentCall
 local statusValChanged
 local JSON_TEMPLATE
-local broadcastStatus
 local segLmToast
 
 local RRD_FILE = uci.cursor():get("linkmeter", "daemon", "rrd_file")
@@ -158,20 +157,43 @@ function publishStatusVal(k, v, probeIdx)
   if newVals ~= nil then
     if probeIdx == nil then
       newVals = newVals == "" and "" or (newVals .. ",")
-      JSON_TEMPLATE[17] = newVals
+      JSON_TEMPLATE[16] = newVals
     else
       newVals = newVals == "" and "" or ("," .. newVals)
-      JSON_TEMPLATE[11+(probeIdx*11)] = newVals
+      JSON_TEMPLATE[10+(probeIdx*11)] = newVals
     end
   end -- newVals != nil
 end
 
 function publishBroadcastMessage(event, t)
   if type(t) == "table" then
-    broadcastStatus(function () return ('event: %s\ndata: %s\n\n'):format(event, jsonc.stringify(t)) end)
-  else
-    broadcastStatus(function () return ('event: %s\ndata: %s\n\n'):format(event, t) end)
+    t = jsonc.stringify(t)
   end
+
+  local o
+  local i = 1
+  local isStatusEvent = event == "hmstatus"
+  while i <= #statusListeners do
+    local client = statusListeners[i]
+    local sendok = true
+    if client.statusonly then
+      if isStatusEvent then
+        sendok = client.fd:sendto(t, client.addr)
+      end
+    else
+      if not o then
+        o = ('event: %s\ndata: %s\n\n'):format(event, t)
+      end
+
+      sendok = client.fd:sendto(o, client.addr)
+    end
+
+    if sendok then
+      i = i + 1
+    else
+      table.remove(statusListeners, i)
+    end
+  end -- while < #statusListeners
 end
 
 function registerSegmentListener(seg, f)
@@ -301,46 +323,29 @@ end
 -- and discard it every time, just replace the values to reduce
 -- the load on the garbage collector
 local JSON_TEMPLATE_SRC = {
-  '', -- 1
-  '{"time":', 0, -- 3
-  ',"set":', 0,  -- 5
-  ',"lid":', 0,  -- 7
-  ',"fan":{"c":', 0, ',"a":', 0, ',"f":', 'null', ',"s":', 'null', -- 15
-  '},', '', -- 17 (placeholder: extendedStatusVals)
-  '"temps":[{"n":"', 'Pit',   '","c":', 0, '', -- 22 (placeholder: extendedStatusProbeVals)
-    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 28
-  '}},{"n":"', 'Food Probe1', '","c":', 0, '', -- 33 (placeholder: extendedStatusProbeVals)
-    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 39
-  '}},{"n":"', 'Food Probe2', '","c":', 0, '', -- 44 (placeholder: extendedStatusProbeVals)
-    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 50
-  '}},{"n":"', 'Ambient',     '","c":', 0, '', -- 55 (placeholder: extendedStatusProbeVals)
-    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 61
-  '}}]}', -- 62
-  '' -- 63
+  '{"time":', 0, -- 2
+  ',"set":', 0,  -- 4
+  ',"lid":', 0,  -- 6
+  ',"fan":{"c":', 0, ',"a":', 0, ',"f":', 'null', ',"s":', 'null', -- 14
+  '},', '', -- 16 (placeholder: extendedStatusVals)
+  '"temps":[{"n":"', 'Pit',   '","c":', 0, '', -- 21 (placeholder: extendedStatusProbeVals)
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 27
+  '}},{"n":"', 'Food Probe1', '","c":', 0, '', -- 32 (placeholder: extendedStatusProbeVals)
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 38
+  '}},{"n":"', 'Food Probe2', '","c":', 0, '', -- 43 (placeholder: extendedStatusProbeVals)
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 49
+  '}},{"n":"', 'Ambient',     '","c":', 0, '', -- 54 (placeholder: extendedStatusProbeVals)
+    ',"a":{"l":', 'null', ',"h":', 'null', ',"r":', 'null', -- 60
+  '}}]}' -- 61
 }
-local JSON_FROM_CSV = {3, 5, 21, 32, 43, 54, 9, 11, 7, 13, 15 }
+local JSON_FROM_CSV = {2, 4, 20, 31, 42, 53, 8, 10, 6, 12, 14 }
 
 local function jsonWrite(vals)
-  local i,v
-  for i,v in ipairs(vals) do
+  local src,dest,v
+  for src,dest in ipairs(JSON_FROM_CSV) do
+    v = vals[src]
     if tonumber(v) == nil then v = "null" end
-    JSON_TEMPLATE[JSON_FROM_CSV[i]] = v
-  end
-end
-
-function broadcastStatus(fn)
-  local o
-  local i = 1
-  while i <= #statusListeners do
-    if not o then
-      o = fn()
-    end
-
-    if not statusListeners[i](o) then
-      table.remove(statusListeners, i)
-    else
-      i = i + 1
-    end
+    JSON_TEMPLATE[dest] = v
   end
 end
 
@@ -358,13 +363,13 @@ local function buildConfigMap()
     r[k] = v
   end
 
-  if JSON_TEMPLATE[3] ~= 0 then
+  if JSON_TEMPLATE[2] ~= 0 then
     -- Current temperatures
     for i = 0, 3 do
-      r["pcurr"..i] = tonumber(JSON_TEMPLATE[21+(i*11)])
+      r["pcurr"..i] = tonumber(JSON_TEMPLATE[20+(i*11)])
     end
     -- Setpoint
-    r["sp"] = JSON_TEMPLATE[5]
+    r["sp"] = JSON_TEMPLATE[4]
   end
 
   for i,v in ipairs(hmAlarms) do
@@ -377,38 +382,20 @@ local function buildConfigMap()
   return r
 end
 
-local lastLogMessage
-local function stsLogMessage()
-  local vals = segSplit(lastLogMessage)
-  return ('event: log\ndata: {"msg": "%s"}\n\n'):format(vals[1])
-end
-
 local function segLogMessage(line)
-  lastLogMessage = line
-  broadcastStatus(stsLogMessage)
-end
-
-local lastNoiseDump
-local function stsNoiseDump()
-  local vals = segSplit(lastNoiseDump)
-  return ('event: noisedump\ndata: "%s"\n\n'):format(vals[1])
+  local vals = segSplit(line)
+  publishBroadcastMessage('log', {msg=vals[1]})
 end
 
 local function segNoiseDump(line)
-  lastNoiseDump = line
-  broadcastStatus(stsNoiseDump)
-end
-
-local lastPidInternals
-local function stsPidInternals()
-  local vals = segSplit(lastPidInternals)
-  return ('event: pidint\ndata: {"b":%s,"p":%s,"i":%s,"d":%s,"t":%s}\n\n')
-    :format(vals[1], vals[2], vals[3], vals[4], vals[5])
+  local vals = segSplit(line)
+  publishBroadcastMessage('noisedump', '"' .. vals[1] .. '"')
 end
 
 local function segPidInternals(line)
-  lastPidInternals = line
-  broadcastStatus(stsPidInternals)
+  local vals = segSplit(line)
+  publishBroadcastMessage('pidint', ('{"b":%s,"p":%s,"i":%s,"d":%s,"t":%s}')
+    :format(vals[1], vals[2], vals[3], vals[4], vals[5]))
 end
 
 local function segConfig(line, names, numeric)
@@ -431,7 +418,7 @@ local function segProbeNames(line)
   local vals = segConfig(line, {"pn0", "pn1", "pn2", "pn3"})
 
   for i,v in ipairs(vals) do
-    JSON_TEMPLATE[8+i*11] = v
+    JSON_TEMPLATE[7+i*11] = v
   end
 end
 
@@ -565,12 +552,6 @@ local function segUcIdentifier(line)
   end
 end
 
-function stsLmStateUpdate()
-  JSON_TEMPLATE[1] = "event: hmstatus\ndata: "
-  JSON_TEMPLATE[#JSON_TEMPLATE] = "\n\n"
-  return table.concat(JSON_TEMPLATE)
-end
-
 function segLmToast(line)
   local vals = segSplit(line)
   if serialPolle and #vals > 0 then
@@ -690,14 +671,14 @@ local function segStateUpdate(line)
       local status, err = pcall(rrd.update, RRD_FILE, table.concat(vals, ":"))
       if not status then nixio.syslog("err", "RRD error: " .. err) end
 
-      broadcastStatus(stsLmStateUpdate)
+      publishBroadcastMessage('hmstatus', table.concat(JSON_TEMPLATE))
       checkAutobackup(lastHmUpdate, vals)
     end
 end
 
 local function broadcastAlarm(probeIdx, alarmType, thresh)
-  local pname = JSON_TEMPLATE[19+(probeIdx*11)]
-  local curTemp = JSON_TEMPLATE[21+(probeIdx*11)]
+  local pname = JSON_TEMPLATE[18+(probeIdx*11)]
+  local curTemp = JSON_TEMPLATE[20+(probeIdx*11)]
   local retVal
 
   if alarmType then
@@ -721,11 +702,9 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
   end
 
   unthrottleUpdates() -- force the next update
-  JSON_TEMPLATE[28+(probeIdx*11)] = alarmType
-  broadcastStatus(function ()
-    return ('event: alarm\ndata: {"atype":%s,"p":%d,"pn":"%s","c":%s,"t":%s}\n\n'):format(
-      alarmType, probeIdx, pname, curTemp, thresh)
-    end)
+  JSON_TEMPLATE[27+(probeIdx*11)] = alarmType
+  publishBroadcastMessage('alarm', ('{"atype":%s,"p":%d,"pn":"%s","c":%s,"t":%s}')
+    :format(alarmType, probeIdx, pname, curTemp, thresh))
 
   return retVal
 end
@@ -743,7 +722,7 @@ local function segAlarmLimits(line)
     local curr = hmAlarms[i] or {}
     local probeIdx = math.floor(alarmId/2)
     local alarmType = alarmId % 2
-    JSON_TEMPLATE[24+(probeIdx*11)+(alarmType*2)] = v
+    JSON_TEMPLATE[23+(probeIdx*11)+(alarmType*2)] = v
     -- Wait until we at least have some config before broadcasting
     if (ringing and not curr.ringing) and (hmConfig and hmConfig.ucid) then
       curr.ringing = os.time()
@@ -968,10 +947,8 @@ local function segLmDaemonControl(line)
 end
 
 local function segLmStateUpdate()
-  JSON_TEMPLATE[1] = ""
-  JSON_TEMPLATE[#JSON_TEMPLATE] = ""
   -- If the "time" field is still 0, we haven't gotten an update
-  if JSON_TEMPLATE[3] == 0 then
+  if JSON_TEMPLATE[2] == 0 then
     return "{}"
   else
     return table.concat(JSON_TEMPLATE)
@@ -1011,7 +988,7 @@ local function segLmAlarmTest(line)
 
     -- If thresh is blank, use current
     thresh = thresh and tonumber(thresh) or
-      math.floor(tonumber(JSON_TEMPLATE[21+(probeIdx*11)]) or 0)
+      math.floor(tonumber(JSON_TEMPLATE[20+(probeIdx*11)]) or 0)
 
     local pid = broadcastAlarm(probeIdx, alarmType, thresh)
     return "OK " .. pid
@@ -1020,8 +997,10 @@ local function segLmAlarmTest(line)
   end
 end
 
-local function registerStreamingStatus(fn)
-  statusListeners[#statusListeners + 1] = fn
+local function registerStreamingStatus(fd, addr, line)
+  -- $LMSS,[statusonly]
+  local vals = segSplit(line)
+  statusListeners[#statusListeners + 1] = {fd=fd, addr=addr, statusonly=(vals[1] == "1")}
   unthrottleUpdates() -- make sure the new client gets the next available update
 end
 
@@ -1105,8 +1084,8 @@ local function prepare_daemon()
         local msg, addr = polle.fd:recvfrom(128)
         if not (msg and addr) then return end
 
-        if msg == "$LMSS" then
-          registerStreamingStatus(function (o) return polle.fd:sendto(o, addr) end)
+        if msg:sub(1, 5) == "$LMSS" then
+          registerStreamingStatus(polle.fd, addr, msg)
         else
           lmclientSendTo(polle.fd, addr, segmentCall(msg))
         end
