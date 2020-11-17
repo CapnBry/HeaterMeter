@@ -85,11 +85,10 @@ end
 
 local function hmModeChange(newMode)
   log(("PeakDetect mode change %s=>%s"):format(modeStr(peaks.mode), modeStr(newMode)))
-  peaks.mode = newMode
 
   if newMode == HMMODE_UNPLUG then
-    -- Clear the setpoint to go from UNPLUG to STARTUP if the value comes back
-    hmSetPoint = nil
+    -- Clear the entire state
+    initState()
 
   elseif newMode == HMMODE_STARTUP then
     -- Reset the output histogram if the setpoint changes
@@ -105,6 +104,8 @@ local function hmModeChange(newMode)
   elseif newMode == HMMODE_LID then
     lidTrack = LIDMODE_AWAITING_LOW
   end
+
+  peaks.mode = newMode
 end
 
 local function updateHmMode(vals)
