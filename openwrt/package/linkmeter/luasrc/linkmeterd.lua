@@ -405,7 +405,7 @@ local function segConfig(line, names, numeric)
 
     if v ~= "" then
       if numeric then
-        hmConfig[v] = tonumber(vals[i])
+        hmConfig[v] = tonumber(vals[i]) or vals[i]
       else
         hmConfig[v] = vals[i]
       end
@@ -427,7 +427,7 @@ local function segProbeOffsets(line)
 end
 
 local function segPidParams(line)
-  return segConfig(line, {"pidb", "pidp", "pidi", "pidd"}, true)
+  return segConfig(line, {"pidb", "pidp", "pidi", "pidd", "u"}, true)
 end
 
 local function segLidParams(line)
