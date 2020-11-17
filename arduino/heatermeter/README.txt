@@ -81,8 +81,8 @@ Lid Detect Parameters
 $HMLD,Offset Percent,Lid Duration
 Debug Log Message
 $HMLG,Message
-PID Coefficients
-$HMPD,PidB,PidP,PidI,PidD
+PID Coefficients and Units
+$HMPD,0,PidP,PidI,PidD,Units
 Probe Names
 $HMPN,Probe0,Probe1,Probe2,Probe3
 Probe Offsets

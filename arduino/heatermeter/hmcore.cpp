@@ -475,13 +475,14 @@ static void reportProbeNames(void)
 
 static void reportPidParams(void)
 {
-  print_P(PSTR("HMPD"));
-  for (unsigned char i=0; i<4; ++i)
+  print_P(PSTR("HMPD,0,"));
+  for (unsigned char i=1; i<4; ++i)
   {
-    Serial_csv();
     //printSciFloat(pid.Pid[i]);
     SerialX.print(pid.Pid[i], 8);
+    Serial_csv();
   }
+  SerialX.print(pid.getUnits());
   Serial_nl();
 }
 
