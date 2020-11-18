@@ -92,6 +92,7 @@ public:
   // Temperature moving average
   float TemperatureAvg;
   boolean hasTemperatureAvg(void) const { return _hasTempAvg; }
+  void resetTemperatureAvg(void) { _hasTempAvg = false; }
   // Convert ADC to Temperature
   void calcTemp(unsigned int _accumulator);
   // Perform once-per-period processing

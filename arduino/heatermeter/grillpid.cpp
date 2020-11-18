@@ -329,7 +329,7 @@ void TempProbe::setProbeType(unsigned char probeType)
 {
   _probeType = probeType;
   _tempStatus = TSTATUS_NONE;
-  _hasTempAvg = false;
+  resetTemperatureAvg();
 }
 
 void TempProbe::calcTemp(unsigned int adcval)
@@ -981,6 +981,8 @@ void GrillPid::setUnits(char units)
     case 'F':
     case 'R':
       _units = units;
+      // Clear the TemperatureAvg to prevent D term jumps on the pit probe
+      Probes[TEMP_CTRL]->resetTemperatureAvg();
       break;
     case 'O': // Off
       setPidMode(PIDMODE_OFF);
