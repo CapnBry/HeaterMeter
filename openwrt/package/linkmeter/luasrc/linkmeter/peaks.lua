@@ -9,12 +9,15 @@ local HMMODE_RECOVER = 5
 local LIDMODE_AWAITING_LOW  = 1
 local LIDMODE_AWAITING_HIGH = 2
 
--- Last known setpoint, used to detect setpoint change
-local hmSetPoint
+-- Last known setpoint used to detect setpoint change
+local hmSetpoint
 -- History of pit temperature measurements (every 10th measurement, reset on peak)
 local pitLog
 -- Peaks state (published)
 local peaks
+local peaksUnitsScale
+local peaksSetpointScale
+local peakTrendThreshold
 -- Extended lid mode tracking
 local lidTrack
 
@@ -42,9 +45,12 @@ local function initState()
   }
   resetUpdateCount()
 
-  hmSetPoint = nil
+  hmSetpoint = nil
   pitLog = {}
   lidTrack = nil
+  peaksUnitsScale = 1.0
+  peaksSetpointScale = 0.1
+  peakTrendThreshold = 1.0
 end
 
 local function log(...)
@@ -79,7 +85,28 @@ local function modeStr(mode)
   elseif mode == HMMODE_RECOVER then
     return "RECOVER"
   else
-    return ""
+    return "NONE"
+  end
+end
+
+local function updateSetpointScaling()
+  -- Adjust all thresholds by a Unit scale for Celsius users
+  local units = linkmeterd.getConf("u") or "F"
+  local setpoint = tonumber(hmSetpoint)
+  if units == "C" or units == "R" then
+    peaksUnitsScale = 5.0/9.0
+    setpoint = (setpoint * 9.0/5.0) + 32
+  else
+    peaksUnitsScale = 1.0
+  end
+
+  -- Thesholds also need to be increased at higher temperatures
+  if setpoint < 250 then
+    peaksSetpointScale = 0.1
+  elseif setpoint > 500 then
+    peaksSetpointScale = 0.4
+  else
+    peaksSetpointScale = (0.3 * (setpoint - 250.0) / 250.0) + 0.1
   end
 end
 
@@ -93,9 +120,11 @@ local function hmModeChange(newMode)
   elseif newMode == HMMODE_STARTUP then
     -- Reset the output histogram if the setpoint changes
     peaks.outhist = nil
+    pitLog = {}
+    updateSetpointScaling()
 
   -- Stop extended lid mode tracking when returning to normal mode or recovery
-  elseif newMode == HMMODE_NORMAL or newMode == HMMODE_RECOVER then
+  elseif newMode == HMMODE_STARTUP or newMode == HMMODE_NORMAL or newMode == HMMODE_RECOVER then
     if lidTrack then
       log("Lid mode ended normally, disabling LidTrack")
       lidTrack = nil
@@ -105,19 +134,30 @@ local function hmModeChange(newMode)
     lidTrack = LIDMODE_AWAITING_LOW
   end
 
+  -- In lid mode, use a higher threshold for trend detection due to
+  -- larger tempertature changes, targetting 1.0F at 225F
+  if newMode == HMMODE_LID then
+    peakTrendThreshold = 50.0 * peaksUnitsScale * peaksSetpointScale
+  else
+    peakTrendThreshold = 10.0 * peaksUnitsScale * peaksSetpointScale
+  end
+
   peaks.mode = newMode
 end
 
 local function updateHmMode(vals)
   local newMode = peaks.mode
-  
+  local forceChange = false
+
   -- If pidOutput(1) is off or Pit probe(2) unplugged
   if vals[1] == "U" or vals[2] == "U" then
     newMode = HMMODE_UNPLUG
-    
-  -- new SetPoint? back to startup mode
-  elseif vals[1] ~= hmSetPoint then
+
+  -- new SetPoint? back to startup mode, always force a modeChange to update targets
+  elseif vals[1] ~= hmSetpoint then
     newMode = HMMODE_STARTUP
+    hmSetpoint = vals[1]
+    forceChange = true
 
   -- If the lid timer is going then it is lid mode
   elseif vals[8] ~= "0" then
@@ -132,8 +172,10 @@ local function updateHmMode(vals)
   elseif peaks.mode == HMMODE_LID then
     newMode = HMMODE_RECOVER
   end
-  
-  if peaks.mode ~= newMode then hmModeChange(newMode) end
+
+  if peaks.mode ~= newMode or forceChange then
+    hmModeChange(newMode)
+  end
 end
 
 local function updateOutputHist(output)
@@ -215,12 +257,12 @@ local function peakDetect(now, t)
   local i
   for i = #pitLog,1,-1 do
     local diff = t - pitLog[i]
-    if diff > 1.0 then
+    if diff > peakTrendThreshold then
       newTrend = 1
       --log(("Trend %d found at %d/%d"):format(newTrend, i, #pitLog))
       break
     end
-    if diff < -1.0 then
+    if diff < -peakTrendThreshold then
       newTrend = -1
       --log(("Trend %d found at %d/%d"):format(newTrend, i, #pitLog))
       break
@@ -280,7 +322,7 @@ local function updateLidTrack(now, t)
 
   -- If Normal mode and pit temperature drops more than 0.5F/sec over 10 seconds activate lid mode
   if peaks.mode == HMMODE_NORMAL then
-    if dps < -0.5 then
+    if (dps < (-5.0 * peaksUnitsScale * peaksSetpointScale)) and (t < tonumber(hmSetpoint)) then
       log(("LidTrack detected %.2fdeg/s drop, triggering Lid Mode"):format(dps))
       -- Enable lid mode
       linkmeterd.hmWrite("/set?ld=,,1\n")
@@ -288,7 +330,8 @@ local function updateLidTrack(now, t)
   --end if mode NORMAL
 
   elseif lidTrack == LIDMODE_AWAITING_HIGH then
-    if (t - peaks.L.val) > 20 and dps > 0 and dps < 0.1 then
+    -- These thresholds aren't scaled by peaksSetpointScale because they occur not at Setpoint
+    if (t - peaks.L.val) > (20 * peaksUnitsScale) and dps > 0 and dps < (0.1 * peaksUnitsScale) then
       log(("LidTrack detected high plateau at %.1f (%.2fdeg/s), self-recovered %.1f"):format(t, dps, t - peaks.L.val))
       lidTrack = nil
       -- Disable lid mode
@@ -298,11 +341,11 @@ local function updateLidTrack(now, t)
 end
 
 local function updateState(now, vals)
-  -- SetPoint, Probe0, Probe1, Probe2, Probe3, Output, OutputAvg, Lid, Fan
-  -- 1         2       3       4       5       6       7          8    9
+  -- SetPoint, Probe0, Probe1, Probe2, Probe3, Output, OutputAvg, Lid, Fan, Servo
+  -- 1         2       3       4       5       6       7          8    9,   10
   updateHmMode(vals)
   if peaks.mode == HMMODE_UNPLUG then return end
-  
+
   peaks.updatecnt[peaks.mode] = peaks.updatecnt[peaks.mode] + 1
   local pitTemp = tonumber(vals[2])
   updatePitLog(now, pitTemp)
@@ -312,15 +355,15 @@ local function updateState(now, vals)
   if peaks.mode == HMMODE_NORMAL then
     updateOutputHist(vals[6])
   end
-  
-  hmSetPoint = vals[1]
 end
 
 local function peaksState(line)
   local f = {}
   f[#f+1] = 'Histogram=' .. table.concat(peaks.outhist or {}, ',')
-  f[#f+1] = 'peaks.mode=' .. peaks.mode
+  f[#f+1] = 'peaks.mode=' .. peaks.mode .. ' (' .. modeStr(peaks.mode) .. ')'
   f[#f+1] = 'peaks.updatecnt=' .. table.concat(peaks.updatecnt, ',')
+  f[#f+1] = ('peaksUnitsScale=%.2f peaksSetpointScale=%.2f peakTrendThreshold=%.2f')
+    :format(peaksUnitsScale, peaksSetpointScale, peakTrendThreshold)
   if peaks.C.time then f[#f+1] = ("peaks.C (%02d) %s"):format(peaks.C.trend, peakStr(peaks.C)) end
   if peaks.H.time then f[#f+1] = ("peaks.H  %s"):format(peakStr(peaks.H)) end
   if peaks.L.time then f[#f+1] = ("peaks.L  %s"):format(peakStr(peaks.L)) end
