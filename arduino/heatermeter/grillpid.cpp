@@ -837,6 +837,18 @@ void GrillPid::setLidOpenDuration(unsigned int value)
   _lidOpenDuration = (value > LIDOPEN_MIN_AUTORESUME) ? value : LIDOPEN_MIN_AUTORESUME;
 }
 
+boolean GrillPid::lidModeShouldActivate(int tempDiff) const
+{
+  // If the pit temperature has been reached
+  // and if the pit temperature is [lidOpenOffset]% less that the setpoint
+  // and if the fan has been running less than 90% (more than 90% would indicate probable out of fuel)
+  // Note that the code assumes we're not currently counting down
+  return (LidOpenOffset > 0)
+    && isPitTempReached()
+    && ((tempDiff * 100 / _setPoint) >= (int)LidOpenOffset)
+    && ((int)PidOutputAvg < 90);
+}
+
 void GrillPid::reportStatus(void) const
 {
 #if defined(GRILLPID_SERIAL_ENABLED)
@@ -935,13 +947,7 @@ boolean GrillPid::doWork(void)
     {
       LidOpenResumeCountdown = LidOpenResumeCountdown - (TEMP_MEASURE_PERIOD / 1000);
     }
-    // If the pit temperature has been reached
-    // and if the pit temperature is [lidOpenOffset]% less that the setpoint
-    // and if the fan has been running less than 90% (more than 90% would indicate probable out of fuel)
-    // Note that the code assumes we're not currently counting down
-    else if (isPitTempReached() && 
-      ((tempDiff*100/_setPoint) >= (int)LidOpenOffset) &&
-      ((int)PidOutputAvg < 90))
+    else if (lidModeShouldActivate(tempDiff))
     {
       resetLidOpenResumeCountdown();
     }

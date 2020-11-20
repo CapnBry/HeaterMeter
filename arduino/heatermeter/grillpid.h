@@ -208,7 +208,7 @@ public:
   void setSetPoint(int value);
   char getUnits(void) const { return _units; }
   void setUnits(char units);
-  // The number of degrees the temperature drops before automatic lidopen mode
+  // Percentage of setpoint degrees the temperature drops before automatic lidopen mode
   unsigned char LidOpenOffset;
   // The ammount of time to turn off the blower when the lid is open
   unsigned int getLidOpenDuration(void) const { return _lidOpenDuration; }
@@ -280,6 +280,8 @@ public:
   // Seconds remaining in the lid open countdown
   unsigned int LidOpenResumeCountdown;
   boolean isLidOpen(void) const { return LidOpenResumeCountdown != 0; }
+  // true if all conditions for Lid Mode activation are met
+  boolean lidModeShouldActivate(int tempDiff) const;
   // true if any probe has a non-zero temperature
   boolean isAnyFoodProbeActive(void) const;
   unsigned int countOfType(unsigned char probeType) const;
