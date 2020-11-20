@@ -58,6 +58,11 @@ local function log(...)
   --print(...)
 end
 
+local function isLidTrackEnabled()
+  local uci = require "uci"
+  return uci.cursor():get("linkmeter", "daemon", "lidtrack_enabled") == "1"
+end
+
 local function peakStr(self)
   return string.format("@%u=%.1f half=%d per=%d amp=%.1f gain=%.1f",
     self.time, self.val, self.half or 0, self.period or 0, self.amp or 0, self.gain or 0)
@@ -324,20 +329,25 @@ local function updateLidTrack(now, t)
   if peaks.mode == HMMODE_NORMAL then
     if (dps < (-5.0 * peaksUnitsScale * peaksSetpointScale)) and (t < tonumber(hmSetpoint)) then
       log(("LidTrack detected %.2fdeg/s drop, triggering Lid Mode"):format(dps))
-      -- Enable lid mode
-      linkmeterd.hmWrite("/set?ld=,,1\n")
+      if isLidTrackEnabled() then
+        -- Enable lid mode
+        linkmeterd.hmWrite("/set?ld=,,1\n")
+      end
     end
   --end if mode NORMAL
 
   elseif lidTrack == LIDMODE_AWAITING_HIGH then
+    -- If temperature change from the low peak is >20F and 0 < dps < 0.1F
     -- These thresholds aren't scaled by peaksSetpointScale because they occur not at Setpoint
     if (t - peaks.L.val) > (20 * peaksUnitsScale) and dps > 0 and dps < (0.1 * peaksUnitsScale) then
-      log(("LidTrack detected high plateau at %.1f (%.2fdeg/s), self-recovered %.1f"):format(t, dps, t - peaks.L.val))
       lidTrack = nil
-      -- Disable lid mode
-      linkmeterd.hmWrite("/set?ld=,,0\n")
-    end
-  end
+      log(("LidTrack detected high plateau at %.1f (%.2fdeg/s), self-recovered %.1f"):format(t, dps, t - peaks.L.val))
+      if isLidTrackEnabled() then
+        -- Disable lid mode
+        linkmeterd.hmWrite("/set?ld=,,0\n")
+      end
+    end -- if temperature stabilized
+  end -- end if LIDMODE_AWAITING_HIGH
 end
 
 local function updateState(now, vals)
