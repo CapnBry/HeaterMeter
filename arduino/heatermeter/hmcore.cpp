@@ -174,13 +174,6 @@ void storeSetPoint(int sp)
   storePidMode();
 }
 
-static void storePidUnits(char units)
-{
-  pid.setUnits(units);
-  if (units == 'C' || units == 'F')
-    config_store_byte(pidUnits, units);
-}
-
 static void storeProbeOffset(unsigned char probeIndex, int offset)
 {
   unsigned char ofs = getProbeConfigOffset(probeIndex, offsetof( __eeprom_probe, tempOffset));
@@ -484,6 +477,14 @@ static void reportPidParams(void)
   }
   SerialX.print(pid.getUnits());
   Serial_nl();
+}
+
+static void storePidUnits(char units)
+{
+  pid.setUnits(units);
+  if (units == 'C' || units == 'F')
+    config_store_byte(pidUnits, units);
+  reportPidParams();
 }
 
 static void reportProbeOffsets(void)
