@@ -427,7 +427,7 @@ local function segProbeOffsets(line)
 end
 
 local function segPidParams(line)
-  return segConfig(line, {"pidb", "pidp", "pidi", "pidd", "u"}, true)
+  return segConfig(line, {"", "pidp", "pidi", "pidd", "u"}, true)
 end
 
 local function segLidParams(line)
@@ -1060,7 +1060,13 @@ function segmentCall(line)
   local seg = line:sub(1,5)
   local segmentFunc = segmentMap[seg] or pluginSegmentListeners[seg]
   if segmentFunc then
-    return segmentFunc(line)
+    local ok, returnval = pcall(segmentFunc, line)
+
+    if ok then
+      return returnval
+    else
+      nixio.syslog("err", "Error handling " .. seg .. " in " .. returnval)
+    end
   else
     return "ERR"
   end
