@@ -36,6 +36,8 @@ local hmAlarms = {}
 local extendedStatusProbeVals = {} -- array[probeIdx] of tables of kv pairs, per probe
 local extendedStatusVals = {} -- standard kv pairs of items to include in status, global
 local hmConfig
+local hmConfigRemaining
+local hmConfigLastReceive
 
 -- forwards
 local segmentCall
@@ -54,17 +56,20 @@ local Server = {
   _tickt = {}
 }
 
+local function tableRemoveItem(t, item)
+  for k, v in ipairs(t) do
+    if v == item then
+      return table.remove(t, k)
+    end
+  end
+end
+
 function Server.register_pollfd(polle)
   Server._pollt[#Server._pollt+1] = polle
 end
 
 function Server.unregister_pollfd(polle)
-  for k, v in ipairs(Server._pollt) do
-    if v == polle then
-      table.remove(Server._pollt, k)
-      return true
-    end
-  end
+  tableRemoveItem(Server._pollt, polle)
 end
 
 function Server.register_tick(ticke)
@@ -72,12 +77,7 @@ function Server.register_tick(ticke)
 end
 
 function Server.unregister_tick(ticke)
-  for k, v in ipairs(Server._tickt) do
-    if v == ticke then
-      table.remove(Server._tickt, k)
-      return true
-    end
-  end
+  tableRemoveItem(Server._tickt, ticke)
 end
 
 function Server.daemonize()
@@ -128,8 +128,8 @@ function Server.run()
 end
 
 -- External API functions
-function getConf(k, default)
-  return hmConfig and hmConfig[k] or default
+function getConf(k)
+  return hmConfig and hmConfig[k]
 end
 
 function setConf(k, v)
@@ -205,12 +205,7 @@ function registerSegmentListener(seg, f)
 end
 
 function unregisterSegmentListener(f)
-  for i = 1, #pluginSegmentListeners do
-    if pluginSegmentListeners[i] == f then
-      table.remove(pluginSegmentListeners, i)
-      return
-    end
-  end
+  tableRemoveItem(pluginSegmentListeners, f)
 end
 
 function registerStatusListener(f)
@@ -220,12 +215,7 @@ function registerStatusListener(f)
 end
 
 function unregisterStatusListener(f)
-  for i = 1, #pluginStatusListeners do
-    if pluginStatusListeners[i] == f then
-      table.remove(pluginStatusListeners, i)
-      return
-    end
-  end
+  tableRemoveItem(pluginStatusListeners, f)
 end
 
 function registerTickListener(cb)
@@ -294,6 +284,19 @@ function statusValChanged(t, k, v)
   end
 end
 
+local function hmConfigReceived(segment)
+  if hmConfigRemaining == nil then return end
+
+  hmConfigLastReceive = os.time()
+
+  tableRemoveItem(hmConfigRemaining, segment)
+  if #hmConfigRemaining == 0 then
+    -- nixio.syslog("info", "All configuration received")
+    hmConfigRemaining = nil
+    hmConfigLastReceive = nil
+  end
+end
+
 local function rrdCreate()
   local status, last = pcall(rrd.last, RRD_AUTOBACK)
   if status then
@@ -355,6 +358,9 @@ local function jsonWrite(vals)
 end
 
 local function doStatusListeners(now, vals)
+  -- Only send status messages after we've received all our config
+  if hmConfigRemaining ~= nil then return end
+
   for i = 1, #pluginStatusListeners do
     pluginStatusListeners[i](now, vals)
   end
@@ -420,6 +426,7 @@ local function segConfig(line, names, numeric)
 end
 
 local function segProbeNames(line)
+  hmConfigReceived("HMPN")
   local vals = segConfig(line, {"pn0", "pn1", "pn2", "pn3"})
 
   for i,v in ipairs(vals) do
@@ -428,18 +435,22 @@ local function segProbeNames(line)
 end
 
 local function segProbeOffsets(line)
+  hmConfigReceived("HMPO")
   return segConfig(line, {"po0", "po1", "po2", "po3"}, true)
 end
 
 local function segPidParams(line)
+  hmConfigReceived("HMPD")
   return segConfig(line, {"", "pidp", "pidi", "pidd", "u"}, true)
 end
 
 local function segLidParams(line)
+  hmConfigReceived("HMLD")
   return segConfig(line, {"lo", "ld"}, true)
 end
 
 local function segFanParams(line)
+  hmConfigReceived("HMFN")
   return segConfig(line, {"fmin", "fmax", "smin", "smax", "oflag", "fsmax", "fflor", "sceil"}, true)
 end
 
@@ -483,12 +494,14 @@ end
 
 local function segProbeCoeffs(line)
   local i = line:sub(7, 7)
+  hmConfigReceived("HMPC," .. i)
   segConfig(line, {"", "pca"..i, "pcb"..i, "pcc"..i, "pcr"..i, "pt"..i}, false)
   -- The resistance looks better in the UI without scientific notation
   hmConfig["pcr"..i] = tonumber(hmConfig["pcr"..i])
 end
 
 local function segLcdBacklight(line)
+  hmConfigReceived("HMLB")
   return segConfig(line, {"lb", "lbn", "le0", "le1", "le2", "le3"})
 end
 
@@ -551,6 +564,7 @@ local function segResetConfig(line)
 end
 
 local function segUcIdentifier(line)
+  hmConfigReceived("UCID")
   local vals = segSplit(line)
   if #vals > 1 then
     hmConfig.ucid = vals[2]
@@ -715,6 +729,7 @@ local function broadcastAlarm(probeIdx, alarmType, thresh)
 end
 
 local function segAlarmLimits(line)
+  hmConfigReceived("HMAL")
   local vals = segSplit(line)
 
   for i,v in ipairs(vals) do
@@ -776,6 +791,24 @@ local function segmentValidate(line)
   return csum
 end
 
+local function hmRequestConfig(now)
+  hmWrite("\n/config\n")
+  hmConfigLastReceive = now or os.time()
+end
+
+local function checkHmConfigRemaining()
+  if hmConfigRemaining == nil then return end
+  if hmConfigLastReceive == nil then return end
+
+  -- If it has been more than N seconds since last config receive
+  -- request a retransmit
+  local now = os.time()
+  if now - hmConfigLastReceive > 2 then
+    nixio.syslog("warning", "Requesting config retransmit for " .. table.concat(hmConfigRemaining, ","))
+    return hmRequestConfig(now)
+  end
+end
+
 local function serialHandler(polle)
   for line in polle.lines do
     if serialLog then
@@ -786,7 +819,7 @@ local function serialHandler(polle)
     if csumOk ~= false then
       if hmConfig == nil then
         hmConfig = {}
-        hmWrite("\n/config\n")
+        hmRequestConfig()
       end
 
       -- Remove the checksum of it was there
@@ -795,6 +828,7 @@ local function serialHandler(polle)
     end -- if validate
   end -- for line
 
+  checkHmConfigRemaining()
 end
 
 local function lmclientSendTo(fd, addr, val)
@@ -823,6 +857,14 @@ local function initHmVars()
     JSON_TEMPLATE[#JSON_TEMPLATE+1] = v
   end
   unthrottleUpdates()
+
+  hmConfigLastReceive = nil
+  hmConfigRemaining = {
+    "UCID", "HMPD", "HMFN", "HMPN",
+    "HMPC,0", "HMPC,1", "HMPC,2", "HMPC,3",
+    "HMPO", "HMLD", "HMLB", "HMAL"
+    -- $HMRM not required
+  }
 end
 
 local function initPlugins()
