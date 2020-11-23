@@ -19,6 +19,7 @@ local collectgarbage, math, bxor = collectgarbage, math, nixio.bit.bxor
 
 module "linkmeterd"
 
+local serialLog
 local serialPolle
 local statusListeners = {}
 local pluginStatusListeners = {}
@@ -237,6 +238,10 @@ end
 
 function hmWrite(s)
   if serialPolle then
+    if serialLog then
+      serialLog:write("WRITE:")
+      serialLog:write(s)
+    end
     --print("WRITE:" .. s)
     -- Break the data into 8 byte chunks (the size of the FIFO on the Pi3/W minuart)
     -- write always returns that it wrote the entire data, and poll('out') always times out
@@ -773,6 +778,10 @@ end
 
 local function serialHandler(polle)
   for line in polle.lines do
+    if serialLog then
+      serialLog:write(line)
+      serialLog:write("\n")
+    end
     local csumOk = segmentValidate(line)
     if csumOk ~= false then
       if hmConfig == nil then
@@ -845,6 +854,11 @@ local function lmdStart()
     return nil, -2, "Can't set serial baud"
   end
 
+  local logfile = cfg:get("linkmeter", "daemon", "serial_log")
+  if logfile then
+    serialLog = nixio.open(logfile, nixio.open_flags("creat", "wronly", "trunc"))
+  end
+
   local serialfd = nixio.open(SERIAL_DEVICE, nixio.open_flags("rdwr"))
   if not serialfd then
     return nil, -2, "Can't open serial device"
@@ -866,6 +880,10 @@ local function lmdStart()
   local discard
   repeat
     discard = serialfd:read(1024)
+    if discard ~= false and serialLog then
+      serialLog:write("DISCARD ")
+      serialLog:write(discard)
+    end
   until (not discard or #discard == 0)
 
   serialPolle = {
@@ -886,6 +904,10 @@ local function lmdStop()
   serialPolle.fd:setblocking(true)
   serialPolle.fd:close()
   serialPolle = nil
+  if serialLog then
+    serialLog:close()
+    serialLog = nil
+  end
   initHmVars()
 
   return true
@@ -1066,6 +1088,7 @@ function segmentCall(line)
       return returnval
     else
       nixio.syslog("err", "Error handling " .. seg .. " in " .. returnval)
+      return "ERR"
     end
   else
     return "ERR"
