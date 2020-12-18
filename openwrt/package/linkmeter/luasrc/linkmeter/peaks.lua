@@ -95,6 +95,13 @@ local function modeStr(mode)
 end
 
 local function updateSetpointScaling()
+  -- Manual mode has no setpoint, use sane values since lidtrack doesn't operate in manual
+  if hmSetpoint == "-" then
+    peaksUnitsScale = 1.0
+    peaksSetpointScale = 0.1
+    return
+  end
+
   -- Adjust all thresholds by a Unit scale for Celsius users
   local units = linkmeterd.getConf("u") or "F"
   local setpoint = tonumber(hmSetpoint)
@@ -316,6 +323,9 @@ local function updatePitLog(now, t)
 end
 
 local function updateLidTrack(now, t)
+  -- Do nothing in manual mode
+  if hmSetpoint == "-" then return false end
+
   local dps = 0
   -- Use a weighted average of the last two pitLog entries to look back 10 seconds
   if #pitLog > 1 then
