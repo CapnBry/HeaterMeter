@@ -3,7 +3,11 @@
 <script src="<%=resource%>/js/jquery-all.js" type="text/javascript"></script>
 <script type="text/javascript">//<![CDATA[
 var configHash = <%= LmClient():query("$LMCF") or "{}" %>;
-var apikey = "<%= uci.cursor():get("linkmeter", "api", "key") %>";
+<%
+  local uci = uci.cursor()
+  write('var lm_apikey = "' .. uci:get("linkmeter", "api", "key") .. '";\n')
+  write('var lm_lidtrack_enabled = ' .. (uci:get("linkmeter", "daemon", "lidtrack_enabled") or "0") .. ';\n')
+-%>
 var rfInterval;
 var ignoreConfigUrlUpdates;
 var coeffPresets = [
@@ -23,6 +27,9 @@ var coeffPresets = [
 $(function ()
 {
   $("input,select").on("change", configElemChange);
+  $(".pt").off("change").on("change", typeChanged);
+  $("#sp_v").off("change").on("change", setpointChanged);
+  $("#sp_u").off("change").on("change", setpointChanged);
   loadCoeffPresets();
   configToForm();
 });
@@ -201,6 +208,94 @@ function typeChanged()
   configElemChange.call(this);
 }
 
+function setpointChanged()
+{
+  let units = $("#sp_u").val();
+  let val = $("#sp_v").val();
+
+  $("#sp_v").toggle(units === "F" || units === "C" || units === "%");
+  // Off
+  if (units === "O")
+    $("#sp").val("O");
+
+  // ADC / Resistance
+  else if (units === "A" || units === "R")
+    $("#sp").val("0" + units);
+
+  // Manual
+  else if (units === "%")
+  {
+    if (val !== "")
+      $("#sp").val("-" + val);
+    else
+      $("#sp").val("-0");
+  }
+
+  // C or F
+  else
+  {
+    $("#sp").val(val + units);
+  }
+
+  // Chain the standard event handler after this one
+  configElemChange.call(this);
+}
+
+function setpointSplit()
+{
+  // Splits hash sp into input sp_v and input sp_u
+  let sp = configHash.sp;
+  let units = configHash.u;
+  // Off
+  if (sp === null)
+  {
+    $("#sp_v").val("");
+    $("#sp_u").val("O");
+  }
+
+  // ADC or Ohms
+  else if (units == "A" || units == "R")
+  {
+    $("#sp_v").val("");
+    $("#sp_u").val(units);
+  }
+
+  // C, F or %
+  else
+  {
+    // Remove the negative indicating manual mode
+    if (sp.startsWith("-"))
+    {
+      $("#sp_v").val(sp.slice(1));
+      $("#sp_u").val('%');
+    }
+    else
+    {
+      $("#sp_v").val(sp);
+      $("#sp_u").val(units);
+    }
+  }
+
+  // Will write back to input sp
+  $("#sp_v").trigger("change");
+}
+
+function lidtrackSplit()
+{
+  let val;
+  // LidTrack enabled
+  if (lm_lidtrack_enabled === 1)
+    val = 2;
+  // No lid tracking, lid offset == 0
+  else if (configHash.lo === 0)
+    val = 0;
+  // Else threshold mode
+  else
+    val = 1;
+
+  $("#lm_lid_method").val(val).trigger("change");
+}
+
 function isProbeId(hay, need)
 {
   return (hay.length == need.length + 1) && 
@@ -209,7 +304,8 @@ function isProbeId(hay, need)
 
 function configHashToForm()
 {
-  configHash["set_apikey"] = apikey; // not at all hacky
+  configHash["lm_apikey"] = lm_apikey;
+  configHash["lm_lidtrack_enabled"] = lm_lidtrack_enabled;
   for (var k in configHash)
   {
     var elem = $("#" + k);
@@ -224,6 +320,8 @@ function configHashToForm()
       else
         elem.html("off");
     }
+    else if (isProbeId(k, "pcr"))
+      elem.val((Math.floor(val) === val) ? val : val.toFixed(3));
     else if (k == "ucid")
       elem.html(val);
     else if (k == "cerr")
@@ -234,7 +332,7 @@ function configHashToForm()
       elem.val("");
       
     if (isProbeId(k, "pt"))
-      elem.off("change").on("change", typeChanged).trigger("change");
+      elem.trigger("change");
     else if (isProbeId(k, "prfn"))
       $("#prfa" + k.substr(4))
         .prop("checked", val == 127);
@@ -252,22 +350,22 @@ function configHashToForm()
     else if (k == "oflag")
     {
       setupCheckboxBitmask(k, val);
-      $("#oflag4").val((parseInt(val) >> 4) & 0x01); // mode
+      $("#oflag4").val(parseInt(val) & 0x10); // mode
       $("#oflag5").val(parseInt(val) & 0x60); // line noise
     }
     else if (k == "smin" || k == "smax")
       $("#" + k + "X")
         .val(val * 10);
-  }
+  } /* for k in configHash */
 }
 
 function configElemChange()
 {
-  var name = this.id;
+  let name = this.id;
   if (this.className == "pc")
   {
     name = name.substr(3);
-    var values = this.value.split(',');
+    let values = this.value.split(',');
     if (values.length >= 3)
     {
       $("#pca"+name).val(values[0]);
@@ -280,7 +378,7 @@ function configElemChange()
   else if (isProbeId(name, "prfa"))
   {
     name = "prfn" + name.substr(4);
-    var value;
+    let value;
     if ($(this).is(":checked"))
       value = "127";
     else
@@ -295,7 +393,7 @@ function configElemChange()
   else if (isProbeId(name, "palel") || isProbeId(name, "paleh"))
   {
     name = "pal" + name.substr(4);
-    var value = $("#" + name).val();
+    let value = $("#" + name).val();
     if ($(this).is(":checked"))
       value = value < 0 ? -value : value;
     else
@@ -309,36 +407,45 @@ function configElemChange()
   }
   else if (isProbeId(name, "les") || isProbeId(name, "lei"))
   {
-    var target = "#le" + name.substr(3);
-    var val = $("#les" + name.substr(3)).val();
+    let target = "#le" + name.substr(3);
+    let val = $("#les" + name.substr(3)).val();
     if ($("#lei" + name.substr(3)).is(":checked"))
       val |= 0x80;
     $(target).val(val);
   }
-  else if (name == "oflag5")
+  else if (name == "oflag4" || name == "oflag5")
   {
-    // oflag5 is line noise filter
-    var val = $("#oflag").val();
-    val = (val & ~0x60) | parseInt($(this).val());
-    $("#oflag").val(val);
+    // oflag4 = PWM/Voltage
+    // oflag5 = line noise filter
+    let flags = $("#oflag").val();
+    let mask = ~parseInt($(this).data("mask"));
+    flags = (flags & mask) | parseInt($(this).val());
+    $("#oflag").val(flags);
   }
   else if (isProbeId(name, "oflag"))
   {
-    var idx = +name.substr(5);
-    var val = $("#oflag").val();
-    var thisval =
-      // oflag4 is PWM/Voltage dropdown
-      ((idx == 4) && ($(this).val() == "1")) ||
-      ((idx != 4) && $(this).is(":checked"));
-    if (thisval)
-      val |= (1 << idx);
+    let idx = +name.substr(5);
+    let flags = $("#oflag").val();
+    if ($(this).is(":checked"))
+      flags |= (1 << idx);
     else
-      val &= ~(1 << idx);
-    $("#oflag").val(val);
+      flags &= ~(1 << idx);
+    $("#oflag").val(flags);
   }
   else if (name == "sminX" || name == "smaxX")
     $("#" + name.substr(0, 4))
       .val(Math.round($(this).val() / 10));
+  else if (name === "lm_lid_method")
+  {
+    let val = +this.value;
+    $("#displo").toggle(val === 1);
+    $("#displm_lid_method").toggleClass("cbi-value-last", val !== 1);
+    if (val === 0 || val === 2)
+      $("#lo").val(0);
+    else if (val === 1)
+      $("#lo").val(configHash.lo !== 0 ? configHash.lo : 6);
+    $("#lm_lidtrack_enabled").val(val === 2 ? 1 : 0);
+  }
 
   updateUpdateUrl();
 }
@@ -367,6 +474,8 @@ function configToForm()
     ignoreConfigUrlUpdates = true;
     configHashToForm();
     checkCoeffForPresets();
+    setpointSplit();
+    lidtrackSplit();
     ignoreConfigUrlUpdates = false;
     updateConfigUrl("#fullurl", configHash);
     updateConfigUrl("#updateurl", {});
@@ -380,16 +489,22 @@ function updateUpdateUrl()
 
 function configChangedHash()
 {
-  var r = {};
-  for (var k in configHash)
+  let r = {};
+  for (let k in configHash)
   { 
-    var elem = $("#"+k);
-    if (elem == null)
+    let elem = $("#"+k);
+    if (elem === null)
       continue;
     if (isProbeId(k, "pcurr"))
       continue;
-    var val = elem.val();
-    if (isProbeId(k, "prfn") && val == "")
+    let val = elem.val();
+    if (isProbeId(k, "pcr") && coeffIsCloseEnough(val, configHash[k]))
+      continue;
+    if (k === "sp" && val === (configHash.sp + configHash.u))
+      continue;
+    if (k === "sp" && configHash.sp === null && val === "O")
+      continue;
+    if (isProbeId(k, "prfn") && val === "")
       val = null;
     if (val != configHash[k])
       r[k] = val;
@@ -446,8 +561,9 @@ function updateConfigUrl(divname, h)
   if (ignoreConfigUrlUpdates) return;
 
   var aValues = new Array();
-  var STATIC_MAP = [ "pn0", "pn1", "pn2", "pn3", 
-    "sp", "pidp", "pidi", "pidd", "set_apikey" ];
+  var STATIC_MAP = [ "pn0", "pn1", "pn2", "pn3",
+    "sp", "pidp", "pidi", "pidd", "lm_apikey",
+    "lm_lidtrack_enabled" ];
   for (var k in h)
   {
     if ($.inArray(k, STATIC_MAP) != -1)
@@ -492,7 +608,8 @@ function ifrmLoaded()
 {
   if (frameLoadFired) return;
   frameLoadFired = true;
-  apikey = $("#set_apikey").val() || apikey;
+  lm_apikey = $("#lm_apikey").val() || lm_apikey;
+  lm_lidtrack_enabled = +$("#lm_lidtrack_enabled").val();
   $.get("<%=build_url("lm/conf")%>",
     function (o) { configHash = o; configToForm(); windowLoaded(); })
     .fail(function () { window.location.reload(); })
@@ -504,7 +621,7 @@ function newApiKey()
   var key = "";
   while (key.length < 32)
     key += Math.random().toString(16).slice(2)
-  $("#set_apikey").val(key.slice(-32))
+  $("#lm_apikey").val(key.slice(-32))
     .trigger("change");
 }
 
@@ -570,7 +687,7 @@ The look of the Home page can be modified using the
 </select></div>
 <div id="disppc<%=i%>">
   <div><b>Probe Coefficients</b></div>
-  <div class="cbi-value"><label><a class="nodest" href="https://github.com/CapnBry/HeaterMeter/wiki/HeaterMeter-Probes">Preset</a></label><select class="pcp" id="pcp<%=i%>">
+  <div class="cbi-value"><label style="text-decoration: underline;"><a class="nodest" href="https://github.com/CapnBry/HeaterMeter/wiki/HeaterMeter-Probes">Preset</a></label><select class="pcp" id="pcp<%=i%>">
     </select><div id="pcad<%=i%>" class="pcpreset"></div>
   </div>
   <div id="disppcc<%=i%>" style="display: none">
@@ -613,9 +730,9 @@ time they are restarted.</div>
   <div class="cbi-value">
     <input type="hidden" id="oflag"/>
     Fan output
-    <select id="oflag4" style="width: 6em;">
+    <select id="oflag4" style="width: 6em;" data-mask="0x10">
       <option value="0">Pulse</option>
-      <option value="1">Voltage</option>
+      <option value="16">Voltage</option>
     </select>
     on above <input type="text" maxlength="3" id="fflor" style="width: 2em;"/>%
     min <input type="text" maxlength="3" id="fmin" style="width: 2em;"/>% max
@@ -634,7 +751,7 @@ time they are restarted.</div>
   </div>
   <div class="cbi-value cbi-value-last">
     A/C input line noise filter
-    <select id="oflag5" style="width: 6em;">
+    <select id="oflag5" style="width: 6em;" data-mask="0x60">
       <option value="0">Off</option>
       <option value="32">50Hz</option>
       <option value="64">60Hz</option>
@@ -692,22 +809,40 @@ time they are restarted.</div>
 
 <fieldset class="cbi-section" id="cbi-lm-lid">
 <legend>Lid Open Detection</legend>
-  Activate at <input type="text" maxlength="3" id="lo" style="width: 2em;"/>% below setpoint.
-  Continue for <input type="text" maxlength="4" id="ld" style="width: 3em;"/> seconds or until temperature returns to normal.
+  <div id="displm_lid_method" class="cbi-value">
+    <label for="lm_lid_method">Method</label>
+    <select id="lm_lid_method" style="width: 7em;">
+      <option value="0">None</option>
+      <option value="1">Threshold</option>
+      <option value="2">LidTrack</option>
+    </select>
+    <input id="lm_lidtrack_enabled" type="hidden" />
+    maximum of <input type="text" maxlength="4" id="ld" style="width: 3em;"/> seconds or until temperature returns to normal.
+  </div>
+  <div id="displo" class="cbi-value cbi-value-last">Activate at <input type="text" maxlength="3" id="lo" style="width: 2em;"/>% below setpoint.</div>
 </fieldset>
 
 <fieldset class="cbi-section" id="cbi-lm-setpoint">
 <legend>Pit Target Temperature</legend>
-  Setpoint <input type="text" maxlength="4" id="sp" style="width: 3em;"/><br/>
-  Include the suffix 'F' or 'C' to change units. Changing units does not
-  scale the PID parameters, which should be adjusted manually.
+  Setpoint <input type="text" maxlength="4" id="sp_v" style="width: 3em;"/>
+    <select id="sp_u" style="width: 4em;">
+      <option value="A">ADC</option>
+      <option value="C">C</option>
+      <option value="F">F</option>
+      <option value="O">Off</option>
+      <option value="R">Ohm</option>
+      <option value="%">%</option>
+    </select>
+    <input type="hidden" id="sp" />
+  <br/>
+  Changing units does not scale the PID parameters, which should be adjusted manually.
 </fieldset>
 
 <fieldset class="cbi-section" id="cbi-lm-ucid">
 <legend>HeaterMeter Information</legend>
 <div class="cbi-value">API key
-  <input type="password" maxlength="32" id="set_apikey" style="font-family: monospace" />
-  <img src="<%=resource%>/cbi/reload.gif" style="vertical-align:middle" title="Reveal/hide password" onclick="var e = document.getElementById('set_apikey'); e.type = (e.type=='password') ? 'text' : 'password';" />
+  <input type="password" maxlength="32" id="lm_apikey" style="font-family: monospace" />
+  <img src="<%=resource%>/cbi/reload.gif" style="vertical-align:middle" title="Reveal/hide password" onclick="var e = document.getElementById('lm_apikey'); e.type = (e.type=='password') ? 'text' : 'password';" />
   <input type="button" class="cbi-button cbi-button-apply" onclick="newApiKey()" value="New"/>
   <input type="button" class="cbi-button" onclick="ifrmTarget('<%=build_url('admin/lm/apikey')%>', 'HeaterMeter API Key')" value="View as QR Code"/>
 </div>

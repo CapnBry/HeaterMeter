@@ -199,23 +199,32 @@ function api_set(vals)
 
   http.prepare_content("text/plain")
 
-  -- The API key is also set this way, but remove it from the table
-  local set_apikey = vals["set_apikey"]
+  -- The apikey and lidtrack_enabled is also set this way, but remove them from the table
+  local uci
+  local set_apikey = vals["lm_apikey"]
   if set_apikey ~= nil and set_apikey ~= "" then
-    local uci = require("uci"):cursor()
+    uci = uci or require("uci"):cursor()
     uci:set("linkmeter", "api", "key", set_apikey)
-    uci:commit("linkmeter")
-    http.write("API key updated")
+    http.write("API key updated\n")
+    vals["lm_apikey"] = nil
   end
-  vals["apikey"] = nil
-  vals["set_apikey"] = nil
+  local set_lidtrack = vals["lm_lidtrack_enabled"]
+  if set_lidtrack ~= nil and set_lidtrack ~= "" then
+    uci = uci or require("uci"):cursor()
+    uci:set("linkmeter", "daemon", "lidtrack_enabled", set_lidtrack)
+    http.write("LidTrack " .. (set_lidtrack == "1" and "enabled" or "disabled") .. "\n")
+    vals["lm_lidtrack_enabled"] = nil
+  end
+  if uci then
+    uci:commit("linkmeter")
+  end
 
   -- Make sure the user passed some values to set
   local cnt = 0
   -- Can't use #vals because table actually could be a metatable with an indexer
   for _ in pairs(vals) do cnt = cnt + 1 end
   if cnt == 0 then
-    if set_apikey == nil then
+    if uci == nil then
       http.status(400, "Bad Request")
       http.write("No values specified")
     end
