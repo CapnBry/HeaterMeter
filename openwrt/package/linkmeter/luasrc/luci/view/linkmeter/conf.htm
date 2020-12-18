@@ -447,6 +447,11 @@ function configElemChange()
     $("#lm_lidtrack_enabled").val(val === 2 ? 1 : 0);
   }
 
+  if (name === "lm_lid_method" || name === "ld")
+    $("#lm_lidtrack_durwarning").toggle(
+      $("#lm_lidtrack_enabled").val() === "1" && $("#ld").val() <= 240
+    );
+
   updateUpdateUrl();
 }
 
@@ -645,6 +650,7 @@ function newApiKey()
   .rfstatus { float: left; width: 16px; height: 16px; 
     background-image: url('<%=resource%>/rf.png'); }
   div.cbi-value-last { border-bottom: none; }
+  div.smaller { font-size: 90%; }
   a.nodest { text-decoration: none; }
   ul#rfnodes { list-style-type: none; margin-left: 0 !important; }
   ul#rfnodes li { float: left; border: 1px dotted #bbb;
@@ -818,6 +824,7 @@ time they are restarted.</div>
     </select>
     <input id="lm_lidtrack_enabled" type="hidden" />
     maximum of <input type="text" maxlength="4" id="ld" style="width: 3em;"/> seconds or until temperature returns to normal.
+    <div id="lm_lidtrack_durwarning" class="smaller">Longer durations are recommended when using LidTrack, consider 600 seconds.</div>
   </div>
   <div id="displo" class="cbi-value cbi-value-last">Activate at <input type="text" maxlength="3" id="lo" style="width: 2em;"/>% below setpoint.</div>
 </fieldset>
@@ -834,8 +841,7 @@ time they are restarted.</div>
       <option value="%">%</option>
     </select>
     <input type="hidden" id="sp" />
-  <br/>
-  Changing units does not scale the PID parameters, which should be adjusted manually.
+  <div class="smaller">Changing units does not scale the PID parameters, which should be adjusted manually.</div>
 </fieldset>
 
 <fieldset class="cbi-section" id="cbi-lm-ucid">
