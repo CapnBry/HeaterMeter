@@ -102,8 +102,6 @@ function Server.daemonize()
 end
 
 function Server.run()
-  nixio.openlog('linkmeterd')
-
   local lastTick
   while true do
     -- Listen for fd events, but break every 10s
@@ -951,6 +949,10 @@ local function lmdStop()
     serialLog = nil
   end
   initHmVars()
+  -- Save the database in case the user is rebooting it will be up to date
+  if nixio.fs.access(RRD_FILE) then
+    nixio.fs.copy(RRD_FILE, RRD_AUTOBACK)
+  end
 
   return true
 end
@@ -1138,6 +1140,8 @@ function segmentCall(line)
 end
 
 local function prepare_daemon()
+  nixio.openlog('linkmeterd')
+
   local ipcfd = nixio.socket("unix", "dgram")
   if not ipcfd then
     return nil, -2, "Can't create IPC socket"
@@ -1174,29 +1178,10 @@ end
 -- linkmeterd service control functions
 ---
 function start()
-  local state = uci.cursor(nil, "/var/state")
-  state:revert("linkmeter", "daemon")
-
   prepare_daemon()
   if uci.cursor():get("linkmeter", "daemon", "daemonize") == "1" then
     Server.daemonize()
   end
 
-  state:set("linkmeter", "daemon", "pid", nixio.getpid())
-  state:save("linkmeter")
-
   Server.run()
-end
-
-function running()
-  local pid = tonumber(uci.cursor(nil, "/var/state"):get("linkmeter", "daemon", "pid"))
-  return pid and nixio.kill(pid, 0) and pid
-end
-
-function stop()
-  local pid = tonumber(uci.cursor(nil, "/var/state"):get("linkmeter", "daemon", "pid"))
-  if pid then
-    return nixio.kill(pid, nixio.const.SIGTERM)
-  end
-  return false
 end
