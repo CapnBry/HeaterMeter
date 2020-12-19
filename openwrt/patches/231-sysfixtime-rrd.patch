@@ -1,0 +1,14 @@
+diff --git a/package/base-files/files/etc/init.d/sysfixtime b/package/base-files/files/etc/init.d/sysfixtime
+index aab5b153d0..5086966b31 100755
+--- a/package/base-files/files/etc/init.d/sysfixtime
++++ b/package/base-files/files/etc/init.d/sysfixtime
+@@ -30,5 +30,9 @@ maxtime() {
+ 	for file in $( find /etc -type f ) ; do
+ 		[ -z "$newest" -o "$newest" -ot "$file" ] && newest=$file
+ 	done
++
++	file="/root/autobackup.rrd"
++	[ -z "$newest" -o "$newest" -ot "$file" ] && newest=$file
++
+ 	[ "$newest" ] && date -r "$newest" +%s
+ }

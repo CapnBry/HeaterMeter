@@ -68,6 +68,7 @@ if [ "$TARGET" = "BCM2708" ] ; then
   patch -N -p1 -d $WRT_PATH < patches/0740-firmware-brcm43455.patch   
   patch -N -p1 -d $WRT_PATH < patches/229-netifd-add-hostname.patch
   patch -N -p1 -d $WRT_PATH < patches/230-e2fsprogs-compat.patch
+  patch -N -p1 -d $WRT_PATH < patches/231-sysfixtime-rrd.patch
   mkdir $WRT_PATH/package/network/services/uhttpd/patches && \
     cp patches/910-uhttpd-read.patch $WRT_PATH/package/network/services/uhttpd/patches
 
