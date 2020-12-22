@@ -296,16 +296,19 @@ local function hmConfigReceived(segment)
 end
 
 local function rrdCreate()
-  local status, last = pcall(rrd.last, RRD_AUTOBACK)
-  if status then
-    last = tonumber(last)
-    --nixio.syslog("err", ("Autoback restore: last=%d now=%d"):format(last or -1, os.time()))
-    if last and last <= os.time() then
-      return nixio.fs.copy(RRD_AUTOBACK, RRD_FILE)
+  if nixio.fs.access(RRD_AUTOBACK) then
+    local status, last = pcall(rrd.last, RRD_AUTOBACK)
+    if status then
+      last = tonumber(last)
+      local now = os.time()
+      --nixio.syslog("err", ("Autoback restore: last=%d now=%d"):format(last or -1, now))
+      if last and last <= now then
+        return nixio.fs.copy(RRD_AUTOBACK, RRD_FILE)
+      end
+    else
+      nixio.syslog("err", "RRD last failed:" .. last)
     end
-  else
-    nixio.syslog("err", "RRD last failed:"..last)
-  end
+  end -- if file exists
 
   return rrd.create(
     RRD_FILE,
@@ -640,6 +643,45 @@ local function throttleUpdate(line)
   skippedUpdates = 0
 end
 
+local function segLmConfig()
+  local cm = buildConfigMap()
+  local r = {}
+  -- Make sure we have an entry for temperatures even if there isn't a value
+  for i = 0, 3 do
+    if not cm["pcurr"..i] then r[#r+1] = ('"pcurr%d":null'):format(i) end
+  end
+
+  for k,v in pairs(cm) do
+    local s
+    if type(v) == "number" or v == "null" then
+      s = '%q:%s'
+    else
+      s = '%q:%q'
+    end
+    r[#r+1] = s:format(k,v)
+  end
+
+  return "{" .. table.concat(r, ',') .. "}"
+end
+
+local function rrdStash()
+  if not nixio.fs.access(RRD_AUTOBACK) then return end
+
+  local stashpath = uci.cursor():get("linkmeter", "daemon", "stashpath")
+  if not stashpath then return end
+
+  nixio.syslog("notice", "Stashing last session database to " .. stashpath)
+
+  if not nixio.fs.access(stashpath) then
+    nixio.fs.mkdir(stashpath)
+  end
+
+  -- Copy database
+  nixio.fs.copy(RRD_AUTOBACK, stashpath .. "/LastSession.rrd")
+  -- And the current configuration
+  nixio.fs.writefile(stashpath .. "/LastSession.json", segLmConfig())
+end
+
 local function segStateUpdate(line)
     local vals = segSplit(line)
     local time = os.time()
@@ -654,6 +696,7 @@ local function segStateUpdate(line)
       if time - lastHmUpdate > (24*60*60) then
         nixio.syslog("notice",
           "Time jumped forward by "..(time-lastHmUpdate)..", restarting database")
+        rrdStash()
         rrdCreate()
       elseif time == lastHmUpdate then
         -- RRD hates it when you try to insert two PDPs at the same timestamp
@@ -1019,27 +1062,6 @@ local function segLmStateUpdate()
   else
     return table.concat(JSON_TEMPLATE)
   end
-end
-
-local function segLmConfig()
-  local cm = buildConfigMap()
-  local r = {}
-  -- Make sure we have an entry for temperatures even if there isn't a value
-  for i = 0, 3 do
-    if not cm["pcurr"..i] then r[#r+1] = ('"pcurr%d":null'):format(i) end
-  end
-
-  for k,v in pairs(cm) do
-    local s
-    if type(v) == "number" or v == "null" then
-      s = '%q:%s'
-    else
-      s = '%q:%q'
-    end
-    r[#r+1] = s:format(k,v)
-  end
-
-  return "{" .. table.concat(r, ',') .. "}"
 end
 
 local function segLmAlarmTest(line)
