@@ -91,6 +91,7 @@ function action_stashdb()
   local backup = http.formvalue("backup")
   local resetting = http.formvalue("reset")
   local deleting = http.formvalue("delete")
+  local renaming = http.formvalue("rename")
   local stashfile = http.formvalue("rrd") or "hm.rrd"
 
   -- directory traversal
@@ -99,6 +100,11 @@ function action_stashdb()
     http.prepare_content("text/plain")
     return http.write("Invalid stashfile specified: "..stashfile)
   end
+  if renaming and renaming:find("[/\\]+") then
+    http.status(400, "Bad Request")
+    http.prepare_content("text/plain")
+    return http.write("Invalid rename specified: "..renaming)
+  end
   -- POST-only for these operations
   if http.getenv("REQUEST_METHOD") ~= "POST" then
     http.status(405, "Not Allowed")
@@ -106,13 +112,7 @@ function action_stashdb()
     return http.write("POST only")
   end
 
-  -- the stashfile should start with a slash
-  if stashfile:sub(1,1) ~= "/" then stashfile = "/"..stashfile end
-  -- and end with .rrd
-  if stashfile:sub(-4) ~= ".rrd" then stashfile = stashfile..".rrd" end
-
-  stashfile = STASH_PATH..stashfile
-
+  -- Backup all
   if backup == "1" then
     local backup_cmd = "cd %q && tar cz *.rrd *.json" % STASH_PATH
     local reader = require "luci.controller.admin.system".ltn12_popen(backup_cmd)
@@ -125,6 +125,15 @@ function action_stashdb()
 
   local result
   http.prepare_content("text/plain")
+
+  -- the stashfile should start with a slash
+  if stashfile:sub(1,1) ~= "/" then stashfile = "/"..stashfile end
+  -- and end with .rrd
+  if stashfile:sub(-4) ~= ".rrd" then stashfile = stashfile..".rrd" end
+
+  stashfile = STASH_PATH..stashfile
+
+  -- Delete
   if deleting == "1" then
     result = nixio.fs.unlink(stashfile)
     http.write("Deleting "..stashfile)
@@ -133,6 +142,8 @@ function action_stashdb()
       nixio.fs.unlink(stashfile)
       http.write("\nDeleting "..stashfile)
     end
+
+  -- Activate stash to current -OR- reset database
   elseif restoring == "1" or resetting == "1" then
     require "lmclient"
     local lm = LmClient()
@@ -146,6 +157,26 @@ function action_stashdb()
       http.write("Restoring "..stashfile.." to "..RRD_FILE)
     end
     lm:query("$LMDC,1") -- start serial process and close connection
+
+  -- Rename
+  elseif renaming then
+    -- Must end with .rrd, will *NOT* start with /
+    if renaming:sub(-4) ~= ".rrd" then renaming = renaming..".rrd" end
+    if nixio.fs.access(STASH_PATH .. '/' .. renaming) then
+      http.write("Can not rename, target file [" .. renaming .. "] exists")
+      result = false
+    else
+      result = nixio.fs.rename(stashfile, STASH_PATH .. '/' .. renaming)
+      http.write("Renaming " .. stashfile .. " to " .. renaming)
+      if result then
+        stashfile = stashfile:gsub("\.rrd$", ".json")
+        renaming = renaming:gsub("\.rrd$", ".json")
+        result = nixio.fs.rename(stashfile, STASH_PATH .. '/' .. renaming)
+        http.write("\nRenaming " .. stashfile .. " to " .. renaming)
+      end
+    end
+
+  -- Actual Stash
   else
     if not nixio.fs.stat(STASH_PATH) then
       nixio.fs.mkdir(STASH_PATH)

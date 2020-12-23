@@ -3,15 +3,16 @@
   .btn-stash { background-image: url(<%=resource%>/database_add.png); padding: 2px; padding-left: 20px; }
   .btn-delete { background-image: url(<%=resource%>/database_delete.png); padding: 2px; padding-left: 20px; }
   .btn-activate { background-image: url(<%=resource%>/arrow_switch.png); padding: 2px; padding-left: 20px; }
+  .btn-pad-left { margin-left: 4px; }
+  .rrdfile input[autocomplete="off"] { font-size: large; }
 </style>
 <h2>LinkMeter Database Archives</h2>
 <h3>Stash (archive) database</h3>
 <p>The temperature log stores at most 24 hours of data. To make your log
 available for later review or continuation, the information can be "stashed"
 to storage. Using the stash command copies the current log file at the point
-it is stashed.</p>
-<p>Storage requirements are about 105KB per stash.</p>
-Filename: <input id="rrd" name="rrd" type="text" value="<%=os.date("%Y-%m-%d")%>" />
+it is stashed. Click the name column to rename an archive.</p>
+<b>Filename</b> <input id="rrd" name="rrd" type="text" value="<%=os.date("%Y-%m-%d")%>" />
   <input type="submit" class="cbi-button btn-stash" value="Stash" onclick="stashPost()" />
 <% 
   local uci = luci.model.uci.cursor()
@@ -26,7 +27,7 @@ Filename: <input id="rrd" name="rrd" type="text" value="<%=os.date("%Y-%m-%d")%>
       if lineno ~= 0 then
         local m = {}
         for value in line:gmatch("[^%s]+") do m[#m+1] = value end
-        fsInfo = ("%s (%s) %s available"):format(STASH_PATH, m[2], m[4])
+        fsInfo = ("%s (%s) %s available 105KB each"):format(STASH_PATH, m[2], m[4])
         break
       end
     end
@@ -70,7 +71,7 @@ for _,f in ipairs(files) do
       </td>
       <td>
         <div style="color: #999; font-style: italic; font-size: smaller;"><%=os.date("%B %d, %Y  %I:%M%p", f.stat.mtime)%></div>
-        <div style="font-size: large;"><%=f.name%></div>
+        <div style="font-size: large;" class="rrdfile"><%=f.name%></div>
         <div><%=f.conf and f.conf.stash and f.conf.stash.desc%></div>
       </td>
       <td>
@@ -98,16 +99,30 @@ for _,f in ipairs(files) do
 <%+linkmeter/include-ifrm%>
 <script src="<%=resource%>/js/jquery-all.js" type="text/javascript"></script>
 <script type="text/javascript">//<![CDATA[
-function stashAction(action, rrd)
+
+$(document).ready(function()
+{
+  $('.rrdfile').editable(rrdNameChanged, {
+    data: rrdNameBeforeEdit, height: 'none', select: true, width: 'none', tooltip: 'Click to rename',
+    submit: '<input type="button" class="cbi-button cbi-button-save" value="Rename" />',
+    cancel: '<input type="button" class="cbi-button cbi-button-reset btn-pad-left" value="Cancel" />'
+  });
+});
+
+function stashAction(action, rrd, actionvalue)
 {
   let postdata = {};
   if (action !== '')
-    postdata[action] = 1;
+    postdata[action] = actionvalue || 1;
   if (rrd)
     postdata['rrd'] = rrd;
 
+  let actionText = ((action !== '') ? action : '')
+    + (rrd ? (' ' + rrd) : '')
+    + (actionvalue ? (' to ' + actionvalue) : '');
+
   return ifrmTarget('<%=build_url("admin/lm/stashdb")%>',
-    'Stash ' + action + '...',
+    'Stash ' + actionText + '...',
     function () { setTimeout(ifrmLoaded, 2000); },
     postdata
   );
@@ -124,5 +139,23 @@ function ifrmLoaded()
   frameLoadFired = true;
   window.location.reload();
 }
+
+function rrdNameBeforeEdit(curr, settings)
+{
+  // Remove '.rrd' from the source name if it was there before, which it should be
+  if (curr.endsWith('.rrd'))
+    return curr.slice(0, -4);
+  else
+    return curr;
+}
+
+function rrdNameChanged(value, settings)
+{
+  let old = this.revert;
+  console.log("Changed from " + this.revert + " to " + value);
+  stashAction('rename', old, value);
+  return value;
+}
+
 //]]></script>
 <%+footer%>
