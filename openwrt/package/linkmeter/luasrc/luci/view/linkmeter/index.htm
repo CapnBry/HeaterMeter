@@ -11,16 +11,15 @@
 <script language="javascript" src="<%=resource%>/js/jquery-all.js" type="text/javascript"></script>
 <!--[if lte IE 8]><script language="javascript" type="text/javascript" src="<%=resource%>/js/excanvas.min.js"></script><![endif]-->
 <script language="javascript" type="text/javascript">
-var lastUpdateUtc;
+// mapJson translates the json temps array index to graphData index
+const mapJson = [8,7,6,5];
 var lastPlot;
 var lastOverviewPlot;
 var lastGraphHover = 0;
 var lastLidOpen = -1;
 var lastPeaks;
-
-// mapJson translates the json temps array index to graphData index
-var mapJson = [8,7,6,5];
-var graphLoaded = false;
+var lastUpdateUtc = 0;
+var graphLoadedUtc = 0;
 var graphData =  [
         { label: "Output", color: "#6cf", lines: { show: true, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },
         { label: "Fan", color: "#6cf", lines: { show: false, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },
@@ -143,14 +142,14 @@ $(window).load(function ()
             peakEvent(o);
         });
     } else {
-        if (!lastUpdateUtc)
+        if (lastUpdateUtc == 0) // will be set in .ready if bundled update was fresh
             JSONQuery();
         window.setInterval(JSONQuery, 10000);
     }
 
     document.addEventListener('visibilitychange', function(){
         if (!document.hidden)
-            checkRefreshGraphOrUpdate();
+            checkRefreshGraphOrUpdate(false);
     });
 <% end %>
 });
@@ -387,6 +386,7 @@ function alarmBtnClicked()
 
 function refreshGraphData()
 {
+    //console.log("Graph updating " + new Date().toString());
     $("#graphtt").fadeOut();
     $("#rangeselect").prop("disabled", true);
     $("#loadindic").show();
@@ -396,7 +396,7 @@ function refreshGraphData()
       graphOpts.xaxis.min = null;
       graphOpts.xaxis.max = null;
     }
-    graphLoaded = false;
+    graphLoadedUtc = 0;
 
     $.each(graphData, function() {
         if (!this.noclear) this.data = [];
@@ -740,7 +740,7 @@ function tstatSuccess(csv)
                 addGraphPoint(graphData[dest].data, line[0], value);
         }
     });
-    graphLoaded = true;
+    graphLoadedUtc = +new Date();
     updateGraph();
 }
 
@@ -775,13 +775,15 @@ function JSONQuery()
 
 /* find out how many points we have on the graph and
 requery the server for an updated consolidation
-if we have too much data */
-function checkRefreshGraphOrUpdate()
+if we have too much data. If force is true,
+the requery is forced, so long as it wasn't just performed */
+function checkRefreshGraphOrUpdate(force)
 {
-    if (!graphLoaded)
+    if (graphLoadedUtc === 0)
         return;
 
     var max = 0;
+    //let summary = "";
     $.each(graphData, function () {
         // The data can accumulate in the array while the browser tab
         // isn't visible. Keep at least 504 points, but grow as much as twice that
@@ -792,15 +794,20 @@ function checkRefreshGraphOrUpdate()
             this.data = this.data.slice(-504);
         if (this.data.length > max)
             max = this.data.length;
+        //summary += `${this.label}=${this.data.length} `;
     });
+    //console.log(summary);
 
     if (document.hidden)
         return;
 
+    // Only allow a force refresh if the graph is more than 9 seconds old
+    force = force && ((new Date() - graphLoadedUtc) > 9000);
+
     // the RRD holds up to 480 points and the graph holds
     // less due to point consolidation, so best case
     // scenario 24pts * 10sec per poll = 4mins
-    if (max > 504)
+    if (force || max > 504)
         refreshGraphData()
     else
         updateGraph();
@@ -895,8 +902,6 @@ function updateRfIcon(o, i)
 function connectionSuccess(o)
 {
     var updateEditables = ($("form.jedit").length == 0);
-    o.time *= 1000;
-    lastUpdateUtc = o.time;
     if (updateEditables)
     {
       var setDisplay = o.set;
@@ -909,7 +914,13 @@ function connectionSuccess(o)
       $("#set").html(setDisplay);
     }
 
-    if (graphLoaded)
+    o.time *= 1000;
+    let lastUpdateGap = 0;
+    if (lastUpdateUtc !== 0 && lastUpdateUtc <= o.time)
+        lastUpdateGap = o.time - lastUpdateUtc;
+    lastUpdateUtc = o.time;
+
+    if (graphLoadedUtc > 0)
     {
         addOutputGraphPoint(o.time, o.lid > 0 ? -o.lid : o.fan.c);
         if (o.fan.f !== null)
@@ -959,7 +970,7 @@ function connectionSuccess(o)
 
         var dataIdx = mapJson[i];
         graphData[dataIdx].label = o.temps[i].n;
-        if (graphLoaded)
+        if (graphLoadedUtc > 0)
             addGraphPoint(graphData[dataIdx].data, o.time, val);
 
         updateAlarmsIcon(o, i);
@@ -993,7 +1004,9 @@ function connectionSuccess(o)
     
     updateLid(o.lid);
     updateTime(lastUpdateUtc); //o.time);
-    checkRefreshGraphOrUpdate();
+    // Force graph update if the last tick was more than 10 seconds ago, the
+    // updates should come at least every 5 seconds if the connection is maintained
+    checkRefreshGraphOrUpdate(lastUpdateGap > 10000);
 }
 
 //either the request timed out or something else happened
