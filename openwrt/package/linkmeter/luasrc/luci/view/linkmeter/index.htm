@@ -13,14 +13,14 @@
 <script language="javascript" type="text/javascript">
 // mapJson translates the json temps array index to graphData index
 const mapJson = [8,7,6,5];
-var lastPlot;
-var lastOverviewPlot;
-var lastGraphHover = 0;
-var lastLidOpen = -1;
-var lastPeaks;
-var lastUpdateUtc = 0;
-var graphLoadedUtc = 0;
-var graphData =  [
+let lastPlot;
+let lastOverviewPlot;
+let lastGraphHover = 0;
+let lastLidOpen = -1;
+let lastPeaks;
+let lastUpdateUtc = 0;
+let graphLoadedUtc = 0;
+let graphData =  [
         { label: "Output", color: "#6cf", lines: { show: true, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },
         { label: "Fan", color: "#6cf", lines: { show: false, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },
         { label: "Servo", color: "#6cf", lines: { show: false, lineWidth: 1, fill: true }, shadowSize: 0, yaxis: 2, data: [] },
@@ -33,7 +33,7 @@ var graphData =  [
         { label: "Peaks", color: "#fff", lines: { show: false }, points: { show: true, radius: 3 }, data: [], noclear: true }
     ];
 
-    var graphOpts = {
+    let graphOpts = {
         legend: { show: false },
         canvas: true,
         series: {
@@ -48,7 +48,7 @@ var graphData =  [
         grid: { clickable: true, hoverable: true, color: "#ccc",
           borderColor: "#545454" }
     };
-    var graphOpts2 = {
+    let graphOpts2 = {
         legend: { show: false },
         canvas: false,
         series: {
@@ -91,7 +91,7 @@ $(document).ready(function()
     $("#lid").click(function () { 
         if (lastLidOpen == -1) return;
         $(this).html("Toggling...");
-        var enable = (lastLidOpen == 0) ? ",,1" : ",,0";
+        let enable = (lastLidOpen == 0) ? ",,1" : ",,0";
         $.post("<%=build_url("admin/lm/set")%>", {ld: enable});
     });
     
@@ -102,8 +102,8 @@ $(document).ready(function()
         
 <% end %>
 <% if not rrd then %>
-    var o = <%= LmClient():query("$LMSU") or "{}" %>;
-    var now = +new Date();
+    let o = <%= LmClient():query("$LMSU") or "{}" %>;
+    let now = +new Date();
     if ((now - 10000) < (o.time * 1000))
         connectionSuccess(o);
 <% end %>
@@ -114,9 +114,9 @@ $(window).load(function ()
 {
 <% if not rrd then %>
     if (!!window.EventSource) {
-        var source = new EventSource("<%=build_url("lm/stream")%>");
+        let source = new EventSource("<%=build_url("lm/stream")%>");
         source.addEventListener("hmstatus", function(e) {
-            var o = JSON.parse(e.data);
+            let o = JSON.parse(e.data);
             connectionSuccess(o);
         });
         source.addEventListener("log", function (e) {
@@ -129,16 +129,16 @@ $(window).load(function ()
             graphNoise(e.data, 1);
         });
         source.addEventListener("alarm", function (e) {
-            var o = JSON.parse(e.data);
+            let o = JSON.parse(e.data);
             alarmEvent(o);
         });
         source.addEventListener("error", connectionFailure);
         source.addEventListener("pidint", function (e) {
-            var o = JSON.parse(e.data);
+            let o = JSON.parse(e.data);
             pidIntEvent(o);
         });
         source.addEventListener("peaks", function (e) {
-            var o = JSON.parse(e.data);
+            let o = JSON.parse(e.data);
             peakEvent(o);
         });
     } else {
@@ -157,9 +157,9 @@ $(window).load(function ()
 function copyUserColors()
 {
     // Set colors of the graph and temp shadows to match the CSS
-    for (var srs=0; srs<4; ++srs)
+    for (let srs=0; srs<4; ++srs)
     {
-      var color = $(".pcolor" + srs).css("background-color");
+      let color = $(".pcolor" + srs).css("background-color");
       $("#temp" + srs).css("text-shadow", "2px 2px 1px " + color);
       graphData[mapJson[srs]].color = color;
     }
@@ -252,7 +252,7 @@ function keyPressed(e)
 
 function toggleNoiseGraph()
 {
-  var target = $('#noisegraph').css('display') === 'none' ? '#nn0' : '#noiseoff';
+  let target = $('#noisegraph').css('display') === 'none' ? '#nn0' : '#noiseoff';
   $(target).trigger('click');
 }
 
@@ -295,7 +295,7 @@ function pidIntEvent(o)
 function peakEvent(o)
 {
   lastPeaks = o;
-  //var data = [];
+  //let data = [];
   if (o.H.time) { o.H.time *= 1000; /* data.push([o.H.time, o.H.val]); */ }
   if (o.L.time) { o.L.time *= 1000; /* data.push([o.L.time, o.L.val]); */ }
   if (o.C.time) { o.C.time *= 1000; /* data.push([o.C.time, o.C.val]); */ }
@@ -329,11 +329,11 @@ function graphNoise(s, version)
     });
   } // version 1
   // Make a copy of vals and sort them while it is still an array of int
-  var sorted = vals.slice(0).sort(function(a,b) {return a - b;});
+  let sorted = vals.slice(0).sort(function(a,b) {return a - b;});
 
   // Average vals and convert to array of [x, y]
-  var avg = 0;
-  for (var i=0; i<vals.length; ++i)
+  let avg = 0;
+  for (let i=0; i<vals.length; ++i)
   {
     avg += vals[i];
     vals[i] = [i * 1000 / FREQ, vals[i]];
@@ -341,10 +341,10 @@ function graphNoise(s, version)
   avg /= vals.length;
 
   // Plot
-  var MAX = (vals.length - 1) * 1000 / FREQ;
-  var median = sorted[Math.floor(sorted.length/2)];
-  var marray = [[0,median], [MAX,median]];
-  var aarray = [[0,avg], [MAX,avg]];
+  let MAX = (vals.length - 1) * 1000 / FREQ;
+  let median = sorted[Math.floor(sorted.length/2)];
+  let marray = [[0,median], [MAX,median]];
+  let aarray = [[0,avg], [MAX,avg]];
   $.plot("#noisegraph_g", [ vals,
       { label: "Median", data: marray },
       { label: "Average", data: aarray }
@@ -360,7 +360,7 @@ function legendClicked()
 {
     // The ID should be "pl?" so pull the json probe index off the end
     // and get the graphdata index
-    var idx = mapJson[parseInt(this.id.substr(-1))];
+    let idx = mapJson[parseInt(this.id.substr(-1))];
     graphData[idx].lines.show = !graphData[idx].lines.show;
     storePrefGraphlines();
     updateGraph();
@@ -402,8 +402,8 @@ function refreshGraphData()
         if (!this.noclear) this.data = [];
     });
     
-    var range = $("#rangeselect").val();
-    var params = {nancnt: range};
+    let range = $("#rangeselect").val();
+    let params = {nancnt: range};
     <% if rrd then write("params.rrd = '"..rrd.."'; graphOpts.canvas = true;") end %>
     $("#dlcsv").attr("href", "<%=build_url("lm/hist")%>?dl=1&hdr=1&" + $.param(params));
     $.ajax({
@@ -485,12 +485,12 @@ function formatDate(date)
 
 function formatTimer(secs, includeSeconds)
 {
-    var hours = Math.floor(secs / 3600);
+    let hours = Math.floor(secs / 3600);
     secs -= hours * 3600;
-    var mins = Math.floor(secs / 60);
+    let mins = Math.floor(secs / 60);
     secs -= mins * 60;
 
-    var retVal = "";
+    let retVal = "";
     if (hours > 0)
         retVal = hours + "h";
     if (mins > 0)
@@ -508,7 +508,7 @@ function lerp(n1, n2, frac)
 
 function graphHover(event, pos, item)
 {
-    var now = +new Date();
+    let now = +new Date();
     if (now - lastGraphHover > 100)
     {
         graphClicked(event, pos, item); 
@@ -520,7 +520,7 @@ function graphttClicked()
 {
     // Only dismiss if it has been less than 100ms since the tooltip cam up
     // to prevent immediate dismiss on touch devices
-    var now = +new Date();
+    let now = +new Date();
     if (now - lastGraphHover > 100)
     {
         // After clicking the tooltip to dismiss it, don't show again for 1s
@@ -531,19 +531,19 @@ function graphttClicked()
 
 function graphClicked(event, pos, item)
 {
-    var sInfo = "";
-    var srsClosestY = -1;
-    var srsClosestYIdx;
+    let sInfo = "";
+    let srsClosestY = -1;
+    let srsClosestYIdx;
     // Display on tooltip as Pit, Food1, Food2, Amb, Set, Output, Fan, Servo
-    var SERIES_DISPLAY_ORDER = [ 8, 7, 6, 5, 4, 0, 1, 2 ];
-    for (var idx=0; idx<SERIES_DISPLAY_ORDER.length; ++idx)
+    let SERIES_DISPLAY_ORDER = [ 8, 7, 6, 5, 4, 0, 1, 2 ];
+    for (let idx=0; idx<SERIES_DISPLAY_ORDER.length; ++idx)
     {
-        var srs = SERIES_DISPLAY_ORDER[idx];
-        var val = NaN;
-        var firstPastIdx = -1;
-        var srsData = graphData[srs].data;
+        let srs = SERIES_DISPLAY_ORDER[idx];
+        let val = NaN;
+        let firstPastIdx = -1;
+        let srsData = graphData[srs].data;
         
-        for (var i=0; i<srsData.length; ++i)
+        for (let i=0; i<srsData.length; ++i)
         {
             if (pos.x <= srsData[i][0]  && !isNaN(srsData[i][1]))
             {
@@ -559,13 +559,13 @@ function graphClicked(event, pos, item)
         // clicked or you must click between two points.  If you click off to 
         // the left of the first point or to the right of the last, we don't 
         // use that value because you've clicked outside the range of valid data. 
-        var ptR = srsData[firstPastIdx];
+        let ptR = srsData[firstPastIdx];
         if (item && item.datapoint[0] == ptR[0])
             val = ptR[1];
         else if (firstPastIdx != 0)
         {
-            var ptL = srsData[firstPastIdx-1];
-            var timeDiff = ptR[0] - ptL[0];
+            let ptL = srsData[firstPastIdx-1];
+            let timeDiff = ptR[0] - ptL[0];
             val = lerp(ptL[1], ptR[1], (pos.x - ptL[0]) / timeDiff);
         }
             
@@ -597,20 +597,20 @@ function graphClicked(event, pos, item)
     {
         if (srsClosestY != -1)
         {
-            var axisY = lastPlot.getYAxes()[0];
-            var valY = graphData[srsClosestY].data[srsClosestYIdx][1];
+            let axisY = lastPlot.getYAxes()[0];
+            let valY = graphData[srsClosestY].data[srsClosestYIdx][1];
             // Adjust page positions to be relative to #graphcontainer
             // 8 = lastPlot.getPlotOffset().top
             pos.pageY = axisY.p2c(valY) + 8;
         }
-        var sPeakInfo = "";
-        var sPeakClass = "";
+        let sPeakInfo = "";
+        let sPeakClass = "";
         if (lastPeaks)
         {
-          var distH, distL;
+          let distH, distL;
           if (lastPeaks.H.time) distH = Math.abs(pos.x - lastPeaks.H.time);
           if (lastPeaks.L.time) distL = Math.abs(pos.x - lastPeaks.L.time);
-          var peakRef;
+          let peakRef;
           if (distH && distL)
           {
             if (distH < distL)
@@ -624,7 +624,7 @@ function graphClicked(event, pos, item)
             peakRef = lastPeaks.L;
           if (peakRef && Math.abs(pos.x - peakRef.time) < 300000)
           {
-            var peakDesc = peakRef.trend > 0 ? "High" : "Low";
+            let peakDesc = peakRef.trend > 0 ? "High" : "Low";
             sPeakClass = peakRef.trend > 0 ? "hotback" : "coldback";
             sPeakInfo = peakDesc + " Peak " + peakRef.val + "&deg;<br />";
             if (peakRef.period)
@@ -634,12 +634,12 @@ function graphClicked(event, pos, item)
           }
         }
         
-        var d = new Date(pos.x);
+        let d = new Date(pos.x);
         $("#graphtt_title").html(formatTime(d, false));
         $("#graphtt_content").html(sInfo);
         $("#graphtt_peak").html(sPeakInfo).removeClass("hotback coldback").addClass(sPeakClass);
-        var ttWidth = $("#graphtt").outerWidth();
-        var ttHeight = $("#graphtt").outerHeight();
+        let ttWidth = $("#graphtt").outerWidth();
+        let ttHeight = $("#graphtt").outerHeight();
         $("#graphtt_arrow").css({left: ttWidth/2 - 7});
         $("#graphtt")
             .css({left: pos.pageX - (ttWidth/2) - 11, top: pos.pageY - ttHeight - 5})
@@ -653,8 +653,8 @@ function addGraphPoint(d, time, temp)
     // new point just update the time on the last point
     if (d.length > 1)
     {
-        var p1 = d[d.length-2];
-        var p2 = d[d.length-1];
+        let p1 = d[d.length-2];
+        let p2 = d[d.length-1];
         if (p1[1] == temp && p2[1] == temp)
         {
             p2[0] = time;
@@ -673,8 +673,8 @@ function updateGraph()
 {
     // we want to save the selected area, and if the selection is to the
     // end of the graph, extend it to include the new point
-    var selectedArea;
-    var extendSelection = false;
+    let selectedArea;
+    let extendSelection = false;
 
     if (lastOverviewPlot)
         selectedArea = lastOverviewPlot.getSelection();
@@ -725,15 +725,15 @@ function tstatSuccess(csv)
     clearLoadingIndic();
     $.each(csv.split('\n'), function (){
         if (this == "") return;
-        var line = this.split(",");
+        let line = this.split(",");
         if (line.length > mapCsv.length) return;
         line[0] = line[0] * 1000;
-        for (var valIdx=1; valIdx<line.length; ++valIdx)
+        for (let valIdx=1; valIdx<line.length; ++valIdx)
         {
-            var dest = mapCsv[valIdx];
+            let dest = mapCsv[valIdx];
             if (dest < 0)
                 continue;
-            var value = parseFloat(line[valIdx]);
+            let value = parseFloat(line[valIdx]);
             if (dest == 0)
                 addOutputGraphPoint(line[0], value);
             else
@@ -746,7 +746,7 @@ function tstatSuccess(csv)
 
 function nameChanged(value, settings)
 {
-    var params = {}; params[this.id] = value;
+    let params = {}; params[this.id] = value;
     $.post("<%=build_url("admin/lm/set")%>", params);
     return value;
 }
@@ -782,7 +782,7 @@ function checkRefreshGraphOrUpdate(force)
     if (graphLoadedUtc === 0)
         return;
 
-    var max = 0;
+    let max = 0;
     //let summary = "";
     $.each(graphData, function () {
         // The data can accumulate in the array while the browser tab
@@ -815,7 +815,7 @@ function checkRefreshGraphOrUpdate(force)
 
 function updateLid(val)
 {
-    var lid = $("#lid");
+    let lid = $("#lid");
     if (val == 0)
     {
         if (lastLidOpen != 0)
@@ -901,10 +901,10 @@ function updateRfIcon(o, i)
 
 function connectionSuccess(o)
 {
-    var updateEditables = ($("form.jedit").length == 0);
+    let updateEditables = ($("form.jedit").length == 0);
     if (updateEditables)
     {
-      var setDisplay = o.set;
+      let setDisplay = o.set;
       if (setDisplay === null)
         setDisplay = "Off";
       else if (setDisplay <= 0)
@@ -932,17 +932,17 @@ function connectionSuccess(o)
     }
 
     // If control probe has a value, set the window title to that value
-    var title = 'HeaterMeter BBQ Control';
+    let title = 'HeaterMeter BBQ Control';
     if (o.temps[0].c !== null && o.set !== null)
       title = '(' + o.temps[0].c.toFixed(1) + ' ' + o.temps[0].n + ') ' + title;
     document.title = title;
 
-    for(var i = 0; i < 4; i++)
+    for(let i = 0; i < 4; i++)
     {
         if (updateEditables) $("#pn" + i).text(o.temps[i].n);
         $("#nn" + i).text(o.temps[i].n);
-        var val = o.temps[i].c;
-        var tempElem = $("#temp" + i);
+        let val = o.temps[i].c;
+        let tempElem = $("#temp" + i);
         if (val === null)
         {
             val = NaN;
@@ -960,15 +960,15 @@ function connectionSuccess(o)
 
         if (val && o.temps[i].dph && o.temps[i].dph >= 1.0)
         {
-            var alarm_h = +o.temps[i].a.h;
-            var timeRemain = ((alarm_h - val) / o.temps[i].dph) * 3600;
+            let alarm_h = +o.temps[i].a.h;
+            let timeRemain = ((alarm_h - val) / o.temps[i].dph) * 3600;
             timeRemain = (timeRemain > 0) ? formatTimer(timeRemain, false) + " to " + alarm_h + "&deg;<br />" : "";
             $("#dph"+i).html(o.temps[i].dph.toFixed(1) + "&deg;/hr<br />" + timeRemain).show();
         }
         else
           $("#dph"+i).hide();
 
-        var dataIdx = mapJson[i];
+        let dataIdx = mapJson[i];
         graphData[dataIdx].label = o.temps[i].n;
         if (graphLoadedUtc > 0)
             addGraphPoint(graphData[dataIdx].data, o.time, val);
@@ -1018,8 +1018,8 @@ function connectionFailure()
 //update the "last updated" time
 function updateTime(time)
 {
-    var color = "#bbb";
-    var date;
+    let color = "#bbb";
+    let date;
     if(!time)
     {
         color = "#f33";
@@ -1036,9 +1036,9 @@ function updateTime(time)
 
 function plotToPng(plot, background)
 {
-    var csrc = plot.getCanvas();
-    var c = document.createElement("canvas");
-    var ctx = c.getContext("2d");
+    let csrc = plot.getCanvas();
+    let c = document.createElement("canvas");
+    let ctx = c.getContext("2d");
     c.width = csrc.width;
     c.height = csrc.height;
 
