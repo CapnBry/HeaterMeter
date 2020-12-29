@@ -801,8 +801,8 @@ function checkRefreshGraphOrUpdate(force)
     if (document.hidden)
         return;
 
-    // Only allow a force refresh if the graph is more than 9 seconds old
-    force = force && ((new Date() - graphLoadedUtc) > 9000);
+    // Only allow a force refresh if the graph is more than 14 seconds old
+    force = force && ((new Date() - graphLoadedUtc) > 14000);
 
     // the RRD holds up to 480 points and the graph holds
     // less due to point consolidation, so best case
@@ -1004,9 +1004,9 @@ function connectionSuccess(o)
     
     updateLid(o.lid);
     updateTime(lastUpdateUtc); //o.time);
-    // Force graph update if the last tick was more than 10 seconds ago, the
-    // updates should come at least every 5 seconds if the connection is maintained
-    checkRefreshGraphOrUpdate(lastUpdateGap > 10000);
+    // Force graph update if the last tick was more than 15 seconds ago, the
+    // updates should come at least every 5 seconds (streaming) or 10 seconds (polled)
+    checkRefreshGraphOrUpdate(lastUpdateGap > 15000);
 }
 
 //either the request timed out or something else happened
