@@ -129,6 +129,7 @@ function action_stream()
   if uci:get("linkmeter", "api", "allowcors") == "1" then
     http.header("Access-Control-Allow-Origin", "*")
   end
+  http.write("retry: 1000\n\n") -- lower EventSource retry interval from 3s on chrome to 1s
   require("lmclient")
   LmClient:stream("$LMSS", function (o)
     http.write(o)
