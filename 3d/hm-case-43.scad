@@ -21,7 +21,7 @@ MouseEarHeight = 0;
 // Corner leg height (mm) - 0 to disable
 MouseLegHeight = 0; //body_chamfer_height/2;
 // Screw hardware
-NutHardware = 0; // [0:Captive Nut,1:Injection Threaded Insert]
+NutHardware = 0; // [0:Captive Nut,1:5mm Injection Threaded Insert,2:Threaded Insert]
 
 /* [Hidden] */
 // External corner radius on the body (mm)
@@ -223,18 +223,22 @@ module nuttrap() {
            [nut_d/2+ww_w-nut_ingress_off+0.4+e, nut_ingress+0.8],
            [0,nut_ingress]]);
     }
-  } else if (NutHardware == 1) { // Inection molding threaded insert
+  } else if (NutHardware == 1 || NutHardware == 2) { // Threaded inserts
+    // 5mm injected molding threaded insert (M3 x 5.4 x 5.2 tall)
+    // 5.0mm dia 5mm tall, with 5.6mm alignment area at top 1.2mm tall
+    // Threaded insert (M3 x 4.6 x 5.7 tall)
+    // 4.3mm dia 5.5mm tall, with 4.8mm alignment area at top 1.2mm tall
+    nhd = [[5.0, 5.0, 5.6], [4.3, 5.5, 4.8]][NutHardware-1];
     translate([0,0,h_b+wall_t-(h_b-screw_l+2)])
     difference() {
-      // 5.0mm dia 5mm tall, with 5.6mm alignment area at top 1.2mm tall 
       union() {
-        cylinder((h_b-screw_l)+2, d=5.0+2*wall, $fn=24);
-        cylinder(1.2-e, d1=5.6+2*wall, d2=5.0+2*wall, $fn=24);
-        translate([(5.0+2*wall)/-2, -nut_ingress/2-d_off, 0])
-          cube([5.0+2*wall, nut_ingress/2+d_off, (h_b-screw_l)+2]);
+        cylinder((h_b-screw_l)+2, d=nhd[0]+2*wall, $fn=24);
+        cylinder(1.2-e, d1=nhd[2]+2*wall, d2=nhd[0]+2*wall, $fn=24);
+        translate([(nhd[0]+2*wall)/-2, -nut_ingress/2-d_off, 0])
+          cube([nhd[0]+2*wall, nut_ingress/2+d_off, (h_b-screw_l)+2]);
       }
-      cylinder(5+1.2, d=5.0, $fn=24);
-      translate([0,0,-e]) cylinder(1.2, d1=5.6, d2=5.0, $fn=24); // alignment helper
+      cylinder(nhd[1]+1.2, d=nhd[0], $fn=24);
+      translate([0,0,-e]) cylinder(1.2, d1=nhd[2], d2=nhd[0], $fn=24); // alignment helper
     }
   }
 }
@@ -670,7 +674,7 @@ module cube_bchamfer(dim, r, top=0, bottom=0, $fn=$fn) {
 }
 
 module fillet(radius, height=100, $fn=$fn) {
-  if (radius > 0) {
+  if (radius != undef && radius > 0) {
     //this creates acutal fillet
     translate([-radius, -radius, -height / 2 - 0.02]) difference() {
         cube([radius * 2, radius * 2, height + 0.04]);
