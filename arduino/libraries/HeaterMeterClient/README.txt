@@ -1,0 +1,1 @@
+A simple server-sent events client for streaming HeaterMeter state using server-sent events and an ESP8266
