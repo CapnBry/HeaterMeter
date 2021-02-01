@@ -113,7 +113,7 @@ const menu_transition_t MENU_TRANSITIONS[] PROGMEM = {
   { ST_LIDOPEN_OFF, BUTTON_RIGHT, ST_LIDOPEN_DUR },
 
   { ST_LIDOPEN_DUR, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
-  { ST_LIDOPEN_DUR, BUTTON_RIGHT, ST_NETINFO },
+  { ST_LIDOPEN_DUR, BUTTON_RIGHT, ST_RESETCONFIG },
 
   { ST_RESETCONFIG, BUTTON_LEFT | BUTTON_TIMEOUT, ST_HOME_FOOD1 },
   { ST_RESETCONFIG, BUTTON_RIGHT, ST_SETPOINT },
@@ -760,7 +760,7 @@ static state_t menuProbeDiag(button_t button)
 static state_t menuNetInfo(button_t button)
 {
   if (Menus.getHostState() == HmMenuSystemHostState::OFFLINE)
-    return ST_RESETCONFIG;
+    return ST_LCDBACKLIGHT;
 
   if (button != BUTTON_RIGHT)
     Menus.sendHostInteract(HmMenuInteractiveTopic::NETINFO, button);
