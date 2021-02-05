@@ -2,7 +2,7 @@
 
 #define WIFI_SSID       "network"
 #define WIFI_PASSWORD   "password"
-#define HEATERMEATER_IP "192.168.2.54"
+#define HEATERMEATER_IP "" // IP or leave blank to use discovery
 
 static HeaterMeterClient hm(HEATERMEATER_IP);
 
