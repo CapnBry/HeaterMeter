@@ -1,7 +1,6 @@
-#ifndef _HMPROXY_h
-#define _HMPROXY_h
+#pragma once
 
-#include "arduino.h"
+#include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <ESPAsyncTCP.h>
 #include <ArduinoJson.h>
@@ -97,5 +96,4 @@ private:
   static void asynctcp_onError(void* arg, AsyncClient* c, err_t err);
 };
 
-#endif
 
