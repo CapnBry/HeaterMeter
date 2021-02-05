@@ -38,20 +38,30 @@ static void displayTemps(void)
 {
   --g_HmTempsChanged;
 
+  bool isLid = hm.state.LidCountdown > 0;
   for (uint8_t i = 0; i < TEMP_COUNT; ++i)
   {
     //if (i == 1) { leds[1]->showNumberDec(ESP.getFreeHeap() / 10); continue; }
     if (g_HmTempsChanged == 0)
       g_LastTemps[i] = hm.state.Probes[i].Temperature;
 
-    if (hm.state.Probes[i].HasTemperature)
+    // If Lid mode, show "Lid Mode" in LED[1,2] and the countdown in LED[3]
+    if (isLid && i == 1)
+      leds[1]->setSegments(new uint8_t[4]{ TM1637_L, TM1637_I, TM1637_D, 0 });
+    else if (isLid && i == 2)
+      leds[2]->setSegments(new uint8_t[4]{ TM1637_M, TM1637_O, TM1637_D, TM1637_E });
+    else if (isLid && i == 3)
+      leds[3]->showNumberDecEx(hm.state.LidCountdown, 0);
+
+    else if (hm.state.Probes[i].HasTemperature)
     {
       // LERP from the last temperature just to make it seem like there's more going on here
       float t = g_LastTemps[i] + ((4 - g_HmTempsChanged) / 4.0f) * (hm.state.Probes[i].Temperature - g_LastTemps[i]);
-      leds[i]->showNumberDecEx(int32_t(t * 10.0f), 0b00100000, false);
+      leds[i]->showNumberDecEx(int32_t(t * 10.0f), 0b00100000);
     }
     else
       leds[i]->clear();
+
     yield();
   }
 }
