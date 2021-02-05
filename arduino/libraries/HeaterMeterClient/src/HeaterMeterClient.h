@@ -45,14 +45,16 @@ struct HeaterMeterClientPid
 class HeaterMeterClient
 {
 public:
-  enum HmclientProtocolState { hpsNone, hpsNoNetwork, hpsReconnectDelay, hpsDisconnected, hpsConnecting, hpsConnected, hpsRequestSent, hpsHeaders, hpsChunk, hpsChunkData };
+  enum HmclientProtocolState { hpsNone, hpsNoNetwork, hpsDiscover, hpsReconnectDelay,
+    hpsDisconnected, hpsConnecting, hpsConnected, hpsRequestSent, hpsHeaders, hpsChunk, hpsChunkData };
 
-  HeaterMeterClient(const char* ip);
+  HeaterMeterClient(const char* host);
 
   // The current HeaterMeter state updated when ProtocolState is >hpsHeaders
   HeaterMeterClientPid state;
   HmclientProtocolState getProtocolState(void) {  return _protocolState; }
   IPAddress getRemoteIP(void) { return _client.remoteIP();  }
+  const char* getHost(void) const { return _host; }
   void update();
 
   // Events
@@ -66,7 +68,7 @@ public:
 
 private:
   AsyncClient _client;
-  const char* _ip;
+  char _host[16];
   char _eventType[32];
   char _lineBuffer[1024];
   uint16_t _lineBufferPos;
@@ -84,6 +86,7 @@ private:
   void clientSendRequest(void);
   void clientCheckTimeout(void);
   bool setProtocolState(HmclientProtocolState hps);
+  void discover(void);
 
   // AsyncClient callbacks
   void onData_cb(void* data, size_t len);

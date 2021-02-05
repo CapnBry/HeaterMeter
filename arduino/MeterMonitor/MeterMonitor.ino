@@ -5,7 +5,7 @@
 
 #define WIFI_SSID       "network"
 #define WIFI_PASSWORD   "password"
-#define HEATERMEATER_IP "192.168.2.54"
+#define HEATERMEATER_IP "" // IP or leave blank to use discovery
 #define LED_BRIGHTNESS  7  // 1 (low) - 7 (high)
 
 static HeaterMeterClient hm(HEATERMEATER_IP);
@@ -63,19 +63,6 @@ static void displayTemps(void)
       leds[i]->clear();
 
     yield();
-  }
-}
-
-static void setupLeds(void)
-{
-  leds[0] = &led0;
-  leds[1] = &led1;
-  leds[2] = &led2;
-  leds[3] = &led3;
-  for (uint8_t i = 0; i < TEMP_COUNT; ++i)
-  {
-    leds[i]->setBrightness(LED_BRIGHTNESS);
-    leds[i]->clear();
   }
 }
 
@@ -146,6 +133,21 @@ static void proxy_onWifiConnect(void)
 static void proxy_onWifiDisconnect(void)
 {
   Serial.println(F("onWifiDisconnect"));
+  ledsShowNoWifi();
+}
+
+static void setupLeds(void)
+{
+  leds[0] = &led0;
+  leds[1] = &led1;
+  leds[2] = &led2;
+  leds[3] = &led3;
+  for (uint8_t i = 0; i < TEMP_COUNT; ++i)
+  {
+    leds[i]->setBrightness(LED_BRIGHTNESS);
+    leds[i]->clear();
+    yield();
+  }
   ledsShowNoWifi();
 }
 

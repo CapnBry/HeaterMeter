@@ -1,4 +1,5 @@
 #include "HeaterMeterClient.h"
+#include <ESP8266HTTPClient.h>
 
 #define CLIENT_HTTP_TIMEOUT 6000
 
@@ -57,9 +58,10 @@ void HeaterMeterClientPid::clear(void)
   Output.clear();
 }
 
-HeaterMeterClient::HeaterMeterClient(const char* ip) :
-  _ip(ip), _protocolState(hpsNone), _reconnectDelay(1000)
-{  
+HeaterMeterClient::HeaterMeterClient(const char* host) :
+  _protocolState(hpsNone), _reconnectDelay(60000)
+{
+  strlcpy(_host, host, sizeof(_host));
 }
 
 void HeaterMeterClient::asynctcp_onData(void* arg, AsyncClient* c, void* data, size_t len)
@@ -152,7 +154,7 @@ void HeaterMeterClient::handleHmStatus(char* data)
   DeserializationError err = deserializeJson(doc, data);
   if (err)
   {
-    Serial.print("Could not deserialize JSON event: ");
+    Serial.print(F("Could not deserialize JSON event: "));
     Serial.println(err.c_str());
     return;
   }
@@ -263,7 +265,7 @@ void HeaterMeterClient::clientConnect(void)
   _client.onError(&asynctcp_onError, this);
   // data should be received every 2-5s 
   _client.setRxTimeout(CLIENT_HTTP_TIMEOUT);
-  _client.connect(_ip, 80);
+  _client.connect(_host, 80);
 
   setProtocolState(hpsConnecting);
 }
@@ -284,6 +286,61 @@ void HeaterMeterClient::clientCheckTimeout(void)
     _client.close();
 }
 
+void HeaterMeterClient::discover(void)
+{
+  _lastClientActivity = millis();
+  // If there is an IP then there's no need to discover
+  if (strlen(_host) > 0)
+  {
+    setProtocolState(hpsDisconnected);
+    return;
+  }
+
+  // Request the JSON device list from HeaterMeter LIVE and use its best guess at the IP
+  HTTPClient http;
+  WiFiClient client;
+  http.useHTTP10(true);
+  http.begin(client, "http://heatermeter.com/devices/?fmt=json");
+  int responseCode = http.GET();
+  if (responseCode == 200)
+  {
+    // Use a JSON filter to only parse the "guess" address field
+    StaticJsonDocument<32> filter;
+    filter["guess"] = true;
+    // Deserialize from HTTP stream
+    StaticJsonDocument<64> doc;
+    DeserializationError err = deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
+    http.end();
+    if (err)
+    {
+      Serial.print(F("Could not deserialize JSON discover: "));
+      Serial.println(err.c_str());
+      goto discoverError;
+    }
+
+    const JsonVariant& guess = doc["guess"];
+    if (guess.isNull())
+    {
+      Serial.print(F("No HeaterMeter discovered"));
+      goto discoverError;
+    }
+
+    // Found IP
+    strlcpy(_host, guess, sizeof(_host));
+    setProtocolState(hpsDisconnected);
+    return;
+  }
+  else
+  {
+    Serial.print(F("Discover failed: "));
+    Serial.println(responseCode, DEC);
+    http.end();
+  }
+
+discoverError:
+  setProtocolState(hpsReconnectDelay);
+}
+
 /* Return true if state actually changed */
 bool HeaterMeterClient::setProtocolState(HmclientProtocolState hps)
 {
@@ -292,12 +349,15 @@ bool HeaterMeterClient::setProtocolState(HmclientProtocolState hps)
   // Notify before change in case the client needs to know the old state
   if (onProtocolStateChange)
     onProtocolStateChange(hps);
+
+  HmclientProtocolState oldState = _protocolState;
   _protocolState = hps;
 
   switch (_protocolState)
   {
-  case hpsNoNetwork: if (onWifiDisconnect) onWifiDisconnect(); break;
-  case hpsDisconnected: if (onDisconnect) onDisconnect(); break;
+  case hpsNoNetwork: if (oldState > hpsNoNetwork && onWifiDisconnect) onWifiDisconnect(); break;
+  case hpsDiscover: if (oldState == hpsNoNetwork && onWifiConnect) onWifiConnect(); break;
+  case hpsDisconnected: if (oldState > hpsConnecting && onDisconnect) onDisconnect(); break;
   case hpsConnected: if (onConnect) onConnect(); break;
   case hpsNone:
   case hpsReconnectDelay:
@@ -308,6 +368,7 @@ bool HeaterMeterClient::setProtocolState(HmclientProtocolState hps)
   case hpsChunkData:
     break;
   }
+
 
   return true;
 }
@@ -324,7 +385,10 @@ void HeaterMeterClient::update(void)
   {
   case hpsNone:
   case hpsNoNetwork:
-    setProtocolState(hpsDisconnected);
+    setProtocolState(hpsDiscover);
+    break;
+  case hpsDiscover:
+    discover();
     break;
   case hpsDisconnected:
     state.clear();
@@ -332,7 +396,7 @@ void HeaterMeterClient::update(void)
     break;
   case hpsReconnectDelay:
     if (millis() - _lastClientActivity > _reconnectDelay)
-      setProtocolState(hpsDisconnected);
+      setProtocolState(hpsDiscover);
     break;
   case hpsConnecting:
     break;
