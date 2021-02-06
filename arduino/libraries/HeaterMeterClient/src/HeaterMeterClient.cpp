@@ -346,6 +346,7 @@ bool HeaterMeterClient::setProtocolState(HmclientProtocolState hps)
 {
   if (_protocolState == hps)
     return false;
+  //Serial.print(F("State=")); Serial.println(static_cast<uint8_t>(hps), DEC);
   // Notify before change in case the client needs to know the old state
   if (onProtocolStateChange)
     onProtocolStateChange(hps);
@@ -357,10 +358,10 @@ bool HeaterMeterClient::setProtocolState(HmclientProtocolState hps)
   {
   case hpsNoNetwork: if (oldState > hpsNoNetwork && onWifiDisconnect) onWifiDisconnect(); break;
   case hpsDiscover: if (oldState == hpsNoNetwork && onWifiConnect) onWifiConnect(); break;
-  case hpsDisconnected: if (oldState > hpsConnecting && onDisconnect) onDisconnect(); break;
+  case hpsReconnectDelay:if (oldState > hpsConnecting && onDisconnect) onDisconnect(); break;
   case hpsConnected: if (onConnect) onConnect(); break;
   case hpsNone:
-  case hpsReconnectDelay:
+  case hpsDisconnected:
   case hpsConnecting:
   case hpsRequestSent:
   case hpsHeaders:
@@ -390,13 +391,13 @@ void HeaterMeterClient::update(void)
   case hpsDiscover:
     discover();
     break;
-  case hpsDisconnected:
-    state.clear();
-    clientConnect();
-    break;
   case hpsReconnectDelay:
     if (millis() - _lastClientActivity > _reconnectDelay)
       setProtocolState(hpsDiscover);
+    break;
+  case hpsDisconnected:
+    state.clear();
+    clientConnect();
     break;
   case hpsConnecting:
     break;
