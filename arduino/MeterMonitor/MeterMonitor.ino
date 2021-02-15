@@ -49,7 +49,7 @@ static void displayTemps(void)
     if (isLid && i == 1)
       leds[1]->setSegments(new uint8_t[4]{ TM1637_L, TM1637_I, TM1637_D, 0 });
     else if (isLid && i == 2)
-      leds[2]->setSegments(new uint8_t[4]{ TM1637_M, TM1637_O, TM1637_D, TM1637_E });
+      leds[2]->setSegments(new uint8_t[4]{ TM1637_O, TM1637_P, TM1637_E, TM1637_N });
     else if (isLid && i == 3)
       leds[3]->showNumberDecEx(hm.state.LidCountdown, 0);
 
