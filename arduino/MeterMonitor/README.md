@@ -1,9 +1,10 @@
 A TM1637-based HeaterMeter client display.
 
 Requires TM1637 and HeaterMeterClient libraries
-TM1637 - https://github.com/avishorp/TM1637
+* TM1637 - https://github.com/avishorp/TM1637
+* HeaterMeterClient - [in this repository](https://github.com/CapnBry/HeaterMeter/tree/master/arduino/libraries/HeaterMeterClient)
 
-Wiring (Wemos D1 Mino -> TM1637):
+Wiring (Wemos D1 Mini -> TM1637):
 * 5V -> 5V (all displays)
 * GND -> GND (all displays)
 * D1 (GPIO5)  -> CLK (all displays)
