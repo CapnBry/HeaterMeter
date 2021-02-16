@@ -10,4 +10,4 @@ Wiring (ESP -> TM1637):
 * D2 -> DIO Probe 0 display
 * D7 -> DIO Probe 1 display
 * D6 -> DIO Probe 2 display
-* D7 -> DIO Probe 3 display
+* D5 -> DIO Probe 3 display
