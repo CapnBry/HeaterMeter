@@ -1,0 +1,11 @@
+(module PAD-032 (layer F.Cu) (tedit 0)
+  (descr "0.032 Octagonal through-hole pad")
+  (fp_text reference U$4 (at 0 0) (layer F.SilkS) hide
+    (effects (font (size 1.27 1.27) (thickness 0.15)))
+  )
+  (fp_text value THROUGH-HOLE (at 0 0) (layer F.SilkS) hide
+    (effects (font (size 1.27 1.27) (thickness 0.15)))
+  )
+  (pad P thru_hole circle (at 0 0) (size 1.524 1.524) (drill 0.8128) (layers *.Cu *.Mask)
+    (solder_mask_margin 0.0762))
+)

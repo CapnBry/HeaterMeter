@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name HeaterMeterPI-eagle-import)(type Legacy)(uri ${KIPRJMOD}/HeaterMeterPI-eagle-import.lib)(options "")(descr ""))
+)

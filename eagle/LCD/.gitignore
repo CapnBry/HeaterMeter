@@ -1,0 +1,17 @@
+gerber/
+fp-info-cache
+*-bak
+*.bck
+*-cache.lib
+*-rescue.lib
+
+# Netlist files (exported from Eeschema)
+*.net
+
+# Autorouter files (exported from Pcbnew)
+*.dsn
+*.ses
+
+# Exported BOM files
+*.xml
+*.csv
