@@ -1,6 +1,5 @@
 #include <HeaterMeterClient.h>
 #include <TM1637Display.h>
-#include <TaskScheduler.h>
 #include "segment_chars.h"
 
 #define WIFI_SSID       "network"
@@ -20,19 +19,6 @@ static TM1637Display* leds[TEMP_COUNT];
 static float g_LastTemps[TEMP_COUNT];
 static uint8_t g_HmTempsChanged;
 static err_t g_LastClientError;
-
-static Scheduler ts;
-static void taskcbEspStats(void);
-Task taskEspStats(30 * 1000, TASK_FOREVER, &taskcbEspStats);
-
-static void taskcbEspStats(void)
-{
-  Serial.print(F("STATS: Uptime="));
-  Serial.print(millis(), DEC);
-  Serial.print(F(" MemFree="));
-  Serial.print(ESP.getFreeHeap(), DEC);
-  Serial.println();
-}
 
 static void displayTemps(void)
 {
@@ -151,13 +137,6 @@ static void setupLeds(void)
   ledsShowNoWifi();
 }
 
-static void setupScheduler(void)
-{
-  ts.init();
-  ts.addTask(taskEspStats);
-  taskEspStats.enableDelayed();
-}
-
 void setup()
 {
   if (WiFi.status() != WL_CONNECTED)
@@ -178,7 +157,6 @@ void setup()
   hm.onError = &proxy_onError;
 
   setupLeds();
-  setupScheduler();
 }
 
 void loop()
@@ -187,6 +165,5 @@ void loop()
   // Updating each LED takes ~22ms with 100uS delay
   if (g_HmTempsChanged > 0)
     displayTemps();
-  ts.execute();
   delay(100);
 }
