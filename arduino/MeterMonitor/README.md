@@ -18,7 +18,7 @@ Wiring (Wemos D1 Mini -> TM1637):
 ## Parts List
 
 * 1x Wemos D1 Mini or any ESP8266 variant with at least 5 usable GPIOs. [Amazon Affiliate Link](https://amzn.to/2ZjXiuq)
-* 4x TM1637 7-segment display modules with **decimal** points not "clock" [Amazon Affiliate Link](https://amzn.to/3u6R1jK)
-* Simple 3D printed case [Thingiverse](https://www.thingiverse.com/thing:4750046)
+* 4x TM1637 7-segment display modules with **decimal** points not "clock". Warning! These are too small to fit the case below [Amazon Affiliate Link](https://amzn.to/3u6R1jK)
+* Simple 3D printed case [Thingiverse](https://www.thingiverse.com/thing:4750046) for 0.56" LED modules
 
 I would recommend searching eBay or Aliexpress for these parts due to the Amazon parts being 30% more expensive than they can be purchased from China.
