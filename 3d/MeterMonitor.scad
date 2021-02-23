@@ -1,24 +1,31 @@
-wall = 1.3;
-wall_o = 1.9;
-wall_t = 1.45;
+// LCD type
+lt = 0; // [0: 0.56inch, 1: 0.36inch]
 
+wall = 1.3; // interior walls
+wall_o = 1.9; // outer walls
+wall_t = 1.45; // base thickness
+
+/* Hidden */
 lid_h = wall_t;
 
-lcd_w = 67;
-lcd_d = 28;
-lcd_s_w = 60; // width between screws
-lcd_s_d = 22;
-lcd_s_h = 8.5;
-lcd_s_dia = 3.1;
-lcd_a_w = 50; // width of actual 7-segment area
-lcd_a_d = 17.5; //19
-lcd_ex_w = 0;
-lcd_ex_d = 2;
-lcd_window_offset = 2;
+lcd_w = [67, 45.50][lt];
+lcd_d = [28, 23.00][lt];
+lcd_s_w = [60, 40.35][lt]; // width between screws
+lcd_s_d = [22, 17.76][lt];
+lcd_s_h = [8.5, 7.0][lt];
+lcd_s_dia = [3.1, 3.1][lt];
+lcd_a_w = [50, 30][lt]; // width of actual 7-segment area
+lcd_a_d = [17.5, 14][lt];
+lcd_ex_w = [0, 2][lt];
+lcd_ex_d = [2, 4][lt];
+lcd_window_offset = [2, (5.43-10.07)/2][lt];
+w_extra = [2, 6][lt];
+d_extra = [0, 0][lt];
 
-oa_w = 2*lcd_w+2*lcd_ex_w;
-oa_d = 3*lcd_d+3*lcd_ex_d;
+oa_w = 2*lcd_w + 2*lcd_ex_w + w_extra;
+oa_d = 3*lcd_d + 3*lcd_ex_d + d_extra;
 oa_h = 15;
+pad_right = max(2*lcd_window_offset, 0); // padding is asymetrical so not included in oa_w
 
 main();
 //translate([-oa_w/2, oa_d/2+wall_o+5, 0]) lid();
@@ -27,15 +34,15 @@ module main() {
   difference() {
     union() {
       translate([-oa_w/2-wall_o, -oa_d/2-wall_o, 0])
-        cube_bchamfer([oa_w+2*lcd_window_offset+2*wall_o, oa_d+2*wall_o, oa_h+wall_t+lid_h+wall_t/2], r=5, bottom=1);
+        cube_bchamfer([oa_w+pad_right+2*wall_o, oa_d+2*wall_o, oa_h+wall_t+lid_h+wall_t/2], r=5, bottom=1);
     } // union
     
     // main cutout
     translate([-oa_w/2, -oa_d/2, wall_t])
-      cube_bchamfer([oa_w+2*lcd_window_offset, oa_d, oa_h+e], r=5-wall, bottom=1, top=lid_h);
+      cube_bchamfer([oa_w+pad_right, oa_d, oa_h+e], r=5-wall, bottom=1, top=lid_h);
     // lid cutout
     translate([-oa_w/2,-oa_d/2-wall_o-e,wall_t+oa_h])
-      cube_fillet([oa_w+2*lcd_window_offset, oa_d+wall_o+e, lid_h+wall_t+e],
+      cube_fillet([oa_w+pad_right, oa_d+wall_o+e, lid_h+wall_t+e],
         vertical=[2,2], top=[lid_h,lid_h,0,lid_h], $fn=4);
     
     // LCD holes
@@ -53,7 +60,7 @@ module main() {
 }
 
 module lid() {
-  ww = oa_w+2*lcd_window_offset+0.2;
+  ww = oa_w+pad_right+0.2;
   dd = oa_d+wall_o-0.2;
   difference() {
     cube_fillet([ww, dd, lid_h], bottom=[0.5, 0.5, 0, 0.5], vertical=[1.5, 1.5 ,1.5, 1.5]);
@@ -71,10 +78,10 @@ module lcd_places() {
   // center two
   translate([lcd_w/2+lcd_ex_w,0,0])
     children();
-  translate([-lcd_w/2+lcd_ex_w,0,0])
+  translate([-lcd_w/2-lcd_ex_w,0,0])
     children();
   // top/bottom
-  mirror2([0,1,0]) translate([-lcd_w/2,lcd_d+lcd_ex_d,0])
+  mirror2([0,1,0]) translate([-lcd_w/2-lcd_ex_w,lcd_d+lcd_ex_d,0])
     children();
 }
 
@@ -93,7 +100,7 @@ module lcd_mount_n() {
 }
 
 module wemos_place() {
-  translate([oa_w/2+2*lcd_window_offset+wall-20, -lcd_d-lcd_ex_d, wall_t]) rotate(90) children();
+  translate([oa_w/2+pad_right+wall-20, -lcd_d-lcd_ex_d, wall_t]) rotate(90) children();
 }
 
 module wemos_mount(extra_h) {
