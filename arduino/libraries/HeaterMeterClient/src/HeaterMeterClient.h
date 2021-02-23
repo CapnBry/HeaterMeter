@@ -22,12 +22,25 @@ struct HeaterMeterClientProbe
   void clear(void);
 };
 
+struct HeaterMeterClientPidInternals
+{
+  uint32_t LastUpdate;
+  float P;
+  float I;
+  float D;
+  float dT;
+
+  void clear();
+  bool valid() { return ((LastUpdate != 0) && (millis() - LastUpdate < 3000)); }
+};
+
 struct HeaterMeterClientPidOutput
 {
   bool Enabled; // false if "Off"
   uint8_t Current;
   uint8_t Fan;
   uint8_t Servo;
+  struct HeaterMeterClientPidInternals Internals;
 
   void clear(void);
 };
@@ -63,6 +76,7 @@ public:
   std::function<void(void)> onConnect;
   std::function<void(void)> onDisconnect;
   std::function<void(void)> onHmStatus;
+  std::function<void(void)> onPidInt;
   std::function<void(err_t)> onError;
   std::function<void(HmclientProtocolState)> onProtocolStateChange;
 
@@ -80,6 +94,7 @@ private:
   bool readLine(char** pos, size_t* len);
   void updateProxyFromJson(JsonDocument& doc);
   void handleHmStatus(char* data);
+  void handlePidInt(char* data);
   void handleServerSentEvent(char* data);
   void handleServerSentLine(void);
   void clientConnect(void);

@@ -44,11 +44,24 @@ void HeaterMeterClientProbe::clear(void)
   HasTemperatureDph = false;
 }
 
+void HeaterMeterClientPidInternals::clear(void)
+{
+  LastUpdate = 0;
+
+  P = 0.0f;
+  I = 0.0f;
+  D = 0.0f;
+  dT = 0.0f;
+}
+
 void HeaterMeterClientPidOutput::clear(void)
 {
+  Enabled = false;
   Current = 0;
   Fan = 0;
   Servo = 0;
+
+  Internals.clear();
 }
 
 void HeaterMeterClientPid::clear(void)
@@ -154,12 +167,33 @@ void HeaterMeterClient::handleHmStatus(char* data)
   DeserializationError err = deserializeJson(doc, data);
   if (err)
   {
-    Serial.print(F("Could not deserialize JSON event: "));
+    Serial.print(F("Could not deserialize hmstatus event: "));
     Serial.println(err.c_str());
     return;
   }
 
   updateProxyFromJson(doc);
+}
+
+void HeaterMeterClient::handlePidInt(char* data)
+{
+  StaticJsonDocument<128> doc;
+  DeserializationError err = deserializeJson(doc, data);
+  if (err)
+  {
+    Serial.print(F("Could not deserialize pidint event: "));
+    Serial.println(err.c_str());
+    return;
+  }
+
+  state.Output.Internals.LastUpdate = millis();
+  state.Output.Internals.P = doc["p"];
+  state.Output.Internals.I = doc["i"];
+  state.Output.Internals.D = doc["d"];
+  state.Output.Internals.dT = doc["t"];
+
+  if (onPidInt)
+    onPidInt();
 }
 
 void HeaterMeterClient::handleServerSentEvent(char* data)
@@ -168,6 +202,8 @@ void HeaterMeterClient::handleServerSentEvent(char* data)
 
   if (strcmp(_eventType, "hmstatus") == 0)
     handleHmStatus(data);
+  else if (strcmp(_eventType, "pidint") == 0)
+    handlePidInt(data);
   else
   {
     //Serial.print(F("Unhandled server-sent event type: "));
