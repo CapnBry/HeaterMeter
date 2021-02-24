@@ -1,8 +1,13 @@
 #pragma once
 
 #include <Arduino.h>
-#include <ESP8266WiFi.h>
-#include <ESPAsyncTCP.h>
+#if defined(ESP8266)
+  #include <ESP8266WiFi.h>
+  #include <ESPAsyncTCP.h>
+#else
+  #include <WiFi.h>
+  #include <AsyncTCP.h>
+#endif
 #include <ArduinoJson.h>
 
 #define TEMP_COUNT  4
@@ -47,6 +52,7 @@ struct HeaterMeterClientPidOutput
 
 struct HeaterMeterClientPid
 {
+  time_t UpdateUtc;
   HeaterMeterClientProbe Probes[TEMP_COUNT];
   HeaterMeterClientPidOutput Output;
   int16_t Setpoint;
@@ -69,6 +75,7 @@ public:
   IPAddress getRemoteIP(void) { return _client.remoteIP();  }
   const char* getHost(void) const { return _host; }
   void update();
+  bool isCommunicating(void) const { return _protocolState >= hpsChunk; }
 
   // Events
   std::function<void(void)> onWifiConnect;
@@ -91,10 +98,17 @@ private:
   uint32_t _lastClientActivity;
   uint32_t _reconnectDelay;
 
+  enum NotifyPendingType { nptHmStatus, nptPidInt };
+  uint32_t _notifyPending;
+  void setNotifyPending(NotifyPendingType npt);
+  bool getNotifyPending(NotifyPendingType npt) const;
+  void clearNotifyPending(void);
+
   bool readLine(char** pos, size_t* len);
   void updateProxyFromJson(JsonDocument& doc);
   void handleHmStatus(char* data);
   void handlePidInt(char* data);
+  void handlePeaks(char* data);
   void handleServerSentEvent(char* data);
   void handleServerSentLine(void);
   void clientConnect(void);

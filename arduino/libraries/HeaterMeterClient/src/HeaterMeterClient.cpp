@@ -1,5 +1,9 @@
 #include "HeaterMeterClient.h"
-#include <ESP8266HTTPClient.h>
+#if defined(ESP8266)
+  #include <ESP8266HTTPClient.h>
+#else
+  #include <HTTPClient.h>
+#endif
 
 #define CLIENT_HTTP_TIMEOUT 6000
 
@@ -66,6 +70,7 @@ void HeaterMeterClientPidOutput::clear(void)
 
 void HeaterMeterClientPid::clear(void)
 {
+  UpdateUtc = 0;
   for (uint8_t i = 0; i < TEMP_COUNT; ++i)
     Probes[i].clear();
   Output.clear();
@@ -157,8 +162,10 @@ void HeaterMeterClient::updateProxyFromJson(JsonDocument& doc)
   // Lid
   state.LidCountdown = doc["lid"];
 
-  if (onHmStatus)
-    onHmStatus();
+  // Main
+  state.UpdateUtc = doc["time"];
+
+  setNotifyPending(nptHmStatus);
 }
 
 void HeaterMeterClient::handleHmStatus(char* data)
@@ -177,6 +184,7 @@ void HeaterMeterClient::handleHmStatus(char* data)
 
 void HeaterMeterClient::handlePidInt(char* data)
 {
+  // {"b":0.00,"p":5.27,"i":96.32,"d":0.08,"t":-0.01}
   StaticJsonDocument<128> doc;
   DeserializationError err = deserializeJson(doc, data);
   if (err)
@@ -192,8 +200,17 @@ void HeaterMeterClient::handlePidInt(char* data)
   state.Output.Internals.D = doc["d"];
   state.Output.Internals.dT = doc["t"];
 
-  if (onPidInt)
-    onPidInt();
+  setNotifyPending(nptPidInt);
+}
+
+void HeaterMeterClient::handlePeaks(char* data)
+{
+  // There's more JSON than this, need a real capture with H and L peaks
+  //{"H":{"trend":1,"time":1613317715,"val":72.299999999999997},
+  // "C":{"trend":0},
+  // "outhist":[82892,9217,3389,3022,2675,2592,2861,2366,2167,2184,2133,2106,2375,2206,1569,1518,1539,1502,1493,1545,1550,1597,1624,1665,3045,542715],
+  // "updatecnt":[0,18475,683548,30,0],"L":{"trend":-1,"time":1613317715,"val":72.299999999999997},
+  // "mode":3}
 }
 
 void HeaterMeterClient::handleServerSentEvent(char* data)
@@ -204,6 +221,8 @@ void HeaterMeterClient::handleServerSentEvent(char* data)
     handleHmStatus(data);
   else if (strcmp(_eventType, "pidint") == 0)
     handlePidInt(data);
+  else if (strcmp(_eventType, "peaks") == 0)
+    handlePeaks(data);
   else
   {
     //Serial.print(F("Unhandled server-sent event type: "));
@@ -377,6 +396,21 @@ discoverError:
   setProtocolState(hpsReconnectDelay);
 }
 
+void HeaterMeterClient::setNotifyPending(NotifyPendingType npt)
+{
+  _notifyPending |= 1 << static_cast<uint8_t>(npt);
+}
+
+bool HeaterMeterClient::getNotifyPending(NotifyPendingType npt) const
+{
+  return _notifyPending & (1 << static_cast<uint8_t>(npt));
+}
+
+void HeaterMeterClient::clearNotifyPending(void)
+{
+  _notifyPending = 0;
+}
+
 /* Return true if state actually changed */
 bool HeaterMeterClient::setProtocolState(HmclientProtocolState hps)
 {
@@ -405,7 +439,6 @@ bool HeaterMeterClient::setProtocolState(HmclientProtocolState hps)
   case hpsChunkData:
     break;
   }
-
 
   return true;
 }
@@ -447,4 +480,12 @@ void HeaterMeterClient::update(void)
     clientCheckTimeout();
     break;
   } /* switch */
+
+
+  // Send notifies which were deferred to save stack space
+  if (onHmStatus && getNotifyPending(nptHmStatus))
+    onHmStatus();
+  if (onPidInt && getNotifyPending(nptPidInt))
+    onPidInt();
+  clearNotifyPending();
 }
