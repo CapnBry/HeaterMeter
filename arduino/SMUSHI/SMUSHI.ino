@@ -4,8 +4,8 @@
 #include "background.h"
 #include "Orbitron_Medium_12.h"
 
-#define WIFI_SSID       "capnbry24"
-#define WIFI_PASSWORD   "beerhere"
+#define WIFI_SSID       "network"
+#define WIFI_PASSWORD   "password"
 #define HEATERMEATER_IP "" // IP or leave blank to use discovery
 #define TZ              "EST+5EDT,M3.2.0/2,M11.1.0/2" // time zone string
 
