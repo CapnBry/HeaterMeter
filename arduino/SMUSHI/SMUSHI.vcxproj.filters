@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="SMUSHI.ino" />
+    <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="__vm\.SMUSHI.vsarduino.h">

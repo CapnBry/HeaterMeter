@@ -33,6 +33,7 @@ Board settings
 * Edit SMUSHI.ino and set WIFI_SSID, WIFI_PASSWORD to connect to your wifi network
 * Set HEATERMEATER_IP to the IP address of your HeaterMeter, or leave blank to use the top result from http://heatermeter.com/devices/
 * Set TZ to the time zone string to convert to your local time, or blank to display UTC time
-* Upload! The button to the right of the USB connector flips the display and that's about it
+* Upload! Hold the button to the right of the USB connector (S2) to use the wifi credentials you compiled in, otherwise the previous connection information will be used
+* The button to the left of the USB connector (S1) flips the display, or hold it down for 1s to enter power down mode (~1mA). Use the reset button to wake again.
 
 
