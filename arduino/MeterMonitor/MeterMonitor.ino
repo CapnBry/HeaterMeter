@@ -108,6 +108,10 @@ static void proxy_onError(err_t err)
 {
   Serial.print(F("Socket Error ")); Serial.println(err);
   g_LastClientError = err;
+
+  // There's no "disconnect" event if never connected, so trigger display err
+  if (hm.getProtocolState() == HeaterMeterClient::hpsConnecting)
+    ledsShowDisconnected();
 }
 
 static void proxy_onWifiConnect(void)
