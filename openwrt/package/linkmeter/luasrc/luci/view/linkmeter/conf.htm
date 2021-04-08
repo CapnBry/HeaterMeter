@@ -596,8 +596,7 @@ function updateConfigUrl(divname, h)
       elem.html('<a href="#"/>').children(":first").html(s);
       let fn = function () {
           clearInterval(rfInterval);
-          return ifrmTarget(url, 'Updating configuration...',
-            function () { setTimeout(ifrmLoaded, 2000); });
+          return ifrmTarget(url, 'Updating configuration...', ifrmDelayClose);
         };
       elem.add(':button[name="cbi.apply"]').unbind("click").click(fn);
     }
@@ -607,6 +606,11 @@ function updateConfigUrl(divname, h)
   else
     // This is always #updateurl because #fullurl doesnalways has aValues
     elem.html("none").add(':button[name="cbi.apply"]').off("click");
+}
+
+function ifrmDelayClose()
+{
+  setTimeout(ifrmLoaded, 2000);
 }
 
 function ifrmLoaded()
@@ -861,7 +865,7 @@ time they are restarted.</div>
 <input type="button" onclick="configToForm();" value="Reset to current"
   class="cbi-button cbi-button-reset"/>
 <input type="button" value="Reboot AVR" class="cbi-button cbi-input-reload"
-  onclick="ifrmTarget('<%=build_url("admin/lm/reboot")%>','Reboot');"/>
+  onclick="ifrmTarget('<%=build_url("admin/lm/reboot")%>','Reboot', ifrmDelayClose);"/>
 </div>
 </form>
 
