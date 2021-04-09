@@ -106,20 +106,27 @@ local function buildAccountTabs()
     fld.optional = true
     fld.datatype = "minlength(3)"
  
-    fld = s:taboption(aname, Flag, aname .. ".auth", "Requires authentication")
-    fld.default = 0
-    fld.disabled = "off"
-    fld.enabled = "on"
-    dep = {}
-    dep[depbase .. fld.option] = "on"
+    fld = s:taboption(aname, ListValue, aname .. ".auth", "Authentication type")
+    fld.default = "off"
+    fld:value("off", "None")
+    fld:value("on", "AUTO")
+    fld:value("plain", "PLAIN")
+    fld:value("cram-md5", "CRAM-MD5")
+    fld:value("login", "LOGIN")
 
     fld = s:taboption(aname, Value, aname .. ".user", "Account user name")
     fld.placeholder = "user"
-    fld:depends(dep)
+    fld:depends({[depbase .. aname .. ".auth"] = "on"})
+    fld:depends({[depbase .. aname .. ".auth"] = "plain"})
+    fld:depends({[depbase .. aname .. ".auth"] = "cram-md5"})
+    fld:depends({[depbase .. aname .. ".auth"] = "login"})
 
     fld = s:taboption(aname, Value, aname .. ".password", "Account password")
     fld.password = true
-    fld:depends(dep)
+    fld:depends({[depbase .. aname .. ".auth"] = "on"})
+    fld:depends({[depbase .. aname .. ".auth"] = "plain"})
+    fld:depends({[depbase .. aname .. ".auth"] = "cram-md5"})
+    fld:depends({[depbase .. aname .. ".auth"] = "login"})
 
     fld = s:taboption(aname, Flag, aname .. ".tls", "Enable TLS/SSL encryption")
     fld.default = "off"
