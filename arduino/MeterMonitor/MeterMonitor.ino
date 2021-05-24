@@ -33,9 +33,9 @@ static void displayTemps(void)
 
     // If Lid mode, show "Lid Mode" in LED[1,2] and the countdown in LED[3]
     if (isLid && i == 1)
-      leds[1]->setSegments(new uint8_t[4]{ TM1637_L, TM1637_I, TM1637_D, 0 });
+      leds[1]->setSegments((const uint8_t[4]){ TM1637_L, TM1637_I, TM1637_D, 0 });
     else if (isLid && i == 2)
-      leds[2]->setSegments(new uint8_t[4]{ TM1637_O, TM1637_P, TM1637_E, TM1637_N });
+      leds[2]->setSegments((const uint8_t[4]){ TM1637_O, TM1637_P, TM1637_E, TM1637_N });
     else if (isLid && i == 3)
       leds[3]->showNumberDecEx(hm.state.LidCountdown, 0);
 
@@ -74,9 +74,9 @@ static void ledsShowDisconnected(void)
     leds[0]->showNumberDec(g_LastClientError);
   else
     leds[0]->clear();
-  leds[1]->setSegments(new uint8_t[4]{ TM1637_D, TM1637_I, TM1637_S, TM1637_C });
-  leds[2]->setSegments(new uint8_t[4]{ TM1637_O, TM1637_N, TM1637_N, TM1637_E });
-  leds[3]->setSegments(new uint8_t[4]{ TM1637_C, TM1637_T, TM1637_E, TM1637_D });
+  leds[1]->setSegments((const uint8_t[4]){ TM1637_D, TM1637_I, TM1637_S, TM1637_C });
+  leds[2]->setSegments((const uint8_t[4]){ TM1637_O, TM1637_N, TM1637_N, TM1637_E });
+  leds[3]->setSegments((const uint8_t[4]){ TM1637_C, TM1637_T, TM1637_E, TM1637_D });
 }
 
 static void ledsShowNoWifi(void)
@@ -86,8 +86,8 @@ static void ledsShowNoWifi(void)
   //  leds[0]->showNumberDec(g_LastClientError);
   //else
   leds[0]->clear();
-  leds[1]->setSegments(new uint8_t[4]{ 0, TM1637_N, TM1637_O, 0 });
-  leds[2]->setSegments(new uint8_t[4]{ TM1637_W, TM1637_I, TM1637_F, TM1637_I });
+  leds[1]->setSegments((const uint8_t[4]){ 0, TM1637_N, TM1637_O, 0 });
+  leds[2]->setSegments((const uint8_t[4]){ TM1637_W, TM1637_I, TM1637_F, TM1637_I });
   leds[3]->clear();
 }
 
