@@ -27,7 +27,7 @@ NutHardware = 0; // [0:Captive Nut,1:5mm Injection Threaded Insert,2:Threaded In
 // External corner radius on the body (mm)
 body_corner_radius = wall*2-1/2;
 w_off = 0.5; // offset the heatermeter origin from the left edge
-d_off = 1.0; // offset the heatermeter origin from the front edge
+d_off = 2.0; // offset the heatermeter origin from the front edge
 w = inch(3.725)+0.7+w_off; // overall interior case width
 d = inch(3.75)+1.0+d_off; // overall interior case depth
 // 19.1+ headless Zero
