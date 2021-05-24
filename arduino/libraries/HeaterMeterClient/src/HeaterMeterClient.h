@@ -52,7 +52,7 @@ struct HeaterMeterClientPidOutput
 
 struct HeaterMeterClientPid
 {
-  time_t UpdateUtc;
+  uint32_t UpdateUtc; // UNIX 32-bit epoch
   HeaterMeterClientProbe Probes[TEMP_COUNT];
   HeaterMeterClientPidOutput Output;
   int16_t Setpoint;
