@@ -338,7 +338,10 @@ void HeaterMeterClient::clientSendRequest(void)
 void HeaterMeterClient::clientCheckTimeout(void)
 {
   if ((millis() - _lastClientActivity) > CLIENT_HTTP_TIMEOUT)
+  {
+    Serial.println(F("Idle timeout"));
     _client.close();
+  }
 }
 
 void HeaterMeterClient::discover(void)
