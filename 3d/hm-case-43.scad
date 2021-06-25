@@ -21,7 +21,7 @@ MouseEarHeight = 0;
 // Corner leg height (mm) - 0 to disable
 MouseLegHeight = 0; //body_chamfer_height/2;
 // Screw hardware
-NutHardware = 0; // [0:Captive Nut,1:5mm Injection Threaded Insert,2:Threaded Insert]
+NutHardware = 2; // [0:Captive Nut,1:5mm Injection Threaded Insert,2:Threaded Insert]
 
 /* [Hidden] */
 // External corner radius on the body (mm)
