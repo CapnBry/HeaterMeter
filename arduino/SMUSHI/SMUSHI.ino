@@ -73,7 +73,9 @@ static void proxy_onHmStatus()
 
 static void proxy_onWifiConnect()
 {
-  Serial.println(F("onWifiConnect"));
+  //Serial.println(F("onWifiConnect"));
+  Serial.print(F("Connected to "));
+  Serial.println(WiFi.SSID());
 }
 
 static void proxy_onWifiDisconnect()
@@ -120,7 +122,9 @@ static void drawTime()
   if (hm.state.UpdateUtc != 0)
   {
     struct tm* ltime;
-    ltime = localtime(&hm.state.UpdateUtc);
+    // time_t is defined as "long" on ESP32 and our time is signed 32-bit UNIX epoch
+    const time_t utime = hm.state.UpdateUtc;
+    ltime = localtime(&utime);
     bool pm = ltime->tm_hour > 11;
     if (ltime->tm_hour > 12)
       ltime->tm_hour -= 12;
@@ -340,7 +344,9 @@ static void updateDisplay()
   drawOutput(); yield();
   drawTime(); yield();
 
-  Serial.println(millis() - start, DEC);
+  Serial.print(F("updateDisplay "));
+  Serial.print(millis() - start, DEC);
+  Serial.println(F("ms"));
 }
 
 static void drawBackground()
