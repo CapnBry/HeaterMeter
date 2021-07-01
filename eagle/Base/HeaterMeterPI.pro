@@ -1,4 +1,4 @@
-update=12/5/2020 11:49:27 AM
+update=6/21/2021 2:02:37 PM
 version=1
 last_client=kicad
 [general]
@@ -18,7 +18,7 @@ PageLayoutDescrFile=
 PlotDirectoryName=
 SubpartIdSeparator=0
 SubpartFirstId=65
-NetFmtName=
+NetFmtName=Pcbnew
 SpiceAjustPassiveValues=0
 LabSize=50
 ERC_TestSimilarLabels=1
@@ -39,6 +39,9 @@ MinMicroViaDiameter=0.2
 MinMicroViaDrill=0.09999999999999999
 MinHoleToHole=0.25
 TrackWidth1=0.25
+TrackWidth2=0.254
+TrackWidth3=0.3048
+TrackWidth4=0.4064
 ViaDiameter1=0.8
 ViaDrill1=0.4
 dPairWidth1=0.2
@@ -203,7 +206,7 @@ Enabled=0
 [pcbnew/Layer.B.Paste]
 Enabled=0
 [pcbnew/Layer.F.Paste]
-Enabled=0
+Enabled=1
 [pcbnew/Layer.B.SilkS]
 Enabled=1
 [pcbnew/Layer.F.SilkS]
