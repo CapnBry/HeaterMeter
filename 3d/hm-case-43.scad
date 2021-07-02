@@ -7,6 +7,8 @@ Control_Probe = "Thermocouple"; // [Thermocouple,Thermistor,None]
 Pi_Model = "3B/2B/1B+"; // [3B/2B/1B+,Connectorless,1A+,Zero,3A+]
 // Which case halves
 Pieces = "Both"; // [Both,Top,Bottom]
+// Probe mono jack type (MJ1 is the smaller new one for 4.3.6)
+ThermistorJack = 1; // [0:MJ-2508N,1:MJ1-2503A]
 // Include cutouts and mounts for LCD/Buttons
 LCD = 1; // [0:None,1:2-line]
 // Thickness of side walls (mm) - Set to trace width multiple
@@ -35,8 +37,8 @@ d = inch(3.75)+1.0+d_off; // overall interior case depth
 // 32 standard
 h_b = [32.5-6.7, 32.5][LCD];  // overall interior case height
 
-probe_centerline = 9.3; // case is split along probe centerline on the probe side
-case_split = 12.4;  // and the case split on the other 3 sides
+probe_centerline = 9.3+([0, 3.0][ThermistorJack]); // case is split along probe centerline on the probe side
+case_split = 12.3;  // and the case split on the other 3 sides (12.4 ideal?)
 
 pic_ex = 1.7;
 lcd_mount_t = 8.2 - (wall_t - 0.8);
@@ -372,7 +374,7 @@ difference() {
     // Probe jacks
     if (Control_Probe == "Thermocouple")
       // TC jack
-      translate([0,inch(0.4)-16.5/2,-1.1]) cube([2*wall, 16.5, 6.5]);
+      translate([0,inch(0.4)-16.5/2,-1.1-([0, 3.0][ThermistorJack])]) cube([2*wall, 16.5, 6.5]);
     else if (Control_Probe == "Thermistor")
       translate([0,inch(0.28),0]) phole();
     if (Control_Probe != "None") {
