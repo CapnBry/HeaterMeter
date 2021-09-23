@@ -49,7 +49,7 @@ body_chamfer_height_b = body_chamfer_height;
 
 led_dia = 2.9;
 led_h = 4.6 - 1;
-led_fudge = 0.3; // total extra diameter to expand the hole and head sphere
+led_fudge = 0.4; // total extra diameter to expand the hole and head sphere
 led_inset = 0.5; // amount to extend LED through case
 
 e = 0.01;
