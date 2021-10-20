@@ -1,9 +1,9 @@
 #include <HeaterMeterClient.h>
 #include <TM1637Display.h>
+#include <WifiManager.h>
+#include "button.h"
 #include "segment_chars.h"
 
-#define WIFI_SSID       "network"
-#define WIFI_PASSWORD   "password"
 #define HEATERMEATER_IP "" // IP or leave blank to use discovery
 #define LED_BRIGHTNESS  7  // 1 (low) - 7 (high)
 
@@ -15,6 +15,8 @@ static TM1637Display led1(DPIN_LED_CLK, D7, 90);
 static TM1637Display led2(DPIN_LED_CLK, D6, 90);
 static TM1637Display led3(DPIN_LED_CLK, D5, 90);
 static TM1637Display* leds[TEMP_COUNT];
+static Button<D4, false> button;
+static WiFiManager wm;
 
 static float g_LastTemps[TEMP_COUNT];
 static uint8_t g_HmTempsChanged;
@@ -126,6 +128,21 @@ static void proxy_onWifiDisconnect(void)
   ledsShowNoWifi();
 }
 
+static void wifim_onApMode(WiFiManager *p)
+{
+  (void)(p);
+  // Display "CON FIG"
+  leds[0]->clear();
+  leds[1]->setSegments((const uint8_t[4]) { TM1637_C, TM1637_O, TM1637_N, 0 });
+  leds[2]->setSegments((const uint8_t[4]) { TM1637_F, TM1637_I, TM1637_G, 0 });
+  leds[3]->clear();
+}
+
+static void button_onLong(void)
+{
+  wm.resetSettings();
+}
+
 static void setupLeds(void)
 {
   leds[0] = &led0;
@@ -143,15 +160,10 @@ static void setupLeds(void)
 
 void setup()
 {
-  if (WiFi.status() != WL_CONNECTED)
-  {
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  }
+  WiFi.mode(WIFI_STA);
 
-  delay(100);
   Serial.begin(115200);
-  Serial.print(F("$UCID,MeterMonitor," __DATE__ " " __TIME__ "\n"));
+  Serial.println(F("$UCID,MeterMonitor," __DATE__ " " __TIME__));
 
   hm.onHmStatus = &proxy_onHmStatus;
   hm.onWifiConnect = &proxy_onWifiConnect;
@@ -160,14 +172,24 @@ void setup()
   hm.onDisconnect = &proxy_onDisconnect;
   hm.onError = &proxy_onError;
 
+  button.OnLongPress = &button_onLong;
   setupLeds();
+
+  wm.setConfigPortalBlocking(false);
+  wm.setAPCallback(&wifim_onApMode);
+  wm.autoConnect("MeterMonitor");
 }
 
 void loop()
 {
+  wm.process();
   hm.update();
+  button.update();
   // Updating each LED takes ~22ms with 100uS delay
   if (g_HmTempsChanged > 0)
     displayTemps();
-  delay(100);
+
+  // if up and running, loop slowing
+  if (hm.getProtocolState() != HeaterMeterClient::hpsNoNetwork)
+    delay(25);
 }

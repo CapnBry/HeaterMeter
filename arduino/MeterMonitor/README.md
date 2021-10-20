@@ -2,6 +2,7 @@ A TM1637-based HeaterMeter client display.
 
 Requires TM1637 and HeaterMeterClient libraries
 * TM1637 - https://github.com/avishorp/TM1637
+* WifiManager - (2.0.4 beta or newer) https://github.com/tzapu/WiFiManager
 * HeaterMeterClient - [in this repository](https://github.com/CapnBry/HeaterMeter/tree/master/arduino/libraries/HeaterMeterClient)
 
 Wiring (Wemos D1 Mini -> TM1637):
