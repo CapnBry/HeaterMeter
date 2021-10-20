@@ -28,7 +28,8 @@ oa_h = 15;
 pad_right = max(2*lcd_window_offset, 0); // padding is asymetrical so not included in oa_w
 
 main();
-//translate([-oa_w/2, oa_d/2+wall_o+5, 0]) lid();
+translate([-oa_w/2, oa_d/2+wall_o+5, 0]) lid();
+//lid_stand();
 
 module main() {
   difference() {
@@ -43,7 +44,7 @@ module main() {
     // lid cutout
     translate([-oa_w/2,-oa_d/2-wall_o-e,wall_t+oa_h])
       cube_fillet([oa_w+pad_right, oa_d+wall_o+e, lid_h+wall_t+e],
-        vertical=[2,2], top=[lid_h,lid_h,0,lid_h], $fn=4);
+        vertical=[2,2,0,0], top=[lid_h,lid_h,0,lid_h], $fn=4);
     
     // LCD holes
     lcd_places() lcd_mount_n();
@@ -63,7 +64,7 @@ module lid() {
   ww = oa_w+pad_right+0.2;
   dd = oa_d+wall_o-0.2;
   difference() {
-    cube_fillet([ww, dd, lid_h], bottom=[0.5, 0.5, 0, 0.5], vertical=[1.5, 1.5 ,1.5, 1.5]);
+    cube_fillet([ww, dd, lid_h], bottom=[0.5, 0.5, 0, 0.5], vertical=[4, 4 ,1.5, 1.5]);
     // vent holes
     //translate([15, dd/2, 0])
     //  for (X=[0:3])
@@ -71,7 +72,8 @@ module lid() {
   }
   // lock bump
   //translate([wall_o+wall_t+0.5, dd/2-4*wall, lid_h-e]) cube_fillet([2*wall, 8*wall, 0.6], top=[0.6,0,0.6,0]);
-  translate([ww/4, wall_o+wall_t+0.5, lid_h-e]) cube_fillet([ww/2, 2*wall, 0.6], top=[0,0.6,0,0.6]);
+  translate([ww/4, wall_o+wall_t+0.5, lid_h-e])
+    cube_fillet([ww/2, 2*wall, 0.6], top=[0, 0.6, 0, 0.6]);
 }
 
 module lcd_places() {
@@ -113,12 +115,12 @@ module wemos_mount(extra_h) {
   difference() {
     translate([-we_w/2-we_wall, -we_d/2-we_wall, 0])
       cube_fillet([we_w+2*we_wall, we_d+2*we_wall, we_h+extra_h],
-        vertical=[we_rad+we_wall*0.5855,we_rad+we_wall*0.5855]);
+        vertical=[we_rad+we_wall*0.5855, we_rad+we_wall*0.5855, 0, 0]);
     
     translate([0,0,extra_h]) {
       // Big hole
       translate([-we_w/2, -we_d/2, 3])
-        cube_fillet([we_w, we_d, we_h+2*e], vertical=[we_rad,we_rad]);
+        cube_fillet([we_w, we_d, we_h+2*e], vertical=[we_rad, we_rad, 0, 0]);
       // USB jack
       translate([-5.9, -we_d/2-we_wall-e, 2.3]) 
         cube([13, 10, we_h]);
@@ -139,6 +141,34 @@ module wemos_mount(extra_h) {
     translate([we_w/2,5/2,we_h-0.8/2]) rotate([90]) cylinder(5, d=0.8, $fn=4);
     translate([-we_w/2,5/2,we_h-0.8/2]) rotate([90]) cylinder(5, d=0.8, $fn=4);
   }
+}
+
+module lid_stand()
+{
+  ls_weight_dia = 19.1;
+  ls_weight_h = 12;
+  
+  ls_w = 75;
+  ls_d = ls_weight_dia + 2 * wall;
+  ls_h = ls_weight_h + 5;
+  
+  ls_mag_w = 7;
+  ls_mag_d = 12.7;
+  ls_mag_h = 2.3;
+  
+  difference() {
+    translate([-ls_w/2, -ls_d/2, 0])
+      cube_fillet([ls_w, ls_d, ls_h], top=[5, ls_h/2,0, ls_h/2]);
+
+    // weight hole
+    translate([0, 0, -e])
+      cylinder(ls_weight_h, d=ls_weight_dia, $fn=24);
+    // magnet holes
+    translate([-ls_w/2+wall, -ls_mag_d/2, -e]) cube([ls_mag_w, ls_mag_d, ls_mag_h]);
+    translate([-ls_weight_dia/2-ls_mag_w-wall, -ls_mag_d/2, -e]) cube([ls_mag_w, ls_mag_d, ls_mag_h]);
+    translate([ls_w/2-ls_mag_w-wall, -ls_mag_d/2, -e]) cube([ls_mag_w, ls_mag_d, ls_mag_h]);
+    translate([ls_weight_dia/2+wall, -ls_mag_d/2, -e]) cube([ls_mag_w, ls_mag_d, ls_mag_h]);
+  }  // diff
 }
 
 module branding() {
