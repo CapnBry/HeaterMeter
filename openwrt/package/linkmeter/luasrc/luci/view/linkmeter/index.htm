@@ -961,7 +961,8 @@ function connectionSuccess(o)
         if (val && o.temps[i].dph && o.temps[i].dph >= 1.0)
         {
             let alarm_h = +o.temps[i].a.h;
-            let timeRemain = ((alarm_h - val) / o.temps[i].dph) * 3600;
+            let k = -Math.log((o.temps[i].c - o.set) / ((o.temps[i].c - o.temps[i]) - o.set));
+            let timeRemain = -Math.log((alarm_h - o.set) / (o.temps[i].c / o.set)) / k * 3600;
             timeRemain = (timeRemain > 0) ? formatTimer(timeRemain, false) + " to " + alarm_h + "&deg;<br />" : "";
             $("#dph"+i).html(o.temps[i].dph.toFixed(1) + "&deg;/hr<br />" + timeRemain).show();
         }
